@@ -1,8 +1,12 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { promisify } from "node:util";
-import { buildEnterpriseReadinessAudit } from "../scripts/crm-enterprise-readiness-audit-lib.mjs";
+import {
+  buildEnterpriseReadinessAudit,
+  enterpriseReadinessAuditToMarkdown
+} from "../scripts/crm-enterprise-readiness-audit-lib.mjs";
 
 const execFileAsync = promisify(execFile);
 
@@ -80,4 +84,19 @@ test("enterprise readiness audit CLI emits JSON for release evidence", async () 
   assert.equal(audit.summary.workflow_count >= 14, true);
   assert.equal(audit.summary.runtime_contract_count >= 23, true);
   assert.equal(audit.summary.missing_objective_item_count, 0);
+});
+
+test("enterprise readiness Markdown report is generated from current audit evidence", async () => {
+  const audit = buildEnterpriseReadinessAudit({ tenant_id: "default" });
+  const markdown = enterpriseReadinessAuditToMarkdown(audit);
+  const committed = await readFile(new URL("../docs/enterprise-readiness-audit.md", import.meta.url), "utf8");
+
+  assert.match(markdown, /- Workflows: 31/);
+  assert.match(markdown, /- Runtime contracts: 41/);
+  assert.match(markdown, /## Forge Core Requirements/);
+  assert.match(markdown, /durable_workflows: crm_consumes_forge_core_contract/);
+  assert.match(markdown, /## Core Gap Policy/);
+  assert.match(markdown, /Repository: forge-core/);
+  assert.match(markdown, /Forge v0\.7 Universal Workflow Framework: covered_by_current_addon_evidence/);
+  assert.equal(committed, markdown);
 });

@@ -392,6 +392,12 @@ export function buildEnterpriseReadinessAudit(options = {}) {
 }
 
 export function enterpriseReadinessAuditToMarkdown(audit) {
+  const objectiveDomains = Object.entries(audit.objective_matrix).map(([domain, matrix]) => {
+    const status = matrix.complete ? "complete" : "rework required";
+    const missing = matrix.missing.length > 0 ? matrix.missing.join(", ") : "none";
+    return `- ${domain}: ${status}; required=${matrix.required.length}; missing=${missing}`;
+  });
+
   const lines = [
     "# Forge CRM Enterprise Readiness Audit",
     "",
@@ -405,8 +411,32 @@ export function enterpriseReadinessAuditToMarkdown(audit) {
     `- Runtime contracts: ${audit.summary.runtime_contract_count}`,
     `- Artifact types: ${audit.summary.artifact_type_count}`,
     `- Event types: ${audit.summary.event_type_count}`,
+    `- Views: ${audit.summary.view_count}`,
     `- User-facing deliverables ready: ${audit.summary.ready_user_facing_deliverable_count}/${audit.user_facing_deliverables.length}`,
     `- Missing objective items: ${audit.summary.missing_objective_item_count}`,
+    `- Complete scope: ${audit.summary.complete_scope}`,
+    "",
+    "## Addon Evidence",
+    "",
+    `- Addon: ${audit.addon.id} (${audit.addon.lifecycle})`,
+    `- Core dependency: ${audit.addon.core_dependency}`,
+    `- Capabilities: ${audit.addon.capability_count}`,
+    `- Runtime contracts: ${audit.addon.runtime_contract_count}`,
+    `- Artifact types: ${audit.addon.artifact_type_count}`,
+    `- Event types: ${audit.addon.event_type_count}`,
+    `- Views: ${audit.addon.view_count}`,
+    `- Public repository declared: ${audit.repository.public_repository_declared}`,
+    "",
+    "## Local State Policy",
+    "",
+    `- State owner: ${audit.local_state_policy.state_owner}`,
+    `- External database required: ${audit.local_state_policy.external_database_required}`,
+    `- Direct external persistence: ${audit.local_state_policy.direct_external_persistence}`,
+    `- Allowed mutation path: ${audit.local_state_policy.allowed_mutation_path}`,
+    "",
+    "## Objective Domains",
+    "",
+    ...objectiveDomains,
     "",
     "## User-Facing Deliverables",
     "",
@@ -417,7 +447,19 @@ export function enterpriseReadinessAuditToMarkdown(audit) {
     "",
     "## Benchmark Tracks",
     "",
-    ...audit.benchmark_tracks.map((track) => `- ${track.title}: ${track.status}`)
+    ...audit.benchmark_tracks.map((track) => `- ${track.title}: ${track.status}`),
+    "",
+    "## Forge Core Requirements",
+    "",
+    ...audit.forge_core_requirements.map(
+      (requirement) => `- ${requirement.id}: ${requirement.status}; repository=${requirement.repository}`
+    ),
+    "",
+    "## Core Gap Policy",
+    "",
+    `Repository: ${audit.core_gap_policy.repository}`,
+    `Rule: ${audit.core_gap_policy.rule}`,
+    `Gap categories: ${audit.core_gap_policy.gap_categories.join(", ")}`
   ];
 
   return `${lines.join("\n")}\n`;
