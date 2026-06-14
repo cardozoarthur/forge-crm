@@ -512,6 +512,32 @@
       ]
     },
     {
+      "id": "crm.tenant.bootstrap.executor",
+      "title": "CRM tenant workflow bootstrap",
+      "contract_type": "executor",
+      "capability_id": "crm_workflow_factory",
+      "workflow_extension_id": "crm_workflow_factory_system_bootstrap",
+      "runtime": "external_api",
+      "entrypoint": "forge_crm.bootstrap_tenant",
+      "inputs": [
+        "tenant_context",
+        "crm_scope",
+        "operator_policy"
+      ],
+      "outputs": [
+        "crm_system_blueprint",
+        "crm_workflow_pack",
+        "crm_core_gap_report"
+      ],
+      "permissions": [
+        "crm.workflow.mutate"
+      ],
+      "constraints": [
+        "bootstrap produces Forge-owned workflow artifacts, not a CRM-local database",
+        "worker output remains advisory until Forge attaches artifacts and validates workflow mutations"
+      ]
+    },
+    {
       "id": "crm.proposal.generator.executor",
       "title": "CRM proposal generator",
       "contract_type": "executor",
@@ -808,6 +834,16 @@
       "id": "crm_core_gap_report",
       "title": "Forge Core gap report",
       "generic_kind": "report"
+    },
+    {
+      "id": "crm_workflow_pack",
+      "title": "CRM workflow pack",
+      "generic_kind": "artifact"
+    },
+    {
+      "id": "crm_entity_model",
+      "title": "CRM workflow-backed entity model",
+      "generic_kind": "artifact"
     },
     {
       "id": "crm_timeline_snapshot",
@@ -1267,4 +1303,3 @@
     "crm_repository": "https://github.com/cardozoarthur/forge-crm"
   }
 }
-

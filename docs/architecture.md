@@ -27,15 +27,22 @@ Forge CRM is a product proof for Forge as a factory/framework for agentic workfl
 
 No important CRM automation should bypass Forge. External tools may execute bounded work, but Forge owns the workflow, state transitions, approvals, memory scope, artifact attachment, event history and validation gates.
 
-The current CRM worker exposes five Forge runtime entrypoints:
+The current CRM worker exposes six Forge runtime entrypoints:
 
 - `forge_crm.plan_system` for CRM system planning;
+- `forge_crm.bootstrap_tenant` for a Forge-owned tenant workflow pack;
 - `forge_crm.classify_lead` for recommendation-only lead scoring;
 - `forge_crm.generate_proposal` for draft proposal artifacts;
 - `forge_crm.validate_document` for approval and lineage checks;
 - `forge_crm.deliver_handoff` for approved omnichannel handoff receipts.
 
 The worker returns Forge Addon result schemas and does not persist CRM state directly. State changes remain Forge workflow mutations or artifacts.
+
+## Tenant Workflow Pack
+
+`scripts/crm-workflow-pack-lib.mjs` produces the first operational workflow model for a CRM tenant. It declares 11 Forge-owned workflows across relationship, commercial, support, marketing, operations and AI automation. Each workflow carries explicit states, transitions, object types, runtime contracts, artifact types, events, memory scopes, permissions, validation gates and mutation policy.
+
+The pack uses `workflow_id`, `artifact_id` and `event_id` as durable identities. External primary keys and direct external persistence are explicitly disabled.
 
 ## Dogfooding Rule
 

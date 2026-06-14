@@ -31,9 +31,21 @@ test("manifest keeps CRM automation behind Forge capabilities and permissions", 
 });
 
 test("runtime contracts use Forge-supported external API runtime", () => {
-  assert.ok(manifest.runtime_contracts.length >= 5);
+  assert.ok(manifest.runtime_contracts.length >= 6);
   assert.ok(manifest.runtime_contracts.every((contract) => contract.runtime === "external_api"));
   assert.ok(manifest.compatibility.runtimes.includes("external_api"));
+});
+
+test("manifest exposes tenant bootstrap as a Forge runtime contract", () => {
+  const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.tenant.bootstrap.executor");
+  assert.ok(contract);
+  assert.equal(contract.contract_type, "executor");
+  assert.equal(contract.entrypoint, "forge_crm.bootstrap_tenant");
+  assert.deepEqual(contract.permissions, ["crm.workflow.mutate"]);
+
+  const artifactTypes = new Set(manifest.artifact_types.map((artifact) => artifact.id));
+  assert.ok(artifactTypes.has("crm_workflow_pack"));
+  assert.ok(artifactTypes.has("crm_system_blueprint"));
 });
 
 test("CRM scope is workflow-backed across core business areas", () => {
@@ -52,4 +64,3 @@ test("CRM scope is workflow-backed across core business areas", () => {
     assert.ok(workflowIds.has(workflowId), `missing workflow ${workflowId}`);
   }
 });
-

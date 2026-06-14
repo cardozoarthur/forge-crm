@@ -1,4 +1,7 @@
 import { buildCrmPlan } from "./crm-plan-lib.mjs";
+import { buildTenantBootstrapResult } from "./crm-workflow-pack-lib.mjs";
+
+export { buildTenantBootstrapResult };
 
 const ADDON_ID = "forge.addon.crm";
 
@@ -358,6 +361,8 @@ export function executeCrmRuntimeRequest(request) {
       const goal = envelope.goal || request?.goal || "Create a workflow-first enterprise CRM on Forge";
       return buildCrmPlan(goal);
     }
+    case "forge_crm.bootstrap_tenant":
+      return buildTenantBootstrapResult(request);
     case "forge_crm.classify_lead":
       return buildLeadClassifierResult(request);
     case "forge_crm.generate_proposal":
@@ -385,4 +390,3 @@ export function buildWorkerResponse(request) {
     }
   };
 }
-

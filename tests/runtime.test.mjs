@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import http from "node:http";
 import test from "node:test";
 import {
+  buildTenantBootstrapResult,
   buildDocumentValidatorResult,
   buildLeadClassifierResult,
   buildOmnichannelHandoffResult,
@@ -87,6 +88,21 @@ test("lead classifier returns a Forge executor result without mutating CRM state
   assert.ok(result.outputs.score >= 80);
   assert.equal(result.outputs.mutates_crm_state, false);
   assert.equal(result.context_tenant, "test");
+});
+
+test("tenant bootstrap runtime returns a workflow-backed CRM pack", () => {
+  const result = buildTenantBootstrapResult(
+    workerRequest("forge_crm.bootstrap_tenant", {
+      tenant_context: { tenant_id: "demo" }
+    })
+  );
+
+  assert.equal(result.schema_version, "forge.addon_executor_result.v1");
+  assert.equal(result.status, "completed");
+  assert.equal(result.outputs.workflow_count >= 10, true);
+  assert.equal(result.outputs.complete_scope, true);
+  assert.equal(result.outputs.external_database_required, false);
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_workflow_pack"));
 });
 
 test("proposal generator emits a draft proposal artifact gated by Forge approval", () => {
@@ -183,4 +199,3 @@ test("HTTP worker dispatches Forge runtime requests", async () => {
     await new Promise((resolve) => server.close(resolve));
   }
 });
-

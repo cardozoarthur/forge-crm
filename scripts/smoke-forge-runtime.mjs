@@ -75,6 +75,7 @@ try {
     endpoint,
     allowed_entrypoints: [
       "forge_crm.plan_system",
+      "forge_crm.bootstrap_tenant",
       "forge_crm.classify_lead",
       "forge_crm.generate_proposal",
       "forge_crm.validate_document",
@@ -82,6 +83,7 @@ try {
     ],
     allowed_contracts: [
       "crm.factory.planning",
+      "crm.tenant.bootstrap.executor",
       "crm.lead.classifier.executor",
       "crm.proposal.generator.executor",
       "crm.document.validator",
@@ -144,6 +146,30 @@ try {
     workerId,
     "--goal",
     "Create a workflow-first CRM tenant",
+    "--context",
+    JSON.stringify({ tenant: "smoke" }),
+    "--output",
+    "json"
+  ]);
+
+  const bootstrap = runForge([
+    "addons",
+    "execute-executor",
+    "--addon-dir",
+    "addons",
+    "--addon",
+    "forge.addon.crm",
+    "--contract",
+    "crm.tenant.bootstrap.executor",
+    "--worker",
+    workerId,
+    "--task",
+    "crm-smoke-tenant-bootstrap",
+    "--input",
+    JSON.stringify({
+      tenant_context: { id: "smoke", tenant_id: "smoke" },
+      operator_policy: { approved_by: "forge-crm-smoke", state_owner: "forge" }
+    }),
     "--context",
     JSON.stringify({ tenant: "smoke" }),
     "--output",
@@ -263,6 +289,9 @@ try {
     endpoint,
     authorizations: authorizations.map((authorization) => authorization.status || authorization.authorization_status),
     planner_status: planner.status,
+    bootstrap_status: bootstrap.status,
+    bootstrap_workflow_count: bootstrap.executor_result.outputs.workflow_count,
+    bootstrap_complete_scope: bootstrap.executor_result.outputs.complete_scope,
     classifier_status: classifier.status,
     classifier_tier: classifier.executor_result.outputs.tier,
     proposal_status: proposal.status,
@@ -277,4 +306,3 @@ try {
   worker.kill("SIGTERM");
   rmSync(path.dirname(store), { recursive: true, force: true });
 }
-

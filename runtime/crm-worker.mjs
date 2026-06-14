@@ -38,6 +38,7 @@ export function createCrmWorkerServer() {
           worker_id: "forge-crm-runtime-worker",
           supported_entrypoints: [
             "forge_crm.plan_system",
+            "forge_crm.bootstrap_tenant",
             "forge_crm.classify_lead",
             "forge_crm.generate_proposal",
             "forge_crm.validate_document",

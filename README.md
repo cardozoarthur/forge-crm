@@ -11,7 +11,8 @@ This repository starts the CRM as a verifiable Forge Addon:
 - `addons/forge-crm.json` declares CRM capabilities, workflows, permissions, event adapters, memory/context providers, artifact types and runtime contracts.
 - `scripts/generate-crm-plan.mjs` emits a deterministic Forge-compatible planning result for CRM system creation.
 - `runtime/crm-worker.mjs` exposes planner, executor, validator and handoff contracts over a local Forge `external_api` worker.
-- `scripts/smoke-forge-runtime.mjs` registers the worker in Forge and executes planner, lead classification, proposal generation, document validation and omnichannel handoff contracts.
+- `scripts/crm-workflow-pack-lib.mjs` generates a workflow-backed CRM tenant pack covering relationship, commercial, support, marketing, operations and AI automation.
+- `scripts/smoke-forge-runtime.mjs` registers the worker in Forge and executes planner, tenant bootstrap, lead classification, proposal generation, document validation and omnichannel handoff contracts.
 - `workflows/crm-system-template.json` maps the enterprise CRM domains into workflow-backed modules.
 - `docs/` records the architecture boundary between `forge-core` and this Addon.
 
@@ -28,6 +29,7 @@ npm test
 forge addons validate --addon-dir addons --output json
 forge addons catalog --addon-dir addons --output json
 node scripts/generate-crm-plan.mjs "Create a workflow-first CRM tenant"
+node scripts/generate-crm-workflow-pack.mjs "acme"
 ```
 
 Run the runtime smoke against a Forge binary:
