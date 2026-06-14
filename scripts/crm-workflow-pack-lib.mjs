@@ -155,7 +155,12 @@ const WORKFLOWS = [
       ["signature_wait", "signed", "signature receipt attached"],
       ["signed", "renewal_wait", "renewal schedule created"]
     ],
-    runtime_contracts: ["crm.document.generator.executor", "crm.document.validator", "crm.commercial.contract_signature.executor"],
+    runtime_contracts: [
+      "crm.document.generator.executor",
+      "crm.document.validator",
+      "crm.commercial.contract_signature.executor",
+      "crm.commercial.goal_commission.executor"
+    ],
     artifacts: ["crm_contract", "crm_document", "crm_signature_receipt", "crm_renewal_plan"],
     events: ["crm.document.generated", "crm.contract.reviewed", "crm.contract.signed", "crm.contract.renewal_scheduled"],
     memory_scopes: ["organization", "project"],
@@ -177,13 +182,39 @@ const WORKFLOWS = [
       ["response_wait", "forecast_reviewed", "forecast artifact updated"],
       ["forecast_reviewed", "commission_accrued", "commission rule validated"]
     ],
-    runtime_contracts: ["crm.commercial.followup_forecast.executor"],
+    runtime_contracts: ["crm.commercial.followup_forecast.executor", "crm.commercial.goal_commission.executor"],
     artifacts: ["crm_followup_plan", "crm_forecast_report", "crm_commission_record", "crm_report", "crm_email"],
     events: ["crm.followup.scheduled", "crm.forecast.reviewed", "crm.goal.progress_reviewed", "crm.commission.accrued"],
     memory_scopes: ["organization"],
     permissions: ["crm.workflow.mutate"],
     views: ["crm.commercial-command"],
     validation_gates: ["scheduled wait visible", "forecast and commission evidence attached"]
+  },
+  {
+    id: "crm.goal.commission",
+    title: "Goal attainment and commission settlement",
+    domain: "commercial",
+    workflow_extension_id: "crm_goal_commission_settlement",
+    object_types: ["goal", "commission", "forecast", "contract", "account"],
+    states: ["targets_collected", "revenue_matched", "attainment_reviewed", "statement_generated", "payout_approval_wait", "settled"],
+    transitions: [
+      ["targets_collected", "revenue_matched", "signed revenue events matched to targets"],
+      ["revenue_matched", "attainment_reviewed", "goal attainment calculated"],
+      ["attainment_reviewed", "statement_generated", "commission statement generated"],
+      ["statement_generated", "payout_approval_wait", "finance approval required"],
+      ["payout_approval_wait", "settled", "Forge approval recorded"]
+    ],
+    runtime_contracts: ["crm.commercial.goal_commission.executor"],
+    depends_on_workflows: ["crm.followup.forecast", "crm.contract.signature", "crm.account.management"],
+    artifacts: ["crm_goal_scorecard", "crm_commission_statement", "crm_compensation_audit_report"],
+    events: ["crm.goal.target_set", "crm.goal.attainment_reviewed", "crm.commission.statement_generated"],
+    memory_scopes: ["organization", "project"],
+    permissions: ["crm.workflow.mutate", "crm.observability.inspect"],
+    views: ["crm.commercial-command"],
+    validation_gates: [
+      "goal attainment and commission settlement require revenue event lineage",
+      "commission payout remains blocked until Forge approval"
+    ]
   },
   {
     id: "crm.account.management",

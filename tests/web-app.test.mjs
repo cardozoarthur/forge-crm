@@ -69,6 +69,7 @@ test("web app snapshot provides Forge command actions instead of local automatio
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.relationship.profile_enrichment.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.pipeline.stage_move.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.commercial.followup_forecast.executor"));
+  assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.commercial.goal_commission.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.commercial.account_management.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.commercial.contract_signature.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.support.channel_intake.executor"));
@@ -215,6 +216,8 @@ test("web app snapshot exposes an operational workbench backed by Forge artifact
   assert.ok(panels.get("pipeline_kanban").lanes.some((lane) => lane.cards.some((card) => card.next_action_id === "crm.move-pipeline-stage")));
   assert.ok(panels.get("commercial_command").forecast.pipeline_value > 0);
   assert.ok(panels.get("commercial_command").commission.plan_action_id === "crm.review-followup-forecast");
+  assert.ok(panels.get("commercial_command").goal_commission.action_id === "crm.settle-goal-commission");
+  assert.equal(panels.get("commercial_command").goal_commission.contract_id, "crm.commercial.goal_commission.executor");
   assert.ok(panels.get("support_queue").tickets.some((ticket) => ticket.sla_status === "at_risk"));
   assert.ok(panels.get("support_queue").channels.includes("whatsapp"));
   assert.ok(panels.get("support_queue").channel_intake.some((intake) => intake.action_id === "crm.normalize-channel-intake"));
@@ -273,6 +276,34 @@ test("web app snapshot exposes document library versioning as a Forge command su
   assert.ok(documentPanel.library_records.some((record) => record.version_state === "approval_wait"));
   assert.ok(documentPanel.library_records.every((record) => record.state_owner === "forge_workflow_runtime"));
   assert.ok(documentPanel.library_records.every((record) => record.action_id === "crm.manage-document-library"));
+});
+
+test("web app snapshot exposes goal and commission settlement as a Forge commercial workbench", () => {
+  const snapshot = buildCrmWebAppSnapshot({ tenant_id: "demo" });
+  const action = snapshot.actions.find((candidate) => candidate.id === "crm.settle-goal-commission");
+  const commercialPanel = snapshot.operational_workbench.panels.find((panel) => panel.id === "commercial_command");
+  const workbench = snapshot.goal_commission_workbench;
+
+  assert.ok(action);
+  assert.equal(action.surface_id, "crm.commercial-command");
+  assert.equal(action.contract_id, "crm.commercial.goal_commission.executor");
+  assert.equal(action.requires_permission, "crm.workflow.mutate");
+  assert.deepEqual(action.command_template.slice(0, 3), ["forge", "addons", "execute-executor"]);
+
+  assert.ok(commercialPanel);
+  assert.ok(commercialPanel.action_ids.includes("crm.settle-goal-commission"));
+  assert.ok(commercialPanel.workflow_ids.includes("crm.goal.commission"));
+
+  assert.ok(workbench);
+  assert.equal(workbench.schema_version, "forge.crm_goal_commission_workbench.v1");
+  assert.equal(workbench.workflow_id, "crm.goal.commission");
+  assert.equal(workbench.contract_id, "crm.commercial.goal_commission.executor");
+  assert.equal(workbench.state_owner, "forge_workflow_runtime");
+  assert.equal(workbench.local_state_allowed, false);
+  assert.ok(workbench.goal_targets.length >= 2);
+  assert.ok(workbench.revenue_events.every((event) => event.contract_artifact_ref));
+  assert.ok(workbench.commission_statements.every((statement) => statement.payout_allowed === false));
+  assert.ok(workbench.validation_gates.some((gate) => gate.includes("revenue event lineage")));
 });
 
 test("web app snapshot exposes cross-domain work queues as Forge command surfaces", () => {
@@ -442,6 +473,7 @@ test("web assets mount the generated CRM snapshot without a build step", async (
   assert.match(app, /renderEnterpriseJourneyWorkbench/);
   assert.match(app, /renderSubworkflowOrchestrationWorkbench/);
   assert.match(app, /renderWorkflowAutomationDesignerWorkbench/);
+  assert.match(app, /renderGoalCommissionWorkbench/);
   assert.match(styles, /\.workflow-node/);
   assert.match(styles, /\.relationship-profile/);
   assert.match(styles, /\.knowledge-node/);
@@ -458,6 +490,7 @@ test("web assets mount the generated CRM snapshot without a build step", async (
   assert.match(styles, /\.journey-workbench/);
   assert.match(styles, /\.subworkflow-workbench/);
   assert.match(styles, /\.automation-designer/);
+  assert.match(styles, /\.goal-commission/);
   assert.match(favicon, /<svg/);
 });
 

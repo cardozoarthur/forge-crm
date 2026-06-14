@@ -69,6 +69,13 @@ const USER_FACING_DELIVERABLES = [
     workflow_ids: ["crm.workflow.automation_design"]
   },
   {
+    id: "goal_commission_settlement",
+    title: "Goal and commission settlement",
+    domain: "commercial",
+    surface_id: "crm.commercial-command",
+    workflow_ids: ["crm.goal.commission"]
+  },
+  {
     id: "design_system",
     title: "Design system",
     domain: "user_experience",

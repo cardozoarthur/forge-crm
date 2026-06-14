@@ -336,8 +336,8 @@ test("operating readiness maps Forge evidence into user-facing CRM deliverables"
   assert.equal(result.status, "completed");
   assert.equal(result.outputs.tenant_id, "demo");
   assert.equal(result.outputs.success_criteria_status, "operable_with_evidence");
-  assert.equal(result.outputs.user_facing_deliverable_count, 10);
-  assert.equal(result.outputs.ready_domain_count, 10);
+  assert.equal(result.outputs.user_facing_deliverable_count, 11);
+  assert.equal(result.outputs.ready_domain_count, 11);
   assert.equal(result.outputs.forge_only_operations, true);
   assert.equal(result.outputs.main_flow_dependency_external, false);
   assert.equal(result.outputs.mutates_crm_state, false);
@@ -1174,6 +1174,85 @@ test("commercial follow-up forecast executor schedules follow-ups and commission
   assert.ok(result.events.some((event) => event.kind === "crm.forecast.reviewed"));
   assert.ok(result.events.some((event) => event.kind === "crm.goal.progress_reviewed"));
   assert.ok(result.events.some((event) => event.kind === "crm.commission.accrued"));
+});
+
+test("commercial goal commission executor settles period targets without direct payout mutation", () => {
+  assert.equal(typeof runtime.buildCommercialGoalCommissionResult, "function");
+
+  const result = runtime.buildCommercialGoalCommissionResult(
+    workerRequest(
+      "forge_crm.settle_goal_commission",
+      {
+        tenant_context: { tenant_id: "demo" },
+        period_context: {
+          period: "2026-Q3",
+          currency: "USD",
+          owner: "commercial.ops"
+        },
+        goal_targets: [
+          {
+            id: "goal-enterprise-new-arr",
+            owner: "sales-owner",
+            target_amount: 300000,
+            weight: 0.7
+          },
+          {
+            id: "goal-expansion-arr",
+            owner: "sales-owner",
+            target_amount: 100000,
+            weight: 0.3
+          }
+        ],
+        revenue_events: [
+          {
+            id: "rev-contract-001",
+            account: "Acme Logistics",
+            owner: "sales-owner",
+            amount: 240000,
+            goal_id: "goal-enterprise-new-arr",
+            contract_artifact_ref: "crm_contract:contract-001",
+            signature_event_ref: "crm.contract.signed"
+          },
+          {
+            id: "rev-expansion-001",
+            account: "Beta Freight",
+            owner: "sales-owner",
+            amount: 60000,
+            goal_id: "goal-expansion-arr",
+            contract_artifact_ref: "crm_contract:contract-002",
+            signature_event_ref: "crm.contract.signed"
+          }
+        ],
+        commission_policy: {
+          base_rate: 0.08,
+          accelerator_rate: 0.12,
+          accelerator_threshold_percent: 100,
+          require_finance_approval_before_payout: true
+        }
+      },
+      { contract_id: "crm.commercial.goal_commission.executor", task_ref: "goal-commission-test" }
+    )
+  );
+
+  assert.equal(result.schema_version, "forge.addon_executor_result.v1");
+  assert.equal(result.status, "completed");
+  assert.equal(result.outputs.tenant_id, "demo");
+  assert.equal(result.outputs.workflow_id, "crm.goal.commission");
+  assert.equal(result.outputs.period, "2026-Q3");
+  assert.equal(result.outputs.target_amount, 400000);
+  assert.equal(result.outputs.recognized_revenue_amount, 300000);
+  assert.equal(result.outputs.attainment_percent, 75);
+  assert.equal(result.outputs.commission_statement_amount, 24000);
+  assert.equal(result.outputs.payout_allowed, false);
+  assert.equal(result.outputs.mutates_crm_state, false);
+  assert.equal(result.outputs.forge_event_sourced, true);
+
+  for (const kind of ["crm_goal_scorecard", "crm_commission_statement", "crm_compensation_audit_report"]) {
+    assert.ok(result.artifacts.some((artifact) => artifact.kind === kind), `missing artifact ${kind}`);
+  }
+  for (const kind of ["crm.goal.target_set", "crm.goal.attainment_reviewed", "crm.commission.statement_generated"]) {
+    assert.ok(result.events.some((event) => event.kind === kind), `missing event ${kind}`);
+  }
 });
 
 test("commercial account management executor produces account health and expansion workflows as Forge artifacts", () => {

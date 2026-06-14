@@ -510,6 +510,38 @@ test("manifest exposes CRM commercial follow-up and forecast as a Forge-owned ex
   assert.ok(artifactTypes.has("crm_commission_record"));
 });
 
+test("manifest exposes CRM goal and commission settlement as a Forge-owned executor", () => {
+  const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.commercial.goal_commission.executor");
+  assert.ok(contract);
+  assert.equal(contract.contract_type, "executor");
+  assert.equal(contract.capability_id, "crm_commercial_operations");
+  assert.equal(contract.workflow_extension_id, "crm_goal_commission_settlement");
+  assert.equal(contract.entrypoint, "forge_crm.settle_goal_commission");
+  assert.deepEqual(contract.permissions, ["crm.workflow.mutate", "crm.observability.inspect"]);
+
+  for (const input of ["period_context", "goal_targets", "revenue_events", "commission_policy", "tenant_context"]) {
+    assert.ok(contract.inputs.includes(input), `missing goal commission input ${input}`);
+  }
+  for (const output of ["crm_goal_scorecard", "crm_commission_statement", "crm_compensation_audit_report"]) {
+    assert.ok(contract.outputs.includes(output), `missing goal commission output ${output}`);
+  }
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("settlement is evidence-only until Forge approval")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("does not persist CRM state outside Forge")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("revenue events and contract lineage")));
+
+  const capability = manifest.capabilities.find((candidate) => candidate.id === "crm_commercial_operations");
+  assert.ok(capability.workflow_extensions.includes("crm_goal_commission_settlement"));
+
+  const artifactTypes = new Set(manifest.artifact_types.map((artifact) => artifact.id));
+  for (const artifactType of ["crm_goal_scorecard", "crm_commission_statement", "crm_compensation_audit_report"]) {
+    assert.ok(artifactTypes.has(artifactType), `missing artifact type ${artifactType}`);
+  }
+
+  const eventTypes = new Set(manifest.event_types.map((event) => event.id));
+  assert.ok(eventTypes.has("crm.goal"));
+  assert.ok(eventTypes.has("crm.commission"));
+});
+
 test("manifest exposes CRM account management as a Forge-owned commercial executor", () => {
   const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.commercial.account_management.executor");
   assert.ok(contract);

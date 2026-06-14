@@ -315,6 +315,37 @@ test("commercial follow-up workflow routes forecast, goals and commission throug
   assert.ok(pack.indexes.runtime_contracts.includes("crm.commercial.followup_forecast.executor"));
 });
 
+test("commercial goal commission workflow settles targets and commissions through Forge evidence", () => {
+  const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
+  const workflow = pack.workflows.find((candidate) => candidate.id === "crm.goal.commission");
+  const followupWorkflow = pack.workflows.find((candidate) => candidate.id === "crm.followup.forecast");
+  const contractWorkflow = pack.workflows.find((candidate) => candidate.id === "crm.contract.signature");
+
+  assert.ok(workflow);
+  assert.equal(workflow.domain, "commercial");
+  assert.equal(workflow.workflow_extension_id, "crm_goal_commission_settlement");
+  assert.ok(workflow.depends_on_workflows.includes("crm.followup.forecast"));
+  assert.ok(workflow.depends_on_workflows.includes("crm.contract.signature"));
+  assert.ok(workflow.runtime_contracts.includes("crm.commercial.goal_commission.executor"));
+
+  for (const objectType of ["goal", "commission", "forecast", "contract", "account"]) {
+    assert.ok(workflow.object_types.includes(objectType), `missing goal commission object ${objectType}`);
+  }
+  for (const artifact of ["crm_goal_scorecard", "crm_commission_statement", "crm_compensation_audit_report"]) {
+    assert.ok(workflow.artifacts.includes(artifact), `missing goal commission artifact ${artifact}`);
+    assert.ok(pack.indexes.artifact_types.includes(artifact), `missing indexed goal commission artifact ${artifact}`);
+  }
+  for (const event of ["crm.goal.target_set", "crm.goal.attainment_reviewed", "crm.commission.statement_generated"]) {
+    assert.ok(workflow.events.includes(event), `missing goal commission event ${event}`);
+  }
+
+  assert.ok(workflow.validation_gates.includes("goal attainment and commission settlement require revenue event lineage"));
+  assert.ok(workflow.validation_gates.includes("commission payout remains blocked until Forge approval"));
+  assert.ok(pack.indexes.runtime_contracts.includes("crm.commercial.goal_commission.executor"));
+  assert.ok(followupWorkflow.runtime_contracts.includes("crm.commercial.goal_commission.executor"));
+  assert.ok(contractWorkflow.runtime_contracts.includes("crm.commercial.goal_commission.executor"));
+});
+
 test("commercial account workflow routes health, renewal and expansion through Forge", () => {
   const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
   const workflow = pack.workflows.find((candidate) => candidate.id === "crm.account.management");

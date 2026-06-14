@@ -33,6 +33,8 @@ const WORKFLOW_EDGES = [
   ["crm.opportunity.pipeline", "crm.proposal.approval", "approved offer terms request proposal artifact"],
   ["crm.proposal.approval", "crm.contract.signature", "approved proposal starts contract workflow"],
   ["crm.contract.signature", "crm.followup.forecast", "signed contract updates forecast and commission evidence"],
+  ["crm.contract.signature", "crm.goal.commission", "signed revenue events feed commission settlement"],
+  ["crm.followup.forecast", "crm.goal.commission", "forecast and goal evidence feed period settlement"],
   ["crm.lead.lifecycle", "crm.marketing.segment_builder", "captured and enriched leads can enter segment selection"],
   ["crm.relationship.profile_enrichment", "crm.marketing.segment_builder", "approved relationship profiles provide audience signals"],
   ["crm.marketing.segment_builder", "crm.campaign.lifecycle", "approved segment audience starts campaign execution"],
@@ -355,10 +357,12 @@ function buildOperationalWorkbench(workflows, actionList, documentQueueSnapshot)
       workflow_ids: unique([
         ...workflowIdsForSurface(workflows, "crm.commercial-command"),
         "crm.proposal.approval",
-        "crm.contract.signature"
+        "crm.contract.signature",
+        "crm.goal.commission"
       ]),
       action_ids: checkedActionIds(actionList, [
         "crm.review-followup-forecast",
+        "crm.settle-goal-commission",
         "crm.manage-account",
         "crm.manage-contract-signature",
         "crm.plan-project-handoff",
@@ -380,6 +384,18 @@ function buildOperationalWorkbench(workflows, actionList, documentQueueSnapshot)
       state: "commission_accrued",
       evidence_artifact_type: "crm_commission_record",
       plan_action_id: "crm.review-followup-forecast"
+    },
+    goal_commission: {
+      workflow_id: "crm.goal.commission",
+      period: "2026-Q3",
+      target_amount: 1000000,
+      recognized_revenue_amount: 836800,
+      attainment_percent: 84,
+      statement_state: "statement_generated",
+      evidence_artifact_types: ["crm_goal_scorecard", "crm_commission_statement", "crm_compensation_audit_report"],
+      payout_allowed: false,
+      action_id: "crm.settle-goal-commission",
+      contract_id: "crm.commercial.goal_commission.executor"
     },
     contracts: [
       {
@@ -1336,6 +1352,87 @@ function workflowAutomationDesignerWorkbench(workflows, actionList) {
   };
 }
 
+function goalCommissionWorkbench(workflows, actionList) {
+  const actionById = new Map(actionList.map((action) => [action.id, action]));
+  const action = actionById.get("crm.settle-goal-commission");
+  const workflow = workflows.find((candidate) => candidate.id === "crm.goal.commission");
+  const goalTargets = [
+    {
+      id: "goal-enterprise-new-arr",
+      title: "Enterprise new ARR",
+      owner: "sales-owner",
+      target_amount: 300000,
+      weight: 0.7,
+      artifact_type: "crm_goal_scorecard"
+    },
+    {
+      id: "goal-expansion-arr",
+      title: "Expansion ARR",
+      owner: "sales-owner",
+      target_amount: 100000,
+      weight: 0.3,
+      artifact_type: "crm_goal_scorecard"
+    }
+  ];
+  const revenueEvents = [
+    {
+      id: "rev-contract-001",
+      account: "Acme Logistics",
+      owner: "sales-owner",
+      amount: 240000,
+      goal_id: "goal-enterprise-new-arr",
+      contract_artifact_ref: "crm_contract:contract-001",
+      signature_event_ref: "crm.contract.signed"
+    },
+    {
+      id: "rev-expansion-001",
+      account: "Beta Freight",
+      owner: "sales-owner",
+      amount: 60000,
+      goal_id: "goal-expansion-arr",
+      contract_artifact_ref: "crm_contract:contract-002",
+      signature_event_ref: "crm.contract.signed"
+    }
+  ];
+
+  return {
+    schema_version: "forge.crm_goal_commission_workbench.v1",
+    workflow_id: workflow?.id || "crm.goal.commission",
+    workflow_extension_id: workflow?.workflow_extension_id || "crm_goal_commission_settlement",
+    state_owner: "forge_workflow_runtime",
+    state_source: WORKBENCH_STATE_SOURCE,
+    local_state_allowed: false,
+    action_id: action?.id || "crm.settle-goal-commission",
+    contract_id: action?.contract_id || "crm.commercial.goal_commission.executor",
+    goal_targets: goalTargets,
+    revenue_events: revenueEvents,
+    commission_statements: [
+      {
+        id: "statement-2026-q3-sales-owner",
+        period: "2026-Q3",
+        owner: "sales-owner",
+        recognized_revenue_amount: 300000,
+        commission_statement_amount: 24000,
+        payout_allowed: false,
+        payout_blocked_reason: "finance approval required before payout",
+        artifact_type: "crm_commission_statement"
+      }
+    ],
+    audit_reports: [
+      {
+        id: "compensation-audit-2026-q3",
+        artifact_type: "crm_compensation_audit_report",
+        missing_lineage_count: 0,
+        state_owner: "forge_workflow_runtime"
+      }
+    ],
+    validation_gates: [
+      "goal attainment and commission settlement require revenue event lineage",
+      "commission payout remains blocked until Forge approval"
+    ]
+  };
+}
+
 function actions() {
   return [
     {
@@ -1463,6 +1560,15 @@ function actions() {
       requires_permission: "crm.workflow.mutate",
       mutates_workflow: true,
       command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.commercial.followup_forecast.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
+    },
+    {
+      id: "crm.settle-goal-commission",
+      label: "Settle goals and commissions",
+      surface_id: "crm.commercial-command",
+      contract_id: "crm.commercial.goal_commission.executor",
+      requires_permission: "crm.workflow.mutate",
+      mutates_workflow: true,
+      command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.commercial.goal_commission.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
     },
     {
       id: "crm.manage-account",
@@ -1942,6 +2048,7 @@ export function buildCrmWebAppSnapshot(options = {}) {
     enterprise_journey_workbench: enterpriseJourneyWorkbench(workflows, actionList),
     subworkflow_orchestration_workbench: subworkflowOrchestrationWorkbench(workflows, actionList),
     workflow_automation_designer_workbench: workflowAutomationDesignerWorkbench(workflows, actionList),
+    goal_commission_workbench: goalCommissionWorkbench(workflows, actionList),
     actions: actionList,
     action_invocation_plans: actionInvocationPlans(actionList),
     workflow_cadences: workflowCadences(workflows, actionList),

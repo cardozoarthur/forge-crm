@@ -2610,6 +2610,14 @@ const READINESS_OUTCOME_DOMAINS = [
     required_events: ["crm.automation.designed", "crm.automation.validated", "crm.automation.queued"]
   },
   {
+    id: "goal_commission_settlement",
+    title: "Goal and commission settlement",
+    deliverable: "goal and commission settlement",
+    workflow_ids: ["crm.goal.commission"],
+    required_artifacts: ["crm_goal_scorecard", "crm_commission_statement", "crm_compensation_audit_report"],
+    required_events: ["crm.goal.target_set", "crm.goal.attainment_reviewed", "crm.commission.statement_generated"]
+  },
+  {
     id: "user_experience",
     title: "Forge CRM design system",
     deliverable: "design system",
@@ -3016,6 +3024,178 @@ export function buildCommercialFollowupForecastResult(request) {
         workflow_id: workflowId,
         owner,
         commission_amount: commissionAmount
+      }
+    ],
+    context_tenant: context.tenant || tenantId
+  };
+}
+
+export function buildCommercialGoalCommissionResult(request) {
+  const input = dispatchPayload(request);
+  const context = providedContext(request);
+  const tenantId = input.tenant_id || input.tenant_context?.tenant_id || input.tenant_context?.id || context.tenant || "default";
+  const periodContext = asObject(input.period_context);
+  const commissionPolicy = asObject(input.commission_policy);
+  const period = String(periodContext.period || input.period || "current");
+  const currency = String(periodContext.currency || commissionPolicy.currency || "USD");
+  const owner = String(periodContext.owner || commissionPolicy.owner || "commercial.ops");
+  const workflowId = String(input.workflow_id || "crm.goal.commission");
+  const taskRef = dispatchEnvelope(request).task_ref || `goal-commission-${slug(period, "period")}`;
+  const goalTargets = asArray(input.goal_targets).map((target, index) => {
+    const source = asObject(target);
+    return {
+      id: String(source.id || `goal-${index + 1}`),
+      owner: String(source.owner || owner),
+      target_amount: numberFrom(source.target_amount ?? source.amount, 0),
+      weight: numberFrom(source.weight, 1),
+      currency
+    };
+  });
+  const targetAmount = goalTargets.reduce((total, target) => total + target.target_amount, 0);
+  const goalIds = new Set(goalTargets.map((target) => target.id));
+  const revenueEvents = asArray(input.revenue_events).map((event, index) => {
+    const source = asObject(event);
+    const amount = numberFrom(source.amount ?? source.revenue_amount, 0);
+    const goalId = String(source.goal_id || goalTargets[0]?.id || `goal-${index + 1}`);
+    const contractArtifactRef = source.contract_artifact_ref || source.contract_ref || null;
+    const signatureEventRef = source.signature_event_ref || source.event_ref || null;
+    return {
+      id: String(source.id || `revenue-${index + 1}`),
+      account: String(source.account || source.company || "Unknown account"),
+      owner: String(source.owner || owner),
+      amount,
+      goal_id: goalId,
+      included: goalIds.size === 0 || goalIds.has(goalId),
+      contract_artifact_ref: contractArtifactRef,
+      signature_event_ref: signatureEventRef,
+      lineage_ready: Boolean(contractArtifactRef && signatureEventRef)
+    };
+  });
+  const recognizedRevenueAmount = revenueEvents
+    .filter((event) => event.included)
+    .reduce((total, event) => total + event.amount, 0);
+  const attainmentPercent = targetAmount > 0 ? Math.round((recognizedRevenueAmount / targetAmount) * 100) : 0;
+  const baseRate = probabilityFrom(commissionPolicy.base_rate ?? commissionPolicy.rate ?? commissionPolicy.commission_rate);
+  const acceleratorRate = probabilityFrom(commissionPolicy.accelerator_rate ?? baseRate);
+  const acceleratorThresholdPercent = numberFrom(commissionPolicy.accelerator_threshold_percent, 100);
+  const commissionRate = attainmentPercent >= acceleratorThresholdPercent ? acceleratorRate : baseRate;
+  const commissionStatementAmount = Math.round(recognizedRevenueAmount * commissionRate);
+  const requiresFinanceApproval = commissionPolicy.require_finance_approval_before_payout !== false;
+  const payoutAllowed = Boolean((!requiresFinanceApproval || commissionPolicy.approved_by) && revenueEvents.every((event) => event.lineage_ready));
+  const payoutBlockedReason = payoutAllowed
+    ? null
+    : requiresFinanceApproval && !commissionPolicy.approved_by
+      ? "finance approval required before payout"
+      : "revenue event contract lineage required before payout";
+  const lineage = {
+    workflow_id: workflowId,
+    task_ref: taskRef,
+    source_contract: "crm.commercial.goal_commission.executor",
+    tenant_id: tenantId,
+    period
+  };
+
+  return {
+    schema_version: "forge.addon_executor_result.v1",
+    status: "completed",
+    task_ref: taskRef,
+    summary: `Goal and commission settlement for ${period}: ${attainmentPercent}% attainment and ${commissionStatementAmount} ${currency} commission evidence`,
+    outputs: {
+      tenant_id: tenantId,
+      workflow_id: workflowId,
+      period,
+      currency,
+      target_amount: targetAmount,
+      recognized_revenue_amount: recognizedRevenueAmount,
+      attainment_percent: attainmentPercent,
+      commission_rate: commissionRate,
+      commission_statement_amount: commissionStatementAmount,
+      payout_allowed: payoutAllowed,
+      payout_blocked_reason: payoutBlockedReason,
+      mutates_crm_state: false,
+      forge_event_sourced: true
+    },
+    artifacts: [
+      {
+        kind: "crm_goal_scorecard",
+        id: `goal-scorecard-${slug(period, "period")}`,
+        title: `Goal scorecard for ${period}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          period,
+          currency,
+          targets: goalTargets,
+          target_amount: targetAmount,
+          recognized_revenue_amount: recognizedRevenueAmount,
+          attainment_percent: attainmentPercent,
+          state_owner: "forge_workflow_runtime",
+          external_database_required: false,
+          lineage
+        }
+      },
+      {
+        kind: "crm_commission_statement",
+        id: `commission-statement-${slug(period, "period")}`,
+        title: `Commission statement for ${period}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          period,
+          owner,
+          currency,
+          recognized_revenue_amount: recognizedRevenueAmount,
+          commission_rate: commissionRate,
+          commission_statement_amount: commissionStatementAmount,
+          payout_allowed: payoutAllowed,
+          payout_blocked_reason: payoutBlockedReason,
+          approval_policy: commissionPolicy,
+          lineage
+        }
+      },
+      {
+        kind: "crm_compensation_audit_report",
+        id: `compensation-audit-${slug(period, "period")}`,
+        title: `Compensation audit report for ${period}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          period,
+          revenue_events: revenueEvents,
+          missing_lineage_event_ids: revenueEvents.filter((event) => !event.lineage_ready).map((event) => event.id),
+          validation_gates: [
+            "goal attainment and commission settlement require revenue event lineage",
+            "commission payout remains blocked until Forge approval"
+          ],
+          lineage
+        }
+      }
+    ],
+    events: [
+      {
+        kind: "crm.goal.target_set",
+        tenant_id: tenantId,
+        workflow_id: workflowId,
+        period,
+        target_amount: targetAmount,
+        goal_count: goalTargets.length
+      },
+      {
+        kind: "crm.goal.attainment_reviewed",
+        tenant_id: tenantId,
+        workflow_id: workflowId,
+        period,
+        recognized_revenue_amount: recognizedRevenueAmount,
+        attainment_percent: attainmentPercent
+      },
+      {
+        kind: "crm.commission.statement_generated",
+        tenant_id: tenantId,
+        workflow_id: workflowId,
+        period,
+        owner,
+        commission_statement_amount: commissionStatementAmount,
+        payout_allowed: payoutAllowed
       }
     ],
     context_tenant: context.tenant || tenantId
@@ -5555,6 +5735,8 @@ export function executeCrmRuntimeRequest(request) {
       return buildProposalGeneratorResult(request);
     case "forge_crm.review_followup_forecast":
       return buildCommercialFollowupForecastResult(request);
+    case "forge_crm.settle_goal_commission":
+      return buildCommercialGoalCommissionResult(request);
     case "forge_crm.manage_account":
       return buildCommercialAccountManagementResult(request);
     case "forge_crm.manage_contract_signature":

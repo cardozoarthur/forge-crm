@@ -265,12 +265,14 @@
         "crm_contract_lifecycle",
         "crm_followup_sequence",
         "crm_forecast_review",
+        "crm_goal_commission_settlement",
         "crm_account_management"
       ],
       "deliverables": [
         "Proposal workflow",
         "Contract workflow",
         "Forecast report",
+        "Goal and commission settlement",
         "Account plan"
       ],
       "artifact_types": [
@@ -279,6 +281,9 @@
         "crm_followup_plan",
         "crm_forecast_report",
         "crm_commission_record",
+        "crm_goal_scorecard",
+        "crm_commission_statement",
+        "crm_compensation_audit_report",
         "crm_signature_receipt",
         "crm_renewal_plan",
         "crm_account_plan",
@@ -625,6 +630,11 @@
       "id": "crm_forecast_review",
       "kind": "report_workflow",
       "description": "Generate forecast, targets and commission evidence from workflow events."
+    },
+    {
+      "id": "crm_goal_commission_settlement",
+      "kind": "commercial_workflow",
+      "description": "Settle goal attainment and commission statements from Forge revenue events, contract lineage and approval gates."
     },
     {
       "id": "crm_account_management",
@@ -1302,6 +1312,36 @@
         "follow-up forecast executor does not persist CRM state outside Forge",
         "scheduled follow-ups, forecast reviews, goals and commission accrual must be represented as Forge workflow events",
         "commission evidence is forecast-only until the contract or revenue workflow validates it"
+      ]
+    },
+    {
+      "id": "crm.commercial.goal_commission.executor",
+      "title": "CRM goal attainment and commission settlement",
+      "contract_type": "executor",
+      "capability_id": "crm_commercial_operations",
+      "workflow_extension_id": "crm_goal_commission_settlement",
+      "runtime": "external_api",
+      "entrypoint": "forge_crm.settle_goal_commission",
+      "inputs": [
+        "period_context",
+        "goal_targets",
+        "revenue_events",
+        "commission_policy",
+        "tenant_context"
+      ],
+      "outputs": [
+        "crm_goal_scorecard",
+        "crm_commission_statement",
+        "crm_compensation_audit_report"
+      ],
+      "permissions": [
+        "crm.workflow.mutate",
+        "crm.observability.inspect"
+      ],
+      "constraints": [
+        "goal and commission settlement executor does not persist CRM state outside Forge",
+        "settlement is evidence-only until Forge approval records payout authorization",
+        "commission statements require revenue events and contract lineage"
       ]
     },
     {
@@ -2102,6 +2142,50 @@
             "opportunity",
             "followup_policy",
             "forecast_policy"
+          ]
+        },
+        {
+          "id": "crm.tui.settle-goal-commission",
+          "label": "Settle goals and commissions",
+          "description": "Generate goal scorecards, commission statements and compensation audit evidence through Forge.",
+          "palette_group": "CRM",
+          "source_panel": "crm.operational-cockpit",
+          "type": "command",
+          "target": "forge addons execute-executor",
+          "method": "CLI",
+          "permission": "crm.workflow.mutate",
+          "requires_confirmation": true,
+          "risk_level": "high",
+          "mutates_workflow": true,
+          "command_template": [
+            "addons",
+            "execute-executor",
+            "--addon",
+            "forge.addon.crm",
+            "--contract",
+            "crm.commercial.goal_commission.executor",
+            "--worker",
+            "<worker-id>",
+            "--task",
+            "<task-ref>",
+            "--input",
+            "<json>",
+            "--context",
+            "<json>",
+            "--output",
+            "json"
+          ],
+          "keywords": [
+            "crm",
+            "goal",
+            "commission"
+          ],
+          "payload_schema": [
+            "period_context",
+            "goal_targets",
+            "revenue_events",
+            "commission_policy",
+            "tenant_context"
           ]
         },
         {
@@ -3053,6 +3137,21 @@
       "id": "crm_commission_record",
       "title": "CRM commission record",
       "generic_kind": "artifact"
+    },
+    {
+      "id": "crm_goal_scorecard",
+      "title": "CRM goal scorecard",
+      "generic_kind": "report"
+    },
+    {
+      "id": "crm_commission_statement",
+      "title": "CRM commission statement",
+      "generic_kind": "artifact"
+    },
+    {
+      "id": "crm_compensation_audit_report",
+      "title": "CRM compensation audit report",
+      "generic_kind": "report"
     },
     {
       "id": "crm_account_plan",

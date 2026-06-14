@@ -23,11 +23,11 @@
     "external_delivery_requires_approval": true
   },
   "metrics": {
-    "workflow_count": 26,
+    "workflow_count": 27,
     "business_module_count": 7,
     "surface_count": 10,
-    "artifact_type_count": 76,
-    "event_type_count": 89,
+    "artifact_type_count": 79,
+    "event_type_count": 92,
     "complete_scope": true
   },
   "surfaces": [
@@ -240,6 +240,7 @@
       "workflow_ids": [
         "crm.opportunity.pipeline",
         "crm.followup.forecast",
+        "crm.goal.commission",
         "crm.account.management",
         "crm.project.handoff",
         "crm.enterprise.customer_journey"
@@ -257,6 +258,12 @@
         "response_wait",
         "forecast_reviewed",
         "commission_accrued",
+        "targets_collected",
+        "revenue_matched",
+        "attainment_reviewed",
+        "statement_generated",
+        "payout_approval_wait",
+        "settled",
         "account_review_requested",
         "health_reviewed",
         "success_plan_active",
@@ -282,11 +289,14 @@
         "crm_account_plan",
         "crm_business_runbook",
         "crm_commission_record",
+        "crm_commission_statement",
+        "crm_compensation_audit_report",
         "crm_cross_domain_handoff_map",
         "crm_email",
         "crm_enterprise_journey_map",
         "crm_followup_plan",
         "crm_forecast_report",
+        "crm_goal_scorecard",
         "crm_handoff_record",
         "crm_health_report",
         "crm_operating_acceptance_evidence",
@@ -302,10 +312,13 @@
         "crm.account.health_reviewed",
         "crm.account.renewal_planned",
         "crm.commission.accrued",
+        "crm.commission.statement_generated",
         "crm.followup.scheduled",
         "crm.forecast.reviewed",
         "crm.forecast.updated",
+        "crm.goal.attainment_reviewed",
         "crm.goal.progress_reviewed",
+        "crm.goal.target_set",
         "crm.journey.acceptance_reported",
         "crm.journey.stage_completed",
         "crm.journey.started",
@@ -782,6 +795,7 @@
         "crm.proposal.approval",
         "crm.contract.signature",
         "crm.followup.forecast",
+        "crm.goal.commission",
         "crm.account.management",
         "crm.lead.nurture",
         "crm.project.handoff"
@@ -791,11 +805,14 @@
         "crm_ai_recommendation",
         "crm_automation_plan",
         "crm_commission_record",
+        "crm_commission_statement",
+        "crm_compensation_audit_report",
         "crm_contract",
         "crm_document",
         "crm_email",
         "crm_followup_plan",
         "crm_forecast_report",
+        "crm_goal_scorecard",
         "crm_handoff_record",
         "crm_health_report",
         "crm_pipeline_board",
@@ -813,6 +830,7 @@
         "crm.account.health_reviewed",
         "crm.account.renewal_planned",
         "crm.commission.accrued",
+        "crm.commission.statement_generated",
         "crm.contract.renewal_scheduled",
         "crm.contract.reviewed",
         "crm.contract.signed",
@@ -821,7 +839,9 @@
         "crm.followup.scheduled",
         "crm.forecast.reviewed",
         "crm.forecast.updated",
+        "crm.goal.attainment_reviewed",
         "crm.goal.progress_reviewed",
+        "crm.goal.target_set",
         "crm.lead.requalified",
         "crm.nurture.message_sent",
         "crm.nurture.step_due",
@@ -836,12 +856,14 @@
         "account owner visible",
         "artifact lineage present",
         "blocked reason explicit",
+        "commission payout remains blocked until Forge approval",
         "contract approval lineage present",
         "expansion forecast event-backed",
         "external delivery blocked until approval",
         "external message approval present",
         "forecast and commission evidence attached",
         "forecast impact recorded",
+        "goal attainment and commission settlement require revenue event lineage",
         "owner visible",
         "renewal state explicit",
         "scheduled wait visible",
@@ -1370,7 +1392,8 @@
         "runtime_contracts": [
           "crm.document.generator.executor",
           "crm.document.validator",
-          "crm.commercial.contract_signature.executor"
+          "crm.commercial.contract_signature.executor",
+          "crm.commercial.goal_commission.executor"
         ],
         "artifact_types": [
           "crm_contract",
@@ -1410,7 +1433,8 @@
           "response_wait"
         ],
         "runtime_contracts": [
-          "crm.commercial.followup_forecast.executor"
+          "crm.commercial.followup_forecast.executor",
+          "crm.commercial.goal_commission.executor"
         ],
         "artifact_types": [
           "crm_followup_plan",
@@ -1431,6 +1455,43 @@
         "validation_gates": [
           "scheduled wait visible",
           "forecast and commission evidence attached"
+        ]
+      },
+      {
+        "id": "crm.goal.commission",
+        "title": "Goal attainment and commission settlement",
+        "domain": "commercial",
+        "state_count": 6,
+        "states": [
+          "targets_collected",
+          "revenue_matched",
+          "attainment_reviewed",
+          "statement_generated",
+          "payout_approval_wait",
+          "settled"
+        ],
+        "wait_states": [
+          "payout_approval_wait"
+        ],
+        "runtime_contracts": [
+          "crm.commercial.goal_commission.executor"
+        ],
+        "artifact_types": [
+          "crm_goal_scorecard",
+          "crm_commission_statement",
+          "crm_compensation_audit_report"
+        ],
+        "event_types": [
+          "crm.goal.target_set",
+          "crm.goal.attainment_reviewed",
+          "crm.commission.statement_generated"
+        ],
+        "surface_ids": [
+          "crm.commercial-command"
+        ],
+        "validation_gates": [
+          "goal attainment and commission settlement require revenue event lineage",
+          "commission payout remains blocked until Forge approval"
         ]
       },
       {
@@ -2317,6 +2378,18 @@
         "state_owner": "forge_workflow_runtime"
       },
       {
+        "from": "crm.contract.signature",
+        "to": "crm.goal.commission",
+        "reason": "signed revenue events feed commission settlement",
+        "state_owner": "forge_workflow_runtime"
+      },
+      {
+        "from": "crm.followup.forecast",
+        "to": "crm.goal.commission",
+        "reason": "forecast and goal evidence feed period settlement",
+        "state_owner": "forge_workflow_runtime"
+      },
+      {
         "from": "crm.lead.lifecycle",
         "to": "crm.marketing.segment_builder",
         "reason": "captured and enriched leads can enter segment selection",
@@ -2923,6 +2996,7 @@
         "workflow_ids": [
           "crm.opportunity.pipeline",
           "crm.followup.forecast",
+          "crm.goal.commission",
           "crm.account.management",
           "crm.project.handoff",
           "crm.enterprise.customer_journey",
@@ -2931,6 +3005,7 @@
         ],
         "action_ids": [
           "crm.review-followup-forecast",
+          "crm.settle-goal-commission",
           "crm.manage-account",
           "crm.manage-contract-signature",
           "crm.plan-project-handoff",
@@ -2951,6 +3026,22 @@
           "state": "commission_accrued",
           "evidence_artifact_type": "crm_commission_record",
           "plan_action_id": "crm.review-followup-forecast"
+        },
+        "goal_commission": {
+          "workflow_id": "crm.goal.commission",
+          "period": "2026-Q3",
+          "target_amount": 1000000,
+          "recognized_revenue_amount": 836800,
+          "attainment_percent": 84,
+          "statement_state": "statement_generated",
+          "evidence_artifact_types": [
+            "crm_goal_scorecard",
+            "crm_commission_statement",
+            "crm_compensation_audit_report"
+          ],
+          "payout_allowed": false,
+          "action_id": "crm.settle-goal-commission",
+          "contract_id": "crm.commercial.goal_commission.executor"
         },
         "contracts": [
           {
@@ -4196,6 +4287,78 @@
       }
     ]
   },
+  "goal_commission_workbench": {
+    "schema_version": "forge.crm_goal_commission_workbench.v1",
+    "workflow_id": "crm.goal.commission",
+    "workflow_extension_id": "crm_goal_commission_settlement",
+    "state_owner": "forge_workflow_runtime",
+    "state_source": "forge_workflow_artifacts_and_events",
+    "local_state_allowed": false,
+    "action_id": "crm.settle-goal-commission",
+    "contract_id": "crm.commercial.goal_commission.executor",
+    "goal_targets": [
+      {
+        "id": "goal-enterprise-new-arr",
+        "title": "Enterprise new ARR",
+        "owner": "sales-owner",
+        "target_amount": 300000,
+        "weight": 0.7,
+        "artifact_type": "crm_goal_scorecard"
+      },
+      {
+        "id": "goal-expansion-arr",
+        "title": "Expansion ARR",
+        "owner": "sales-owner",
+        "target_amount": 100000,
+        "weight": 0.3,
+        "artifact_type": "crm_goal_scorecard"
+      }
+    ],
+    "revenue_events": [
+      {
+        "id": "rev-contract-001",
+        "account": "Acme Logistics",
+        "owner": "sales-owner",
+        "amount": 240000,
+        "goal_id": "goal-enterprise-new-arr",
+        "contract_artifact_ref": "crm_contract:contract-001",
+        "signature_event_ref": "crm.contract.signed"
+      },
+      {
+        "id": "rev-expansion-001",
+        "account": "Beta Freight",
+        "owner": "sales-owner",
+        "amount": 60000,
+        "goal_id": "goal-expansion-arr",
+        "contract_artifact_ref": "crm_contract:contract-002",
+        "signature_event_ref": "crm.contract.signed"
+      }
+    ],
+    "commission_statements": [
+      {
+        "id": "statement-2026-q3-sales-owner",
+        "period": "2026-Q3",
+        "owner": "sales-owner",
+        "recognized_revenue_amount": 300000,
+        "commission_statement_amount": 24000,
+        "payout_allowed": false,
+        "payout_blocked_reason": "finance approval required before payout",
+        "artifact_type": "crm_commission_statement"
+      }
+    ],
+    "audit_reports": [
+      {
+        "id": "compensation-audit-2026-q3",
+        "artifact_type": "crm_compensation_audit_report",
+        "missing_lineage_count": 0,
+        "state_owner": "forge_workflow_runtime"
+      }
+    ],
+    "validation_gates": [
+      "goal attainment and commission settlement require revenue event lineage",
+      "commission payout remains blocked until Forge approval"
+    ]
+  },
   "actions": [
     {
       "id": "crm.refresh-operating-snapshot",
@@ -4509,6 +4672,33 @@
         "forge.addon.crm",
         "--contract",
         "crm.commercial.followup_forecast.executor",
+        "--worker",
+        "<worker-id>",
+        "--task",
+        "<task-ref>",
+        "--input",
+        "<json>",
+        "--context",
+        "<json>",
+        "--output",
+        "json"
+      ]
+    },
+    {
+      "id": "crm.settle-goal-commission",
+      "label": "Settle goals and commissions",
+      "surface_id": "crm.commercial-command",
+      "contract_id": "crm.commercial.goal_commission.executor",
+      "requires_permission": "crm.workflow.mutate",
+      "mutates_workflow": true,
+      "command_template": [
+        "forge",
+        "addons",
+        "execute-executor",
+        "--addon",
+        "forge.addon.crm",
+        "--contract",
+        "crm.commercial.goal_commission.executor",
         "--worker",
         "<worker-id>",
         "--task",
@@ -5845,6 +6035,68 @@
             "title": "Execute runtime contract",
             "owner": "forge.addons.runtime",
             "evidence": "crm.commercial.followup_forecast.executor"
+          },
+          {
+            "id": "promote_result_to_workflow",
+            "title": "Promote result to workflow",
+            "owner": "forge.workflow.runtime",
+            "evidence": "artifact and event promotion"
+          },
+          {
+            "id": "refresh_operating_snapshot",
+            "title": "Refresh operating snapshot",
+            "owner": "forge.addon.crm",
+            "evidence": "crm.operating.snapshot.executor"
+          }
+        ],
+        "output_policy": {
+          "promote_result_to_workflow": true,
+          "browser_local_state_write": false,
+          "refresh_source": "forge_workflow_artifacts_and_events"
+        }
+      },
+      {
+        "action_id": "crm.settle-goal-commission",
+        "label": "Settle goals and commissions",
+        "surface_id": "crm.commercial-command",
+        "contract_id": "crm.commercial.goal_commission.executor",
+        "required_permission": "crm.workflow.mutate",
+        "selected_command": [
+          "forge",
+          "addons",
+          "execute-executor",
+          "--addon",
+          "forge.addon.crm",
+          "--contract",
+          "crm.commercial.goal_commission.executor",
+          "--worker",
+          "<worker-id>",
+          "--task",
+          "<task-ref>",
+          "--input",
+          "<json>",
+          "--context",
+          "<json>",
+          "--output",
+          "json"
+        ],
+        "permission_gate": {
+          "status": "requires_forge_permission",
+          "permission": "crm.workflow.mutate",
+          "approval_owner": "forge_permission_policy"
+        },
+        "operation_plan": [
+          {
+            "id": "check_addon_permission",
+            "title": "Check Addon permission",
+            "owner": "forge.permissions",
+            "evidence": "crm.workflow.mutate"
+          },
+          {
+            "id": "execute_runtime_contract",
+            "title": "Execute runtime contract",
+            "owner": "forge.addons.runtime",
+            "evidence": "crm.commercial.goal_commission.executor"
           },
           {
             "id": "promote_result_to_workflow",

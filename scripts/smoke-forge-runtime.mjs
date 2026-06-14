@@ -107,6 +107,7 @@ try {
       "forge_crm.generate_operating_readiness",
       "forge_crm.generate_proposal",
       "forge_crm.review_followup_forecast",
+      "forge_crm.settle_goal_commission",
       "forge_crm.manage_account",
       "forge_crm.manage_contract_signature",
       "forge_crm.generate_document",
@@ -145,6 +146,7 @@ try {
       "crm.operating.readiness.executor",
       "crm.proposal.generator.executor",
       "crm.commercial.followup_forecast.executor",
+      "crm.commercial.goal_commission.executor",
       "crm.commercial.account_management.executor",
       "crm.commercial.contract_signature.executor",
       "crm.document.generator.executor",
@@ -987,6 +989,7 @@ try {
           "support inbox",
           "marketing automation",
           "workflow automation designer",
+          "goal and commission settlement",
           "document approvals",
           "project handoff"
         ]
@@ -1226,6 +1229,86 @@ try {
   }
   if (commercialFollowupForecast.executor_result.outputs.followup_state !== "waiting_due_date") {
     throw new Error(`expected commercial follow-up wait state, got ${commercialFollowupForecast.executor_result.outputs.followup_state}`);
+  }
+
+  const goalCommissionSettlement = runForge([
+    "addons",
+    "execute-executor",
+    "--addon-dir",
+    "addons",
+    "--addon",
+    "forge.addon.crm",
+    "--contract",
+    "crm.commercial.goal_commission.executor",
+    "--worker",
+    workerId,
+    "--task",
+    "crm-smoke-goal-commission",
+    "--workflow",
+    workflowId,
+    "--input",
+    JSON.stringify({
+      tenant_context: { id: "smoke", tenant_id: "smoke" },
+      period_context: {
+        period: "2026-Q3",
+        currency: "USD",
+        owner: "commercial.ops"
+      },
+      goal_targets: [
+        {
+          id: "goal-enterprise-new-arr",
+          owner: "forge-crm-smoke",
+          target_amount: 250000,
+          weight: 0.7
+        },
+        {
+          id: "goal-expansion-arr",
+          owner: "forge-crm-smoke",
+          target_amount: 100000,
+          weight: 0.3
+        }
+      ],
+      revenue_events: [
+        {
+          id: "rev-contract-smoke",
+          account: "Example Logistics",
+          owner: "forge-crm-smoke",
+          amount: 180000,
+          goal_id: "goal-enterprise-new-arr",
+          contract_artifact_ref: "crm_contract:contract-smoke",
+          signature_event_ref: "crm.contract.signed"
+        },
+        {
+          id: "rev-expansion-smoke",
+          account: "Atlas Foods",
+          owner: "forge-crm-smoke",
+          amount: 70000,
+          goal_id: "goal-expansion-arr",
+          contract_artifact_ref: "crm_contract:contract-expansion-smoke",
+          signature_event_ref: "crm.contract.signed"
+        }
+      ],
+      commission_policy: {
+        base_rate: 0.08,
+        accelerator_rate: 0.12,
+        accelerator_threshold_percent: 100,
+        require_finance_approval_before_payout: true
+      }
+    }),
+    "--context",
+    JSON.stringify({ tenant: "smoke" }),
+    "--output",
+    "json"
+  ]);
+
+  if (goalCommissionSettlement.promotion?.status !== "addon_executor_result_promoted") {
+    throw new Error(`expected goal commission promotion, got ${goalCommissionSettlement.promotion?.status || "missing"}`);
+  }
+  if (goalCommissionSettlement.executor_result.outputs.workflow_id !== "crm.goal.commission") {
+    throw new Error(`expected goal commission workflow, got ${goalCommissionSettlement.executor_result.outputs.workflow_id}`);
+  }
+  if (goalCommissionSettlement.executor_result.outputs.payout_allowed !== false) {
+    throw new Error("expected goal commission payout to stay blocked before finance approval");
   }
 
   const accountManagement = runForge([
@@ -2166,6 +2249,8 @@ try {
   const pipelinePromotedEventCount = pipelineStageMove.promotion?.event_count ?? 0;
   const commercialPromotedArtifactCount = commercialFollowupForecast.promotion?.artifact_count ?? 0;
   const commercialPromotedEventCount = commercialFollowupForecast.promotion?.event_count ?? 0;
+  const goalCommissionPromotedArtifactCount = goalCommissionSettlement.promotion?.artifact_count ?? 0;
+  const goalCommissionPromotedEventCount = goalCommissionSettlement.promotion?.event_count ?? 0;
   const accountPromotedArtifactCount = accountManagement.promotion?.artifact_count ?? 0;
   const accountPromotedEventCount = accountManagement.promotion?.event_count ?? 0;
   const contractSignaturePromotedArtifactCount = contractSignature.promotion?.artifact_count ?? 0;
@@ -2372,6 +2457,16 @@ try {
     "crm.goal.progress_reviewed",
     "crm.commission.accrued"
   ]) {
+    if (!workflowEventKinds.includes(eventKind)) {
+      throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
+    }
+  }
+  if (goalCommissionPromotedArtifactCount < 3 || goalCommissionPromotedEventCount < 3) {
+    throw new Error(
+      `expected promoted goal commission artifacts/events, got artifacts=${goalCommissionPromotedArtifactCount} events=${goalCommissionPromotedEventCount}`
+    );
+  }
+  for (const eventKind of ["crm.goal.target_set", "crm.goal.attainment_reviewed", "crm.commission.statement_generated"]) {
     if (!workflowEventKinds.includes(eventKind)) {
       throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
     }
@@ -2751,6 +2846,13 @@ try {
     commercial_followup_forecast_amount: commercialFollowupForecast.executor_result.outputs.forecast_amount,
     commercial_followup_promoted_artifacts: commercialPromotedArtifactCount,
     commercial_followup_promoted_events: commercialPromotedEventCount,
+    goal_commission_status: goalCommissionSettlement.status,
+    goal_commission_promotion_status: goalCommissionSettlement.promotion.status,
+    goal_commission_attainment_percent: goalCommissionSettlement.executor_result.outputs.attainment_percent,
+    goal_commission_statement_amount: goalCommissionSettlement.executor_result.outputs.commission_statement_amount,
+    goal_commission_payout_allowed: goalCommissionSettlement.executor_result.outputs.payout_allowed,
+    goal_commission_promoted_artifacts: goalCommissionPromotedArtifactCount,
+    goal_commission_promoted_events: goalCommissionPromotedEventCount,
     account_management_status: accountManagement.status,
     account_management_promotion_status: accountManagement.promotion.status,
     account_management_health_state: accountManagement.executor_result.outputs.health_state,

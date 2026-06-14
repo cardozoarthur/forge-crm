@@ -233,6 +233,9 @@ export function renderCommercialCommand(snapshot) {
   summary.append(metric("Weighted", money(panel.forecast.weighted_value)));
   summary.append(metric("Goal", money(panel.forecast.goal_value)));
   summary.append(metric("Commission", money(panel.commission.accrued_value)));
+  if (panel.goal_commission) {
+    summary.append(metric("Attainment", `${panel.goal_commission.attainment_percent}%`));
+  }
 
   const contracts = nodeElement("div", "commercial-list");
   for (const contract of panel.contracts) {
@@ -252,7 +255,22 @@ export function renderCommercialCommand(snapshot) {
     accounts.append(item);
   }
 
-  section.append(summary, contracts, accounts);
+  const settlement = nodeElement("div", "commercial-list goal-commission-inline");
+  if (panel.goal_commission) {
+    const item = nodeElement("article", "commercial-row");
+    item.append(nodeElement("strong", "", `Settlement ${panel.goal_commission.period}`));
+    item.append(
+      nodeElement(
+        "span",
+        "",
+        `${money(panel.goal_commission.recognized_revenue_amount)} recognized · ${compactTitle(panel.goal_commission.statement_state)}`
+      )
+    );
+    item.append(nodeElement("code", "", actionLabel(snapshot, panel.goal_commission.action_id)));
+    settlement.append(item);
+  }
+
+  section.append(summary, contracts, accounts, settlement);
   return section;
 }
 
@@ -704,6 +722,55 @@ export function renderWorkflowAutomationDesignerWorkbench(snapshot) {
   return section;
 }
 
+export function renderGoalCommissionWorkbench(snapshot) {
+  const workbench = snapshot.goal_commission_workbench;
+  const section = nodeElement("section", "panel goal-commission");
+  section.dataset.surfacePanel = "crm.commercial-command";
+  section.append(nodeElement("h2", "", "Goal & Commission Settlement"));
+  if (!workbench) {
+    section.append(nodeElement("p", "muted-copy", "Goal and commission settlement unavailable in this snapshot."));
+    return section;
+  }
+
+  section.append(nodeElement("p", "panel-source", `${workbench.workflow_id} · ${workbench.contract_id}`));
+  section.append(nodeElement("code", "", actionLabel(snapshot, workbench.action_id)));
+
+  const targets = nodeElement("div", "goal-commission-grid");
+  for (const target of workbench.goal_targets || []) {
+    const item = nodeElement("article", "goal-target");
+    item.append(nodeElement("strong", "", target.title || target.id));
+    item.append(nodeElement("span", "", `${target.owner} · ${money(target.target_amount)} · weight ${target.weight}`));
+    item.append(nodeElement("code", "", target.artifact_type));
+    targets.append(item);
+  }
+
+  const revenue = nodeElement("div", "goal-commission-grid");
+  for (const event of workbench.revenue_events || []) {
+    const item = nodeElement("article", "revenue-event");
+    item.append(nodeElement("strong", "", event.account));
+    item.append(nodeElement("span", "", `${money(event.amount)} · ${event.goal_id}`));
+    item.append(nodeElement("code", "", event.contract_artifact_ref));
+    revenue.append(item);
+  }
+
+  const statements = nodeElement("div", "goal-commission-grid");
+  for (const statement of workbench.commission_statements || []) {
+    const item = nodeElement("article", "commission-statement");
+    item.append(nodeElement("strong", "", statement.period));
+    item.append(nodeElement("span", "", `${statement.owner} · ${money(statement.commission_statement_amount)}`));
+    item.append(nodeElement("small", "", statement.payout_allowed ? "payout allowed" : statement.payout_blocked_reason));
+    statements.append(item);
+  }
+
+  const gates = nodeElement("ul", "goal-commission-gates");
+  for (const gate of workbench.validation_gates || []) {
+    gates.append(nodeElement("li", "goal-commission-gate", gate));
+  }
+
+  section.append(targets, revenue, statements, gates);
+  return section;
+}
+
 function renderModuleBoard(snapshot) {
   const section = nodeElement("section", "panel module-panel");
   section.append(nodeElement("h2", "", "Business Modules"));
@@ -806,6 +873,7 @@ function render(snapshot) {
   workspace.append(renderEnterpriseJourneyWorkbench(snapshot));
   workspace.append(renderSubworkflowOrchestrationWorkbench(snapshot));
   workspace.append(renderWorkflowAutomationDesignerWorkbench(snapshot));
+  workspace.append(renderGoalCommissionWorkbench(snapshot));
   workspace.append(renderWorkflowGraph(snapshot));
   workspace.append(renderModuleBoard(snapshot));
   workspace.append(renderKnowledgeGraph(snapshot));
