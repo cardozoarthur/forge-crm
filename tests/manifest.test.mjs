@@ -671,6 +671,29 @@ test("manifest exposes CRM omnichannel message ingestion as a Forge-owned execut
   assert.equal(messageListener.runtime_contract_id, "crm.support.omnichannel_message.executor");
 });
 
+test("manifest routes every non-schedule trigger through a Forge event listener", () => {
+  const contractsById = new Map(manifest.runtime_contracts.map((contract) => [contract.id, contract]));
+
+  for (const trigger of manifest.event_triggers.filter((candidate) => candidate.channel !== "crm.schedule")) {
+    const listener = manifest.event_listeners.find(
+      (candidate) =>
+        candidate.event_type === trigger.event_type &&
+        candidate.channel === trigger.channel &&
+        candidate.adapter_id === trigger.adapter_id &&
+        candidate.workflow_extension_id === trigger.workflow_extension_id &&
+        candidate.capability_id === trigger.capability_id
+    );
+
+    assert.ok(listener, `missing listener for trigger ${trigger.id}`);
+    assert.equal(listener.handler, "forge.event_inbox.route");
+    assert.ok(contractsById.has(listener.runtime_contract_id), `missing listener runtime contract ${listener.runtime_contract_id}`);
+    for (const action of trigger.actions) {
+      assert.ok(listener.actions.includes(action), `listener ${listener.id} is missing trigger action ${action}`);
+    }
+    assert.deepEqual(listener.permissions, trigger.permissions);
+  }
+});
+
 test("manifest declares Forge schedule triggers and listeners for every workflow cadence", () => {
   const scheduleChannel = manifest.event_channels.find((channel) => channel.id === "crm.schedule");
   assert.ok(scheduleChannel);

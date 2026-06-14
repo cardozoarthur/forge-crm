@@ -6,9 +6,9 @@
   "addon_name": "Forge CRM",
   "addon_version": "0.1.0",
   "manifest_path": "addons/forge-crm.json",
-  "manifest_sha256": "c5588d2cae94ce5db42667e582c35fd7d2a38cb5030b6e94b54ef5cf81f0dbd4",
-  "manifest_canonical_sha256": "b4e6c782197e27b6719233611265a58d17643409f0554c239b447951b64b252d",
-  "manifest_bytes": 148838,
+  "manifest_sha256": "d11cf6f016070a0d625ee446c30cad0993181c94c25a89ff9b237593d9e0edb7",
+  "manifest_canonical_sha256": "7182b84c6ad4f43b15890139533cf4f266598e42438f11997eef3e598d9d5f78",
+  "manifest_bytes": 149964,
   "distribution": {
     "repository": "https://github.com/cardozoarthur/forge-crm",
     "channel": "stable",
@@ -23,7 +23,7 @@
     "scheme": "ed25519_detached",
     "signature": "",
     "public_key": "",
-    "payload_sha256": "71dea47486d91ee975f5a62598807a001ebec2452d5553d1be548b695555355b",
+    "payload_sha256": "4e6d48892468bf0658c124f6d7dfa5db4a9abf26c53b626e9b598406dd2257fd",
     "verification_note": "package records detached signature metadata; trust verification is a marketplace policy gate"
   },
   "summary": {
@@ -5008,6 +5008,41 @@
         ],
         "permissions": [
           "crm.omnichannel.ingest"
+        ]
+      },
+      {
+        "id": "crm.ticket.listener",
+        "title": "CRM ticket listener",
+        "event_type": "crm.ticket",
+        "channel": "crm.omnichannel.inbox",
+        "adapter_id": "crm.omnichannel.route",
+        "workflow_extension_id": "crm_ticket_sla",
+        "capability_id": "crm_support_omnichannel",
+        "handler": "forge.event_inbox.route",
+        "runtime_contract_id": "crm.support.ticket_sla.executor",
+        "actions": [
+          "start_workflow",
+          "continue_workflow"
+        ],
+        "permissions": [
+          "crm.omnichannel.ingest"
+        ]
+      },
+      {
+        "id": "crm.document.approval_requested.listener",
+        "title": "CRM document approval requested listener",
+        "event_type": "crm.document",
+        "channel": "crm.webhook",
+        "adapter_id": "crm.webhook.start",
+        "workflow_extension_id": "crm_document_approval",
+        "capability_id": "crm_internal_operations",
+        "handler": "forge.event_inbox.route",
+        "runtime_contract_id": "crm.document.approval.executor",
+        "actions": [
+          "start_workflow"
+        ],
+        "permissions": [
+          "crm.document.generate"
         ]
       },
       {

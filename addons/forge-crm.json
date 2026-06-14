@@ -4795,6 +4795,41 @@
       ]
     },
     {
+      "id": "crm.ticket.listener",
+      "title": "CRM ticket listener",
+      "event_type": "crm.ticket",
+      "channel": "crm.omnichannel.inbox",
+      "adapter_id": "crm.omnichannel.route",
+      "workflow_extension_id": "crm_ticket_sla",
+      "capability_id": "crm_support_omnichannel",
+      "handler": "forge.event_inbox.route",
+      "runtime_contract_id": "crm.support.ticket_sla.executor",
+      "actions": [
+        "start_workflow",
+        "continue_workflow"
+      ],
+      "permissions": [
+        "crm.omnichannel.ingest"
+      ]
+    },
+    {
+      "id": "crm.document.approval_requested.listener",
+      "title": "CRM document approval requested listener",
+      "event_type": "crm.document",
+      "channel": "crm.webhook",
+      "adapter_id": "crm.webhook.start",
+      "workflow_extension_id": "crm_document_approval",
+      "capability_id": "crm_internal_operations",
+      "handler": "forge.event_inbox.route",
+      "runtime_contract_id": "crm.document.approval.executor",
+      "actions": [
+        "start_workflow"
+      ],
+      "permissions": [
+        "crm.document.generate"
+      ]
+    },
+    {
       "id": "crm.schedule.followup_due.listener",
       "title": "CRM follow-up due listener",
       "event_type": "crm.followup",
