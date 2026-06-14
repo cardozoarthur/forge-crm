@@ -1956,7 +1956,9 @@ function subworkflowOrchestrationWorkbench(workflows, actionList) {
 function workflowAutomationDesignerWorkbench(workflows, actionList) {
   const actionById = new Map(actionList.map((action) => [action.id, action]));
   const action = actionById.get("crm.design-workflow-automation");
+  const traceAction = actionById.get("crm.trace-workflow-automation");
   const workflow = workflows.find((candidate) => candidate.id === "crm.workflow.automation_design");
+  const executionWorkflow = workflows.find((candidate) => candidate.id === "crm.workflow.automation_execution");
   const triggerPalette = [
     {
       id: "lead-created",
@@ -2054,7 +2056,36 @@ function workflowAutomationDesignerWorkbench(workflows, actionList) {
         owner: "Forge validation",
         required: true
       }
-    ]
+    ],
+    execution_trace: {
+      workflow_id: executionWorkflow?.id || "crm.workflow.automation_execution",
+      workflow_extension_id: executionWorkflow?.workflow_extension_id || "crm_workflow_automation_execution",
+      action_id: traceAction?.id || "crm.trace-workflow-automation",
+      contract_id: traceAction?.contract_id || "crm.workflow.automation_trace.executor",
+      dispatch_owner: "forge_event_engine",
+      state_owner: "forge_workflow_runtime",
+      local_execution_allowed: false,
+      trigger_event: {
+        kind: "crm.lead.created",
+        workflow_id: "crm.lead.lifecycle",
+        source: "Forge event inbox"
+      },
+      condition_evidence: [
+        {
+          id: "condition-hot-lead-or-sla",
+          expression: "lead.score >= 80 OR ticket.sla_state == 'sla_escalation'",
+          evidence_artifact_types: ["crm_ai_recommendation", "crm_support_summary"],
+          required: true
+        }
+      ],
+      dispatch_plan: actionPalette.map((paletteAction) => ({
+        action_id: paletteAction.id,
+        contract_id: paletteAction.contract_id,
+        target_workflow_id: paletteAction.workflow_id,
+        dispatch_owner: "forge_event_engine",
+        local_execution_allowed: false
+      }))
+    }
   };
 }
 
@@ -2325,6 +2356,15 @@ function actions() {
       requires_permission: "crm.workflow.mutate",
       mutates_workflow: true,
       command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.workflow.automation_designer.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
+    },
+    {
+      id: "crm.trace-workflow-automation",
+      label: "Trace workflow automation",
+      surface_id: "crm.system-map",
+      contract_id: "crm.workflow.automation_trace.executor",
+      requires_permission: "crm.workflow.mutate",
+      mutates_workflow: true,
+      command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.workflow.automation_trace.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
     },
     {
       id: "crm.record-relationship-event",

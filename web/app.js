@@ -1015,7 +1015,26 @@ export function renderWorkflowAutomationDesignerWorkbench(snapshot) {
     gates.append(item);
   }
 
-  section.append(graph, palettes, gates);
+  const trace = nodeElement("div", "automation-trace");
+  trace.append(nodeElement("h3", "", "Execution Trace"));
+  trace.append(nodeElement("p", "panel-source", `${workbench.execution_trace.workflow_id} · ${workbench.execution_trace.contract_id}`));
+  trace.append(nodeElement("code", "", actionLabel(snapshot, workbench.execution_trace.action_id)));
+  const traceGrid = nodeElement("div", "automation-trace-grid");
+  traceGrid.append(
+    metricCard("Dispatch owner", workbench.execution_trace.dispatch_owner),
+    metricCard("Local execution", workbench.execution_trace.local_execution_allowed ? "allowed" : "blocked"),
+    metricCard("Trigger", workbench.execution_trace.trigger_event.kind)
+  );
+  for (const dispatch of workbench.execution_trace.dispatch_plan) {
+    const item = nodeElement("article", "automation-dispatch");
+    item.append(nodeElement("strong", "", dispatch.action_id));
+    item.append(nodeElement("code", "", dispatch.contract_id));
+    item.append(nodeElement("span", "", dispatch.target_workflow_id));
+    traceGrid.append(item);
+  }
+  trace.append(traceGrid);
+
+  section.append(graph, palettes, gates, trace);
   return section;
 }
 

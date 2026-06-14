@@ -8,9 +8,9 @@ Status: covered_by_current_addon_evidence
 - Sections: 9
 - Requirements: 50
 - Missing requirements: 0
-- Workflows: 35
-- Runtime contracts: 46
-- Artifact types: 103
+- Workflows: 36
+- Runtime contracts: 47
+- Artifact types: 106
 - Event types: 44
 - Views: 12
 
@@ -70,7 +70,7 @@ Missing: none
 
 - campaigns: covered_by_forge_evidence; workflows=crm.campaign.lifecycle; contracts=crm.document.generator.executor, crm.document.validator, crm.marketing.campaign_automation.executor, crm.marketing.form_capture.executor, crm.marketing.landing_page.executor, crm.marketing.segment_builder.executor
 - segmentation: covered_by_forge_evidence; workflows=crm.marketing.segment_builder; contracts=crm.ai.area_copilot.executor, crm.marketing.segment_builder.executor
-- automations: covered_by_forge_evidence; workflows=crm.campaign.lifecycle, crm.workflow.automation_design; contracts=crm.document.generator.executor, crm.document.validator, crm.marketing.campaign_automation.executor, crm.marketing.form_capture.executor, crm.marketing.landing_page.executor, crm.marketing.segment_builder.executor, crm.observability.inspector.executor, crm.workflow.automation_designer.executor
+- automations: covered_by_forge_evidence; workflows=crm.campaign.lifecycle, crm.workflow.automation_design, crm.workflow.automation_execution; contracts=crm.document.generator.executor, crm.document.validator, crm.marketing.campaign_automation.executor, crm.marketing.form_capture.executor, crm.marketing.landing_page.executor, crm.marketing.segment_builder.executor, crm.observability.inspector.executor, crm.workflow.automation_designer.executor, crm.workflow.automation_trace.executor
 - landing_pages: covered_by_forge_evidence; workflows=crm.marketing.landing_page; contracts=crm.document.validator, crm.marketing.form_capture.executor, crm.marketing.landing_page.executor
 - forms: covered_by_forge_evidence; workflows=crm.marketing.landing_page; contracts=crm.document.validator, crm.marketing.form_capture.executor, crm.marketing.landing_page.executor
 - lead_nurturing: covered_by_forge_evidence; workflows=crm.lead.nurture; contracts=crm.lead.classifier.executor, crm.marketing.lead_nurture.executor, crm.omnichannel.handoff
@@ -100,7 +100,7 @@ Missing: none
 - executive_summaries: covered_by_forge_evidence; workflows=crm.ai.copilot.recommendation, crm.executive.reporting; contracts=crm.ai.area_copilot.executor, crm.ai.operating_copilot.executor, crm.analytics.executive_report.executor, crm.lead.classifier.executor, crm.memory.promotion.executor, crm.proposal.generator.executor
 - risk_analysis: covered_by_forge_evidence; workflows=crm.ai.copilot.recommendation, crm.daily.operating_cycle, crm.executive.reporting; contracts=crm.ai.area_copilot.executor, crm.ai.operating_copilot.executor, crm.analytics.executive_report.executor, crm.lead.classifier.executor, crm.memory.promotion.executor, crm.observability.inspector.executor, crm.operating.daily_cycle.executor, crm.proposal.generator.executor, crm.queue.orchestrator.executor
 - next_step_recommendations: covered_by_forge_evidence; workflows=crm.ai.copilot.recommendation; contracts=crm.ai.area_copilot.executor, crm.ai.operating_copilot.executor, crm.lead.classifier.executor, crm.memory.promotion.executor, crm.proposal.generator.executor
-- workflow_automations: covered_by_forge_evidence; workflows=crm.workflow.automation_design; contracts=crm.observability.inspector.executor, crm.workflow.automation_designer.executor
+- workflow_automations: covered_by_forge_evidence; workflows=crm.workflow.automation_design, crm.workflow.automation_execution; contracts=crm.observability.inspector.executor, crm.workflow.automation_designer.executor, crm.workflow.automation_trace.executor
 - specialized_copilots: covered_by_forge_evidence; workflows=crm.ai.copilot.recommendation; contracts=crm.ai.area_copilot.executor, crm.ai.operating_copilot.executor, crm.lead.classifier.executor, crm.memory.promotion.executor, crm.proposal.generator.executor
 
 ### Forge Platform

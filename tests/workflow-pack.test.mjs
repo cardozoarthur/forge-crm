@@ -895,6 +895,7 @@ test("subworkflow orchestration composes CRM child workflows through Forge linea
 test("workflow automation designer compiles CRM automations into Forge-owned trigger graphs", () => {
   const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
   const workflow = pack.workflows.find((candidate) => candidate.id === "crm.workflow.automation_design");
+  const executionWorkflow = pack.workflows.find((candidate) => candidate.id === "crm.workflow.automation_execution");
   const aiWorkflow = pack.workflows.find((candidate) => candidate.id === "crm.ai.copilot.recommendation");
 
   assert.ok(workflow);
@@ -927,6 +928,32 @@ test("workflow automation designer compiles CRM automations into Forge-owned tri
   assert.ok(workflow.validation_gates.includes("automation execution remains inside Forge workflows"));
   assert.ok(pack.indexes.runtime_contracts.includes("crm.workflow.automation_designer.executor"));
   assert.ok(aiWorkflow.depends_on_workflows.includes("crm.workflow.automation_design"));
+
+  assert.ok(executionWorkflow);
+  assert.equal(executionWorkflow.workflow_extension_id, "crm_workflow_automation_execution");
+  assert.equal(executionWorkflow.domain, "ai_automation");
+  assert.ok(executionWorkflow.runtime_contracts.includes("crm.workflow.automation_trace.executor"));
+  assert.ok(executionWorkflow.depends_on_workflows.includes("crm.workflow.automation_design"));
+  assert.ok(executionWorkflow.object_types.includes("execution_trace"));
+  assert.ok(executionWorkflow.object_types.includes("dispatch_receipt"));
+  for (const artifact of [
+    "crm_automation_execution_trace",
+    "crm_automation_run_receipt",
+    "crm_automation_rework_report"
+  ]) {
+    assert.ok(executionWorkflow.artifacts.includes(artifact), `missing automation execution artifact ${artifact}`);
+    assert.ok(pack.indexes.artifact_types.includes(artifact), `missing indexed automation execution artifact ${artifact}`);
+  }
+  for (const event of [
+    "crm.automation.trigger_received",
+    "crm.automation.condition_evaluated",
+    "crm.automation.action_dispatched",
+    "crm.automation.rework_required"
+  ]) {
+    assert.ok(executionWorkflow.events.includes(event), `missing automation execution event ${event}`);
+  }
+  assert.ok(executionWorkflow.validation_gates.includes("approved automation actions dispatch through Forge runtime contracts only"));
+  assert.ok(pack.indexes.runtime_contracts.includes("crm.workflow.automation_trace.executor"));
 });
 
 test("enterprise customer journey proves the CRM can operate one full company lifecycle through Forge", () => {

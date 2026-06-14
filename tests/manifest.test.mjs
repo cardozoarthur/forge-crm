@@ -567,6 +567,39 @@ test("manifest exposes CRM workflow automation designer as a Forge-owned runtime
   assert.ok(eventTypes.has("crm.automation"));
 });
 
+test("manifest exposes CRM workflow automation trace as a Forge-dispatched runtime contract", () => {
+  const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.workflow.automation_trace.executor");
+  assert.ok(contract);
+  assert.equal(contract.contract_type, "executor");
+  assert.equal(contract.capability_id, "crm_workflow_factory");
+  assert.equal(contract.workflow_extension_id, "crm_workflow_automation_execution");
+  assert.equal(contract.entrypoint, "forge_crm.trace_workflow_automation");
+  assert.deepEqual(contract.permissions, ["crm.workflow.mutate", "crm.observability.inspect"]);
+  for (const input of ["automation_spec", "trigger_event", "condition_evidence", "activation_policy", "tenant_context"]) {
+    assert.ok(contract.inputs.includes(input), `missing workflow automation trace input ${input}`);
+  }
+  for (const output of ["crm_automation_execution_trace", "crm_automation_run_receipt", "crm_automation_rework_report"]) {
+    assert.ok(contract.outputs.includes(output), `missing workflow automation trace output ${output}`);
+  }
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("must not execute automation locally")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("Forge dispatch")));
+
+  const workflowExtensionIds = new Set(manifest.workflows.map((extension) => extension.id));
+  assert.ok(workflowExtensionIds.has("crm_workflow_automation_execution"));
+
+  const artifactTypes = new Set(manifest.artifact_types.map((artifact) => artifact.id));
+  for (const artifactType of [
+    "crm_automation_execution_trace",
+    "crm_automation_run_receipt",
+    "crm_automation_rework_report"
+  ]) {
+    assert.ok(artifactTypes.has(artifactType), `missing artifact type ${artifactType}`);
+  }
+
+  const eventTypes = new Set(manifest.event_types.map((event) => event.id));
+  assert.ok(eventTypes.has("crm.automation"));
+});
+
 test("manifest exposes enterprise journey execution as a Forge-owned CRM acceptance contract", () => {
   const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.enterprise.journey.executor");
   assert.ok(contract);

@@ -1257,6 +1257,44 @@ const WORKFLOWS = [
     ]
   },
   {
+    id: "crm.workflow.automation_execution",
+    title: "CRM workflow automation execution trace",
+    domain: "ai_automation",
+    workflow_extension_id: "crm_workflow_automation_execution",
+    object_types: ["workflow_automation", "trigger", "condition", "action", "execution_trace", "dispatch_receipt", "rework_report"],
+    states: ["trigger_received", "conditions_evaluated", "forge_dispatch_ready", "dispatched", "rework_required"],
+    transitions: [
+      ["trigger_received", "conditions_evaluated", "trigger event matched an approved Forge source"],
+      ["conditions_evaluated", "forge_dispatch_ready", "condition evidence and activation gates passed"],
+      ["forge_dispatch_ready", "dispatched", "Forge runtime accepted action dispatch contracts"],
+      ["conditions_evaluated", "rework_required", "condition, permission or dry-run evidence failed"],
+      ["rework_required", "trigger_received", "automation evidence corrected through Forge workflow"]
+    ],
+    runtime_contracts: ["crm.workflow.automation_trace.executor", "crm.observability.inspector.executor"],
+    depends_on_workflows: [
+      "crm.workflow.automation_design",
+      "crm.lead.lifecycle",
+      "crm.followup.forecast",
+      "crm.ticket.sla",
+      "crm.work.queue.orchestration"
+    ],
+    artifacts: ["crm_automation_execution_trace", "crm_automation_run_receipt", "crm_automation_rework_report"],
+    events: [
+      "crm.automation.trigger_received",
+      "crm.automation.condition_evaluated",
+      "crm.automation.action_dispatched",
+      "crm.automation.rework_required"
+    ],
+    memory_scopes: ["organization", "project", "processing"],
+    permissions: ["crm.workflow.mutate", "crm.observability.inspect"],
+    views: ["crm.system-map", "crm.work-queue"],
+    validation_gates: [
+      "approved automation actions dispatch through Forge runtime contracts only",
+      "automation trace records trigger, condition and action lineage",
+      "failed automation evidence returns to rework without local execution"
+    ]
+  },
+  {
     id: "crm.ai.copilot.recommendation",
     title: "Specialized CRM copilots and risk analysis",
     domain: "ai_automation",

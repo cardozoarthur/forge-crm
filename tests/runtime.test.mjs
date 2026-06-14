@@ -1325,6 +1325,85 @@ test("workflow automation designer compiles triggers conditions and actions with
   assert.ok(result.events.some((event) => event.kind === "crm.automation.queued"));
 });
 
+test("workflow automation trace routes approved automation actions through Forge without local execution", () => {
+  assert.equal(typeof runtime.buildWorkflowAutomationTraceResult, "function");
+
+  const result = runtime.buildWorkflowAutomationTraceResult(
+    workerRequest(
+      "forge_crm.trace_workflow_automation",
+      {
+        tenant_context: { tenant_id: "demo" },
+        automation_spec: {
+          automation_id: "auto-hot-lead-sla",
+          workflow_id: "crm.workflow.automation_execution",
+          source_design_workflow_id: "crm.workflow.automation_design",
+          trigger_sources: [
+            { id: "lead-created", event_type: "crm.lead.created", workflow_id: "crm.lead.lifecycle" }
+          ],
+          actions: [
+            {
+              id: "queue-commercial",
+              contract_id: "crm.queue.orchestrator.executor",
+              workflow_id: "crm.work.queue.orchestration"
+            },
+            {
+              id: "schedule-followup",
+              contract_id: "crm.commercial.followup_forecast.executor",
+              workflow_id: "crm.followup.forecast"
+            }
+          ]
+        },
+        trigger_event: {
+          kind: "crm.lead.created",
+          workflow_id: "crm.lead.lifecycle",
+          event_id: "evt-lead-created",
+          payload: { lead_id: "lead-001", score: 92 }
+        },
+        condition_evidence: [
+          {
+            id: "lead-score",
+            expression: "lead.score >= 80",
+            passed: true,
+            artifact_ref: "forge://artifact/crm_ai_recommendation/lead-001"
+          }
+        ],
+        activation_policy: {
+          approved_design: true,
+          dry_run_completed: true,
+          require_forge_dispatch: true,
+          approved_by: "ops-lead"
+        }
+      },
+      { contract_id: "crm.workflow.automation_trace.executor", task_ref: "automation-trace-test" }
+    )
+  );
+
+  assert.equal(result.schema_version, "forge.addon_executor_result.v1");
+  assert.equal(result.status, "completed");
+  assert.equal(result.outputs.workflow_id, "crm.workflow.automation_execution");
+  assert.equal(result.outputs.automation_id, "auto-hot-lead-sla");
+  assert.equal(result.outputs.trigger_matched, true);
+  assert.equal(result.outputs.conditions_passed, true);
+  assert.equal(result.outputs.dispatch_state, "forge_dispatch_ready");
+  assert.equal(result.outputs.action_dispatch_count, 2);
+  assert.equal(result.outputs.local_execution_allowed, false);
+  assert.equal(result.outputs.forge_dispatch_required, true);
+  assert.equal(result.outputs.mutates_crm_state, false);
+  assert.equal(result.outputs.forge_event_sourced, true);
+
+  for (const artifactKind of [
+    "crm_automation_execution_trace",
+    "crm_automation_run_receipt",
+    "crm_automation_rework_report"
+  ]) {
+    assert.ok(result.artifacts.some((artifact) => artifact.kind === artifactKind), `missing ${artifactKind}`);
+  }
+
+  assert.ok(result.events.some((event) => event.kind === "crm.automation.trigger_received"));
+  assert.ok(result.events.some((event) => event.kind === "crm.automation.condition_evaluated"));
+  assert.equal(result.events.filter((event) => event.kind === "crm.automation.action_dispatched").length, 2);
+});
+
 test("enterprise journey executor packages a full lead-to-support CRM operation through Forge", () => {
   assert.equal(typeof runtime.buildEnterpriseJourneyResult, "function");
 

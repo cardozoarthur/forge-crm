@@ -818,11 +818,21 @@ test("web app snapshot exposes a Forge-owned workflow automation designer", () =
   assert.ok(workbench.rule_graph.nodes.some((node) => node.kind === "condition"));
   assert.ok(workbench.rule_graph.nodes.some((node) => node.kind === "action"));
   assert.ok(workbench.validation_gates.every((gate) => gate.owner === "Forge validation"));
+  assert.equal(workbench.execution_trace.workflow_id, "crm.workflow.automation_execution");
+  assert.equal(workbench.execution_trace.contract_id, "crm.workflow.automation_trace.executor");
+  assert.equal(workbench.execution_trace.local_execution_allowed, false);
+  assert.equal(workbench.execution_trace.dispatch_owner, "forge_event_engine");
 
   const action = snapshot.actions.find((candidate) => candidate.id === "crm.design-workflow-automation");
   assert.ok(action);
   assert.equal(action.contract_id, "crm.workflow.automation_designer.executor");
   assert.equal(action.requires_permission, "crm.workflow.mutate");
+
+  const traceAction = snapshot.actions.find((candidate) => candidate.id === "crm.trace-workflow-automation");
+  assert.ok(traceAction);
+  assert.equal(traceAction.contract_id, "crm.workflow.automation_trace.executor");
+  assert.equal(traceAction.requires_permission, "crm.workflow.mutate");
+  assert.equal(traceAction.mutates_workflow, true);
 });
 
 test("web assets mount the generated CRM snapshot without a build step", async () => {

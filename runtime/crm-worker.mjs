@@ -55,6 +55,7 @@ export function createCrmWorkerServer() {
             "forge_crm.prepare_memory_promotion",
             "forge_crm.evolve_workflow",
             "forge_crm.design_workflow_automation",
+            "forge_crm.trace_workflow_automation",
             "forge_crm.run_enterprise_journey",
             "forge_crm.orchestrate_subworkflows",
             "forge_crm.inspect_observability",

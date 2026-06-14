@@ -945,6 +945,7 @@ h3 {
 .subworkflow-gates,
 .automation-graph,
 .automation-palettes,
+.automation-trace-grid,
 .executive-kpi-grid,
 .executive-report-grid,
 .goal-commission-grid {
@@ -975,6 +976,7 @@ h3 {
 .automation-node,
 .automation-palette,
 .automation-gate,
+.automation-dispatch,
 .executive-kpi,
 .executive-summary-card,
 .business-review-card,
@@ -1012,6 +1014,7 @@ h3 {
 .subworkflow-gate strong,
 .automation-node strong,
 .automation-palette strong,
+.automation-dispatch strong,
 .executive-kpi strong,
 .executive-summary-card strong,
 .business-review-card strong,
@@ -1025,6 +1028,7 @@ h3 {
 
 .subworkflow-binding code,
 .automation-palette code,
+.automation-dispatch code,
 .daily-cycle code,
 .strategic-audit code,
 .executive-reporting code,

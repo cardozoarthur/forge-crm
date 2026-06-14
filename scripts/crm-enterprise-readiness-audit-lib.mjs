@@ -81,10 +81,10 @@ const USER_FACING_DELIVERABLES = [
   },
   {
     id: "workflow_automation_designer",
-    title: "Workflow automation designer",
+    title: "Workflow automation designer and trace",
     domain: "ai_automation",
     surface_id: "crm.system-map",
-    workflow_ids: ["crm.workflow.automation_design"]
+    workflow_ids: ["crm.workflow.automation_design", "crm.workflow.automation_execution"]
   },
   {
     id: "workflow_system_factory_blueprint",

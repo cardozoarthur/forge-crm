@@ -2868,6 +2868,244 @@ export function buildWorkflowAutomationDesignResult(request) {
   };
 }
 
+export function buildWorkflowAutomationTraceResult(request) {
+  const input = dispatchPayload(request);
+  const context = providedContext(request);
+  const tenantId = input.tenant_id || input.tenant_context?.tenant_id || input.tenant_context?.id || context.tenant || "default";
+  const taskRef = dispatchEnvelope(request).task_ref || `workflow-automation-trace-${slug(tenantId, "tenant")}`;
+  const automationSpec = asObject(input.automation_spec ?? input.spec);
+  const triggerEvent = asObject(input.trigger_event ?? input.event);
+  const activationPolicy = asObject(input.activation_policy ?? input.policy);
+  const workflowId = String(automationSpec.workflow_id || input.workflow_id || "crm.workflow.automation_execution");
+  const sourceDesignWorkflowId = String(automationSpec.source_design_workflow_id || "crm.workflow.automation_design");
+  const automationId = String(automationSpec.automation_id || automationSpec.id || input.automation_id || `automation-${slug(tenantId, "tenant")}`);
+  const triggerSources = asArray(automationSpec.trigger_sources ?? automationSpec.triggers).map((trigger, index) => {
+    const source = asObject(trigger);
+    return {
+      id: String(source.id || `trigger-${index + 1}`),
+      event_type: source.event_type ? String(source.event_type) : null,
+      schedule: source.schedule ? String(source.schedule) : null,
+      workflow_id: String(source.workflow_id || source.source_workflow_id || workflowId)
+    };
+  });
+  const triggerKind = String(triggerEvent.kind || triggerEvent.event_type || "");
+  const triggerWorkflowId = String(triggerEvent.workflow_id || "");
+  const triggerMatched = triggerSources.length > 0
+    ? triggerSources.some((trigger) =>
+        (trigger.event_type && trigger.event_type === triggerKind) ||
+        (trigger.workflow_id && trigger.workflow_id === triggerWorkflowId)
+      )
+    : Boolean(triggerKind || triggerWorkflowId);
+  const conditionEvaluations = asArray(input.condition_evidence ?? automationSpec.condition_evidence ?? automationSpec.conditions).map((condition, index) => {
+    const source = asObject(condition);
+    const passed = source.passed === true || source.status === "passed" || source.result === "passed";
+    return {
+      id: String(source.id || `condition-${index + 1}`),
+      expression: String(source.expression || source.rule || "true"),
+      passed,
+      artifact_ref: source.artifact_ref || source.evidence_artifact_ref || null,
+      evidence_artifact_type: source.evidence_artifact_type || source.artifact_type || null,
+      rework_reason: passed ? null : source.rework_reason || "condition evidence did not pass"
+    };
+  });
+  const conditionsPassed = conditionEvaluations.length > 0
+    ? conditionEvaluations.every((condition) => condition.passed)
+    : activationPolicy.allow_no_conditions === true;
+  const actions = asArray(input.actions ?? automationSpec.actions).map((action, index) => {
+    const source = asObject(action);
+    const contractId = String(source.contract_id || source.contract || "");
+    const targetWorkflowId = String(source.workflow_id || source.target_workflow_id || "");
+    return {
+      id: String(source.id || `action-${index + 1}`),
+      contract_id: contractId,
+      workflow_id: targetWorkflowId,
+      permission: String(source.permission || "crm.workflow.mutate"),
+      valid: Boolean(contractId && targetWorkflowId)
+    };
+  });
+  const approvedDesign =
+    activationPolicy.approved_design === true ||
+    activationPolicy.design_approved === true ||
+    Boolean(activationPolicy.approved_by);
+  const dryRunCompleted =
+    activationPolicy.dry_run_completed === true ||
+    activationPolicy.require_dry_run === false;
+  const forgeDispatchRequired = activationPolicy.require_forge_dispatch !== false;
+  const localExecutionAllowed = false;
+  const invalidActionIds = actions.filter((action) => !action.valid).map((action) => action.id);
+  const reworkReasons = [
+    ...(!triggerMatched ? ["trigger event did not match automation trigger sources"] : []),
+    ...(!conditionsPassed ? ["condition evidence did not pass"] : []),
+    ...(invalidActionIds.length > 0 ? [`invalid action contracts: ${invalidActionIds.join(", ")}`] : []),
+    ...(!approvedDesign ? ["validated automation design approval is required"] : []),
+    ...(!dryRunCompleted ? ["dry-run evidence is required before dispatch"] : []),
+    ...(!forgeDispatchRequired ? ["Forge dispatch must remain required for CRM automations"] : [])
+  ];
+  const dispatchReady =
+    triggerMatched &&
+    conditionsPassed &&
+    actions.length > 0 &&
+    invalidActionIds.length === 0 &&
+    approvedDesign &&
+    dryRunCompleted &&
+    forgeDispatchRequired &&
+    !localExecutionAllowed;
+  const dispatchState = dispatchReady ? "forge_dispatch_ready" : "rework_required";
+  const dispatchPlan = dispatchReady
+    ? actions.map((action) => ({
+        action_id: action.id,
+        contract_id: action.contract_id,
+        target_workflow_id: action.workflow_id,
+        dispatch_owner: "forge_event_engine",
+        local_execution_allowed: false,
+        command_template: [
+          "forge",
+          "addons",
+          "execute-executor",
+          "--addon",
+          "forge.addon.crm",
+          "--contract",
+          action.contract_id,
+          "--worker",
+          "<worker-id>",
+          "--task",
+          "<task-ref>",
+          "--input",
+          "<json>",
+          "--context",
+          "<json>",
+          "--output",
+          "json"
+        ]
+      }))
+    : [];
+  const lineage = {
+    workflow_id: workflowId,
+    source_design_workflow_id: sourceDesignWorkflowId,
+    task_ref: taskRef,
+    source_contract: "crm.workflow.automation_trace.executor",
+    tenant_id: tenantId,
+    automation_id: automationId,
+    trigger_event_id: triggerEvent.event_id || triggerEvent.id || null
+  };
+
+  return {
+    schema_version: "forge.addon_executor_result.v1",
+    status: "completed",
+    task_ref: taskRef,
+    summary: `CRM workflow automation ${automationId} traced with ${dispatchPlan.length} Forge dispatch action(s)`,
+    outputs: {
+      tenant_id: tenantId,
+      workflow_id: workflowId,
+      automation_id: automationId,
+      source_design_workflow_id: sourceDesignWorkflowId,
+      trigger_matched: triggerMatched,
+      conditions_passed: conditionsPassed,
+      dispatch_state: dispatchState,
+      action_dispatch_count: dispatchPlan.length,
+      rework_reason_count: reworkReasons.length,
+      local_execution_allowed: localExecutionAllowed,
+      forge_dispatch_required: forgeDispatchRequired,
+      mutates_crm_state: false,
+      forge_event_sourced: true
+    },
+    artifacts: [
+      {
+        kind: "crm_automation_execution_trace",
+        id: `crm-automation-execution-trace-${slug(automationId, "automation")}`,
+        title: `CRM automation execution trace for ${automationId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          automation_id: automationId,
+          trigger_event: triggerEvent,
+          trigger_sources: triggerSources,
+          trigger_matched: triggerMatched,
+          condition_evaluations: conditionEvaluations,
+          dispatch_plan: dispatchPlan,
+          dispatch_owner: "forge_event_engine",
+          local_execution_allowed: false,
+          lineage
+        }
+      },
+      {
+        kind: "crm_automation_run_receipt",
+        id: `crm-automation-run-receipt-${slug(automationId, "automation")}`,
+        title: `CRM automation run receipt for ${automationId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          automation_id: automationId,
+          dispatch_state: dispatchState,
+          action_dispatch_count: dispatchPlan.length,
+          activation_policy: activationPolicy,
+          approved_design: approvedDesign,
+          dry_run_completed: dryRunCompleted,
+          forge_dispatch_required: forgeDispatchRequired,
+          state_owner: "forge_workflow_runtime",
+          lineage
+        }
+      },
+      {
+        kind: "crm_automation_rework_report",
+        id: `crm-automation-rework-${slug(automationId, "automation")}`,
+        title: `CRM automation rework report for ${automationId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          automation_id: automationId,
+          dispatch_state: dispatchState,
+          rework_reasons: reworkReasons,
+          invalid_action_ids: invalidActionIds,
+          blocked_external_execution: true,
+          validation_policy: "CRM automations dispatch through Forge runtime contracts only",
+          lineage
+        }
+      }
+    ],
+    events: [
+      {
+        kind: "crm.automation.trigger_received",
+        tenant_id: tenantId,
+        workflow_id: workflowId,
+        automation_id: automationId,
+        trigger_kind: triggerKind,
+        trigger_matched: triggerMatched
+      },
+      ...conditionEvaluations.map((condition) => ({
+        kind: "crm.automation.condition_evaluated",
+        tenant_id: tenantId,
+        workflow_id: workflowId,
+        automation_id: automationId,
+        condition_id: condition.id,
+        passed: condition.passed
+      })),
+      ...dispatchPlan.map((dispatch) => ({
+        kind: "crm.automation.action_dispatched",
+        tenant_id: tenantId,
+        workflow_id: workflowId,
+        automation_id: automationId,
+        action_id: dispatch.action_id,
+        contract_id: dispatch.contract_id,
+        target_workflow_id: dispatch.target_workflow_id,
+        dispatch_owner: dispatch.dispatch_owner
+      })),
+      ...(dispatchReady
+        ? []
+        : [
+            {
+              kind: "crm.automation.rework_required",
+              tenant_id: tenantId,
+              workflow_id: workflowId,
+              automation_id: automationId,
+              rework_reason_count: reworkReasons.length
+            }
+          ])
+    ],
+    context_tenant: context.tenant || tenantId
+  };
+}
+
 const ENTERPRISE_JOURNEY_STAGES = [
   {
     id: "lead_capture",
@@ -7448,6 +7686,8 @@ export function executeCrmRuntimeRequest(request) {
       return buildWorkflowEvolutionResult(request);
     case "forge_crm.design_workflow_automation":
       return buildWorkflowAutomationDesignResult(request);
+    case "forge_crm.trace_workflow_automation":
+      return buildWorkflowAutomationTraceResult(request);
     case "forge_crm.run_enterprise_journey":
       return buildEnterpriseJourneyResult(request);
     case "forge_crm.orchestrate_subworkflows":

@@ -31,7 +31,7 @@ const DOMAIN_REQUIREMENTS = {
   marketing: [
     ["campaigns", "Campaigns", ["crm.campaign.lifecycle"]],
     ["segmentation", "Segmentation", ["crm.marketing.segment_builder"]],
-    ["automations", "Automations", ["crm.campaign.lifecycle", "crm.workflow.automation_design"]],
+    ["automations", "Automations", ["crm.campaign.lifecycle", "crm.workflow.automation_design", "crm.workflow.automation_execution"]],
     ["landing_pages", "Landing pages", ["crm.marketing.landing_page"]],
     ["forms", "Forms", ["crm.marketing.landing_page"]],
     ["lead_nurturing", "Lead nurturing", ["crm.lead.nurture"]]
@@ -53,7 +53,7 @@ const DOMAIN_REQUIREMENTS = {
     ["executive_summaries", "Executive summaries", ["crm.executive.reporting", "crm.ai.copilot.recommendation"]],
     ["risk_analysis", "Risk analysis", ["crm.ai.copilot.recommendation", "crm.executive.reporting", "crm.daily.operating_cycle"]],
     ["next_step_recommendations", "Next-step recommendations", ["crm.ai.copilot.recommendation"]],
-    ["workflow_automations", "Workflow automations", ["crm.workflow.automation_design"]],
+    ["workflow_automations", "Workflow automations", ["crm.workflow.automation_design", "crm.workflow.automation_execution"]],
     ["specialized_copilots", "Specialized area copilots", ["crm.ai.copilot.recommendation"]]
   ]
 };
