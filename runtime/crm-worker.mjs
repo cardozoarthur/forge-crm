@@ -39,6 +39,7 @@ export function createCrmWorkerServer() {
           supported_entrypoints: [
             "forge_crm.plan_system",
             "forge_crm.bootstrap_tenant",
+            "forge_crm.operating_snapshot",
             "forge_crm.classify_lead",
             "forge_crm.generate_proposal",
             "forge_crm.validate_document",

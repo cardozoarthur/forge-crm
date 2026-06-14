@@ -1,5 +1,5 @@
 import { buildCrmPlan } from "./crm-plan-lib.mjs";
-import { buildTenantBootstrapResult } from "./crm-workflow-pack-lib.mjs";
+import { buildCrmOperatingModel, buildTenantBootstrapResult } from "./crm-workflow-pack-lib.mjs";
 
 export { buildTenantBootstrapResult };
 
@@ -236,6 +236,50 @@ export function buildProposalGeneratorResult(request) {
   };
 }
 
+export function buildOperatingSnapshotResult(request) {
+  const input = dispatchPayload(request);
+  const context = providedContext(request);
+  const tenantId = input.tenant_id || input.tenant_context?.tenant_id || input.tenant_context?.id || context.tenant || "default";
+  const model = buildCrmOperatingModel({ tenant_id: tenantId });
+  const taskRef = dispatchEnvelope(request).task_ref || `crm-operating-snapshot-${slug(tenantId, "tenant")}`;
+  const operatorSurfaceKeys = Object.keys(model.operator_surfaces);
+  const businessModuleKeys = Object.keys(model.business_modules);
+
+  return {
+    schema_version: "forge.addon_executor_result.v1",
+    status: "completed",
+    task_ref: taskRef,
+    summary: `CRM operating snapshot generated for tenant ${model.tenant_id}`,
+    outputs: {
+      tenant_id: model.tenant_id,
+      business_module_count: businessModuleKeys.length,
+      operator_surface_count: operatorSurfaceKeys.length,
+      approval_queue_workflow_count: model.operating_queues.approvals.workflow_ids.length,
+      waiting_state_workflow_count: model.operating_queues.waiting_states.workflow_ids.length,
+      external_database_required: model.external_database_required,
+      state_owner: model.state_owner
+    },
+    artifacts: [
+      {
+        kind: "crm_operating_snapshot",
+        id: `crm-operating-snapshot-${model.tenant_id}`,
+        title: `CRM operating snapshot for ${model.tenant_id}`,
+        content_type: "application/json",
+        data: model
+      }
+    ],
+    events: [
+      {
+        kind: "crm.operating.snapshot_generated",
+        tenant_id: model.tenant_id,
+        business_module_count: businessModuleKeys.length,
+        operator_surface_count: operatorSurfaceKeys.length
+      }
+    ],
+    context_tenant: context.tenant || model.tenant_id
+  };
+}
+
 export function buildDocumentValidatorResult(request) {
   const input = dispatchPayload(request);
   const subject = dispatchEnvelope(request).subject || input.subject || "crm-document";
@@ -363,6 +407,8 @@ export function executeCrmRuntimeRequest(request) {
     }
     case "forge_crm.bootstrap_tenant":
       return buildTenantBootstrapResult(request);
+    case "forge_crm.operating_snapshot":
+      return buildOperatingSnapshotResult(request);
     case "forge_crm.classify_lead":
       return buildLeadClassifierResult(request);
     case "forge_crm.generate_proposal":

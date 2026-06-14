@@ -12,6 +12,7 @@ This repository starts the CRM as a verifiable Forge Addon:
 - `scripts/generate-crm-plan.mjs` emits a deterministic Forge-compatible planning result for CRM system creation.
 - `runtime/crm-worker.mjs` exposes planner, executor, validator and handoff contracts over a local Forge `external_api` worker.
 - `scripts/crm-workflow-pack-lib.mjs` generates a workflow-backed CRM tenant pack covering relationship, commercial, support, marketing, operations and AI automation.
+- `scripts/generate-crm-operating-model.mjs` emits the Forge-owned operating model for pipeline, support, marketing, documents, commercial command and AI workbench surfaces.
 - `scripts/smoke-forge-runtime.mjs` registers the worker in Forge and executes planner, tenant bootstrap, lead classification, proposal generation, document validation and omnichannel handoff contracts.
 - `workflows/crm-system-template.json` maps the enterprise CRM domains into workflow-backed modules.
 - `docs/` records the architecture boundary between `forge-core` and this Addon.
@@ -30,6 +31,7 @@ forge addons validate --addon-dir addons --output json
 forge addons catalog --addon-dir addons --output json
 node scripts/generate-crm-plan.mjs "Create a workflow-first CRM tenant"
 node scripts/generate-crm-workflow-pack.mjs "acme"
+node scripts/generate-crm-operating-model.mjs "acme"
 ```
 
 Run the runtime smoke against a Forge binary:
@@ -56,6 +58,20 @@ PORT=8787 npm run worker
 ```
 
 `runtime/crm-planner-worker.mjs` remains as a compatibility wrapper around the multi-contract worker.
+
+## Operating Model
+
+The tenant bootstrap emits a `crm_operating_model` artifact, and `crm.operating.snapshot.executor` emits a promoted `crm_operating_snapshot` artifact. These artifacts describe the business-facing CRM surfaces from Forge workflow state:
+
+- relationship graph;
+- pipeline Kanban;
+- commercial command panel;
+- support queue;
+- marketing calendar;
+- document queue;
+- AI workbench.
+
+The operating model is explicitly `forge_workflow_runtime` owned and declares `external_database_required=false`; CRM state is expected to come from Forge workflow artifacts, events, memory scopes and validation gates.
 
 ## Success Direction
 

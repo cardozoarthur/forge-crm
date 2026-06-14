@@ -48,6 +48,18 @@ test("manifest exposes tenant bootstrap as a Forge runtime contract", () => {
   assert.ok(artifactTypes.has("crm_system_blueprint"));
 });
 
+test("manifest exposes CRM operating snapshot as a Forge runtime contract", () => {
+  const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.operating.snapshot.executor");
+  assert.ok(contract);
+  assert.equal(contract.contract_type, "executor");
+  assert.equal(contract.entrypoint, "forge_crm.operating_snapshot");
+  assert.deepEqual(contract.permissions, ["crm.workflow.mutate"]);
+
+  const artifactTypes = new Set(manifest.artifact_types.map((artifact) => artifact.id));
+  assert.ok(artifactTypes.has("crm_operating_model"));
+  assert.ok(artifactTypes.has("crm_operating_snapshot"));
+});
+
 test("CRM scope is workflow-backed across core business areas", () => {
   const workflowIds = new Set(manifest.workflows.map((workflow) => workflow.id));
   for (const workflowId of [

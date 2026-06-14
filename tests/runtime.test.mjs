@@ -6,6 +6,7 @@ import {
   buildDocumentValidatorResult,
   buildLeadClassifierResult,
   buildOmnichannelHandoffResult,
+  buildOperatingSnapshotResult,
   buildProposalGeneratorResult
 } from "../scripts/crm-runtime-lib.mjs";
 import { createCrmWorkerServer } from "../runtime/crm-worker.mjs";
@@ -103,6 +104,26 @@ test("tenant bootstrap runtime returns a workflow-backed CRM pack", () => {
   assert.equal(result.outputs.complete_scope, true);
   assert.equal(result.outputs.external_database_required, false);
   assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_workflow_pack"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_operating_model"));
+});
+
+test("operating snapshot runtime returns Forge-owned business surface state", () => {
+  const result = buildOperatingSnapshotResult(
+    workerRequest("forge_crm.operating_snapshot", {
+      tenant_context: { tenant_id: "demo" }
+    })
+  );
+
+  assert.equal(result.schema_version, "forge.addon_executor_result.v1");
+  assert.equal(result.status, "completed");
+  assert.equal(result.outputs.tenant_id, "demo");
+  assert.equal(result.outputs.external_database_required, false);
+  assert.equal(result.outputs.business_module_count, 6);
+  assert.equal(result.outputs.operator_surface_count >= 7, true);
+  assert.equal(result.artifacts[0].kind, "crm_operating_snapshot");
+  assert.equal(result.artifacts[0].data.state_owner, "forge_workflow_runtime");
+  assert.ok(result.artifacts[0].data.operator_surfaces.pipeline_kanban.workflow_ids.includes("crm.opportunity.pipeline"));
+  assert.equal(result.events[0].kind, "crm.operating.snapshot_generated");
 });
 
 test("proposal generator emits a draft proposal artifact gated by Forge approval", () => {

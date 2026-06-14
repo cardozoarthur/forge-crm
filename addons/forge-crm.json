@@ -141,7 +141,10 @@
       ],
       "artifact_types": [
         "crm_system_blueprint",
-        "crm_core_gap_report"
+        "crm_core_gap_report",
+        "crm_workflow_pack",
+        "crm_operating_model",
+        "crm_operating_snapshot"
       ],
       "view_ids": [
         "crm.system-map"
@@ -527,6 +530,7 @@
       "outputs": [
         "crm_system_blueprint",
         "crm_workflow_pack",
+        "crm_operating_model",
         "crm_core_gap_report"
       ],
       "permissions": [
@@ -535,6 +539,31 @@
       "constraints": [
         "bootstrap produces Forge-owned workflow artifacts, not a CRM-local database",
         "worker output remains advisory until Forge attaches artifacts and validates workflow mutations"
+      ]
+    },
+    {
+      "id": "crm.operating.snapshot.executor",
+      "title": "CRM operating snapshot",
+      "contract_type": "executor",
+      "capability_id": "crm_workflow_factory",
+      "workflow_extension_id": "crm_workflow_factory_system_bootstrap",
+      "runtime": "external_api",
+      "entrypoint": "forge_crm.operating_snapshot",
+      "inputs": [
+        "tenant_context",
+        "workflow_pack",
+        "operator_surface_policy"
+      ],
+      "outputs": [
+        "crm_operating_snapshot",
+        "crm_operating_model"
+      ],
+      "permissions": [
+        "crm.workflow.mutate"
+      ],
+      "constraints": [
+        "operating state is derived from Forge workflow artifacts and events",
+        "snapshot must not create a CRM-local database or parallel automation state"
       ]
     },
     {
@@ -839,6 +868,16 @@
       "id": "crm_workflow_pack",
       "title": "CRM workflow pack",
       "generic_kind": "artifact"
+    },
+    {
+      "id": "crm_operating_model",
+      "title": "CRM Forge operating model",
+      "generic_kind": "artifact"
+    },
+    {
+      "id": "crm_operating_snapshot",
+      "title": "CRM operating snapshot",
+      "generic_kind": "report"
     },
     {
       "id": "crm_entity_model",

@@ -281,6 +281,108 @@ function unique(items) {
   return [...new Set(items)];
 }
 
+function workflowsForView(workflows, viewId) {
+  return workflows.filter((workflow) => workflow.views.includes(viewId));
+}
+
+function operatorSurface(workflows, viewId, surfaceType, title) {
+  const linkedWorkflows = workflowsForView(workflows, viewId);
+  return {
+    view_id: viewId,
+    surface_type: surfaceType,
+    title,
+    state_source: "forge_workflow_artifacts_and_events",
+    workflow_ids: linkedWorkflows.map((workflow) => workflow.id),
+    lanes: unique(linkedWorkflows.flatMap((workflow) => workflow.states)),
+    artifact_types: unique(linkedWorkflows.flatMap((workflow) => workflow.artifacts)).sort(),
+    event_types: unique(linkedWorkflows.flatMap((workflow) => workflow.events)).sort(),
+    mutation_policy: {
+      state_owner: "forge_workflow_runtime",
+      direct_external_mutation: false,
+      allowed_mutation_path: "Forge workflow command, runtime contract or approved event"
+    }
+  };
+}
+
+export function buildCrmOperatingModel(options = {}) {
+  const tenantId = slug(options.tenant_id || options.tenant || "default");
+  const workflows = (options.workflows || WORKFLOWS.map(workflowWithPolicies)).map((workflow) =>
+    workflow.forge_state_owner ? workflow : workflowWithPolicies(workflow)
+  );
+  const coverage = options.coverage || scopeCoverage(workflows);
+  const businessModules = {};
+
+  for (const [domain, domainCoverage] of Object.entries(coverage)) {
+    const domainWorkflows = workflows.filter(
+      (workflow) =>
+        workflow.domain === domain ||
+        workflow.object_types.some((item) => domainCoverage.required.includes(item))
+    );
+    businessModules[domain] = {
+      complete: domainCoverage.complete,
+      required_scope: domainCoverage.required,
+      workflow_ids: domainWorkflows.map((workflow) => workflow.id),
+      states: unique(domainWorkflows.flatMap((workflow) => workflow.states)).sort(),
+      artifact_types: unique(domainWorkflows.flatMap((workflow) => workflow.artifacts)).sort(),
+      event_types: unique(domainWorkflows.flatMap((workflow) => workflow.events)).sort(),
+      memory_scopes: unique(domainWorkflows.flatMap((workflow) => workflow.memory_scopes)).sort(),
+      validation_gates: unique(domainWorkflows.flatMap((workflow) => workflow.validation_gates)).sort()
+    };
+  }
+
+  return {
+    schema_version: "forge.crm_operating_model.v1",
+    tenant_id: tenantId,
+    addon_id: "forge.addon.crm",
+    state_owner: "forge_workflow_runtime",
+    external_database_required: false,
+    durable_identity: {
+      primary: "workflow_id",
+      artifacts: "artifact_id",
+      events: "event_id"
+    },
+    mutation_policy: {
+      requires_forge_workflow: true,
+      requires_permission_gate: true,
+      direct_external_persistence: false,
+      external_delivery_requires_approval: true
+    },
+    operator_surfaces: {
+      system_map: operatorSurface(workflows, "crm.system-map", "graph", "CRM system map"),
+      relationship_graph: operatorSurface(workflows, "crm.relationship-graph", "graph", "Relationship graph"),
+      pipeline_kanban: operatorSurface(workflows, "crm.pipeline-kanban", "board", "Pipeline Kanban"),
+      commercial_command: operatorSurface(workflows, "crm.commercial-command", "panel", "Commercial command"),
+      support_queue: operatorSurface(workflows, "crm.support-queue", "queue", "Support queue"),
+      marketing_calendar: operatorSurface(workflows, "crm.marketing-calendar", "calendar", "Marketing calendar"),
+      document_queue: operatorSurface(workflows, "crm.document-queue", "queue", "Document queue"),
+      ai_workbench: operatorSurface(workflows, "crm.ai-workbench", "workbench", "AI workbench")
+    },
+    business_modules: businessModules,
+    operating_queues: {
+      approvals: {
+        workflow_ids: workflows.filter((workflow) => workflow.states.includes("approval_wait")).map((workflow) => workflow.id),
+        artifact_types: ["crm_document", "crm_proposal", "crm_campaign"],
+        permission: "crm.document.generate"
+      },
+      waiting_states: {
+        workflow_ids: workflows.filter((workflow) => workflow.states.some((state) => state.includes("wait"))).map((workflow) => workflow.id),
+        scheduler_owner: "forge_runtime"
+      },
+      next_actions: {
+        source: "crm_ai_recommendation artifacts plus Forge validation gates",
+        approval_required_before_state_mutation: true
+      }
+    },
+    observability: {
+      audit_required: true,
+      lineage_required: true,
+      cost_visible_for_runtime_contracts: true,
+      event_timeline_source: "forge.events.timeline",
+      artifact_source: "forge.workflow.artifacts"
+    }
+  };
+}
+
 function workflowWithPolicies(workflow) {
   return {
     ...workflow,
@@ -332,6 +434,7 @@ export function buildCrmWorkflowPack(options = {}) {
   const artifactTypes = unique(workflows.flatMap((workflow) => workflow.artifacts)).sort();
   const eventTypes = unique(workflows.flatMap((workflow) => workflow.events)).sort();
   const coverage = scopeCoverage(workflows);
+  const operatingModel = buildCrmOperatingModel({ tenant_id: tenantId, workflows, coverage });
 
   return {
     schema_version: "forge.crm_workflow_pack.v1",
@@ -346,6 +449,7 @@ export function buildCrmWorkflowPack(options = {}) {
       external_database_required: false
     },
     workflows,
+    operating_model: operatingModel,
     coverage,
     summary: {
       workflow_count: workflows.length,
@@ -409,6 +513,13 @@ export function buildTenantBootstrapResult(request = {}) {
           runtime_contracts: pack.indexes.runtime_contracts,
           state_model: pack.state_model
         }
+      },
+      {
+        kind: "crm_operating_model",
+        id: `crm-operating-model-${pack.tenant_id}`,
+        title: `CRM operating model for ${pack.tenant_id}`,
+        content_type: "application/json",
+        data: pack.operating_model
       }
     ],
     events: [
@@ -424,4 +535,3 @@ export function buildTenantBootstrapResult(request = {}) {
 }
 
 export { REQUIRED_SCOPE, WORKFLOWS };
-

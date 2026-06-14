@@ -76,6 +76,7 @@ try {
     allowed_entrypoints: [
       "forge_crm.plan_system",
       "forge_crm.bootstrap_tenant",
+      "forge_crm.operating_snapshot",
       "forge_crm.classify_lead",
       "forge_crm.generate_proposal",
       "forge_crm.validate_document",
@@ -84,6 +85,7 @@ try {
     allowed_contracts: [
       "crm.factory.planning",
       "crm.tenant.bootstrap.executor",
+      "crm.operating.snapshot.executor",
       "crm.lead.classifier.executor",
       "crm.proposal.generator.executor",
       "crm.document.validator",
@@ -187,6 +189,32 @@ try {
     "json"
   ]);
 
+  const operatingSnapshot = runForge([
+    "addons",
+    "execute-executor",
+    "--addon-dir",
+    "addons",
+    "--addon",
+    "forge.addon.crm",
+    "--contract",
+    "crm.operating.snapshot.executor",
+    "--worker",
+    workerId,
+    "--task",
+    "crm-smoke-operating-snapshot",
+    "--workflow",
+    workflowId,
+    "--input",
+    JSON.stringify({
+      tenant_context: { id: "smoke", tenant_id: "smoke" },
+      operator_surface_policy: { state_owner: "forge", source: "workflow_artifacts_and_events" }
+    }),
+    "--context",
+    JSON.stringify({ tenant: "smoke" }),
+    "--output",
+    "json"
+  ]);
+
   const workflowArtifacts = runForge([
     "artifacts",
     "--workflow",
@@ -204,6 +232,8 @@ try {
   ]);
   const promotedArtifactCount = bootstrap.promotion?.artifact_count ?? 0;
   const promotedEventCount = bootstrap.promotion?.event_count ?? 0;
+  const snapshotPromotedArtifactCount = operatingSnapshot.promotion?.artifact_count ?? 0;
+  const snapshotPromotedEventCount = operatingSnapshot.promotion?.event_count ?? 0;
   const workflowArtifactCount = workflowArtifacts.artifacts?.length ?? 0;
   const workflowEventKinds = (workflowEvents.events || []).map((event) => event.kind);
 
@@ -218,6 +248,19 @@ try {
   if (promotedEventCount < 1 || !workflowEventKinds.includes("crm.tenant.bootstrap_generated")) {
     throw new Error(
       `expected promoted bootstrap event in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`
+    );
+  }
+  if (operatingSnapshot.promotion?.status !== "addon_executor_result_promoted") {
+    throw new Error(`expected operating snapshot promotion, got ${operatingSnapshot.promotion?.status || "missing"}`);
+  }
+  if (snapshotPromotedArtifactCount < 1 || snapshotPromotedEventCount < 1) {
+    throw new Error(
+      `expected promoted operating snapshot artifact/event, got artifacts=${snapshotPromotedArtifactCount} events=${snapshotPromotedEventCount}`
+    );
+  }
+  if (!workflowEventKinds.includes("crm.operating.snapshot_generated")) {
+    throw new Error(
+      `expected operating snapshot event in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`
     );
   }
 
@@ -339,6 +382,12 @@ try {
     bootstrap_promotion_status: bootstrap.promotion.status,
     bootstrap_promoted_artifacts: promotedArtifactCount,
     bootstrap_promoted_events: promotedEventCount,
+    operating_snapshot_status: operatingSnapshot.status,
+    operating_snapshot_promotion_status: operatingSnapshot.promotion.status,
+    operating_snapshot_surfaces: operatingSnapshot.executor_result.outputs.operator_surface_count,
+    operating_snapshot_modules: operatingSnapshot.executor_result.outputs.business_module_count,
+    operating_snapshot_promoted_artifacts: snapshotPromotedArtifactCount,
+    operating_snapshot_promoted_events: snapshotPromotedEventCount,
     workflow_artifact_count: workflowArtifactCount,
     workflow_event_kinds: workflowEventKinds,
     bootstrap_workflow_count: bootstrap.executor_result.outputs.workflow_count,

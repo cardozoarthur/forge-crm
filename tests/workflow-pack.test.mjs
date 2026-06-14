@@ -54,6 +54,35 @@ test("tenant bootstrap result returns Forge executor artifacts and events", () =
   assert.equal(result.outputs.external_database_required, false);
   assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_workflow_pack"));
   assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_system_blueprint"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_operating_model"));
   assert.equal(result.events[0].kind, "crm.tenant.bootstrap_generated");
 });
 
+test("workflow pack includes a Forge-owned operating model for business surfaces", () => {
+  const pack = buildCrmWorkflowPack({ tenant_id: "acme" });
+  const model = pack.operating_model;
+
+  assert.equal(model.schema_version, "forge.crm_operating_model.v1");
+  assert.equal(model.tenant_id, "acme");
+  assert.equal(model.state_owner, "forge_workflow_runtime");
+  assert.equal(model.external_database_required, false);
+  assert.equal(model.mutation_policy.requires_forge_workflow, true);
+
+  for (const surface of [
+    "relationship_graph",
+    "pipeline_kanban",
+    "commercial_command",
+    "support_queue",
+    "marketing_calendar",
+    "document_queue",
+    "ai_workbench"
+  ]) {
+    assert.ok(model.operator_surfaces[surface], `missing operating surface ${surface}`);
+    assert.ok(model.operator_surfaces[surface].workflow_ids.length > 0, `${surface} needs workflow lineage`);
+  }
+
+  for (const domain of Object.keys(REQUIRED_SCOPE)) {
+    assert.equal(model.business_modules[domain].complete, true, `${domain} operating module incomplete`);
+    assert.ok(model.business_modules[domain].workflow_ids.length > 0, `${domain} needs workflow ids`);
+  }
+});
