@@ -65,6 +65,48 @@ function renderSurfaceRail(snapshot) {
   return rail;
 }
 
+function money(value) {
+  return new Intl.NumberFormat("en-US", {
+    currency: "USD",
+    maximumFractionDigits: 0,
+    style: "currency"
+  }).format(Number(value || 0));
+}
+
+function workbenchPanel(snapshot, panelId) {
+  return snapshot.operational_workbench?.panels.find((panel) => panel.id === panelId);
+}
+
+function actionLabel(snapshot, actionId) {
+  return snapshot.actions.find((action) => action.id === actionId)?.label || actionId;
+}
+
+function actionStrip(snapshot, panel) {
+  const strip = nodeElement("div", "action-strip");
+  for (const actionId of panel.action_ids || []) {
+    const item = nodeElement("span", "action-chip", actionLabel(snapshot, actionId));
+    item.title = actionId;
+    strip.append(item);
+  }
+  return strip;
+}
+
+function panelShell(snapshot, panelId, className) {
+  const panel = workbenchPanel(snapshot, panelId);
+  const section = nodeElement("section", `panel workbench-panel ${className}`);
+  if (!panel) {
+    section.append(nodeElement("h2", "", compactTitle(panelId)));
+    section.append(nodeElement("p", "muted-copy", "Panel unavailable in this snapshot."));
+    return { section, panel: null };
+  }
+
+  section.dataset.surfacePanel = panel.surface_id;
+  section.append(nodeElement("h2", "", panel.title));
+  section.append(nodeElement("p", "panel-source", `${panel.workflow_ids.length} Forge workflows · ${panel.state_source}`));
+  section.append(actionStrip(snapshot, panel));
+  return { section, panel };
+}
+
 export function renderWorkflowGraph(snapshot) {
   const section = nodeElement("section", "panel workflow-panel");
   section.append(nodeElement("h2", "", "Workflow Graph"));
@@ -114,9 +156,122 @@ export function renderKnowledgeGraph(snapshot) {
   return section;
 }
 
+export function renderPipelineKanban(snapshot) {
+  const { section, panel } = panelShell(snapshot, "pipeline_kanban", "pipeline-panel");
+  if (!panel) {
+    return section;
+  }
+
+  const board = nodeElement("div", "pipeline-board");
+  for (const lane of panel.lanes) {
+    const laneElement = nodeElement("section", "pipeline-lane");
+    laneElement.append(nodeElement("h3", "", compactTitle(lane.title)));
+    laneElement.append(nodeElement("span", "lane-count", `${lane.cards.length} open`));
+    for (const card of lane.cards) {
+      const item = nodeElement("article", "pipeline-card");
+      item.append(nodeElement("strong", "", card.account));
+      item.append(nodeElement("span", "", `${card.opportunity_id} · ${money(card.amount)} · ${Math.round(card.probability * 100)}%`));
+      item.append(nodeElement("small", "", `${compactTitle(card.current_state)} -> ${compactTitle(card.next_state)}`));
+      item.append(nodeElement("code", "", actionLabel(snapshot, card.next_action_id)));
+      item.title = card.validation_gate;
+      laneElement.append(item);
+    }
+    board.append(laneElement);
+  }
+  section.append(board);
+  return section;
+}
+
+export function renderCommercialCommand(snapshot) {
+  const { section, panel } = panelShell(snapshot, "commercial_command", "commercial-command");
+  if (!panel) {
+    return section;
+  }
+
+  const summary = nodeElement("div", "command-summary");
+  summary.append(metric("Pipeline", money(panel.forecast.pipeline_value)));
+  summary.append(metric("Weighted", money(panel.forecast.weighted_value)));
+  summary.append(metric("Goal", money(panel.forecast.goal_value)));
+  summary.append(metric("Commission", money(panel.commission.accrued_value)));
+
+  const contracts = nodeElement("div", "commercial-list");
+  for (const contract of panel.contracts) {
+    const item = nodeElement("article", "commercial-row");
+    item.append(nodeElement("strong", "", contract.account));
+    item.append(nodeElement("span", "", `${compactTitle(contract.state)} · ${money(contract.amount)}`));
+    item.append(nodeElement("code", "", actionLabel(snapshot, contract.next_action_id)));
+    contracts.append(item);
+  }
+
+  const accounts = nodeElement("div", "commercial-list account-list");
+  for (const account of panel.accounts) {
+    const item = nodeElement("article", "commercial-row");
+    item.append(nodeElement("strong", "", account.account));
+    item.append(nodeElement("span", "", `Health ${account.health_score} · ${compactTitle(account.renewal_state)}`));
+    item.append(nodeElement("code", "", actionLabel(snapshot, account.next_action_id)));
+    accounts.append(item);
+  }
+
+  section.append(summary, contracts, accounts);
+  return section;
+}
+
+export function renderSupportQueue(snapshot) {
+  const { section, panel } = panelShell(snapshot, "support_queue", "support-queue");
+  if (!panel) {
+    return section;
+  }
+
+  const channels = nodeElement("div", "channel-strip");
+  for (const channel of panel.channels) {
+    channels.append(nodeElement("span", "channel-chip", channel));
+  }
+
+  const tickets = nodeElement("div", "support-ticket-list");
+  for (const ticket of panel.tickets) {
+    const item = nodeElement("article", `support-ticket status-${ticket.sla_status}`);
+    item.append(nodeElement("strong", "", `${ticket.ticket_id} · ${ticket.account}`));
+    item.append(nodeElement("span", "", `${ticket.channel} · ${compactTitle(ticket.state)} · ${ticket.minutes_to_breach} min`));
+    item.append(nodeElement("code", "", actionLabel(snapshot, ticket.action_id)));
+    tickets.append(item);
+  }
+
+  section.append(channels, tickets);
+  return section;
+}
+
+export function renderMarketingCalendar(snapshot) {
+  const { section, panel } = panelShell(snapshot, "marketing_calendar", "marketing-calendar");
+  if (!panel) {
+    return section;
+  }
+
+  const campaigns = nodeElement("div", "campaign-grid");
+  for (const campaign of panel.campaigns) {
+    const item = nodeElement("article", "campaign-row");
+    item.append(nodeElement("strong", "", campaign.campaign_id));
+    item.append(nodeElement("span", "", `${campaign.segment} · ${compactTitle(campaign.state)} · ${campaign.launch_window}`));
+    item.append(nodeElement("code", "", actionLabel(snapshot, campaign.next_action_id)));
+    campaigns.append(item);
+  }
+
+  const forms = nodeElement("div", "form-list");
+  for (const form of panel.forms) {
+    const item = nodeElement("article", "form-row");
+    item.append(nodeElement("strong", "", form.landing_page));
+    item.append(nodeElement("span", "", `${form.pending_submissions} pending submissions`));
+    item.append(nodeElement("code", "", actionLabel(snapshot, form.capture_action_id)));
+    forms.append(item);
+  }
+
+  section.append(campaigns, forms);
+  return section;
+}
+
 export function renderDocumentQueue(snapshot) {
   const section = nodeElement("section", "panel document-panel");
   section.append(nodeElement("h2", "", "Document Queue"));
+  const panel = workbenchPanel(snapshot, "document_queue");
 
   const lanes = nodeElement("div", "document-lanes");
   for (const lane of snapshot.document_queue.lanes) {
@@ -128,6 +283,53 @@ export function renderDocumentQueue(snapshot) {
 
   const artifactLine = nodeElement("p", "artifact-line", snapshot.document_queue.artifact_types.join(" · "));
   section.append(lanes, artifactLine);
+
+  if (panel?.documents?.length) {
+    const documents = nodeElement("div", "document-table");
+    for (const documentItem of panel.documents) {
+      const item = nodeElement("article", "document-item document-row");
+      item.append(nodeElement("strong", "", documentItem.document_id));
+      item.append(nodeElement("span", "", `${documentItem.type} · ${compactTitle(documentItem.state)}`));
+      item.append(nodeElement("code", "", actionLabel(snapshot, documentItem.approval_action_id)));
+      documents.append(item);
+    }
+    section.dataset.surfacePanel = panel.surface_id;
+    section.append(documents);
+  }
+
+  return section;
+}
+
+export function renderAiWorkbench(snapshot) {
+  const { section, panel } = panelShell(snapshot, "ai_workbench", "ai-workbench");
+  if (!panel) {
+    return section;
+  }
+
+  const recommendations = nodeElement("div", "ai-recommendation-list");
+  for (const recommendation of panel.recommendations) {
+    const item = nodeElement("article", "ai-recommendation");
+    item.append(nodeElement("strong", "", compactTitle(recommendation.kind)));
+    item.append(nodeElement("span", "", `${compactTitle(recommendation.state)} · ${recommendation.evidence_artifact_type}`));
+    item.append(nodeElement("code", "", actionLabel(snapshot, recommendation.action_id)));
+    recommendations.append(item);
+  }
+
+  const memory = nodeElement("div", "memory-promotion-list");
+  for (const promotion of panel.memory_promotions) {
+    const item = nodeElement("article", "memory-promotion");
+    item.append(nodeElement("strong", "", promotion.candidate_id));
+    item.append(nodeElement("span", "", `${promotion.source_scope} -> ${promotion.target_scope} · ${promotion.visibility}`));
+    item.append(nodeElement("code", "", actionLabel(snapshot, promotion.action_id)));
+    memory.append(item);
+  }
+
+  const observability = nodeElement(
+    "p",
+    "observability-line",
+    `${panel.observability.risk_count} risks · ${panel.observability.lineage_source} · ${actionLabel(snapshot, panel.observability.readiness_action_id)}`
+  );
+  section.append(recommendations, memory, observability);
   return section;
 }
 
@@ -164,6 +366,7 @@ function renderActions(snapshot) {
 function wireSurfaceFiltering(snapshot) {
   const buttons = [...document.querySelectorAll(".surface-button")];
   const nodes = [...document.querySelectorAll(".workflow-node")];
+  const panels = [...document.querySelectorAll("[data-surface-panel]")];
 
   for (const button of buttons) {
     button.addEventListener("click", () => {
@@ -174,6 +377,9 @@ function wireSurfaceFiltering(snapshot) {
       }
       for (const node of nodes) {
         node.classList.toggle("muted", !surface?.workflow_ids.includes(node.dataset.workflow));
+      }
+      for (const panel of panels) {
+        panel.classList.toggle("muted", panel.dataset.surfacePanel !== selected);
       }
     });
   }
@@ -187,6 +393,11 @@ function render(snapshot) {
   shell.append(renderSurfaceRail(snapshot));
 
   const workspace = nodeElement("div", "workspace");
+  workspace.append(renderPipelineKanban(snapshot));
+  workspace.append(renderCommercialCommand(snapshot));
+  workspace.append(renderSupportQueue(snapshot));
+  workspace.append(renderMarketingCalendar(snapshot));
+  workspace.append(renderAiWorkbench(snapshot));
   workspace.append(renderWorkflowGraph(snapshot));
   workspace.append(renderModuleBoard(snapshot));
   workspace.append(renderKnowledgeGraph(snapshot));

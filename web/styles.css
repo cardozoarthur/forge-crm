@@ -11,6 +11,11 @@
   box-sizing: border-box;
 }
 
+html,
+body {
+  overflow-x: hidden;
+}
+
 body {
   min-width: 320px;
   min-height: 100vh;
@@ -73,7 +78,7 @@ p {
 }
 
 h1 {
-  font-size: clamp(1.5rem, 3vw, 2.4rem);
+  font-size: 2rem;
   line-height: 1.05;
 }
 
@@ -126,6 +131,7 @@ h3 {
 .app-shell {
   display: grid;
   grid-template-columns: 248px minmax(0, 1fr);
+  min-width: 0;
   min-height: calc(100vh - 113px);
 }
 
@@ -133,6 +139,8 @@ h3 {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  min-width: 0;
+  max-width: 100%;
   padding: 16px;
   border-right: 1px solid #d8dfd8;
   background: #eef2ec;
@@ -182,6 +190,7 @@ h3 {
   grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
   gap: 14px;
   align-content: start;
+  min-width: 0;
   padding: 16px;
 }
 
@@ -231,6 +240,181 @@ h3 {
 
 .workflow-node.muted {
   opacity: 0.34;
+}
+
+.workbench-panel.muted,
+.document-panel.muted {
+  opacity: 0.42;
+}
+
+.panel-source,
+.muted-copy {
+  margin-top: 6px;
+  color: #607078;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.action-strip,
+.channel-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.action-chip,
+.channel-chip {
+  min-height: 24px;
+  padding: 4px 7px;
+  border: 1px solid #c7d4d9;
+  border-radius: 6px;
+  background: #f4f8fa;
+  color: #285f9d;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.pipeline-panel,
+.commercial-command {
+  grid-column: span 1;
+}
+
+.pipeline-board {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(156px, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.pipeline-lane {
+  display: grid;
+  grid-template-rows: auto auto minmax(118px, 1fr);
+  gap: 7px;
+  min-width: 0;
+  min-height: 188px;
+  padding: 10px;
+  border: 1px solid #d8dfd8;
+  border-radius: 8px;
+  background: #fbfcf9;
+}
+
+.lane-count {
+  color: #607078;
+  font-size: 0.72rem;
+}
+
+.pipeline-card,
+.commercial-row,
+.support-ticket,
+.campaign-row,
+.form-row,
+.ai-recommendation,
+.memory-promotion,
+.document-item {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #d8dfd8;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.pipeline-card {
+  min-height: 112px;
+  border-left: 4px solid #126c55;
+}
+
+.pipeline-card span,
+.pipeline-card small,
+.commercial-row span,
+.support-ticket span,
+.campaign-row span,
+.form-row span,
+.ai-recommendation span,
+.memory-promotion span {
+  color: #607078;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.pipeline-card code,
+.commercial-row code,
+.support-ticket code,
+.campaign-row code,
+.form-row code,
+.ai-recommendation code,
+.memory-promotion code,
+.document-item code {
+  color: #285f9d;
+  font-size: 0.74rem;
+  overflow-wrap: anywhere;
+}
+
+.command-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(92px, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.commercial-list,
+.support-ticket-list,
+.campaign-grid,
+.form-list,
+.ai-recommendation-list,
+.memory-promotion-list,
+.document-table {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.commercial-row {
+  grid-template-columns: minmax(0, 1fr) minmax(120px, auto) minmax(110px, 0.6fr);
+  align-items: center;
+}
+
+.support-queue,
+.marketing-calendar,
+.ai-workbench {
+  grid-column: span 1;
+}
+
+.support-ticket {
+  border-left: 4px solid #126c55;
+}
+
+.support-ticket.status-at_risk {
+  border-left-color: #a53c3c;
+}
+
+.support-ticket.status-waiting_on_customer {
+  border-left-color: #9b4d19;
+}
+
+.campaign-row,
+.form-row {
+  border-left: 4px solid #9b4d19;
+}
+
+.ai-recommendation,
+.memory-promotion {
+  border-left: 4px solid #285f9d;
+}
+
+.observability-line {
+  margin-top: 10px;
+  padding: 9px 10px;
+  border: 1px solid #d8dfd8;
+  border-radius: 8px;
+  background: #fbfcf9;
+  color: #405057;
+  font-size: 0.8rem;
+  line-height: 1.4;
 }
 
 .node-domain,
@@ -323,6 +507,14 @@ h3 {
   font-size: 0.82rem;
 }
 
+.document-item {
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1fr);
+}
+
+.document-item code {
+  grid-column: 1 / -1;
+}
+
 .action-row {
   grid-template-columns: minmax(0, 0.8fr) minmax(0, 1fr);
 }
@@ -380,10 +572,17 @@ h3 {
   }
 
   .metrics,
+  .command-summary,
   .module-grid,
   .workflow-graph,
-  .knowledge-graph {
+  .knowledge-graph,
+  .pipeline-board,
+  .commercial-row {
     grid-template-columns: 1fr;
+  }
+
+  h1 {
+    font-size: 1.55rem;
   }
 
   .surface-button {

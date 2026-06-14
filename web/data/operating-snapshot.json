@@ -1500,6 +1500,511 @@
     "approval_required": true,
     "rework_policy": "failed validation returns the owning workflow to work with a reason"
   },
+  "operational_workbench": {
+    "schema_version": "forge.crm_operational_workbench.v1",
+    "state_source": "forge_workflow_artifacts_and_events",
+    "mutation_requires_forge": true,
+    "panels": [
+      {
+        "id": "pipeline_kanban",
+        "title": "Pipeline Kanban",
+        "surface_id": "crm.pipeline-kanban",
+        "state_source": "forge_workflow_artifacts_and_events",
+        "mutation_requires_forge": true,
+        "workflow_ids": [
+          "crm.opportunity.pipeline"
+        ],
+        "action_ids": [
+          "crm.move-pipeline-stage",
+          "crm.generate-proposal",
+          "crm.run-operating-copilot"
+        ],
+        "lanes": [
+          {
+            "id": "research",
+            "title": "research",
+            "lane_state": "research",
+            "workflow_ids": [
+              "crm.opportunity.pipeline"
+            ],
+            "cards": [
+              {
+                "opportunity_id": "opp-fit-001",
+                "account": "Atlas Foods",
+                "amount": 180000,
+                "probability": 0.22,
+                "owner": "sales.ops",
+                "next_state": "discovery",
+                "next_action_id": "crm.move-pipeline-stage",
+                "forge_artifact_ref": "forge://artifact/crm_pipeline_board/opp-fit-001",
+                "validation_gate": "stage movement is event-backed",
+                "current_state": "research",
+                "state_source": "forge_workflow_artifacts_and_events"
+              }
+            ]
+          },
+          {
+            "id": "discovery",
+            "title": "discovery",
+            "lane_state": "discovery",
+            "workflow_ids": [
+              "crm.opportunity.pipeline"
+            ],
+            "cards": [
+              {
+                "opportunity_id": "opp-discovery-014",
+                "account": "Rota Sul Logistics",
+                "amount": 320000,
+                "probability": 0.44,
+                "owner": "account.lead",
+                "next_state": "proposal",
+                "next_action_id": "crm.move-pipeline-stage",
+                "forge_artifact_ref": "forge://artifact/crm_timeline_snapshot/opp-discovery-014",
+                "validation_gate": "forecast impact recorded",
+                "current_state": "discovery",
+                "state_source": "forge_workflow_artifacts_and_events"
+              }
+            ]
+          },
+          {
+            "id": "proposal",
+            "title": "proposal",
+            "lane_state": "proposal",
+            "workflow_ids": [
+              "crm.opportunity.pipeline"
+            ],
+            "cards": [
+              {
+                "opportunity_id": "opp-proposal-022",
+                "account": "Helio Grid",
+                "amount": 410000,
+                "probability": 0.62,
+                "owner": "solutions",
+                "next_state": "negotiation",
+                "next_action_id": "crm.generate-proposal",
+                "forge_artifact_ref": "forge://artifact/crm_proposal/opp-proposal-022",
+                "validation_gate": "artifact lineage present",
+                "current_state": "proposal",
+                "state_source": "forge_workflow_artifacts_and_events"
+              }
+            ]
+          },
+          {
+            "id": "negotiation",
+            "title": "negotiation",
+            "lane_state": "negotiation",
+            "workflow_ids": [
+              "crm.opportunity.pipeline"
+            ],
+            "cards": [
+              {
+                "opportunity_id": "opp-renewal-031",
+                "account": "Northstar Retail",
+                "amount": 540000,
+                "probability": 0.78,
+                "owner": "commercial.director",
+                "next_state": "won",
+                "next_action_id": "crm.manage-contract-signature",
+                "forge_artifact_ref": "forge://artifact/crm_contract/opp-renewal-031",
+                "validation_gate": "contract approval lineage present",
+                "current_state": "negotiation",
+                "state_source": "forge_workflow_artifacts_and_events"
+              }
+            ]
+          },
+          {
+            "id": "won",
+            "title": "won",
+            "lane_state": "won",
+            "workflow_ids": [
+              "crm.opportunity.pipeline"
+            ],
+            "cards": []
+          },
+          {
+            "id": "lost",
+            "title": "lost",
+            "lane_state": "lost",
+            "workflow_ids": [
+              "crm.opportunity.pipeline"
+            ],
+            "cards": []
+          }
+        ]
+      },
+      {
+        "id": "commercial_command",
+        "title": "Commercial command",
+        "surface_id": "crm.commercial-command",
+        "state_source": "forge_workflow_artifacts_and_events",
+        "mutation_requires_forge": true,
+        "workflow_ids": [
+          "crm.opportunity.pipeline",
+          "crm.followup.forecast",
+          "crm.account.management",
+          "crm.project.handoff",
+          "crm.proposal.approval",
+          "crm.contract.signature"
+        ],
+        "action_ids": [
+          "crm.review-followup-forecast",
+          "crm.manage-account",
+          "crm.manage-contract-signature",
+          "crm.plan-project-handoff",
+          "crm.generate-proposal"
+        ],
+        "forecast": {
+          "workflow_id": "crm.followup.forecast",
+          "pipeline_value": 1450000,
+          "weighted_value": 836800,
+          "goal_value": 1000000,
+          "forecast_state": "forecast_reviewed",
+          "report_artifact_type": "crm_forecast_report",
+          "next_action_id": "crm.review-followup-forecast"
+        },
+        "commission": {
+          "workflow_id": "crm.followup.forecast",
+          "accrued_value": 67200,
+          "state": "commission_accrued",
+          "evidence_artifact_type": "crm_commission_record",
+          "plan_action_id": "crm.review-followup-forecast"
+        },
+        "contracts": [
+          {
+            "account": "Northstar Retail",
+            "workflow_id": "crm.contract.signature",
+            "state": "signature_wait",
+            "amount": 540000,
+            "approval_lineage_required": true,
+            "next_action_id": "crm.manage-contract-signature"
+          }
+        ],
+        "accounts": [
+          {
+            "account": "Rota Sul Logistics",
+            "workflow_id": "crm.account.management",
+            "health_score": 82,
+            "renewal_state": "renewal_planned",
+            "expansion_state": "expansion_identified",
+            "next_action_id": "crm.manage-account"
+          },
+          {
+            "account": "Atlas Foods",
+            "workflow_id": "crm.project.handoff",
+            "health_score": 71,
+            "renewal_state": "success_plan_active",
+            "expansion_state": "handoff_requested",
+            "next_action_id": "crm.plan-project-handoff"
+          }
+        ]
+      },
+      {
+        "id": "support_queue",
+        "title": "Support queue",
+        "surface_id": "crm.support-queue",
+        "state_source": "forge_workflow_artifacts_and_events",
+        "mutation_requires_forge": true,
+        "workflow_ids": [
+          "crm.ticket.sla"
+        ],
+        "action_ids": [
+          "crm.ingest-omnichannel-message",
+          "crm.triage-ticket-sla",
+          "crm.deliver-handoff"
+        ],
+        "channels": [
+          "chat",
+          "whatsapp",
+          "telegram",
+          "email"
+        ],
+        "sla_targets": [
+          {
+            "priority": "p1",
+            "first_response_minutes": 15,
+            "resolution_hours": 4
+          },
+          {
+            "priority": "p2",
+            "first_response_minutes": 60,
+            "resolution_hours": 12
+          }
+        ],
+        "tickets": [
+          {
+            "ticket_id": "sup-1042",
+            "account": "Northstar Retail",
+            "channel": "whatsapp",
+            "state": "sla_escalation",
+            "sla_status": "at_risk",
+            "owner": "support.lead",
+            "minutes_to_breach": 18,
+            "action_id": "crm.triage-ticket-sla",
+            "handoff_action_id": "crm.deliver-handoff"
+          },
+          {
+            "ticket_id": "sup-1057",
+            "account": "Helio Grid",
+            "channel": "email",
+            "state": "customer_wait",
+            "sla_status": "waiting_on_customer",
+            "owner": "success.manager",
+            "minutes_to_breach": 240,
+            "action_id": "crm.ingest-omnichannel-message",
+            "handoff_action_id": "crm.deliver-handoff"
+          }
+        ]
+      },
+      {
+        "id": "marketing_calendar",
+        "title": "Marketing calendar",
+        "surface_id": "crm.marketing-calendar",
+        "state_source": "forge_workflow_artifacts_and_events",
+        "mutation_requires_forge": true,
+        "workflow_ids": [
+          "crm.campaign.lifecycle",
+          "crm.lead.nurture"
+        ],
+        "action_ids": [
+          "crm.automate-campaign",
+          "crm.capture-form-submission",
+          "crm.deliver-handoff"
+        ],
+        "campaigns": [
+          {
+            "campaign_id": "cmp-expansion-q3",
+            "workflow_id": "crm.campaign.lifecycle",
+            "segment": "enterprise renewal accounts",
+            "state": "scheduled",
+            "launch_window": "week_32",
+            "approval_state": "approved",
+            "artifact_type": "crm_campaign",
+            "next_action_id": "crm.automate-campaign"
+          },
+          {
+            "campaign_id": "cmp-logistics-demo",
+            "workflow_id": "crm.campaign.lifecycle",
+            "segment": "mid-market operations",
+            "state": "approval_wait",
+            "launch_window": "week_33",
+            "approval_state": "waiting",
+            "artifact_type": "crm_landing_page",
+            "next_action_id": "crm.automate-campaign"
+          }
+        ],
+        "forms": [
+          {
+            "form_id": "form-demo-request",
+            "workflow_id": "crm.campaign.lifecycle",
+            "landing_page": "demo-request",
+            "pending_submissions": 17,
+            "consent_artifact_type": "crm_consent_record",
+            "capture_action_id": "crm.capture-form-submission"
+          }
+        ],
+        "nurture_tracks": [
+          {
+            "track_id": "nurture-inbound-001",
+            "workflow_id": "crm.lead.nurture",
+            "state": "wait_step",
+            "next_message_state": "message_ready",
+            "next_action_id": "crm.automate-campaign"
+          }
+        ]
+      },
+      {
+        "id": "document_queue",
+        "title": "Document queue",
+        "surface_id": "crm.document-queue",
+        "state_source": "forge_workflow_artifacts_and_events",
+        "mutation_requires_forge": true,
+        "workflow_ids": [
+          "crm.proposal.approval",
+          "crm.contract.signature",
+          "crm.document.approval"
+        ],
+        "action_ids": [
+          "crm.generate-proposal",
+          "crm.generate-document",
+          "crm.validate-document",
+          "crm.record-document-approval",
+          "crm.manage-contract-signature"
+        ],
+        "lanes": [
+          {
+            "id": "draft_requested",
+            "title": "draft requested",
+            "workflow_ids": [
+              "crm.proposal.approval"
+            ]
+          },
+          {
+            "id": "draft_generated",
+            "title": "draft generated",
+            "workflow_ids": [
+              "crm.proposal.approval"
+            ]
+          },
+          {
+            "id": "submitted",
+            "title": "submitted",
+            "workflow_ids": [
+              "crm.document.approval"
+            ]
+          },
+          {
+            "id": "validation",
+            "title": "validation",
+            "workflow_ids": [
+              "crm.document.approval"
+            ]
+          },
+          {
+            "id": "approval_wait",
+            "title": "approval wait",
+            "workflow_ids": [
+              "crm.proposal.approval",
+              "crm.document.approval"
+            ]
+          },
+          {
+            "id": "approved",
+            "title": "approved",
+            "workflow_ids": [
+              "crm.proposal.approval",
+              "crm.document.approval"
+            ]
+          },
+          {
+            "id": "rework_required",
+            "title": "rework required",
+            "workflow_ids": [
+              "crm.proposal.approval",
+              "crm.document.approval"
+            ]
+          },
+          {
+            "id": "delivered",
+            "title": "delivered",
+            "workflow_ids": [
+              "crm.proposal.approval"
+            ]
+          },
+          {
+            "id": "archived",
+            "title": "archived",
+            "workflow_ids": [
+              "crm.document.approval"
+            ]
+          },
+          {
+            "id": "signature_wait",
+            "title": "signature wait",
+            "workflow_ids": [
+              "crm.contract.signature"
+            ]
+          }
+        ],
+        "artifact_types": [
+          "crm_approval_record",
+          "crm_contract",
+          "crm_document",
+          "crm_handoff_record",
+          "crm_presentation",
+          "crm_proposal",
+          "crm_renewal_plan",
+          "crm_signature_receipt"
+        ],
+        "documents": [
+          {
+            "document_id": "doc-prop-022",
+            "type": "crm_proposal",
+            "workflow_id": "crm.proposal.approval",
+            "state": "approval_wait",
+            "owner": "commercial.director",
+            "artifact_ref": "forge://artifact/crm_proposal/doc-prop-022",
+            "validation_action_id": "crm.validate-document",
+            "approval_action_id": "crm.record-document-approval"
+          },
+          {
+            "document_id": "doc-contract-031",
+            "type": "crm_contract",
+            "workflow_id": "crm.contract.signature",
+            "state": "signature_wait",
+            "owner": "legal.ops",
+            "artifact_ref": "forge://artifact/crm_contract/doc-contract-031",
+            "validation_action_id": "crm.validate-document",
+            "approval_action_id": "crm.manage-contract-signature"
+          },
+          {
+            "document_id": "doc-board-006",
+            "type": "crm_presentation",
+            "workflow_id": "crm.document.approval",
+            "state": "rework_required",
+            "owner": "delivery.ops",
+            "artifact_ref": "forge://artifact/crm_presentation/doc-board-006",
+            "validation_action_id": "crm.validate-document",
+            "approval_action_id": "crm.record-document-approval"
+          }
+        ]
+      },
+      {
+        "id": "ai_workbench",
+        "title": "AI workbench",
+        "surface_id": "crm.ai-workbench",
+        "state_source": "forge_workflow_artifacts_and_events",
+        "mutation_requires_forge": true,
+        "workflow_ids": [
+          "crm.ai.copilot.recommendation"
+        ],
+        "action_ids": [
+          "crm.run-operating-copilot",
+          "crm.prepare-memory-promotion",
+          "crm.inspect-observability",
+          "crm.generate-readiness-package"
+        ],
+        "recommendations": [
+          {
+            "recommendation_id": "ai-rec-2401",
+            "workflow_id": "crm.ai.copilot.recommendation",
+            "kind": "opportunity_prioritization",
+            "state": "review_wait",
+            "target_surface_id": "crm.pipeline-kanban",
+            "evidence_artifact_type": "crm_ai_recommendation",
+            "target_action_id": "crm.move-pipeline-stage",
+            "action_id": "crm.run-operating-copilot"
+          },
+          {
+            "recommendation_id": "ai-risk-0902",
+            "workflow_id": "crm.ai.copilot.recommendation",
+            "kind": "risk_analysis",
+            "state": "recommendation_generated",
+            "target_surface_id": "crm.commercial-command",
+            "evidence_artifact_type": "crm_risk_analysis",
+            "target_action_id": "crm.manage-account",
+            "action_id": "crm.run-operating-copilot"
+          }
+        ],
+        "memory_promotions": [
+          {
+            "candidate_id": "mem-promote-011",
+            "workflow_id": "crm.ai.copilot.recommendation",
+            "source_scope": "processing",
+            "target_scope": "organization",
+            "visibility": "internal",
+            "action_id": "crm.prepare-memory-promotion"
+          }
+        ],
+        "observability": {
+          "workflow_id": "crm.operational.observability",
+          "risk_count": 2,
+          "lineage_source": "forge.events.timeline",
+          "inspect_action_id": "crm.inspect-observability",
+          "readiness_action_id": "crm.generate-readiness-package"
+        }
+      }
+    ]
+  },
   "actions": [
     {
       "id": "crm.refresh-operating-snapshot",

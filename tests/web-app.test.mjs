@@ -82,6 +82,44 @@ test("web app snapshot provides Forge command actions instead of local automatio
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.ai.operating_copilot.executor"));
 });
 
+test("web app snapshot exposes an operational workbench backed by Forge artifacts and events", () => {
+  const snapshot = buildCrmWebAppSnapshot({ tenant_id: "demo" });
+  const workbench = snapshot.operational_workbench;
+
+  assert.equal(workbench.schema_version, "forge.crm_operational_workbench.v1");
+  assert.equal(workbench.state_source, "forge_workflow_artifacts_and_events");
+  assert.equal(workbench.mutation_requires_forge, true);
+
+  const panels = new Map(workbench.panels.map((panel) => [panel.id, panel]));
+  for (const [panelId, surfaceId] of [
+    ["pipeline_kanban", "crm.pipeline-kanban"],
+    ["commercial_command", "crm.commercial-command"],
+    ["support_queue", "crm.support-queue"],
+    ["marketing_calendar", "crm.marketing-calendar"],
+    ["document_queue", "crm.document-queue"],
+    ["ai_workbench", "crm.ai-workbench"]
+  ]) {
+    const panel = panels.get(panelId);
+    assert.ok(panel, `missing ${panelId}`);
+    assert.equal(panel.surface_id, surfaceId);
+    assert.equal(panel.state_source, "forge_workflow_artifacts_and_events");
+    assert.equal(panel.mutation_requires_forge, true);
+    assert.ok(panel.workflow_ids.length > 0, `${panelId} should be tied to Forge workflows`);
+    assert.ok(panel.action_ids.length > 0, `${panelId} should expose Forge command actions`);
+  }
+
+  assert.ok(panels.get("pipeline_kanban").lanes.some((lane) => lane.cards.some((card) => card.next_action_id === "crm.move-pipeline-stage")));
+  assert.ok(panels.get("commercial_command").forecast.pipeline_value > 0);
+  assert.ok(panels.get("commercial_command").commission.plan_action_id === "crm.review-followup-forecast");
+  assert.ok(panels.get("support_queue").tickets.some((ticket) => ticket.sla_status === "at_risk"));
+  assert.ok(panels.get("support_queue").channels.includes("whatsapp"));
+  assert.ok(panels.get("marketing_calendar").campaigns.some((campaign) => campaign.next_action_id === "crm.automate-campaign"));
+  assert.ok(panels.get("marketing_calendar").forms.some((form) => form.capture_action_id === "crm.capture-form-submission"));
+  assert.ok(panels.get("document_queue").documents.some((document) => document.approval_action_id === "crm.record-document-approval"));
+  assert.ok(panels.get("ai_workbench").recommendations.some((recommendation) => recommendation.action_id === "crm.run-operating-copilot"));
+  assert.ok(panels.get("ai_workbench").memory_promotions.some((promotion) => promotion.action_id === "crm.prepare-memory-promotion"));
+});
+
 test("web assets mount the generated CRM snapshot without a build step", async () => {
   const html = await readFile(new URL("../web/index.html", import.meta.url), "utf8");
   const app = await readFile(new URL("../web/app.js", import.meta.url), "utf8");
@@ -96,9 +134,19 @@ test("web assets mount the generated CRM snapshot without a build step", async (
   assert.match(app, /renderWorkflowGraph/);
   assert.match(app, /renderKnowledgeGraph/);
   assert.match(app, /renderDocumentQueue/);
+  assert.match(app, /renderPipelineKanban/);
+  assert.match(app, /renderCommercialCommand/);
+  assert.match(app, /renderSupportQueue/);
+  assert.match(app, /renderMarketingCalendar/);
+  assert.match(app, /renderAiWorkbench/);
   assert.match(styles, /\.workflow-node/);
   assert.match(styles, /\.knowledge-node/);
   assert.match(styles, /\.document-row/);
+  assert.match(styles, /\.pipeline-board/);
+  assert.match(styles, /\.commercial-command/);
+  assert.match(styles, /\.support-queue/);
+  assert.match(styles, /\.marketing-calendar/);
+  assert.match(styles, /\.ai-workbench/);
   assert.match(favicon, /<svg/);
 });
 

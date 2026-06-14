@@ -54,6 +54,8 @@ const DESIGN_TOKENS = {
   density: "compact_operational"
 };
 
+const WORKBENCH_STATE_SOURCE = "forge_workflow_artifacts_and_events";
+
 function slug(value, fallback = "tenant") {
   const normalized = String(value || fallback)
     .trim()
@@ -136,6 +138,374 @@ function documentQueue(workflows) {
     artifact_types: unique(documentWorkflows.flatMap((workflow) => workflow.artifacts)).sort(),
     approval_required: true,
     rework_policy: "failed validation returns the owning workflow to work with a reason"
+  };
+}
+
+function actionExists(actionList, actionId) {
+  return actionList.some((action) => action.id === actionId);
+}
+
+function checkedActionIds(actionList, actionIds) {
+  return actionIds.filter((actionId) => actionExists(actionList, actionId));
+}
+
+function workflowIdsForSurface(workflows, surfaceId) {
+  return workflows.filter((workflow) => workflow.views.includes(surfaceId)).map((workflow) => workflow.id);
+}
+
+function panelBase({ id, title, surface_id, workflow_ids, action_ids }) {
+  return {
+    id,
+    title,
+    surface_id,
+    state_source: WORKBENCH_STATE_SOURCE,
+    mutation_requires_forge: true,
+    workflow_ids,
+    action_ids
+  };
+}
+
+function buildOperationalWorkbench(workflows, actionList, documentQueueSnapshot) {
+  const pipelineWorkflow = workflows.find((workflow) => workflow.id === "crm.opportunity.pipeline");
+  const pipelineCards = {
+    research: [
+      {
+        opportunity_id: "opp-fit-001",
+        account: "Atlas Foods",
+        amount: 180000,
+        probability: 0.22,
+        owner: "sales.ops",
+        next_state: "discovery",
+        next_action_id: "crm.move-pipeline-stage",
+        forge_artifact_ref: "forge://artifact/crm_pipeline_board/opp-fit-001",
+        validation_gate: "stage movement is event-backed"
+      }
+    ],
+    discovery: [
+      {
+        opportunity_id: "opp-discovery-014",
+        account: "Rota Sul Logistics",
+        amount: 320000,
+        probability: 0.44,
+        owner: "account.lead",
+        next_state: "proposal",
+        next_action_id: "crm.move-pipeline-stage",
+        forge_artifact_ref: "forge://artifact/crm_timeline_snapshot/opp-discovery-014",
+        validation_gate: "forecast impact recorded"
+      }
+    ],
+    proposal: [
+      {
+        opportunity_id: "opp-proposal-022",
+        account: "Helio Grid",
+        amount: 410000,
+        probability: 0.62,
+        owner: "solutions",
+        next_state: "negotiation",
+        next_action_id: "crm.generate-proposal",
+        forge_artifact_ref: "forge://artifact/crm_proposal/opp-proposal-022",
+        validation_gate: "artifact lineage present"
+      }
+    ],
+    negotiation: [
+      {
+        opportunity_id: "opp-renewal-031",
+        account: "Northstar Retail",
+        amount: 540000,
+        probability: 0.78,
+        owner: "commercial.director",
+        next_state: "won",
+        next_action_id: "crm.manage-contract-signature",
+        forge_artifact_ref: "forge://artifact/crm_contract/opp-renewal-031",
+        validation_gate: "contract approval lineage present"
+      }
+    ]
+  };
+
+  const pipelinePanel = {
+    ...panelBase({
+      id: "pipeline_kanban",
+      title: "Pipeline Kanban",
+      surface_id: "crm.pipeline-kanban",
+      workflow_ids: workflowIdsForSurface(workflows, "crm.pipeline-kanban"),
+      action_ids: checkedActionIds(actionList, ["crm.move-pipeline-stage", "crm.generate-proposal", "crm.run-operating-copilot"])
+    }),
+    lanes: (pipelineWorkflow?.states || []).map((state) => ({
+      id: state,
+      title: state.replace(/_/g, " "),
+      lane_state: state,
+      workflow_ids: ["crm.opportunity.pipeline"],
+      cards: (pipelineCards[state] || []).map((card) => ({
+        ...card,
+        current_state: state,
+        state_source: WORKBENCH_STATE_SOURCE
+      }))
+    }))
+  };
+
+  const commercialPanel = {
+    ...panelBase({
+      id: "commercial_command",
+      title: "Commercial command",
+      surface_id: "crm.commercial-command",
+      workflow_ids: unique([
+        ...workflowIdsForSurface(workflows, "crm.commercial-command"),
+        "crm.proposal.approval",
+        "crm.contract.signature"
+      ]),
+      action_ids: checkedActionIds(actionList, [
+        "crm.review-followup-forecast",
+        "crm.manage-account",
+        "crm.manage-contract-signature",
+        "crm.plan-project-handoff",
+        "crm.generate-proposal"
+      ])
+    }),
+    forecast: {
+      workflow_id: "crm.followup.forecast",
+      pipeline_value: 1450000,
+      weighted_value: 836800,
+      goal_value: 1000000,
+      forecast_state: "forecast_reviewed",
+      report_artifact_type: "crm_forecast_report",
+      next_action_id: "crm.review-followup-forecast"
+    },
+    commission: {
+      workflow_id: "crm.followup.forecast",
+      accrued_value: 67200,
+      state: "commission_accrued",
+      evidence_artifact_type: "crm_commission_record",
+      plan_action_id: "crm.review-followup-forecast"
+    },
+    contracts: [
+      {
+        account: "Northstar Retail",
+        workflow_id: "crm.contract.signature",
+        state: "signature_wait",
+        amount: 540000,
+        approval_lineage_required: true,
+        next_action_id: "crm.manage-contract-signature"
+      }
+    ],
+    accounts: [
+      {
+        account: "Rota Sul Logistics",
+        workflow_id: "crm.account.management",
+        health_score: 82,
+        renewal_state: "renewal_planned",
+        expansion_state: "expansion_identified",
+        next_action_id: "crm.manage-account"
+      },
+      {
+        account: "Atlas Foods",
+        workflow_id: "crm.project.handoff",
+        health_score: 71,
+        renewal_state: "success_plan_active",
+        expansion_state: "handoff_requested",
+        next_action_id: "crm.plan-project-handoff"
+      }
+    ]
+  };
+
+  const supportPanel = {
+    ...panelBase({
+      id: "support_queue",
+      title: "Support queue",
+      surface_id: "crm.support-queue",
+      workflow_ids: workflowIdsForSurface(workflows, "crm.support-queue"),
+      action_ids: checkedActionIds(actionList, ["crm.ingest-omnichannel-message", "crm.triage-ticket-sla", "crm.deliver-handoff"])
+    }),
+    channels: ["chat", "whatsapp", "telegram", "email"],
+    sla_targets: [
+      { priority: "p1", first_response_minutes: 15, resolution_hours: 4 },
+      { priority: "p2", first_response_minutes: 60, resolution_hours: 12 }
+    ],
+    tickets: [
+      {
+        ticket_id: "sup-1042",
+        account: "Northstar Retail",
+        channel: "whatsapp",
+        state: "sla_escalation",
+        sla_status: "at_risk",
+        owner: "support.lead",
+        minutes_to_breach: 18,
+        action_id: "crm.triage-ticket-sla",
+        handoff_action_id: "crm.deliver-handoff"
+      },
+      {
+        ticket_id: "sup-1057",
+        account: "Helio Grid",
+        channel: "email",
+        state: "customer_wait",
+        sla_status: "waiting_on_customer",
+        owner: "success.manager",
+        minutes_to_breach: 240,
+        action_id: "crm.ingest-omnichannel-message",
+        handoff_action_id: "crm.deliver-handoff"
+      }
+    ]
+  };
+
+  const marketingPanel = {
+    ...panelBase({
+      id: "marketing_calendar",
+      title: "Marketing calendar",
+      surface_id: "crm.marketing-calendar",
+      workflow_ids: workflowIdsForSurface(workflows, "crm.marketing-calendar"),
+      action_ids: checkedActionIds(actionList, ["crm.automate-campaign", "crm.capture-form-submission", "crm.deliver-handoff"])
+    }),
+    campaigns: [
+      {
+        campaign_id: "cmp-expansion-q3",
+        workflow_id: "crm.campaign.lifecycle",
+        segment: "enterprise renewal accounts",
+        state: "scheduled",
+        launch_window: "week_32",
+        approval_state: "approved",
+        artifact_type: "crm_campaign",
+        next_action_id: "crm.automate-campaign"
+      },
+      {
+        campaign_id: "cmp-logistics-demo",
+        workflow_id: "crm.campaign.lifecycle",
+        segment: "mid-market operations",
+        state: "approval_wait",
+        launch_window: "week_33",
+        approval_state: "waiting",
+        artifact_type: "crm_landing_page",
+        next_action_id: "crm.automate-campaign"
+      }
+    ],
+    forms: [
+      {
+        form_id: "form-demo-request",
+        workflow_id: "crm.campaign.lifecycle",
+        landing_page: "demo-request",
+        pending_submissions: 17,
+        consent_artifact_type: "crm_consent_record",
+        capture_action_id: "crm.capture-form-submission"
+      }
+    ],
+    nurture_tracks: [
+      {
+        track_id: "nurture-inbound-001",
+        workflow_id: "crm.lead.nurture",
+        state: "wait_step",
+        next_message_state: "message_ready",
+        next_action_id: "crm.automate-campaign"
+      }
+    ]
+  };
+
+  const documentPanel = {
+    ...panelBase({
+      id: "document_queue",
+      title: "Document queue",
+      surface_id: "crm.document-queue",
+      workflow_ids: workflowIdsForSurface(workflows, "crm.document-queue"),
+      action_ids: checkedActionIds(actionList, [
+        "crm.generate-proposal",
+        "crm.generate-document",
+        "crm.validate-document",
+        "crm.record-document-approval",
+        "crm.manage-contract-signature"
+      ])
+    }),
+    lanes: documentQueueSnapshot.lanes,
+    artifact_types: documentQueueSnapshot.artifact_types,
+    documents: [
+      {
+        document_id: "doc-prop-022",
+        type: "crm_proposal",
+        workflow_id: "crm.proposal.approval",
+        state: "approval_wait",
+        owner: "commercial.director",
+        artifact_ref: "forge://artifact/crm_proposal/doc-prop-022",
+        validation_action_id: "crm.validate-document",
+        approval_action_id: "crm.record-document-approval"
+      },
+      {
+        document_id: "doc-contract-031",
+        type: "crm_contract",
+        workflow_id: "crm.contract.signature",
+        state: "signature_wait",
+        owner: "legal.ops",
+        artifact_ref: "forge://artifact/crm_contract/doc-contract-031",
+        validation_action_id: "crm.validate-document",
+        approval_action_id: "crm.manage-contract-signature"
+      },
+      {
+        document_id: "doc-board-006",
+        type: "crm_presentation",
+        workflow_id: "crm.document.approval",
+        state: "rework_required",
+        owner: "delivery.ops",
+        artifact_ref: "forge://artifact/crm_presentation/doc-board-006",
+        validation_action_id: "crm.validate-document",
+        approval_action_id: "crm.record-document-approval"
+      }
+    ]
+  };
+
+  const aiPanel = {
+    ...panelBase({
+      id: "ai_workbench",
+      title: "AI workbench",
+      surface_id: "crm.ai-workbench",
+      workflow_ids: workflowIdsForSurface(workflows, "crm.ai-workbench"),
+      action_ids: checkedActionIds(actionList, [
+        "crm.run-operating-copilot",
+        "crm.prepare-memory-promotion",
+        "crm.inspect-observability",
+        "crm.generate-readiness-package"
+      ])
+    }),
+    recommendations: [
+      {
+        recommendation_id: "ai-rec-2401",
+        workflow_id: "crm.ai.copilot.recommendation",
+        kind: "opportunity_prioritization",
+        state: "review_wait",
+        target_surface_id: "crm.pipeline-kanban",
+        evidence_artifact_type: "crm_ai_recommendation",
+        target_action_id: "crm.move-pipeline-stage",
+        action_id: "crm.run-operating-copilot"
+      },
+      {
+        recommendation_id: "ai-risk-0902",
+        workflow_id: "crm.ai.copilot.recommendation",
+        kind: "risk_analysis",
+        state: "recommendation_generated",
+        target_surface_id: "crm.commercial-command",
+        evidence_artifact_type: "crm_risk_analysis",
+        target_action_id: "crm.manage-account",
+        action_id: "crm.run-operating-copilot"
+      }
+    ],
+    memory_promotions: [
+      {
+        candidate_id: "mem-promote-011",
+        workflow_id: "crm.ai.copilot.recommendation",
+        source_scope: "processing",
+        target_scope: "organization",
+        visibility: "internal",
+        action_id: "crm.prepare-memory-promotion"
+      }
+    ],
+    observability: {
+      workflow_id: "crm.operational.observability",
+      risk_count: 2,
+      lineage_source: "forge.events.timeline",
+      inspect_action_id: "crm.inspect-observability",
+      readiness_action_id: "crm.generate-readiness-package"
+    }
+  };
+
+  return {
+    schema_version: "forge.crm_operational_workbench.v1",
+    state_source: WORKBENCH_STATE_SOURCE,
+    mutation_requires_forge: true,
+    panels: [pipelinePanel, commercialPanel, supportPanel, marketingPanel, documentPanel, aiPanel]
   };
 }
 
@@ -356,6 +726,8 @@ export function buildCrmWebAppSnapshot(options = {}) {
   const pack = buildCrmWorkflowPack({ tenant_id: tenantId });
   const model = buildCrmOperatingModel({ tenant_id: tenantId, workflows: pack.workflows, coverage: pack.coverage });
   const workflows = pack.workflows;
+  const actionList = actions();
+  const documentQueueSnapshot = documentQueue(workflows);
   const workflowIds = new Set(workflows.map((workflow) => workflow.id));
   const surfaces = Object.entries(model.operator_surfaces).map(([key, surface]) => ({
     id: surface.view_id,
@@ -421,8 +793,9 @@ export function buildCrmWebAppSnapshot(options = {}) {
       edges: workflowEdges(workflowIds)
     },
     knowledge_graph: knowledgeGraph(),
-    document_queue: documentQueue(workflows),
-    actions: actions(),
+    document_queue: documentQueueSnapshot,
+    operational_workbench: buildOperationalWorkbench(workflows, actionList, documentQueueSnapshot),
+    actions: actionList,
     design_tokens: DESIGN_TOKENS,
     observability: model.observability
   };
