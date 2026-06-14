@@ -31,6 +31,9 @@ jobs:
       - name: Run CRM unit and contract tests
         run: npm test
 
+      - name: Validate Forge CRM memory governance
+        run: forge-core/target/release/forge memory policy --project-root . --output json
+
       - name: Validate Forge CRM Addon
         run: forge-core/target/release/forge addons validate --addon-dir addons --output json
 

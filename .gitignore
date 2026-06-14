@@ -1,7 +1,9 @@
 node_modules/
 dist/
 .env
-.forge/
+!.forge/
+.forge/*
+!.forge/memory-governance.json
 *.log
 *.package.json
 !forge-crm-*.package.json

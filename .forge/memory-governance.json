@@ -1,0 +1,21 @@
+{
+  "schema_version": "forge.memory_governance_config.v1",
+  "status": "memory_governance_configured",
+  "project_root": ".",
+  "config_path": "./.forge/memory-governance.json",
+  "memory_level": "MEMORY_STANDARD",
+  "default_scopes": [
+    "organization",
+    "project",
+    "processing"
+  ],
+  "default_audience": "internal",
+  "privacy_mode": "private_by_default",
+  "retention_mode": "processing_auto_archive",
+  "approval": {
+    "approved_by": "arthur",
+    "approved_at": "2026-06-14T13:11:32.681077101+00:00",
+    "reason": "Forge CRM is the public reference Addon for Forge memory governance; customer, workflow and operational knowledge must stay in organization/project/processing scopes and be promoted only through Forge memory contracts."
+  },
+  "governance_rule": "project .forge/memory-governance.json controls the default memory level, scopes, audience, privacy and retention posture for Forge-owned project operations"
+}
