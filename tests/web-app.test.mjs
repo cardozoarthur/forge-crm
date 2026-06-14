@@ -70,6 +70,7 @@ test("web app snapshot provides Forge command actions instead of local automatio
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.relationship.profile_enrichment.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.pipeline.stage_move.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.commercial.followup_forecast.executor"));
+  assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.commercial.forecast_review.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.commercial.goal_commission.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.commercial.account_management.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.commercial.contract_signature.executor"));
@@ -79,6 +80,7 @@ test("web app snapshot provides Forge command actions instead of local automatio
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.support.ticket_sla.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.operations.project_handoff.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.marketing.campaign_automation.executor"));
+  assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.marketing.lead_nurture.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.marketing.segment_builder.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.marketing.landing_page.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.marketing.form_capture.executor"));
@@ -157,6 +159,7 @@ test("web app snapshot exposes Forge-owned operational workflow cadences", () =>
 
   for (const workflowId of [
     "crm.followup.forecast",
+    "crm.forecast.review",
     "crm.contract.signature",
     "crm.ticket.sla",
     "crm.campaign.lifecycle",
@@ -186,6 +189,9 @@ test("web app snapshot exposes Forge-owned operational workflow cadences", () =>
       ]
     );
   }
+
+  assert.equal(cadenceByWorkflow.get("crm.forecast.review").contract_id, "crm.commercial.forecast_review.executor");
+  assert.equal(cadenceByWorkflow.get("crm.lead.nurture").contract_id, "crm.marketing.lead_nurture.executor");
 });
 
 test("web app snapshot exposes an operational workbench backed by Forge artifacts and events", () => {

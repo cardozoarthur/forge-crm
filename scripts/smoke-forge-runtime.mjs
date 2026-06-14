@@ -108,6 +108,7 @@ try {
       "forge_crm.generate_operating_readiness",
       "forge_crm.generate_proposal",
       "forge_crm.review_followup_forecast",
+      "forge_crm.review_commercial_forecast",
       "forge_crm.settle_goal_commission",
       "forge_crm.manage_account",
       "forge_crm.manage_contract_signature",
@@ -116,6 +117,7 @@ try {
       "forge_crm.record_document_approval",
       "forge_crm.manage_document_library",
       "forge_crm.automate_campaign",
+      "forge_crm.run_lead_nurture",
       "forge_crm.build_marketing_segment",
       "forge_crm.publish_landing_page",
       "forge_crm.capture_form_submission",
@@ -148,6 +150,7 @@ try {
       "crm.operating.readiness.executor",
       "crm.proposal.generator.executor",
       "crm.commercial.followup_forecast.executor",
+      "crm.commercial.forecast_review.executor",
       "crm.commercial.goal_commission.executor",
       "crm.commercial.account_management.executor",
       "crm.commercial.contract_signature.executor",
@@ -156,6 +159,7 @@ try {
       "crm.document.approval.executor",
       "crm.document.library.executor",
       "crm.marketing.campaign_automation.executor",
+      "crm.marketing.lead_nurture.executor",
       "crm.marketing.segment_builder.executor",
       "crm.marketing.landing_page.executor",
       "crm.marketing.form_capture.executor",
@@ -1317,6 +1321,54 @@ try {
     throw new Error(`expected commercial follow-up wait state, got ${commercialFollowupForecast.executor_result.outputs.followup_state}`);
   }
 
+  const commercialForecastReview = runForge([
+    "addons",
+    "execute-executor",
+    "--addon-dir",
+    "addons",
+    "--addon",
+    "forge.addon.crm",
+    "--contract",
+    "crm.commercial.forecast_review.executor",
+    "--worker",
+    workerId,
+    "--task",
+    "crm-smoke-commercial-forecast-review",
+    "--workflow",
+    workflowId,
+    "--input",
+    JSON.stringify({
+      tenant_context: { id: "smoke", tenant_id: "smoke" },
+      forecast_period: {
+        id: "2026-Q3",
+        currency: "USD",
+        review_owner: "revenue.ops"
+      },
+      pipeline_snapshot: {
+        opportunities: [
+          { id: "opp-smoke-priority", account: "Example Logistics", amount: 180000, probability: 0.74, stage: "negotiation" },
+          { id: "opp-smoke-expansion", account: "Example Retail", amount: 120000, probability: 0.45, stage: "proposal" }
+        ]
+      },
+      goal_targets: [{ id: "goal-enterprise-new-arr", owner: "forge-crm-smoke", target_amount: 250000 }],
+      risk_policy: {
+        risk_threshold_percent: 80,
+        stale_stage_days: 14
+      }
+    }),
+    "--context",
+    JSON.stringify({ tenant: "smoke" }),
+    "--output",
+    "json"
+  ]);
+
+  if (commercialForecastReview.promotion?.status !== "addon_executor_result_promoted") {
+    throw new Error(`expected commercial forecast review promotion, got ${commercialForecastReview.promotion?.status || "missing"}`);
+  }
+  if (commercialForecastReview.executor_result.outputs.followup_delivery_allowed !== false) {
+    throw new Error("expected forecast review to keep follow-up delivery blocked");
+  }
+
   const goalCommissionSettlement = runForge([
     "addons",
     "execute-executor",
@@ -1770,6 +1822,61 @@ try {
   }
   if (marketingAutomation.executor_result.outputs.scheduled_state !== "scheduled") {
     throw new Error(`expected marketing automation scheduled state, got ${marketingAutomation.executor_result.outputs.scheduled_state}`);
+  }
+
+  const marketingLeadNurture = runForge([
+    "addons",
+    "execute-executor",
+    "--addon-dir",
+    "addons",
+    "--addon",
+    "forge.addon.crm",
+    "--contract",
+    "crm.marketing.lead_nurture.executor",
+    "--worker",
+    workerId,
+    "--task",
+    "crm-smoke-lead-nurture",
+    "--workflow",
+    workflowId,
+    "--input",
+    JSON.stringify({
+      tenant_context: { id: "smoke", tenant_id: "smoke" },
+      lead_profile: {
+        id: "lead-smoke-001",
+        company: "Example Logistics",
+        email: "ops@example.test",
+        lifecycle_stage: "mql",
+        score: 72
+      },
+      segment: {
+        id: "segment-smoke-enterprise",
+        name: "Enterprise operations leaders"
+      },
+      nurture_policy: {
+        sequence_id: "nurture-smoke-enterprise",
+        current_step: 2,
+        max_steps: 4,
+        wait_minutes: 1440,
+        channel: "email",
+        consent_state: "approved"
+      },
+      engagement_history: [
+        { kind: "email_opened", occurred_at: "2026-07-02T14:05:00Z" },
+        { kind: "link_clicked", occurred_at: "2026-07-03T10:10:00Z" }
+      ]
+    }),
+    "--context",
+    JSON.stringify({ tenant: "smoke" }),
+    "--output",
+    "json"
+  ]);
+
+  if (marketingLeadNurture.promotion?.status !== "addon_executor_result_promoted") {
+    throw new Error(`expected lead nurture promotion, got ${marketingLeadNurture.promotion?.status || "missing"}`);
+  }
+  if (marketingLeadNurture.executor_result.outputs.external_send_allowed !== false) {
+    throw new Error("expected lead nurture external send to remain blocked");
   }
 
   const marketingLandingPage = runForge([
@@ -2343,6 +2450,8 @@ try {
   const pipelinePromotedEventCount = pipelineStageMove.promotion?.event_count ?? 0;
   const commercialPromotedArtifactCount = commercialFollowupForecast.promotion?.artifact_count ?? 0;
   const commercialPromotedEventCount = commercialFollowupForecast.promotion?.event_count ?? 0;
+  const commercialForecastReviewPromotedArtifactCount = commercialForecastReview.promotion?.artifact_count ?? 0;
+  const commercialForecastReviewPromotedEventCount = commercialForecastReview.promotion?.event_count ?? 0;
   const goalCommissionPromotedArtifactCount = goalCommissionSettlement.promotion?.artifact_count ?? 0;
   const goalCommissionPromotedEventCount = goalCommissionSettlement.promotion?.event_count ?? 0;
   const accountPromotedArtifactCount = accountManagement.promotion?.artifact_count ?? 0;
@@ -2359,6 +2468,8 @@ try {
   const marketingSegmentPromotedEventCount = marketingSegment.promotion?.event_count ?? 0;
   const marketingPromotedArtifactCount = marketingAutomation.promotion?.artifact_count ?? 0;
   const marketingPromotedEventCount = marketingAutomation.promotion?.event_count ?? 0;
+  const marketingLeadNurturePromotedArtifactCount = marketingLeadNurture.promotion?.artifact_count ?? 0;
+  const marketingLeadNurturePromotedEventCount = marketingLeadNurture.promotion?.event_count ?? 0;
   const landingPagePromotedArtifactCount = marketingLandingPage.promotion?.artifact_count ?? 0;
   const landingPagePromotedEventCount = marketingLandingPage.promotion?.event_count ?? 0;
   const marketingFormPromotedArtifactCount = marketingFormCapture.promotion?.artifact_count ?? 0;
@@ -2565,6 +2676,11 @@ try {
       throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
     }
   }
+  if (commercialForecastReviewPromotedArtifactCount < 3 || commercialForecastReviewPromotedEventCount < 3) {
+    throw new Error(
+      `expected promoted commercial forecast review artifacts/events, got artifacts=${commercialForecastReviewPromotedArtifactCount} events=${commercialForecastReviewPromotedEventCount}`
+    );
+  }
   if (goalCommissionPromotedArtifactCount < 3 || goalCommissionPromotedEventCount < 3) {
     throw new Error(
       `expected promoted goal commission artifacts/events, got artifacts=${goalCommissionPromotedArtifactCount} events=${goalCommissionPromotedEventCount}`
@@ -2644,6 +2760,16 @@ try {
     );
   }
   for (const eventKind of ["crm.campaign.created", "crm.campaign.scheduled", "crm.nurture.step_due"]) {
+    if (!workflowEventKinds.includes(eventKind)) {
+      throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
+    }
+  }
+  if (marketingLeadNurturePromotedArtifactCount < 4 || marketingLeadNurturePromotedEventCount < 3) {
+    throw new Error(
+      `expected promoted lead nurture artifacts/events, got artifacts=${marketingLeadNurturePromotedArtifactCount} events=${marketingLeadNurturePromotedEventCount}`
+    );
+  }
+  for (const eventKind of ["crm.nurture.message_ready", "crm.lead.requalified"]) {
     if (!workflowEventKinds.includes(eventKind)) {
       throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
     }
@@ -2957,6 +3083,12 @@ try {
     commercial_followup_forecast_amount: commercialFollowupForecast.executor_result.outputs.forecast_amount,
     commercial_followup_promoted_artifacts: commercialPromotedArtifactCount,
     commercial_followup_promoted_events: commercialPromotedEventCount,
+    commercial_forecast_review_status: commercialForecastReview.status,
+    commercial_forecast_review_promotion_status: commercialForecastReview.promotion.status,
+    commercial_forecast_review_amount: commercialForecastReview.executor_result.outputs.forecast_amount,
+    commercial_forecast_review_followup_delivery_allowed: commercialForecastReview.executor_result.outputs.followup_delivery_allowed,
+    commercial_forecast_review_promoted_artifacts: commercialForecastReviewPromotedArtifactCount,
+    commercial_forecast_review_promoted_events: commercialForecastReviewPromotedEventCount,
     goal_commission_status: goalCommissionSettlement.status,
     goal_commission_promotion_status: goalCommissionSettlement.promotion.status,
     goal_commission_attainment_percent: goalCommissionSettlement.executor_result.outputs.attainment_percent,
@@ -3005,6 +3137,12 @@ try {
     marketing_automation_scheduled_state: marketingAutomation.executor_result.outputs.scheduled_state,
     marketing_automation_promoted_artifacts: marketingPromotedArtifactCount,
     marketing_automation_promoted_events: marketingPromotedEventCount,
+    marketing_lead_nurture_status: marketingLeadNurture.status,
+    marketing_lead_nurture_promotion_status: marketingLeadNurture.promotion.status,
+    marketing_lead_nurture_next_state: marketingLeadNurture.executor_result.outputs.next_state,
+    marketing_lead_nurture_external_send_allowed: marketingLeadNurture.executor_result.outputs.external_send_allowed,
+    marketing_lead_nurture_promoted_artifacts: marketingLeadNurturePromotedArtifactCount,
+    marketing_lead_nurture_promoted_events: marketingLeadNurturePromotedEventCount,
     marketing_landing_page_status: marketingLandingPage.status,
     marketing_landing_page_promotion_status: marketingLandingPage.promotion.status,
     marketing_landing_page_publication_state: marketingLandingPage.executor_result.outputs.publication_state,

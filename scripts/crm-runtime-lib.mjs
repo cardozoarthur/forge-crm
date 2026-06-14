@@ -3230,6 +3230,154 @@ export function buildCommercialFollowupForecastResult(request) {
   };
 }
 
+export function buildCommercialForecastReviewResult(request) {
+  const input = dispatchPayload(request);
+  const context = providedContext(request);
+  const tenantId = input.tenant_id || input.tenant_context?.tenant_id || input.tenant_context?.id || context.tenant || "default";
+  const forecastPeriod = asObject(input.forecast_period ?? input.period_context ?? input.forecast_policy);
+  const pipelineSnapshot = asObject(input.pipeline_snapshot ?? input.pipeline);
+  const riskPolicy = asObject(input.risk_policy);
+  const opportunities = asArray(pipelineSnapshot.opportunities ?? input.opportunities).map(asObject);
+  const goalTargets = asArray(input.goal_targets ?? input.targets).map(asObject);
+  const period = String(forecastPeriod.id || forecastPeriod.period || input.period || "current");
+  const currency = String(forecastPeriod.currency || pipelineSnapshot.currency || "USD");
+  const reviewOwner = String(forecastPeriod.review_owner || riskPolicy.owner || "revenue.ops");
+  const workflowId = String(input.workflow_id || "crm.forecast.review");
+  const taskRef = dispatchEnvelope(request).task_ref || `forecast-review-${slug(period, "period")}`;
+  const pipelineValue = Math.round(
+    opportunities.reduce((total, opportunity) => total + numberFrom(opportunity.amount ?? opportunity.value, 0), 0)
+  );
+  const forecastAmount = Math.round(
+    opportunities.reduce((total, opportunity) => {
+      const amount = numberFrom(opportunity.amount ?? opportunity.value, 0);
+      const probability = probabilityFrom(opportunity.probability ?? opportunity.close_probability ?? opportunity.weighted_probability);
+      return total + amount * probability;
+    }, 0)
+  );
+  const goalAmount = Math.round(goalTargets.reduce((total, target) => total + numberFrom(target.target_amount ?? target.amount, 0), 0));
+  const goalAttainmentPercent = goalAmount > 0 ? Math.round((forecastAmount / goalAmount) * 100) : 0;
+  const riskThresholdPercent = numberFrom(riskPolicy.risk_threshold_percent ?? riskPolicy.threshold_percent, 80);
+  const riskState = goalAmount > 0 && goalAttainmentPercent < riskThresholdPercent ? "at_risk" : "on_track";
+  const staleStageDays = numberFrom(riskPolicy.stale_stage_days, 14);
+  const atRiskOpportunities = opportunities
+    .filter((opportunity) => probabilityFrom(opportunity.probability ?? opportunity.close_probability) < 0.5)
+    .map((opportunity) => String(opportunity.id || opportunity.opportunity_id || opportunity.account || "opportunity"));
+  const lineage = {
+    workflow_id: workflowId,
+    task_ref: taskRef,
+    source_contract: "crm.commercial.forecast_review.executor",
+    tenant_id: tenantId,
+    period
+  };
+
+  return {
+    schema_version: "forge.addon_executor_result.v1",
+    status: "completed",
+    task_ref: taskRef,
+    summary: `Forecast review ${period} evaluated ${opportunities.length} opportunities for ${currency} ${forecastAmount}`,
+    outputs: {
+      tenant_id: tenantId,
+      workflow_id: workflowId,
+      period,
+      currency,
+      opportunity_count: opportunities.length,
+      pipeline_value: pipelineValue,
+      forecast_amount: forecastAmount,
+      goal_amount: goalAmount,
+      goal_attainment_percent: goalAttainmentPercent,
+      risk_state: riskState,
+      at_risk_opportunity_count: atRiskOpportunities.length,
+      followup_delivery_allowed: false,
+      mutates_crm_state: false,
+      forge_event_sourced: true
+    },
+    artifacts: [
+      {
+        kind: "crm_forecast_report",
+        id: `forecast-review-${slug(period, "period")}`,
+        title: `Forecast review for ${period}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          period,
+          currency,
+          pipeline_value: pipelineValue,
+          forecast_amount: forecastAmount,
+          goal_amount: goalAmount,
+          goal_attainment_percent: goalAttainmentPercent,
+          opportunities,
+          lineage,
+          state_owner: "forge_workflow_runtime"
+        }
+      },
+      {
+        kind: "crm_risk_analysis",
+        id: `forecast-risk-${slug(period, "period")}`,
+        title: `Forecast risk analysis for ${period}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          period,
+          risk_state: riskState,
+          risk_threshold_percent: riskThresholdPercent,
+          stale_stage_days: staleStageDays,
+          at_risk_opportunities: atRiskOpportunities,
+          lineage
+        }
+      },
+      {
+        kind: "crm_task_plan",
+        id: `forecast-task-plan-${slug(period, "period")}`,
+        title: `Forecast review task plan for ${period}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          period,
+          owner: reviewOwner,
+          tasks: [
+            {
+              id: `forecast-review-${slug(period, "period")}-approval`,
+              title: "Review forecast evidence and risk flags",
+              state: riskState === "at_risk" ? "blocked_wait" : "ready_for_approval",
+              owner: reviewOwner,
+              evidence_artifacts: ["crm_forecast_report", "crm_risk_analysis"]
+            }
+          ],
+          followup_delivery_allowed: false,
+          lineage
+        }
+      }
+    ],
+    events: [
+      {
+        kind: "crm.forecast.reviewed",
+        tenant_id: tenantId,
+        workflow_id: workflowId,
+        period,
+        forecast_amount: forecastAmount,
+        pipeline_value: pipelineValue
+      },
+      {
+        kind: "crm.goal.progress_reviewed",
+        tenant_id: tenantId,
+        workflow_id: workflowId,
+        period,
+        goal_amount: goalAmount,
+        goal_attainment_percent: goalAttainmentPercent
+      },
+      {
+        kind: "crm.task.created",
+        tenant_id: tenantId,
+        workflow_id: workflowId,
+        period,
+        owner: reviewOwner,
+        risk_state: riskState
+      }
+    ],
+    context_tenant: context.tenant || tenantId
+  };
+}
+
 export function buildCommercialGoalCommissionResult(request) {
   const input = dispatchPayload(request);
   const context = providedContext(request);
@@ -4480,6 +4628,163 @@ export function buildMarketingCampaignAutomationResult(request) {
         lead_count: leadIds.length,
         wait_minutes: waitMinutes,
         workflow_id: nurtureWorkflowId
+      }
+    ],
+    context_tenant: context.tenant || tenantId
+  };
+}
+
+export function buildMarketingLeadNurtureResult(request) {
+  const input = dispatchPayload(request);
+  const context = providedContext(request);
+  const tenantId = input.tenant_id || input.tenant_context?.tenant_id || input.tenant_context?.id || context.tenant || "default";
+  const leadProfile = asObject(input.lead_profile ?? input.lead);
+  const segment = asObject(input.segment ?? input.audience_segment);
+  const nurturePolicy = asObject(input.nurture_policy ?? input.automation_policy);
+  const engagementHistory = asArray(input.engagement_history ?? input.events).map(asObject);
+  const id = leadId(leadProfile);
+  const segmentIdValue = segmentId(segment, "segment");
+  const workflowId = String(input.workflow_id || "crm.lead.nurture");
+  const taskRef = dispatchEnvelope(request).task_ref || `lead-nurture-${slug(id, "lead")}`;
+  const sequenceId = String(nurturePolicy.sequence_id || `nurture-${slug(segmentIdValue, "segment")}`);
+  const currentStep = Math.max(1, numberFrom(nurturePolicy.current_step ?? nurturePolicy.step, 1));
+  const maxSteps = Math.max(currentStep, numberFrom(nurturePolicy.max_steps ?? nurturePolicy.steps, currentStep + 1));
+  const waitMinutes = numberFrom(nurturePolicy.wait_minutes ?? nurturePolicy.step_wait_minutes, 1440);
+  const channel = String(nurturePolicy.channel || "email");
+  const consentState = String(nurturePolicy.consent_state || nurturePolicy.consent || "missing");
+  const engagementScore = Math.min(100, numberFrom(leadProfile.score ?? leadProfile.fit_score, 0) + engagementHistory.length * 6);
+  const recommendation =
+    engagementScore >= 80
+      ? "route_to_sales_ready_review"
+      : currentStep >= maxSteps
+        ? "exit_or_resegment_after_final_step"
+        : "continue_nurture_sequence";
+  const nextState = consentState === "approved" ? "approval_wait" : "consent_wait";
+  const lineage = {
+    workflow_id: workflowId,
+    task_ref: taskRef,
+    source_contract: "crm.marketing.lead_nurture.executor",
+    tenant_id: tenantId,
+    lead_id: id,
+    segment_id: segmentIdValue,
+    sequence_id: sequenceId
+  };
+
+  return {
+    schema_version: "forge.addon_executor_result.v1",
+    status: "completed",
+    task_ref: taskRef,
+    summary: `Lead ${id} advanced to nurture step ${currentStep} in sequence ${sequenceId}`,
+    outputs: {
+      tenant_id: tenantId,
+      workflow_id: workflowId,
+      lead_id: id,
+      segment_id: segmentIdValue,
+      sequence_id: sequenceId,
+      current_step: currentStep,
+      max_steps: maxSteps,
+      wait_minutes: waitMinutes,
+      channel,
+      next_state: nextState,
+      recommendation,
+      engagement_score: engagementScore,
+      external_send_allowed: false,
+      mutates_crm_state: false,
+      forge_event_sourced: true
+    },
+    artifacts: [
+      {
+        kind: "crm_nurture_plan",
+        id: `nurture-plan-${slug(id, "lead")}-${slug(sequenceId, "sequence")}`,
+        title: `Nurture plan for ${leadProfile.company || id}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          lead_profile: leadProfile,
+          segment,
+          sequence_id: sequenceId,
+          current_step: currentStep,
+          max_steps: maxSteps,
+          wait_minutes: waitMinutes,
+          next_state: nextState,
+          external_send_allowed: false,
+          lineage,
+          state_owner: "forge_workflow_runtime"
+        }
+      },
+      {
+        kind: "crm_email",
+        id: `nurture-email-${slug(id, "lead")}-${currentStep}`,
+        title: `Nurture message step ${currentStep} for ${leadProfile.company || id}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          lead_id: id,
+          channel,
+          approval_state: "draft_requires_forge_approval",
+          consent_state: consentState,
+          external_delivery_allowed: false,
+          sections: ["context", "problem_signal", "workflow_value", "next_step"],
+          lineage
+        }
+      },
+      {
+        kind: "crm_automation_plan",
+        id: `nurture-automation-${slug(id, "lead")}-${slug(sequenceId, "sequence")}`,
+        title: `Nurture wait-step automation for ${leadProfile.company || id}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          workflow_id: workflowId,
+          sequence_id: sequenceId,
+          current_step: currentStep,
+          next_wait_minutes: waitMinutes,
+          next_wait_state: currentStep >= maxSteps ? "qualified_or_exit" : "wait_step",
+          approval_required_before_send: true,
+          lineage
+        }
+      },
+      {
+        kind: "crm_ai_recommendation",
+        id: `nurture-recommendation-${slug(id, "lead")}`,
+        title: `Nurture recommendation for ${leadProfile.company || id}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          lead_id: id,
+          segment_id: segmentIdValue,
+          engagement_history: engagementHistory,
+          engagement_score: engagementScore,
+          recommendation,
+          lineage
+        }
+      }
+    ],
+    events: [
+      {
+        kind: "crm.nurture.step_due",
+        tenant_id: tenantId,
+        workflow_id: workflowId,
+        lead_id: id,
+        sequence_id: sequenceId,
+        current_step: currentStep,
+        wait_minutes: waitMinutes
+      },
+      {
+        kind: "crm.nurture.message_ready",
+        tenant_id: tenantId,
+        workflow_id: workflowId,
+        lead_id: id,
+        sequence_id: sequenceId,
+        approval_state: "draft_requires_forge_approval"
+      },
+      {
+        kind: "crm.lead.requalified",
+        tenant_id: tenantId,
+        workflow_id: workflowId,
+        lead_id: id,
+        engagement_score: engagementScore,
+        recommendation
       }
     ],
     context_tenant: context.tenant || tenantId
@@ -5939,6 +6244,8 @@ export function executeCrmRuntimeRequest(request) {
       return buildProposalGeneratorResult(request);
     case "forge_crm.review_followup_forecast":
       return buildCommercialFollowupForecastResult(request);
+    case "forge_crm.review_commercial_forecast":
+      return buildCommercialForecastReviewResult(request);
     case "forge_crm.settle_goal_commission":
       return buildCommercialGoalCommissionResult(request);
     case "forge_crm.manage_account":
@@ -5955,6 +6262,8 @@ export function executeCrmRuntimeRequest(request) {
       return buildDocumentLibraryResult(request);
     case "forge_crm.automate_campaign":
       return buildMarketingCampaignAutomationResult(request);
+    case "forge_crm.run_lead_nurture":
+      return buildMarketingLeadNurtureResult(request);
     case "forge_crm.build_marketing_segment":
       return buildMarketingSegmentBuilderResult(request);
     case "forge_crm.publish_landing_page":

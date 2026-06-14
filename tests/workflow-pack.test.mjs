@@ -355,6 +355,23 @@ test("commercial follow-up workflow routes forecast, goals and commission throug
   assert.ok(pack.indexes.runtime_contracts.includes("crm.commercial.followup_forecast.executor"));
 });
 
+test("commercial forecast review workflow has a dedicated Forge runtime contract", () => {
+  const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
+  const workflow = pack.workflows.find((candidate) => candidate.id === "crm.forecast.review");
+
+  assert.ok(workflow);
+  assert.equal(workflow.domain, "commercial");
+  assert.equal(workflow.workflow_extension_id, "crm_forecast_review");
+  assert.ok(workflow.runtime_contracts.includes("crm.commercial.forecast_review.executor"));
+  assert.ok(workflow.artifacts.includes("crm_forecast_report"));
+  assert.ok(workflow.artifacts.includes("crm_risk_analysis"));
+  assert.ok(workflow.artifacts.includes("crm_task_plan"));
+  assert.ok(workflow.events.includes("crm.forecast.reviewed"));
+  assert.ok(workflow.events.includes("crm.goal.progress_reviewed"));
+  assert.ok(workflow.validation_gates.includes("forecast review does not send external follow-ups"));
+  assert.ok(pack.indexes.runtime_contracts.includes("crm.commercial.forecast_review.executor"));
+});
+
 test("commercial goal commission workflow settles targets and commissions through Forge evidence", () => {
   const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
   const workflow = pack.workflows.find((candidate) => candidate.id === "crm.goal.commission");
@@ -508,20 +525,21 @@ test("support omnichannel center unifies conversations and channel identities th
 test("marketing workflows route campaign automation and nurture through Forge", () => {
   const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
 
-  for (const workflowId of ["crm.campaign.lifecycle", "crm.lead.nurture"]) {
-    const workflow = pack.workflows.find((candidate) => candidate.id === workflowId);
-    assert.ok(workflow, `missing workflow ${workflowId}`);
-    assert.ok(
-      workflow.runtime_contracts.includes("crm.marketing.campaign_automation.executor"),
-      `${workflowId} must route campaign automation through Forge`
-    );
-  }
-
   const campaignWorkflow = pack.workflows.find((candidate) => candidate.id === "crm.campaign.lifecycle");
+  const nurtureWorkflow = pack.workflows.find((candidate) => candidate.id === "crm.lead.nurture");
+
+  assert.ok(campaignWorkflow);
+  assert.ok(nurtureWorkflow);
+  assert.ok(campaignWorkflow.runtime_contracts.includes("crm.marketing.campaign_automation.executor"));
+  assert.ok(nurtureWorkflow.runtime_contracts.includes("crm.marketing.lead_nurture.executor"));
+  assert.ok(!nurtureWorkflow.runtime_contracts.includes("crm.marketing.campaign_automation.executor"));
   assert.ok(campaignWorkflow.artifacts.includes("crm_segment"));
   assert.ok(campaignWorkflow.artifacts.includes("crm_automation_plan"));
   assert.ok(campaignWorkflow.events.includes("crm.campaign.scheduled"));
+  assert.ok(nurtureWorkflow.artifacts.includes("crm_nurture_plan"));
+  assert.ok(nurtureWorkflow.events.includes("crm.nurture.step_due"));
   assert.ok(pack.indexes.runtime_contracts.includes("crm.marketing.campaign_automation.executor"));
+  assert.ok(pack.indexes.runtime_contracts.includes("crm.marketing.lead_nurture.executor"));
 });
 
 test("marketing segment builder creates Forge-owned segment definitions and audiences", () => {

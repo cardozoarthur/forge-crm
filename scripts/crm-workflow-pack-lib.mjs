@@ -191,6 +191,32 @@ const WORKFLOWS = [
     validation_gates: ["scheduled wait visible", "forecast and commission evidence attached"]
   },
   {
+    id: "crm.forecast.review",
+    title: "Commercial forecast review",
+    domain: "commercial",
+    workflow_extension_id: "crm_forecast_review",
+    object_types: ["forecast", "goal", "risk", "task"],
+    states: ["forecast_review_due", "pipeline_snapshot_attached", "risk_reviewed", "task_plan_ready", "approval_wait"],
+    transitions: [
+      ["forecast_review_due", "pipeline_snapshot_attached", "pipeline snapshot and targets attached"],
+      ["pipeline_snapshot_attached", "risk_reviewed", "forecast and risk artifacts generated"],
+      ["risk_reviewed", "task_plan_ready", "owner task plan created"],
+      ["task_plan_ready", "approval_wait", "forecast evidence waits for Forge approval"]
+    ],
+    runtime_contracts: ["crm.commercial.forecast_review.executor"],
+    depends_on_workflows: ["crm.followup.forecast", "crm.opportunity.pipeline"],
+    artifacts: ["crm_forecast_report", "crm_risk_analysis", "crm_task_plan"],
+    events: ["crm.forecast.reviewed", "crm.goal.progress_reviewed", "crm.task.created"],
+    memory_scopes: ["organization", "project"],
+    permissions: ["crm.workflow.mutate", "crm.observability.inspect"],
+    views: ["crm.commercial-command"],
+    validation_gates: [
+      "forecast snapshot lineage present",
+      "risk review owner visible",
+      "forecast review does not send external follow-ups"
+    ]
+  },
+  {
     id: "crm.goal.commission",
     title: "Goal attainment and commission settlement",
     domain: "commercial",
@@ -502,11 +528,11 @@ const WORKFLOWS = [
       ["approval_wait", "sent", "approval passed"],
       ["sent", "qualified_or_exit", "response classified"]
     ],
-    runtime_contracts: ["crm.marketing.campaign_automation.executor", "crm.lead.classifier.executor", "crm.omnichannel.handoff"],
-    artifacts: ["crm_automation_plan", "crm_email", "crm_ai_recommendation"],
-    events: ["crm.nurture.step_due", "crm.nurture.message_sent", "crm.lead.requalified"],
+    runtime_contracts: ["crm.marketing.lead_nurture.executor", "crm.lead.classifier.executor", "crm.omnichannel.handoff"],
+    artifacts: ["crm_nurture_plan", "crm_automation_plan", "crm_email", "crm_ai_recommendation"],
+    events: ["crm.nurture.step_due", "crm.nurture.message_ready", "crm.nurture.message_sent", "crm.lead.requalified"],
     memory_scopes: ["organization", "processing"],
-    permissions: ["crm.workflow.mutate", "crm.omnichannel.ingest"],
+    permissions: ["crm.workflow.mutate", "crm.ai.recommend", "crm.omnichannel.ingest"],
     views: ["crm.marketing-calendar"],
     validation_gates: ["scheduled wait visible", "external message approval present"]
   },

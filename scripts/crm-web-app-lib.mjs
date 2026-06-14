@@ -1721,6 +1721,15 @@ function actions() {
       command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.commercial.followup_forecast.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
     },
     {
+      id: "crm.review-forecast",
+      label: "Review forecast",
+      surface_id: "crm.commercial-command",
+      contract_id: "crm.commercial.forecast_review.executor",
+      requires_permission: "crm.workflow.mutate",
+      mutates_workflow: true,
+      command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.commercial.forecast_review.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
+    },
+    {
       id: "crm.settle-goal-commission",
       label: "Settle goals and commissions",
       surface_id: "crm.commercial-command",
@@ -1892,6 +1901,15 @@ function actions() {
       command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.marketing.campaign_automation.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
     },
     {
+      id: "crm.run-lead-nurture",
+      label: "Run lead nurture",
+      surface_id: "crm.marketing-calendar",
+      contract_id: "crm.marketing.lead_nurture.executor",
+      requires_permission: "crm.workflow.mutate",
+      mutates_workflow: true,
+      command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.marketing.lead_nurture.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
+    },
+    {
       id: "crm.build-marketing-segment",
       label: "Build segment",
       surface_id: "crm.marketing-calendar",
@@ -2001,6 +2019,20 @@ function workflowCadences(workflows, actionList) {
       owner_role: "commercial.ops"
     },
     {
+      id: "cadence.commercial.forecast_review",
+      title: "Commercial forecast review",
+      workflow_id: "crm.forecast.review",
+      workflow_extension_id: "crm_forecast_review",
+      surface_id: "crm.commercial-command",
+      cadence_kind: "forecast_review_schedule",
+      schedule_source: "Forge forecast review waits and pipeline snapshot checkpoints",
+      trigger_id: "crm.schedule.forecast_review_due",
+      event_type: "crm.forecast",
+      due_state: "forecast_review_due",
+      action_id: "crm.review-forecast",
+      owner_role: "revenue.ops"
+    },
+    {
       id: "cadence.commercial.contract_renewal",
       title: "Contract signature and renewal follow-up",
       workflow_id: "crm.contract.signature",
@@ -2053,7 +2085,7 @@ function workflowCadences(workflows, actionList) {
       trigger_id: "crm.schedule.nurture_step_due",
       event_type: "crm.nurture",
       due_state: "wait_step",
-      action_id: "crm.automate-campaign",
+      action_id: "crm.run-lead-nurture",
       owner_role: "lifecycle.marketing"
     },
     {

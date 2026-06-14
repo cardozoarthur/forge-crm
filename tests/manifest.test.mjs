@@ -559,6 +559,35 @@ test("manifest exposes CRM commercial follow-up and forecast as a Forge-owned ex
   assert.ok(artifactTypes.has("crm_commission_record"));
 });
 
+test("manifest exposes CRM forecast review as its own Forge-owned executor", () => {
+  const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.commercial.forecast_review.executor");
+  assert.ok(contract);
+  assert.equal(contract.contract_type, "executor");
+  assert.equal(contract.capability_id, "crm_commercial_operations");
+  assert.equal(contract.workflow_extension_id, "crm_forecast_review");
+  assert.equal(contract.entrypoint, "forge_crm.review_commercial_forecast");
+  assert.deepEqual(contract.permissions, ["crm.workflow.mutate", "crm.observability.inspect"]);
+
+  for (const input of ["forecast_period", "pipeline_snapshot", "goal_targets", "risk_policy", "tenant_context"]) {
+    assert.ok(contract.inputs.includes(input), `missing forecast review input ${input}`);
+  }
+  for (const output of ["crm_forecast_report", "crm_risk_analysis", "crm_task_plan"]) {
+    assert.ok(contract.outputs.includes(output), `missing forecast review output ${output}`);
+  }
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("does not persist CRM state outside Forge")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("pipeline snapshots")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("does not send follow-ups")));
+
+  const artifactTypes = new Set(manifest.artifact_types.map((artifact) => artifact.id));
+  assert.ok(artifactTypes.has("crm_forecast_report"));
+  assert.ok(artifactTypes.has("crm_risk_analysis"));
+  assert.ok(artifactTypes.has("crm_task_plan"));
+
+  const capability = manifest.capabilities.find((candidate) => candidate.id === "crm_commercial_operations");
+  assert.ok(capability.artifact_types.includes("crm_risk_analysis"));
+  assert.ok(capability.artifact_types.includes("crm_task_plan"));
+});
+
 test("manifest exposes CRM goal and commission settlement as a Forge-owned executor", () => {
   const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.commercial.goal_commission.executor");
   assert.ok(contract);
@@ -715,6 +744,7 @@ test("manifest declares Forge schedule triggers and listeners for every workflow
     assert.ok(trigger, `missing schedule trigger ${cadence.trigger_id}`);
     assert.equal(trigger.channel, "crm.schedule");
     assert.equal(trigger.event_type, cadence.event_type);
+    assert.ok(scheduleAdapter.event_types.includes(cadence.event_type), `schedule adapter missing event type ${cadence.event_type}`);
     assert.equal(trigger.workflow_extension_id, cadence.workflow_extension_id);
     assert.ok(trigger.actions.includes("continue_workflow"));
     assert.deepEqual(trigger.permissions, [cadence.required_permission]);
@@ -801,6 +831,36 @@ test("manifest exposes CRM marketing campaign automation as a Forge-owned execut
   const artifactTypes = new Set(manifest.artifact_types.map((artifact) => artifact.id));
   assert.ok(artifactTypes.has("crm_segment"));
   assert.ok(artifactTypes.has("crm_automation_plan"));
+});
+
+test("manifest exposes CRM lead nurture as a dedicated Forge-owned executor", () => {
+  const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.marketing.lead_nurture.executor");
+  assert.ok(contract);
+  assert.equal(contract.contract_type, "executor");
+  assert.equal(contract.capability_id, "crm_marketing_automation");
+  assert.equal(contract.workflow_extension_id, "crm_lead_nurture");
+  assert.equal(contract.entrypoint, "forge_crm.run_lead_nurture");
+  assert.deepEqual(contract.permissions, ["crm.workflow.mutate", "crm.ai.recommend"]);
+
+  for (const input of ["lead_profile", "segment", "nurture_policy", "engagement_history", "tenant_context"]) {
+    assert.ok(contract.inputs.includes(input), `missing lead nurture input ${input}`);
+  }
+  for (const output of ["crm_nurture_plan", "crm_email", "crm_automation_plan", "crm_ai_recommendation"]) {
+    assert.ok(contract.outputs.includes(output), `missing lead nurture output ${output}`);
+  }
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("does not persist CRM state outside Forge")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("wait steps")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("approved consent")));
+
+  const artifactTypes = new Set(manifest.artifact_types.map((artifact) => artifact.id));
+  assert.ok(artifactTypes.has("crm_nurture_plan"));
+
+  const capability = manifest.capabilities.find((candidate) => candidate.id === "crm_marketing_automation");
+  assert.ok(capability.artifact_types.includes("crm_nurture_plan"));
+
+  const listener = manifest.event_listeners.find((candidate) => candidate.id === "crm.schedule.nurture_step_due.listener");
+  assert.ok(listener);
+  assert.equal(listener.runtime_contract_id, "crm.marketing.lead_nurture.executor");
 });
 
 test("manifest exposes CRM marketing segment builder as a Forge-owned executor", () => {
@@ -998,11 +1058,13 @@ test("manifest exposes a Forge TUI operational cockpit with permission-gated CRM
     "crm.tui.classify-lead",
     "crm.tui.enrich-relationship-profile",
     "crm.tui.review-followup-forecast",
+    "crm.tui.review-forecast",
     "crm.tui.normalize-channel-intake",
     "crm.tui.ingest-omnichannel-message",
     "crm.tui.run-omnichannel-center",
     "crm.tui.triage-ticket-sla",
     "crm.tui.automate-campaign",
+    "crm.tui.run-lead-nurture",
     "crm.tui.publish-landing-page",
     "crm.tui.capture-form-submission",
     "crm.tui.generate-document",

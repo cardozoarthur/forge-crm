@@ -280,6 +280,8 @@
         "crm_contract",
         "crm_followup_plan",
         "crm_forecast_report",
+        "crm_risk_analysis",
+        "crm_task_plan",
         "crm_commission_record",
         "crm_goal_scorecard",
         "crm_commission_statement",
@@ -386,6 +388,7 @@
         "crm_segment_definition",
         "crm_segment_audience",
         "crm_segment",
+        "crm_nurture_plan",
         "crm_automation_plan",
         "crm_form_submission",
         "crm_lead_capture",
@@ -1358,6 +1361,36 @@
       ]
     },
     {
+      "id": "crm.commercial.forecast_review.executor",
+      "title": "CRM forecast review",
+      "contract_type": "executor",
+      "capability_id": "crm_commercial_operations",
+      "workflow_extension_id": "crm_forecast_review",
+      "runtime": "external_api",
+      "entrypoint": "forge_crm.review_commercial_forecast",
+      "inputs": [
+        "forecast_period",
+        "pipeline_snapshot",
+        "goal_targets",
+        "risk_policy",
+        "tenant_context"
+      ],
+      "outputs": [
+        "crm_forecast_report",
+        "crm_risk_analysis",
+        "crm_task_plan"
+      ],
+      "permissions": [
+        "crm.workflow.mutate",
+        "crm.observability.inspect"
+      ],
+      "constraints": [
+        "forecast review executor does not persist CRM state outside Forge",
+        "pipeline snapshots, target evidence and risk flags must be attached as Forge artifacts",
+        "forecast review does not send follow-ups or external messages"
+      ]
+    },
+    {
       "id": "crm.commercial.goal_commission.executor",
       "title": "CRM goal attainment and commission settlement",
       "contract_type": "executor",
@@ -1625,6 +1658,37 @@
         "campaign automation does not persist CRM state outside Forge",
         "campaign scheduling and nurture steps must be represented as Forge workflow events",
         "external sends require approved handoff or document delivery workflow"
+      ]
+    },
+    {
+      "id": "crm.marketing.lead_nurture.executor",
+      "title": "CRM lead nurture orchestration",
+      "contract_type": "executor",
+      "capability_id": "crm_marketing_automation",
+      "workflow_extension_id": "crm_lead_nurture",
+      "runtime": "external_api",
+      "entrypoint": "forge_crm.run_lead_nurture",
+      "inputs": [
+        "lead_profile",
+        "segment",
+        "nurture_policy",
+        "engagement_history",
+        "tenant_context"
+      ],
+      "outputs": [
+        "crm_nurture_plan",
+        "crm_email",
+        "crm_automation_plan",
+        "crm_ai_recommendation"
+      ],
+      "permissions": [
+        "crm.workflow.mutate",
+        "crm.ai.recommend"
+      ],
+      "constraints": [
+        "lead nurture executor does not persist CRM state outside Forge",
+        "nurture wait steps and message readiness must be represented as Forge workflow events",
+        "external sends require approved consent and Forge approval artifacts"
       ]
     },
     {
@@ -2410,6 +2474,49 @@
           ]
         },
         {
+          "id": "crm.tui.review-forecast",
+          "label": "Review forecast",
+          "description": "Run a dedicated commercial forecast review through Forge artifacts and schedule state.",
+          "palette_group": "CRM",
+          "source_panel": "crm.operational-cockpit",
+          "type": "command",
+          "target": "forge addons execute-executor",
+          "method": "CLI",
+          "permission": "crm.workflow.mutate",
+          "requires_confirmation": true,
+          "risk_level": "high",
+          "mutates_workflow": true,
+          "command_template": [
+            "addons",
+            "execute-executor",
+            "--addon",
+            "forge.addon.crm",
+            "--contract",
+            "crm.commercial.forecast_review.executor",
+            "--worker",
+            "<worker-id>",
+            "--task",
+            "<task-ref>",
+            "--input",
+            "<json>",
+            "--context",
+            "<json>",
+            "--output",
+            "json"
+          ],
+          "keywords": [
+            "crm",
+            "forecast",
+            "review"
+          ],
+          "payload_schema": [
+            "forecast_period",
+            "pipeline_snapshot",
+            "goal_targets",
+            "risk_policy"
+          ]
+        },
+        {
           "id": "crm.tui.settle-goal-commission",
           "label": "Settle goals and commissions",
           "description": "Generate goal scorecards, commission statements and compensation audit evidence through Forge.",
@@ -2894,6 +3001,50 @@
             "campaign",
             "segment",
             "approval"
+          ]
+        },
+        {
+          "id": "crm.tui.run-lead-nurture",
+          "label": "Run lead nurture",
+          "description": "Advance a lead nurture wait step through Forge artifacts, recommendation and approval gates.",
+          "palette_group": "CRM",
+          "source_panel": "crm.operational-cockpit",
+          "type": "command",
+          "target": "forge addons execute-executor",
+          "method": "CLI",
+          "permission": "crm.workflow.mutate",
+          "requires_confirmation": true,
+          "risk_level": "high",
+          "mutates_workflow": true,
+          "command_template": [
+            "addons",
+            "execute-executor",
+            "--addon",
+            "forge.addon.crm",
+            "--contract",
+            "crm.marketing.lead_nurture.executor",
+            "--worker",
+            "<worker-id>",
+            "--task",
+            "<task-ref>",
+            "--input",
+            "<json>",
+            "--context",
+            "<json>",
+            "--output",
+            "json"
+          ],
+          "keywords": [
+            "crm",
+            "nurture",
+            "lead",
+            "marketing"
+          ],
+          "payload_schema": [
+            "lead_profile",
+            "segment",
+            "nurture_policy",
+            "engagement_history"
           ]
         },
         {
@@ -3920,6 +4071,11 @@
       "generic_kind": "report"
     },
     {
+      "id": "crm_nurture_plan",
+      "title": "CRM nurture plan",
+      "generic_kind": "artifact"
+    },
+    {
       "id": "crm_project_plan",
       "title": "CRM project plan",
       "generic_kind": "artifact"
@@ -4646,6 +4802,25 @@
       ]
     },
     {
+      "id": "crm.schedule.forecast_review_due",
+      "title": "CRM forecast review due",
+      "event_type": "crm.forecast",
+      "channel": "crm.schedule",
+      "adapter_id": "crm.schedule.tick",
+      "workflow_extension_id": "crm_forecast_review",
+      "capability_id": "crm_commercial_operations",
+      "actions": [
+        "continue_workflow"
+      ],
+      "conditions": [
+        "workflow state is forecast_review_due",
+        "forecast review checkpoint is due"
+      ],
+      "permissions": [
+        "crm.workflow.mutate"
+      ]
+    },
+    {
       "id": "crm.schedule.contract_renewal_due",
       "title": "CRM contract renewal due",
       "event_type": "crm.contract",
@@ -4847,6 +5022,23 @@
       ]
     },
     {
+      "id": "crm.schedule.forecast_review_due.listener",
+      "title": "CRM forecast review due listener",
+      "event_type": "crm.forecast",
+      "channel": "crm.schedule",
+      "adapter_id": "crm.schedule.tick",
+      "workflow_extension_id": "crm_forecast_review",
+      "capability_id": "crm_commercial_operations",
+      "handler": "forge.schedule.route_due_workflow",
+      "runtime_contract_id": "crm.commercial.forecast_review.executor",
+      "actions": [
+        "continue_workflow"
+      ],
+      "permissions": [
+        "crm.workflow.mutate"
+      ]
+    },
+    {
       "id": "crm.schedule.contract_renewal_due.listener",
       "title": "CRM contract renewal due listener",
       "event_type": "crm.contract",
@@ -4906,7 +5098,7 @@
       "workflow_extension_id": "crm_lead_nurture",
       "capability_id": "crm_marketing_automation",
       "handler": "forge.schedule.route_due_workflow",
-      "runtime_contract_id": "crm.marketing.campaign_automation.executor",
+      "runtime_contract_id": "crm.marketing.lead_nurture.executor",
       "actions": [
         "continue_workflow"
       ],
@@ -5011,6 +5203,7 @@
       ],
       "event_types": [
         "crm.followup",
+        "crm.forecast",
         "crm.contract",
         "crm.sla",
         "crm.campaign",

@@ -1253,6 +1253,58 @@ test("commercial follow-up forecast executor schedules follow-ups and commission
   assert.ok(result.events.some((event) => event.kind === "crm.commission.accrued"));
 });
 
+test("commercial forecast review executor evaluates pipeline forecast without sending follow-ups", () => {
+  assert.equal(typeof runtime.buildCommercialForecastReviewResult, "function");
+
+  const result = runtime.buildCommercialForecastReviewResult(
+    workerRequest(
+      "forge_crm.review_commercial_forecast",
+      {
+        tenant_context: { tenant_id: "demo" },
+        forecast_period: {
+          id: "2026-Q3",
+          currency: "USD",
+          review_owner: "revenue-ops"
+        },
+        pipeline_snapshot: {
+          opportunities: [
+            { id: "opp-001", account: "Acme Logistics", amount: 240000, probability: 0.7, stage: "negotiation" },
+            { id: "opp-002", account: "Beta Transport", amount: 180000, probability: 0.5, stage: "proposal" },
+            { id: "opp-003", account: "Gamma Retail", amount: 90000, probability: 0.2, stage: "discovery" }
+          ]
+        },
+        goal_targets: [{ id: "goal-enterprise", owner: "enterprise-sales", target_amount: 300000 }],
+        risk_policy: {
+          risk_threshold_percent: 80,
+          stale_stage_days: 14
+        }
+      },
+      { contract_id: "crm.commercial.forecast_review.executor", task_ref: "forecast-review-test" }
+    )
+  );
+
+  assert.equal(result.schema_version, "forge.addon_executor_result.v1");
+  assert.equal(result.status, "completed");
+  assert.equal(result.outputs.tenant_id, "demo");
+  assert.equal(result.outputs.workflow_id, "crm.forecast.review");
+  assert.equal(result.outputs.period, "2026-Q3");
+  assert.equal(result.outputs.pipeline_value, 510000);
+  assert.equal(result.outputs.forecast_amount, 276000);
+  assert.equal(result.outputs.goal_amount, 300000);
+  assert.equal(result.outputs.goal_attainment_percent, 92);
+  assert.equal(result.outputs.followup_delivery_allowed, false);
+  assert.equal(result.outputs.mutates_crm_state, false);
+  assert.equal(result.outputs.forge_event_sourced, true);
+
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_forecast_report"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_risk_analysis"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_task_plan"));
+  assert.ok(result.events.some((event) => event.kind === "crm.forecast.reviewed"));
+  assert.ok(result.events.some((event) => event.kind === "crm.goal.progress_reviewed"));
+  assert.ok(result.events.some((event) => event.kind === "crm.task.created"));
+  assert.ok(!result.events.some((event) => event.kind === "crm.followup.scheduled"));
+});
+
 test("commercial goal commission executor settles period targets without direct payout mutation", () => {
   assert.equal(typeof runtime.buildCommercialGoalCommissionResult, "function");
 
@@ -1931,6 +1983,64 @@ test("marketing campaign automation executor schedules nurture workflows as Forg
   assert.ok(result.events.some((event) => event.kind === "crm.campaign.created"));
   assert.ok(result.events.some((event) => event.kind === "crm.campaign.scheduled"));
   assert.ok(result.events.some((event) => event.kind === "crm.nurture.step_due"));
+});
+
+test("marketing lead nurture executor advances wait steps through Forge artifacts", () => {
+  assert.equal(typeof runtime.buildMarketingLeadNurtureResult, "function");
+
+  const result = runtime.buildMarketingLeadNurtureResult(
+    workerRequest(
+      "forge_crm.run_lead_nurture",
+      {
+        tenant_context: { tenant_id: "demo" },
+        lead_profile: {
+          id: "lead-001",
+          company: "Acme Logistics",
+          email: "ops@example.com",
+          lifecycle_stage: "mql",
+          score: 72
+        },
+        segment: {
+          id: "segment-enterprise-ops",
+          name: "Enterprise operations leaders"
+        },
+        nurture_policy: {
+          sequence_id: "nurture-enterprise-ops",
+          current_step: 2,
+          max_steps: 4,
+          wait_minutes: 1440,
+          channel: "email",
+          consent_state: "approved"
+        },
+        engagement_history: [
+          { kind: "email_opened", occurred_at: "2026-07-02T14:05:00Z" },
+          { kind: "link_clicked", occurred_at: "2026-07-03T10:10:00Z" }
+        ]
+      },
+      { contract_id: "crm.marketing.lead_nurture.executor", task_ref: "lead-nurture-test" }
+    )
+  );
+
+  assert.equal(result.schema_version, "forge.addon_executor_result.v1");
+  assert.equal(result.status, "completed");
+  assert.equal(result.outputs.tenant_id, "demo");
+  assert.equal(result.outputs.workflow_id, "crm.lead.nurture");
+  assert.equal(result.outputs.lead_id, "lead-001");
+  assert.equal(result.outputs.segment_id, "segment-enterprise-ops");
+  assert.equal(result.outputs.sequence_id, "nurture-enterprise-ops");
+  assert.equal(result.outputs.current_step, 2);
+  assert.equal(result.outputs.next_state, "approval_wait");
+  assert.equal(result.outputs.external_send_allowed, false);
+  assert.equal(result.outputs.mutates_crm_state, false);
+  assert.equal(result.outputs.forge_event_sourced, true);
+
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_nurture_plan"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_email"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_automation_plan"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_ai_recommendation"));
+  assert.ok(result.events.some((event) => event.kind === "crm.nurture.step_due"));
+  assert.ok(result.events.some((event) => event.kind === "crm.nurture.message_ready"));
+  assert.ok(result.events.some((event) => event.kind === "crm.lead.requalified"));
 });
 
 test("marketing segment builder executor selects approved audiences as Forge artifacts", () => {
