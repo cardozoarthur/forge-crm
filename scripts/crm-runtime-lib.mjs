@@ -1022,6 +1022,245 @@ export function buildWorkflowEvolutionResult(request) {
   };
 }
 
+const ENTERPRISE_JOURNEY_STAGES = [
+  {
+    id: "lead_capture",
+    title: "Lead captured",
+    domain: "marketing",
+    workflow_id: "crm.lead.lifecycle",
+    contract_id: "crm.marketing.form_capture.executor",
+    required_artifacts: ["crm_lead_capture"],
+    required_events: ["crm.lead.created"]
+  },
+  {
+    id: "opportunity",
+    title: "Opportunity opened",
+    domain: "relationship",
+    workflow_id: "crm.opportunity.pipeline",
+    contract_id: "crm.pipeline.stage_move.executor",
+    required_artifacts: ["crm_pipeline_board"],
+    required_events: ["crm.opportunity.stage_changed"]
+  },
+  {
+    id: "proposal",
+    title: "Proposal generated and approved",
+    domain: "commercial",
+    workflow_id: "crm.proposal.approval",
+    contract_id: "crm.proposal.generator.executor",
+    required_artifacts: ["crm_proposal"],
+    required_events: ["crm.proposal.generated"]
+  },
+  {
+    id: "contract",
+    title: "Contract signed",
+    domain: "commercial",
+    workflow_id: "crm.contract.signature",
+    contract_id: "crm.commercial.contract_signature.executor",
+    required_artifacts: ["crm_contract", "crm_signature_receipt"],
+    required_events: ["crm.contract.signed"]
+  },
+  {
+    id: "account",
+    title: "Account managed",
+    domain: "commercial",
+    workflow_id: "crm.account.management",
+    contract_id: "crm.commercial.account_management.executor",
+    required_artifacts: ["crm_account_plan"],
+    required_events: ["crm.account.health_reviewed"]
+  },
+  {
+    id: "support",
+    title: "Support ticket handled",
+    domain: "support",
+    workflow_id: "crm.ticket.sla",
+    contract_id: "crm.support.ticket_sla.executor",
+    required_artifacts: ["crm_support_summary"],
+    required_events: ["crm.ticket.created"]
+  },
+  {
+    id: "handoff",
+    title: "Project handoff accepted",
+    domain: "operations",
+    workflow_id: "crm.project.handoff",
+    contract_id: "crm.operations.project_handoff.executor",
+    required_artifacts: ["crm_project_plan", "crm_task_plan"],
+    required_events: ["crm.project.handoff_requested"]
+  }
+];
+
+function normalizeJourneyStage(stage) {
+  const stageObject = asObject(stage);
+  const stageId = String(stageObject.id || stageObject.stage_id || "");
+  const baseline = ENTERPRISE_JOURNEY_STAGES.find((candidate) => candidate.id === stageId) || {};
+  return {
+    id: stageId || baseline.id || "unknown_stage",
+    title: stageObject.title || baseline.title || stageId || "Unknown stage",
+    domain: stageObject.domain || baseline.domain || "operations",
+    workflow_id: stageObject.workflow_id || baseline.workflow_id || null,
+    contract_id: stageObject.contract_id || baseline.contract_id || null,
+    artifact_refs: asArray(stageObject.artifact_refs ?? stageObject.artifacts),
+    event_refs: asArray(stageObject.event_refs ?? stageObject.events),
+    required_artifacts: asArray(stageObject.required_artifacts ?? baseline.required_artifacts),
+    required_events: asArray(stageObject.required_events ?? baseline.required_events),
+    owner: stageObject.owner || "forge_workflow_runtime",
+    external_dependency: stageObject.external_dependency === true
+  };
+}
+
+export function buildEnterpriseJourneyResult(request) {
+  const input = dispatchPayload(request);
+  const context = providedContext(request);
+  const tenantId = input.tenant_id || input.tenant_context?.tenant_id || input.tenant_context?.id || context.tenant || "default";
+  const taskRef = dispatchEnvelope(request).task_ref || `enterprise-journey-${slug(tenantId, "tenant")}`;
+  const journey = asObject(input.journey_context ?? input.journey);
+  const journeyId = String(journey.id || journey.journey_id || `journey-${slug(tenantId, "tenant")}`);
+  const account = journey.account || journey.account_name || input.account || "Unknown account";
+  const acceptancePolicy = asObject(input.acceptance_policy ?? input.policy);
+  const requiredStageIds = asArray(acceptancePolicy.required_stage_ids).length > 0
+    ? asArray(acceptancePolicy.required_stage_ids).map((stage) => String(stage))
+    : ENTERPRISE_JOURNEY_STAGES.map((stage) => stage.id);
+  const requiredDomains = asArray(acceptancePolicy.required_domains).length > 0
+    ? asArray(acceptancePolicy.required_domains).map((domain) => String(domain))
+    : ["relationship", "commercial", "support", "marketing", "operations"];
+  const providedStages = asArray(input.stage_evidence ?? input.stages).map(normalizeJourneyStage);
+  const stageById = new Map(providedStages.map((stage) => [stage.id, stage]));
+  const normalizedStages = requiredStageIds.map((stageId) => {
+    const provided = stageById.get(stageId);
+    const baseline = normalizeJourneyStage({ id: stageId });
+    return provided || baseline;
+  });
+  const stageReceipts = normalizedStages.map((stage) => {
+    const missingArtifacts = stage.required_artifacts.filter((artifact) => !stage.artifact_refs.includes(artifact));
+    const missingEvents = stage.required_events.filter((event) => !stage.event_refs.includes(event));
+    const ready = Boolean(stage.workflow_id && stage.contract_id && missingArtifacts.length === 0 && missingEvents.length === 0);
+    return {
+      ...stage,
+      ready,
+      missing_artifacts: missingArtifacts,
+      missing_events: missingEvents,
+      state_owner: "forge_workflow_runtime"
+    };
+  });
+  const coveredDomains = unique(stageReceipts.filter((stage) => stage.ready).map((stage) => stage.domain));
+  const missingDomains = requiredDomains.filter((domain) => !coveredDomains.includes(domain));
+  const missingStages = stageReceipts.filter((stage) => !stage.ready);
+  const externalDependency = stageReceipts.some((stage) => stage.external_dependency);
+  const acceptanceStatus = missingStages.length === 0 && missingDomains.length === 0 && !externalDependency
+    ? "operable_end_to_end"
+    : "rework_required";
+  const workflowId = "crm.enterprise.customer_journey";
+  const lineage = {
+    workflow_id: workflowId,
+    task_ref: taskRef,
+    source_contract: "crm.enterprise.journey.executor",
+    tenant_id: tenantId,
+    journey_id: journeyId
+  };
+
+  return {
+    schema_version: "forge.addon_executor_result.v1",
+    status: "completed",
+    task_ref: taskRef,
+    summary: `Enterprise CRM journey ${journeyId} packaged for ${account} with ${acceptanceStatus}`,
+    outputs: {
+      tenant_id: tenantId,
+      journey_id: journeyId,
+      account,
+      workflow_id: workflowId,
+      acceptance_status: acceptanceStatus,
+      stage_count: stageReceipts.length,
+      missing_stage_count: missingStages.length,
+      missing_domain_count: missingDomains.length,
+      main_flow_dependency_external: externalDependency,
+      mutates_crm_state: false,
+      forge_event_sourced: true
+    },
+    artifacts: [
+      {
+        kind: "crm_enterprise_journey_map",
+        id: `crm-enterprise-journey-map-${slug(journeyId, "journey")}`,
+        title: `Enterprise CRM journey map for ${account}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          journey_id: journeyId,
+          account,
+          goal: journey.goal || "Operate the full customer lifecycle through Forge CRM",
+          stages: stageReceipts,
+          state_owner: "forge_workflow_runtime",
+          external_database_required: false,
+          lineage
+        }
+      },
+      {
+        kind: "crm_operating_acceptance_evidence",
+        id: `crm-operating-acceptance-${slug(journeyId, "journey")}`,
+        title: `Operating acceptance evidence for ${account}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          journey_id: journeyId,
+          acceptance_status: acceptanceStatus,
+          required_stage_ids: requiredStageIds,
+          required_domains: requiredDomains,
+          covered_domains: coveredDomains,
+          missing_stage_ids: missingStages.map((stage) => stage.id),
+          missing_domains: missingDomains,
+          approved_by: acceptancePolicy.approved_by || null,
+          validation_policy: "all required customer lifecycle stages must have Forge artifact and event evidence",
+          lineage
+        }
+      },
+      {
+        kind: "crm_cross_domain_handoff_map",
+        id: `crm-cross-domain-handoff-map-${slug(journeyId, "journey")}`,
+        title: `Cross-domain handoff map for ${account}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          journey_id: journeyId,
+          handoffs: stageReceipts.slice(1).map((stage, index) => ({
+            from_stage_id: stageReceipts[index].id,
+            to_stage_id: stage.id,
+            from_workflow_id: stageReceipts[index].workflow_id,
+            to_workflow_id: stage.workflow_id,
+            owner: "forge_workflow_runtime"
+          })),
+          no_parallel_crm_persistence: true,
+          lineage
+        }
+      }
+    ],
+    events: [
+      {
+        kind: "crm.journey.started",
+        tenant_id: tenantId,
+        journey_id: journeyId,
+        workflow_id: workflowId
+      },
+      ...stageReceipts
+        .filter((stage) => stage.ready)
+        .map((stage) => ({
+          kind: "crm.journey.stage_completed",
+          tenant_id: tenantId,
+          journey_id: journeyId,
+          stage_id: stage.id,
+          workflow_id: stage.workflow_id,
+          contract_id: stage.contract_id
+        })),
+      {
+        kind: "crm.journey.acceptance_reported",
+        tenant_id: tenantId,
+        journey_id: journeyId,
+        workflow_id: workflowId,
+        acceptance_status: acceptanceStatus,
+        missing_stage_count: missingStages.length
+      }
+    ],
+    context_tenant: context.tenant || tenantId
+  };
+}
+
 export function buildObservabilityInspectorResult(request) {
   const input = dispatchPayload(request);
   const context = providedContext(request);
@@ -1228,6 +1467,14 @@ const READINESS_OUTCOME_DOMAINS = [
     workflow_ids: ["crm.project.handoff", "crm.operational.observability"],
     required_artifacts: ["crm_project_plan", "crm_task_plan", "crm_handoff_record", "crm_audit_report"],
     required_events: ["crm.project.handoff_requested", "crm.task.created", "crm.observability.inspected"]
+  },
+  {
+    id: "enterprise_journey",
+    title: "Enterprise customer journey",
+    deliverable: "enterprise customer journey",
+    workflow_ids: ["crm.enterprise.customer_journey"],
+    required_artifacts: ["crm_enterprise_journey_map", "crm_operating_acceptance_evidence", "crm_cross_domain_handoff_map"],
+    required_events: ["crm.journey.started", "crm.journey.acceptance_reported"]
   }
 ];
 
@@ -3282,6 +3529,8 @@ export function executeCrmRuntimeRequest(request) {
       return buildMemoryPromotionCandidateResult(request);
     case "forge_crm.evolve_workflow":
       return buildWorkflowEvolutionResult(request);
+    case "forge_crm.run_enterprise_journey":
+      return buildEnterpriseJourneyResult(request);
     case "forge_crm.inspect_observability":
       return buildObservabilityInspectorResult(request);
     case "forge_crm.generate_operating_readiness":

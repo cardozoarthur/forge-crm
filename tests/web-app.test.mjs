@@ -81,6 +81,7 @@ test("web app snapshot provides Forge command actions instead of local automatio
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.operating.readiness.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.ai.operating_copilot.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.workflow.evolution.executor"));
+  assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.enterprise.journey.executor"));
 });
 
 test("web app snapshot exposes auditable Forge action invocation plans", () => {
@@ -215,6 +216,28 @@ test("web app snapshot exposes adaptive workflow evolution as Forge-governed exp
   assert.equal(action.requires_permission, "crm.workflow.mutate");
 });
 
+test("web app snapshot exposes an enterprise journey workbench for end-to-end CRM acceptance", () => {
+  const snapshot = buildCrmWebAppSnapshot({ tenant_id: "demo" });
+  const workbench = snapshot.enterprise_journey_workbench;
+
+  assert.ok(workbench);
+  assert.equal(workbench.schema_version, "forge.crm_enterprise_journey_workbench.v1");
+  assert.equal(workbench.state_owner, "forge_workflow_runtime");
+  assert.equal(workbench.local_state_allowed, false);
+  assert.equal(workbench.workflow_id, "crm.enterprise.customer_journey");
+  assert.equal(workbench.contract_id, "crm.enterprise.journey.executor");
+  assert.equal(workbench.action_id, "crm.run-enterprise-journey");
+  assert.deepEqual(
+    workbench.stage_lanes.map((lane) => lane.id),
+    ["lead_capture", "opportunity", "proposal", "contract", "account", "support", "handoff"]
+  );
+  assert.ok(workbench.acceptance_gates.every((gate) => gate.owner === "Forge validation"));
+
+  const action = snapshot.actions.find((candidate) => candidate.id === "crm.run-enterprise-journey");
+  assert.ok(action);
+  assert.equal(action.contract_id, "crm.enterprise.journey.executor");
+});
+
 test("web assets mount the generated CRM snapshot without a build step", async () => {
   const html = await readFile(new URL("../web/index.html", import.meta.url), "utf8");
   const app = await readFile(new URL("../web/app.js", import.meta.url), "utf8");
@@ -237,6 +260,7 @@ test("web assets mount the generated CRM snapshot without a build step", async (
   assert.match(app, /renderActionInvocationPlans/);
   assert.match(app, /renderWorkflowCadences/);
   assert.match(app, /renderWorkflowEvolutionWorkbench/);
+  assert.match(app, /renderEnterpriseJourneyWorkbench/);
   assert.match(styles, /\.workflow-node/);
   assert.match(styles, /\.knowledge-node/);
   assert.match(styles, /\.document-row/);
@@ -248,6 +272,7 @@ test("web assets mount the generated CRM snapshot without a build step", async (
   assert.match(styles, /\.action-plan/);
   assert.match(styles, /\.cadence-row/);
   assert.match(styles, /\.evolution-workbench/);
+  assert.match(styles, /\.journey-workbench/);
   assert.match(favicon, /<svg/);
 });
 

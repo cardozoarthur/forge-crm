@@ -413,6 +413,40 @@ export function renderWorkflowEvolutionWorkbench(snapshot) {
   return section;
 }
 
+export function renderEnterpriseJourneyWorkbench(snapshot) {
+  const workbench = snapshot.enterprise_journey_workbench;
+  const section = nodeElement("section", "panel journey-workbench");
+  section.dataset.surfacePanel = "crm.system-map";
+  section.append(nodeElement("h2", "", "Enterprise Journey"));
+  if (!workbench) {
+    section.append(nodeElement("p", "muted-copy", "Enterprise journey workbench unavailable in this snapshot."));
+    return section;
+  }
+
+  section.append(nodeElement("p", "panel-source", `${workbench.workflow_id} · ${workbench.contract_id}`));
+
+  const lanes = nodeElement("div", "journey-lanes");
+  for (const lane of workbench.stage_lanes) {
+    const item = nodeElement("article", "journey-lane");
+    item.append(nodeElement("strong", "", lane.title));
+    item.append(nodeElement("span", "", lane.workflow_id));
+    item.append(nodeElement("code", "", lane.contract_id));
+    item.title = `${lane.required_artifacts.join(", ")} · ${lane.required_events.join(", ")}`;
+    lanes.append(item);
+  }
+
+  const gates = nodeElement("div", "journey-gates");
+  for (const gate of workbench.acceptance_gates) {
+    const item = nodeElement("article", "journey-gate");
+    item.append(nodeElement("strong", "", gate.title));
+    item.append(nodeElement("span", "", gate.owner));
+    gates.append(item);
+  }
+
+  section.append(lanes, gates);
+  return section;
+}
+
 function renderModuleBoard(snapshot) {
   const section = nodeElement("section", "panel module-panel");
   section.append(nodeElement("h2", "", "Business Modules"));
@@ -509,6 +543,7 @@ function render(snapshot) {
   workspace.append(renderAiWorkbench(snapshot));
   workspace.append(renderWorkflowCadences(snapshot));
   workspace.append(renderWorkflowEvolutionWorkbench(snapshot));
+  workspace.append(renderEnterpriseJourneyWorkbench(snapshot));
   workspace.append(renderWorkflowGraph(snapshot));
   workspace.append(renderModuleBoard(snapshot));
   workspace.append(renderKnowledgeGraph(snapshot));

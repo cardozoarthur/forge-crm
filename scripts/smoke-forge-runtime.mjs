@@ -83,6 +83,7 @@ try {
       "forge_crm.operating_copilot",
       "forge_crm.prepare_memory_promotion",
       "forge_crm.evolve_workflow",
+      "forge_crm.run_enterprise_journey",
       "forge_crm.inspect_observability",
       "forge_crm.generate_operating_readiness",
       "forge_crm.generate_proposal",
@@ -109,6 +110,7 @@ try {
       "crm.ai.operating_copilot.executor",
       "crm.memory.promotion.executor",
       "crm.workflow.evolution.executor",
+      "crm.enterprise.journey.executor",
       "crm.observability.inspector.executor",
       "crm.operating.readiness.executor",
       "crm.proposal.generator.executor",
@@ -1176,6 +1178,102 @@ try {
     throw new Error(`expected project handoff blocked_wait, got ${operationsProjectHandoff.executor_result.outputs.next_state}`);
   }
 
+  const enterpriseJourney = runForge([
+    "addons",
+    "execute-executor",
+    "--addon-dir",
+    "addons",
+    "--addon",
+    "forge.addon.crm",
+    "--contract",
+    "crm.enterprise.journey.executor",
+    "--worker",
+    workerId,
+    "--task",
+    "crm-smoke-enterprise-journey",
+    "--workflow",
+    workflowId,
+    "--input",
+    JSON.stringify({
+      tenant_context: { id: "smoke", tenant_id: "smoke" },
+      journey_context: {
+        id: "journey-smoke-example-logistics",
+        account: "Example Logistics",
+        goal: "Operate the full lead-to-support customer lifecycle on Forge CRM"
+      },
+      stage_evidence: [
+        {
+          id: "lead_capture",
+          workflow_id: "crm.lead.lifecycle",
+          contract_id: "crm.marketing.form_capture.executor",
+          artifact_refs: ["crm_lead_capture"],
+          event_refs: ["crm.lead.created"]
+        },
+        {
+          id: "opportunity",
+          workflow_id: "crm.opportunity.pipeline",
+          contract_id: "crm.pipeline.stage_move.executor",
+          artifact_refs: ["crm_pipeline_board"],
+          event_refs: ["crm.opportunity.stage_changed"]
+        },
+        {
+          id: "proposal",
+          workflow_id: "crm.proposal.approval",
+          contract_id: "crm.proposal.generator.executor",
+          artifact_refs: ["crm_proposal"],
+          event_refs: ["crm.proposal.generated"]
+        },
+        {
+          id: "contract",
+          workflow_id: "crm.contract.signature",
+          contract_id: "crm.commercial.contract_signature.executor",
+          artifact_refs: ["crm_contract", "crm_signature_receipt"],
+          event_refs: ["crm.contract.signed"]
+        },
+        {
+          id: "account",
+          workflow_id: "crm.account.management",
+          contract_id: "crm.commercial.account_management.executor",
+          artifact_refs: ["crm_account_plan"],
+          event_refs: ["crm.account.health_reviewed"]
+        },
+        {
+          id: "support",
+          workflow_id: "crm.ticket.sla",
+          contract_id: "crm.support.ticket_sla.executor",
+          artifact_refs: ["crm_support_summary"],
+          event_refs: ["crm.ticket.created", "crm.sla.escalated"]
+        },
+        {
+          id: "handoff",
+          workflow_id: "crm.project.handoff",
+          contract_id: "crm.operations.project_handoff.executor",
+          artifact_refs: ["crm_project_plan", "crm_task_plan"],
+          event_refs: ["crm.project.handoff_requested"]
+        }
+      ],
+      acceptance_policy: {
+        required_stage_ids: ["lead_capture", "opportunity", "proposal", "contract", "account", "support", "handoff"],
+        required_domains: ["relationship", "commercial", "support", "marketing", "operations"],
+        approved_by: "forge-crm-smoke"
+      }
+    }),
+    "--context",
+    JSON.stringify({ tenant: "smoke" }),
+    "--output",
+    "json"
+  ]);
+
+  if (enterpriseJourney.promotion?.status !== "addon_executor_result_promoted") {
+    throw new Error(`expected enterprise journey promotion, got ${enterpriseJourney.promotion?.status || "missing"}`);
+  }
+  if (enterpriseJourney.executor_result.outputs.acceptance_status !== "operable_end_to_end") {
+    throw new Error(`expected enterprise journey operable_end_to_end, got ${enterpriseJourney.executor_result.outputs.acceptance_status}`);
+  }
+  if (enterpriseJourney.executor_result.outputs.main_flow_dependency_external !== false) {
+    throw new Error("expected enterprise journey to avoid external main-flow dependency");
+  }
+
   const workflowArtifacts = runForge([
     "artifacts",
     "--workflow",
@@ -1229,6 +1327,8 @@ try {
   const ticketSlaPromotedEventCount = ticketSla.promotion?.event_count ?? 0;
   const operationsPromotedArtifactCount = operationsProjectHandoff.promotion?.artifact_count ?? 0;
   const operationsPromotedEventCount = operationsProjectHandoff.promotion?.event_count ?? 0;
+  const enterpriseJourneyPromotedArtifactCount = enterpriseJourney.promotion?.artifact_count ?? 0;
+  const enterpriseJourneyPromotedEventCount = enterpriseJourney.promotion?.event_count ?? 0;
   const workflowArtifactCount = workflowArtifacts.artifacts?.length ?? 0;
   const workflowEventKinds = (workflowEvents.events || []).map((event) => event.kind);
 
@@ -1445,6 +1545,16 @@ try {
     "crm.task.blocked",
     "crm.project.accepted"
   ]) {
+    if (!workflowEventKinds.includes(eventKind)) {
+      throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
+    }
+  }
+  if (enterpriseJourneyPromotedArtifactCount < 3 || enterpriseJourneyPromotedEventCount < 3) {
+    throw new Error(
+      `expected promoted enterprise journey artifacts/events, got artifacts=${enterpriseJourneyPromotedArtifactCount} events=${enterpriseJourneyPromotedEventCount}`
+    );
+  }
+  for (const eventKind of ["crm.journey.started", "crm.journey.stage_completed", "crm.journey.acceptance_reported"]) {
     if (!workflowEventKinds.includes(eventKind)) {
       throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
     }
@@ -1673,6 +1783,13 @@ try {
     operations_project_handoff_next_state: operationsProjectHandoff.executor_result.outputs.next_state,
     operations_project_handoff_promoted_artifacts: operationsPromotedArtifactCount,
     operations_project_handoff_promoted_events: operationsPromotedEventCount,
+    enterprise_journey_status: enterpriseJourney.status,
+    enterprise_journey_promotion_status: enterpriseJourney.promotion.status,
+    enterprise_journey_acceptance_status: enterpriseJourney.executor_result.outputs.acceptance_status,
+    enterprise_journey_stage_count: enterpriseJourney.executor_result.outputs.stage_count,
+    enterprise_journey_missing_stage_count: enterpriseJourney.executor_result.outputs.missing_stage_count,
+    enterprise_journey_promoted_artifacts: enterpriseJourneyPromotedArtifactCount,
+    enterprise_journey_promoted_events: enterpriseJourneyPromotedEventCount,
     workflow_artifact_count: workflowArtifactCount,
     workflow_event_kinds: workflowEventKinds,
     bootstrap_workflow_count: bootstrap.executor_result.outputs.workflow_count,

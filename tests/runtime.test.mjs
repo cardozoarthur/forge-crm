@@ -255,7 +255,8 @@ test("operating readiness maps Forge evidence into user-facing CRM deliverables"
             "support inbox",
             "marketing automation",
             "document approvals",
-            "project handoff"
+            "project handoff",
+            "enterprise customer journey"
           ]
         },
         operating_snapshot: {
@@ -276,8 +277,8 @@ test("operating readiness maps Forge evidence into user-facing CRM deliverables"
   assert.equal(result.status, "completed");
   assert.equal(result.outputs.tenant_id, "demo");
   assert.equal(result.outputs.success_criteria_status, "operable_with_evidence");
-  assert.equal(result.outputs.user_facing_deliverable_count, 6);
-  assert.equal(result.outputs.ready_domain_count, 6);
+  assert.equal(result.outputs.user_facing_deliverable_count, 7);
+  assert.equal(result.outputs.ready_domain_count, 7);
   assert.equal(result.outputs.forge_only_operations, true);
   assert.equal(result.outputs.main_flow_dependency_external, false);
   assert.equal(result.outputs.mutates_crm_state, false);
@@ -460,6 +461,99 @@ test("workflow evolution executor proposes governed Forge experiments without se
   assert.ok(result.events.some((event) => event.kind === "crm.evolution.candidate_generated"));
   assert.ok(result.events.some((event) => event.kind === "crm.evolution.benchmark_reported"));
   assert.ok(result.events.some((event) => event.kind === "crm.evolution.promotion_decision_recorded"));
+});
+
+test("enterprise journey executor packages a full lead-to-support CRM operation through Forge", () => {
+  assert.equal(typeof runtime.buildEnterpriseJourneyResult, "function");
+
+  const result = runtime.buildEnterpriseJourneyResult(
+    workerRequest(
+      "forge_crm.run_enterprise_journey",
+      {
+        tenant_context: { tenant_id: "demo" },
+        journey_context: {
+          id: "journey-acme",
+          account: "Acme Logistics",
+          goal: "Operate the full customer lifecycle on Forge CRM"
+        },
+        stage_evidence: [
+          {
+            id: "lead_capture",
+            workflow_id: "crm.lead.lifecycle",
+            contract_id: "crm.marketing.form_capture.executor",
+            artifact_refs: ["crm_lead_capture"],
+            event_refs: ["crm.lead.created"]
+          },
+          {
+            id: "opportunity",
+            workflow_id: "crm.opportunity.pipeline",
+            contract_id: "crm.pipeline.stage_move.executor",
+            artifact_refs: ["crm_pipeline_board"],
+            event_refs: ["crm.opportunity.stage_changed"]
+          },
+          {
+            id: "proposal",
+            workflow_id: "crm.proposal.approval",
+            contract_id: "crm.proposal.generator.executor",
+            artifact_refs: ["crm_proposal"],
+            event_refs: ["crm.proposal.generated"]
+          },
+          {
+            id: "contract",
+            workflow_id: "crm.contract.signature",
+            contract_id: "crm.commercial.contract_signature.executor",
+            artifact_refs: ["crm_contract", "crm_signature_receipt"],
+            event_refs: ["crm.contract.signed"]
+          },
+          {
+            id: "account",
+            workflow_id: "crm.account.management",
+            contract_id: "crm.commercial.account_management.executor",
+            artifact_refs: ["crm_account_plan"],
+            event_refs: ["crm.account.health_reviewed"]
+          },
+          {
+            id: "support",
+            workflow_id: "crm.ticket.sla",
+            contract_id: "crm.support.ticket_sla.executor",
+            artifact_refs: ["crm_support_summary"],
+            event_refs: ["crm.ticket.created", "crm.sla.escalated"]
+          },
+          {
+            id: "handoff",
+            workflow_id: "crm.project.handoff",
+            contract_id: "crm.operations.project_handoff.executor",
+            artifact_refs: ["crm_project_plan", "crm_task_plan"],
+            event_refs: ["crm.project.handoff_requested"]
+          }
+        ],
+        acceptance_policy: {
+          required_stage_ids: ["lead_capture", "opportunity", "proposal", "contract", "account", "support", "handoff"],
+          required_domains: ["relationship", "commercial", "support", "marketing", "operations"],
+          approved_by: "crm-operator"
+        }
+      },
+      { contract_id: "crm.enterprise.journey.executor", task_ref: "enterprise-journey-test" }
+    )
+  );
+
+  assert.equal(result.schema_version, "forge.addon_executor_result.v1");
+  assert.equal(result.status, "completed");
+  assert.equal(result.outputs.tenant_id, "demo");
+  assert.equal(result.outputs.workflow_id, "crm.enterprise.customer_journey");
+  assert.equal(result.outputs.acceptance_status, "operable_end_to_end");
+  assert.equal(result.outputs.stage_count, 7);
+  assert.equal(result.outputs.missing_stage_count, 0);
+  assert.equal(result.outputs.main_flow_dependency_external, false);
+  assert.equal(result.outputs.mutates_crm_state, false);
+  assert.equal(result.outputs.forge_event_sourced, true);
+
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_enterprise_journey_map"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_operating_acceptance_evidence"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_cross_domain_handoff_map"));
+  assert.ok(result.events.some((event) => event.kind === "crm.journey.started"));
+  assert.ok(result.events.some((event) => event.kind === "crm.journey.stage_completed"));
+  assert.ok(result.events.some((event) => event.kind === "crm.journey.acceptance_reported"));
 });
 
 test("observability inspector reports audit lineage cost metrics and logs from Forge state", () => {

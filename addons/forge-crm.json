@@ -143,6 +143,7 @@
       "workflow_extensions": [
         "crm_workflow_factory_system_bootstrap",
         "crm_enterprise_readiness",
+        "crm_enterprise_customer_journey",
         "crm_workflow_evolution"
       ],
       "deliverables": [
@@ -169,6 +170,9 @@
         "crm_user_outcome_manifest",
         "crm_domain_coverage_matrix",
         "crm_business_runbook",
+        "crm_enterprise_journey_map",
+        "crm_operating_acceptance_evidence",
+        "crm_cross_domain_handoff_map",
         "crm_workflow_evolution_plan",
         "crm_evolution_experiment",
         "crm_benchmark_report",
@@ -568,6 +572,11 @@
       "description": "Map enterprise CRM success criteria to user-facing deliverables backed by Forge workflows, artifacts, events and validation evidence."
     },
     {
+      "id": "crm_enterprise_customer_journey",
+      "kind": "operations_workflow",
+      "description": "Package a full lead-to-support customer lifecycle as Forge workflow acceptance evidence."
+    },
+    {
       "id": "crm_workflow_evolution",
       "kind": "agentic_workflow",
       "description": "Turn CRM observability bottlenecks into Forge improve experiments, benchmarks and governed promotion decisions."
@@ -774,6 +783,36 @@
         "workflow evolution must be expressed as forge improve candidates, benchmark evidence and governed promotion",
         "CRM workflow evolution does not self-modify or bypass Forge validation gates",
         "promotion is blocked until benchmark and rollback evidence pass"
+      ]
+    },
+    {
+      "id": "crm.enterprise.journey.executor",
+      "title": "CRM enterprise customer journey acceptance",
+      "contract_type": "executor",
+      "capability_id": "crm_workflow_factory",
+      "workflow_extension_id": "crm_enterprise_customer_journey",
+      "runtime": "external_api",
+      "entrypoint": "forge_crm.run_enterprise_journey",
+      "inputs": [
+        "journey_context",
+        "stage_evidence",
+        "acceptance_policy",
+        "tenant_context"
+      ],
+      "outputs": [
+        "crm_enterprise_journey_map",
+        "crm_operating_acceptance_evidence",
+        "crm_cross_domain_handoff_map"
+      ],
+      "permissions": [
+        "crm.workflow.mutate",
+        "crm.document.generate",
+        "crm.omnichannel.ingest"
+      ],
+      "constraints": [
+        "main flow must stay Forge-owned from lead capture through support and handoff",
+        "enterprise journey acceptance does not create CRM-local persistence",
+        "every required stage must have Forge artifact and event evidence before operable status"
       ]
     },
     {
@@ -1761,9 +1800,9 @@
             "validation_evidence"
           ]
         },
-        {
-          "id": "crm.tui.evolve-workflow",
-          "label": "Evolve CRM workflow",
+    {
+      "id": "crm.tui.evolve-workflow",
+      "label": "Evolve CRM workflow",
           "description": "Generate a Forge improve experiment, benchmark plan and promotion decision for a CRM workflow bottleneck.",
           "palette_group": "CRM",
           "source_panel": "crm.operational-cockpit",
@@ -1801,10 +1840,52 @@
             "workflow_state",
             "observability_report",
             "candidate_changes",
-            "benchmark_policy"
-          ]
-        }
+        "benchmark_policy"
+      ]
+    },
+    {
+      "id": "crm.tui.run-enterprise-journey",
+      "label": "Run enterprise journey",
+      "description": "Package lead-to-support CRM operating evidence as a Forge-owned customer journey acceptance record.",
+      "palette_group": "CRM",
+      "source_panel": "crm.operational-cockpit",
+      "type": "command",
+      "target": "forge addons execute-executor",
+      "method": "CLI",
+      "permission": "crm.workflow.mutate",
+      "requires_confirmation": true,
+      "risk_level": "high",
+      "mutates_workflow": true,
+      "command_template": [
+        "addons",
+        "execute-executor",
+        "--addon",
+        "forge.addon.crm",
+        "--contract",
+        "crm.enterprise.journey.executor",
+        "--worker",
+        "<worker-id>",
+        "--task",
+        "<task-ref>",
+        "--input",
+        "<json>",
+        "--context",
+        "<json>",
+        "--output",
+        "json"
       ],
+      "keywords": [
+        "crm",
+        "journey",
+        "acceptance"
+      ],
+      "payload_schema": [
+        "journey_context",
+        "stage_evidence",
+        "acceptance_policy"
+      ]
+    }
+  ],
       "permissions": [
         "crm.workflow.mutate",
         "crm.omnichannel.ingest",
@@ -2152,6 +2233,21 @@
       "id": "crm_promotion_decision",
       "title": "CRM promotion decision",
       "generic_kind": "artifact"
+    },
+    {
+      "id": "crm_enterprise_journey_map",
+      "title": "CRM enterprise journey map",
+      "generic_kind": "artifact"
+    },
+    {
+      "id": "crm_operating_acceptance_evidence",
+      "title": "CRM operating acceptance evidence",
+      "generic_kind": "report"
+    },
+    {
+      "id": "crm_cross_domain_handoff_map",
+      "title": "CRM cross-domain handoff map",
+      "generic_kind": "artifact"
     }
   ],
   "event_types": [
@@ -2268,6 +2364,11 @@
     {
       "id": "crm.evolution",
       "title": "CRM workflow evolution event",
+      "transport": "crm"
+    },
+    {
+      "id": "crm.journey",
+      "title": "CRM enterprise journey event",
       "transport": "crm"
     },
     {
@@ -2525,6 +2626,7 @@
         "crm.campaign",
         "crm.form",
         "crm.nurture",
+        "crm.journey",
         "crm.project",
         "crm.task"
       ],

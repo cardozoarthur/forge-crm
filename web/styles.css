@@ -700,6 +700,50 @@ h3 {
   overflow-wrap: anywhere;
 }
 
+.journey-workbench {
+  border-left: 4px solid #126c55;
+}
+
+.journey-lanes,
+.journey-gates {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.journey-lane,
+.journey-gate {
+  display: grid;
+  gap: 6px;
+  min-height: 112px;
+  padding: 10px;
+  border: 1px solid #d8dfd8;
+  border-radius: 8px;
+  background: #fbfcf9;
+}
+
+.journey-lane strong,
+.journey-gate strong {
+  color: #1d2428;
+  font-size: 0.9rem;
+  line-height: 1.25;
+}
+
+.journey-lane span,
+.journey-gate span {
+  color: #607078;
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+}
+
+.journey-lane code {
+  color: #126c55;
+  font-size: 0.74rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 1040px) {
   .app-header {
     grid-template-columns: 1fr;
@@ -747,6 +791,8 @@ h3 {
 	  .cadence-row,
 	  .cadence-steps,
 	  .evolution-steps,
+	  .journey-lanes,
+	  .journey-gates,
 	  .plan-steps {
     grid-template-columns: 1fr;
   }

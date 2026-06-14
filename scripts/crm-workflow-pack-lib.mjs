@@ -357,6 +357,63 @@ const WORKFLOWS = [
     ]
   },
   {
+    id: "crm.enterprise.customer_journey",
+    title: "Enterprise customer journey acceptance",
+    domain: "operations",
+    workflow_extension_id: "crm_enterprise_customer_journey",
+    object_types: ["customer_journey", "operating_acceptance", "cross_domain_handoff", "user_outcome", "business_runbook"],
+    states: [
+      "lead_capture",
+      "opportunity",
+      "proposal",
+      "contract",
+      "account",
+      "support",
+      "handoff",
+      "operating_acceptance",
+      "rework_required"
+    ],
+    transitions: [
+      ["lead_capture", "opportunity", "qualified lead evidence exists"],
+      ["opportunity", "proposal", "opportunity stage evidence exists"],
+      ["proposal", "contract", "approved proposal artifact exists"],
+      ["contract", "account", "contract signature receipt exists"],
+      ["account", "support", "active account support evidence exists"],
+      ["support", "handoff", "ticket SLA or resolution evidence exists"],
+      ["handoff", "operating_acceptance", "project handoff evidence exists"],
+      ["operating_acceptance", "rework_required", "required stage evidence missing"]
+    ],
+    runtime_contracts: [
+      "crm.enterprise.journey.executor",
+      "crm.marketing.form_capture.executor",
+      "crm.pipeline.stage_move.executor",
+      "crm.proposal.generator.executor",
+      "crm.commercial.contract_signature.executor",
+      "crm.commercial.account_management.executor",
+      "crm.support.ticket_sla.executor",
+      "crm.operations.project_handoff.executor"
+    ],
+    depends_on_workflows: [
+      "crm.lead.lifecycle",
+      "crm.opportunity.pipeline",
+      "crm.proposal.approval",
+      "crm.contract.signature",
+      "crm.account.management",
+      "crm.ticket.sla",
+      "crm.project.handoff"
+    ],
+    artifacts: ["crm_enterprise_journey_map", "crm_operating_acceptance_evidence", "crm_cross_domain_handoff_map", "crm_business_runbook"],
+    events: ["crm.journey.started", "crm.journey.stage_completed", "crm.journey.acceptance_reported"],
+    memory_scopes: ["organization", "project"],
+    permissions: ["crm.workflow.mutate", "crm.document.generate", "crm.omnichannel.ingest"],
+    views: ["crm.system-map", "crm.commercial-command", "crm.support-queue", "crm.document-queue"],
+    validation_gates: [
+      "all required customer lifecycle stages have Forge artifact and event evidence",
+      "main CRM flow has no external system dependency",
+      "cross-domain handoffs preserve workflow and artifact lineage"
+    ]
+  },
+  {
     id: "crm.workflow.evolution",
     title: "Adaptive CRM workflow evolution",
     domain: "ai_automation",

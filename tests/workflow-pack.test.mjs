@@ -350,3 +350,37 @@ test("workflow evolution loop turns CRM bottlenecks into governed Forge experime
   assert.ok(workflow.validation_gates.includes("promotion is blocked until benchmark evidence passes"));
   assert.ok(pack.indexes.runtime_contracts.includes("crm.workflow.evolution.executor"));
 });
+
+test("enterprise customer journey proves the CRM can operate one full company lifecycle through Forge", () => {
+  const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
+  const workflow = pack.workflows.find((candidate) => candidate.id === "crm.enterprise.customer_journey");
+
+  assert.ok(workflow);
+  assert.equal(workflow.domain, "operations");
+  assert.equal(workflow.workflow_extension_id, "crm_enterprise_customer_journey");
+  assert.ok(workflow.object_types.includes("customer_journey"));
+  assert.ok(workflow.object_types.includes("operating_acceptance"));
+  assert.ok(workflow.runtime_contracts.includes("crm.enterprise.journey.executor"));
+
+  for (const workflowId of [
+    "crm.lead.lifecycle",
+    "crm.opportunity.pipeline",
+    "crm.proposal.approval",
+    "crm.contract.signature",
+    "crm.account.management",
+    "crm.ticket.sla",
+    "crm.project.handoff"
+  ]) {
+    assert.ok(workflow.depends_on_workflows.includes(workflowId), `missing journey dependency ${workflowId}`);
+  }
+
+  for (const artifact of ["crm_enterprise_journey_map", "crm_operating_acceptance_evidence", "crm_cross_domain_handoff_map"]) {
+    assert.ok(workflow.artifacts.includes(artifact), `missing enterprise journey artifact ${artifact}`);
+  }
+  for (const event of ["crm.journey.started", "crm.journey.stage_completed", "crm.journey.acceptance_reported"]) {
+    assert.ok(workflow.events.includes(event), `missing enterprise journey event ${event}`);
+  }
+
+  assert.ok(workflow.validation_gates.includes("all required customer lifecycle stages have Forge artifact and event evidence"));
+  assert.ok(pack.indexes.runtime_contracts.includes("crm.enterprise.journey.executor"));
+});

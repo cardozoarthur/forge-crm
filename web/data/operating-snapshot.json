@@ -23,11 +23,11 @@
     "external_delivery_requires_approval": true
   },
   "metrics": {
-    "workflow_count": 15,
+    "workflow_count": 16,
     "business_module_count": 6,
     "surface_count": 8,
-    "artifact_type_count": 47,
-    "event_type_count": 55,
+    "artifact_type_count": 50,
+    "event_type_count": 58,
     "complete_scope": true
   },
   "surfaces": [
@@ -42,6 +42,7 @@
       "workflow_ids": [
         "crm.operational.observability",
         "crm.enterprise.readiness",
+        "crm.enterprise.customer_journey",
         "crm.workflow.evolution"
       ],
       "lanes": [
@@ -56,6 +57,14 @@
         "readiness_reported",
         "rework_required",
         "operable",
+        "lead_capture",
+        "opportunity",
+        "proposal",
+        "contract",
+        "account",
+        "support",
+        "handoff",
+        "operating_acceptance",
         "candidate_scan",
         "experiment_designed",
         "benchmark_wait",
@@ -69,10 +78,13 @@
         "crm_business_runbook",
         "crm_core_gap_report",
         "crm_cost_report",
+        "crm_cross_domain_handoff_map",
         "crm_domain_coverage_matrix",
+        "crm_enterprise_journey_map",
         "crm_evolution_experiment",
         "crm_lineage_map",
         "crm_metric_snapshot",
+        "crm_operating_acceptance_evidence",
         "crm_operating_readiness_report",
         "crm_promotion_decision",
         "crm_user_outcome_manifest",
@@ -86,6 +98,9 @@
         "crm.evolution.candidate_generated",
         "crm.evolution.experiment_designed",
         "crm.evolution.promotion_decision_recorded",
+        "crm.journey.acceptance_reported",
+        "crm.journey.stage_completed",
+        "crm.journey.started",
         "crm.metric.reviewed",
         "crm.observability.inspected",
         "crm.operating.readiness_reported",
@@ -168,7 +183,8 @@
         "crm.opportunity.pipeline",
         "crm.followup.forecast",
         "crm.account.management",
-        "crm.project.handoff"
+        "crm.project.handoff",
+        "crm.enterprise.customer_journey"
       ],
       "lanes": [
         "research",
@@ -194,16 +210,28 @@
         "project_planned",
         "tasks_in_progress",
         "blocked_wait",
-        "accepted"
+        "accepted",
+        "lead_capture",
+        "opportunity",
+        "contract",
+        "account",
+        "support",
+        "handoff",
+        "operating_acceptance",
+        "rework_required"
       ],
       "artifact_types": [
         "crm_account_plan",
+        "crm_business_runbook",
         "crm_commission_record",
+        "crm_cross_domain_handoff_map",
         "crm_email",
+        "crm_enterprise_journey_map",
         "crm_followup_plan",
         "crm_forecast_report",
         "crm_handoff_record",
         "crm_health_report",
+        "crm_operating_acceptance_evidence",
         "crm_pipeline_board",
         "crm_project_plan",
         "crm_report",
@@ -220,6 +248,9 @@
         "crm.forecast.reviewed",
         "crm.forecast.updated",
         "crm.goal.progress_reviewed",
+        "crm.journey.acceptance_reported",
+        "crm.journey.stage_completed",
+        "crm.journey.started",
         "crm.opportunity.stage_changed",
         "crm.project.accepted",
         "crm.project.handoff_requested",
@@ -237,7 +268,8 @@
       "permission": "crm.omnichannel.ingest",
       "state_source": "forge_workflow_artifacts_and_events",
       "workflow_ids": [
-        "crm.ticket.sla"
+        "crm.ticket.sla",
+        "crm.enterprise.customer_journey"
       ],
       "lanes": [
         "received",
@@ -245,16 +277,32 @@
         "owner_assigned",
         "customer_wait",
         "sla_escalation",
-        "resolved"
+        "resolved",
+        "lead_capture",
+        "opportunity",
+        "proposal",
+        "contract",
+        "account",
+        "support",
+        "handoff",
+        "operating_acceptance",
+        "rework_required"
       ],
       "artifact_types": [
+        "crm_business_runbook",
         "crm_channel_receipt",
+        "crm_cross_domain_handoff_map",
+        "crm_enterprise_journey_map",
         "crm_handoff_record",
         "crm_message_thread",
+        "crm_operating_acceptance_evidence",
         "crm_support_summary"
       ],
       "event_types": [
         "crm.handoff.delivered",
+        "crm.journey.acceptance_reported",
+        "crm.journey.stage_completed",
+        "crm.journey.started",
         "crm.message.received",
         "crm.sla.escalated",
         "crm.ticket.created"
@@ -323,7 +371,8 @@
       "workflow_ids": [
         "crm.proposal.approval",
         "crm.contract.signature",
-        "crm.document.approval"
+        "crm.document.approval",
+        "crm.enterprise.customer_journey"
       ],
       "lanes": [
         "draft_requested",
@@ -339,13 +388,25 @@
         "renewal_wait",
         "submitted",
         "validation",
-        "archived"
+        "archived",
+        "lead_capture",
+        "opportunity",
+        "proposal",
+        "contract",
+        "account",
+        "support",
+        "handoff",
+        "operating_acceptance"
       ],
       "artifact_types": [
         "crm_approval_record",
+        "crm_business_runbook",
         "crm_contract",
+        "crm_cross_domain_handoff_map",
         "crm_document",
+        "crm_enterprise_journey_map",
         "crm_handoff_record",
+        "crm_operating_acceptance_evidence",
         "crm_presentation",
         "crm_proposal",
         "crm_renewal_plan",
@@ -362,6 +423,9 @@
         "crm.document.rework_required",
         "crm.document.submitted",
         "crm.document.validated",
+        "crm.journey.acceptance_reported",
+        "crm.journey.stage_completed",
+        "crm.journey.started",
         "crm.proposal.generated"
       ],
       "mutation_requires_forge": true
@@ -595,7 +659,8 @@
         "crm.project.handoff",
         "crm.document.approval",
         "crm.operational.observability",
-        "crm.enterprise.readiness"
+        "crm.enterprise.readiness",
+        "crm.enterprise.customer_journey"
       ],
       "artifact_types": [
         "crm_account_plan",
@@ -604,13 +669,16 @@
         "crm_business_runbook",
         "crm_contract",
         "crm_cost_report",
+        "crm_cross_domain_handoff_map",
         "crm_document",
         "crm_domain_coverage_matrix",
+        "crm_enterprise_journey_map",
         "crm_forecast_report",
         "crm_handoff_record",
         "crm_health_report",
         "crm_lineage_map",
         "crm_metric_snapshot",
+        "crm_operating_acceptance_evidence",
         "crm_operating_readiness_report",
         "crm_presentation",
         "crm_project_plan",
@@ -635,6 +703,9 @@
         "crm.document.rework_required",
         "crm.document.submitted",
         "crm.document.validated",
+        "crm.journey.acceptance_reported",
+        "crm.journey.stage_completed",
+        "crm.journey.started",
         "crm.metric.reviewed",
         "crm.observability.inspected",
         "crm.operating.readiness_reported",
@@ -646,14 +717,17 @@
       ],
       "validation_gates": [
         "account owner visible",
+        "all required customer lifecycle stages have Forge artifact and event evidence",
         "approval actor recorded",
         "approval decision lineage recorded",
         "audit lineage cost metrics and logs sourced from Forge",
         "blocked reason explicit",
         "contract approval lineage present",
+        "cross-domain handoffs preserve workflow and artifact lineage",
         "expansion forecast event-backed",
         "inspection does not create CRM-local observability state",
         "lineage points to Forge artifact",
+        "main CRM flow has no external system dependency",
         "owner visible",
         "readiness evidence sourced from Forge workflows artifacts events and validation gates",
         "remediation requires Forge workflow mutation",
@@ -1243,6 +1317,56 @@
         ]
       },
       {
+        "id": "crm.enterprise.customer_journey",
+        "title": "Enterprise customer journey acceptance",
+        "domain": "operations",
+        "state_count": 9,
+        "states": [
+          "lead_capture",
+          "opportunity",
+          "proposal",
+          "contract",
+          "account",
+          "support",
+          "handoff",
+          "operating_acceptance",
+          "rework_required"
+        ],
+        "wait_states": [],
+        "runtime_contracts": [
+          "crm.enterprise.journey.executor",
+          "crm.marketing.form_capture.executor",
+          "crm.pipeline.stage_move.executor",
+          "crm.proposal.generator.executor",
+          "crm.commercial.contract_signature.executor",
+          "crm.commercial.account_management.executor",
+          "crm.support.ticket_sla.executor",
+          "crm.operations.project_handoff.executor"
+        ],
+        "artifact_types": [
+          "crm_enterprise_journey_map",
+          "crm_operating_acceptance_evidence",
+          "crm_cross_domain_handoff_map",
+          "crm_business_runbook"
+        ],
+        "event_types": [
+          "crm.journey.started",
+          "crm.journey.stage_completed",
+          "crm.journey.acceptance_reported"
+        ],
+        "surface_ids": [
+          "crm.system-map",
+          "crm.commercial-command",
+          "crm.support-queue",
+          "crm.document-queue"
+        ],
+        "validation_gates": [
+          "all required customer lifecycle stages have Forge artifact and event evidence",
+          "main CRM flow has no external system dependency",
+          "cross-domain handoffs preserve workflow and artifact lineage"
+        ]
+      },
+      {
         "id": "crm.workflow.evolution",
         "title": "Adaptive CRM workflow evolution",
         "domain": "ai_automation",
@@ -1402,6 +1526,18 @@
         "from": "crm.workflow.evolution",
         "to": "crm.enterprise.readiness",
         "reason": "validated experiments update readiness evidence",
+        "state_owner": "forge_workflow_runtime"
+      },
+      {
+        "from": "crm.project.handoff",
+        "to": "crm.enterprise.customer_journey",
+        "reason": "accepted handoff completes customer lifecycle evidence",
+        "state_owner": "forge_workflow_runtime"
+      },
+      {
+        "from": "crm.enterprise.customer_journey",
+        "to": "crm.enterprise.readiness",
+        "reason": "accepted journey updates operating readiness evidence",
         "state_owner": "forge_workflow_runtime"
       }
     ]
@@ -1566,7 +1702,8 @@
         "title": "rework required",
         "workflow_ids": [
           "crm.proposal.approval",
-          "crm.document.approval"
+          "crm.document.approval",
+          "crm.enterprise.customer_journey"
         ]
       },
       {
@@ -1593,9 +1730,13 @@
     ],
     "artifact_types": [
       "crm_approval_record",
+      "crm_business_runbook",
       "crm_contract",
+      "crm_cross_domain_handoff_map",
       "crm_document",
+      "crm_enterprise_journey_map",
       "crm_handoff_record",
+      "crm_operating_acceptance_evidence",
       "crm_presentation",
       "crm_proposal",
       "crm_renewal_plan",
@@ -1747,6 +1888,7 @@
           "crm.followup.forecast",
           "crm.account.management",
           "crm.project.handoff",
+          "crm.enterprise.customer_journey",
           "crm.proposal.approval",
           "crm.contract.signature"
         ],
@@ -1809,7 +1951,8 @@
         "state_source": "forge_workflow_artifacts_and_events",
         "mutation_requires_forge": true,
         "workflow_ids": [
-          "crm.ticket.sla"
+          "crm.ticket.sla",
+          "crm.enterprise.customer_journey"
         ],
         "action_ids": [
           "crm.ingest-omnichannel-message",
@@ -1925,7 +2068,8 @@
         "workflow_ids": [
           "crm.proposal.approval",
           "crm.contract.signature",
-          "crm.document.approval"
+          "crm.document.approval",
+          "crm.enterprise.customer_journey"
         ],
         "action_ids": [
           "crm.generate-proposal",
@@ -1984,7 +2128,8 @@
             "title": "rework required",
             "workflow_ids": [
               "crm.proposal.approval",
-              "crm.document.approval"
+              "crm.document.approval",
+              "crm.enterprise.customer_journey"
             ]
           },
           {
@@ -2011,9 +2156,13 @@
         ],
         "artifact_types": [
           "crm_approval_record",
+          "crm_business_runbook",
           "crm_contract",
+          "crm_cross_domain_handoff_map",
           "crm_document",
+          "crm_enterprise_journey_map",
           "crm_handoff_record",
+          "crm_operating_acceptance_evidence",
           "crm_presentation",
           "crm_proposal",
           "crm_renewal_plan",
@@ -2228,6 +2377,166 @@
       "rule": "If the experiment needs a missing runtime primitive, report the gap instead of creating CRM-local automation."
     }
   },
+  "enterprise_journey_workbench": {
+    "schema_version": "forge.crm_enterprise_journey_workbench.v1",
+    "workflow_id": "crm.enterprise.customer_journey",
+    "workflow_extension_id": "crm_enterprise_customer_journey",
+    "state_owner": "forge_workflow_runtime",
+    "local_state_allowed": false,
+    "action_id": "crm.run-enterprise-journey",
+    "contract_id": "crm.enterprise.journey.executor",
+    "stage_lanes": [
+      {
+        "id": "lead_capture",
+        "title": "Lead capture",
+        "workflow_id": "crm.lead.lifecycle",
+        "contract_id": "crm.marketing.form_capture.executor",
+        "required_artifacts": [
+          "crm_lead_capture"
+        ],
+        "required_events": [
+          "crm.lead.created"
+        ],
+        "state_source": "Forge artifacts and events",
+        "owner": "forge_workflow_runtime"
+      },
+      {
+        "id": "opportunity",
+        "title": "Opportunity",
+        "workflow_id": "crm.opportunity.pipeline",
+        "contract_id": "crm.pipeline.stage_move.executor",
+        "required_artifacts": [
+          "crm_pipeline_board"
+        ],
+        "required_events": [
+          "crm.opportunity.stage_changed"
+        ],
+        "state_source": "Forge artifacts and events",
+        "owner": "forge_workflow_runtime"
+      },
+      {
+        "id": "proposal",
+        "title": "Proposal",
+        "workflow_id": "crm.proposal.approval",
+        "contract_id": "crm.proposal.generator.executor",
+        "required_artifacts": [
+          "crm_proposal"
+        ],
+        "required_events": [
+          "crm.proposal.generated"
+        ],
+        "state_source": "Forge artifacts and events",
+        "owner": "forge_workflow_runtime"
+      },
+      {
+        "id": "contract",
+        "title": "Contract",
+        "workflow_id": "crm.contract.signature",
+        "contract_id": "crm.commercial.contract_signature.executor",
+        "required_artifacts": [
+          "crm_contract",
+          "crm_signature_receipt"
+        ],
+        "required_events": [
+          "crm.contract.signed"
+        ],
+        "state_source": "Forge artifacts and events",
+        "owner": "forge_workflow_runtime"
+      },
+      {
+        "id": "account",
+        "title": "Account",
+        "workflow_id": "crm.account.management",
+        "contract_id": "crm.commercial.account_management.executor",
+        "required_artifacts": [
+          "crm_account_plan"
+        ],
+        "required_events": [
+          "crm.account.health_reviewed"
+        ],
+        "state_source": "Forge artifacts and events",
+        "owner": "forge_workflow_runtime"
+      },
+      {
+        "id": "support",
+        "title": "Support",
+        "workflow_id": "crm.ticket.sla",
+        "contract_id": "crm.support.ticket_sla.executor",
+        "required_artifacts": [
+          "crm_support_summary"
+        ],
+        "required_events": [
+          "crm.ticket.created",
+          "crm.sla.escalated"
+        ],
+        "state_source": "Forge artifacts and events",
+        "owner": "forge_workflow_runtime"
+      },
+      {
+        "id": "handoff",
+        "title": "Handoff",
+        "workflow_id": "crm.project.handoff",
+        "contract_id": "crm.operations.project_handoff.executor",
+        "required_artifacts": [
+          "crm_project_plan",
+          "crm_task_plan"
+        ],
+        "required_events": [
+          "crm.project.handoff_requested"
+        ],
+        "state_source": "Forge artifacts and events",
+        "owner": "forge_workflow_runtime"
+      }
+    ],
+    "acceptance_gates": [
+      {
+        "id": "stage_artifact_evidence",
+        "title": "Every stage has required artifact evidence",
+        "owner": "Forge validation",
+        "required": true
+      },
+      {
+        "id": "stage_event_evidence",
+        "title": "Every stage has required event evidence",
+        "owner": "Forge validation",
+        "required": true
+      },
+      {
+        "id": "no_external_main_flow_dependency",
+        "title": "No main-flow dependency bypasses Forge",
+        "owner": "Forge validation",
+        "required": true
+      },
+      {
+        "id": "cross_domain_handoff_lineage",
+        "title": "Cross-domain handoffs preserve workflow lineage",
+        "owner": "Forge validation",
+        "required": true
+      }
+    ],
+    "operation_plan": [
+      {
+        "id": "collect_stage_evidence",
+        "title": "Collect promoted artifacts and events for every customer lifecycle stage",
+        "owner": "forge.workflow.artifacts and forge.events.timeline"
+      },
+      {
+        "id": "execute_enterprise_journey",
+        "title": "Execute CRM enterprise journey acceptance contract",
+        "owner": "crm.enterprise.journey.executor"
+      },
+      {
+        "id": "promote_acceptance_package",
+        "title": "Promote journey map and acceptance evidence to the Forge workflow",
+        "owner": "forge.addon_runtime"
+      },
+      {
+        "id": "refresh_readiness",
+        "title": "Refresh enterprise readiness evidence",
+        "owner": "crm.operating.readiness.executor"
+      }
+    ]
+  },
   "actions": [
     {
       "id": "crm.refresh-operating-snapshot",
@@ -2325,6 +2634,33 @@
         "forge.addon.crm",
         "--contract",
         "crm.operating.readiness.executor",
+        "--worker",
+        "<worker-id>",
+        "--task",
+        "<task-ref>",
+        "--input",
+        "<json>",
+        "--context",
+        "<json>",
+        "--output",
+        "json"
+      ]
+    },
+    {
+      "id": "crm.run-enterprise-journey",
+      "label": "Run enterprise journey",
+      "surface_id": "crm.system-map",
+      "contract_id": "crm.enterprise.journey.executor",
+      "requires_permission": "crm.workflow.mutate",
+      "mutates_workflow": true,
+      "command_template": [
+        "forge",
+        "addons",
+        "execute-executor",
+        "--addon",
+        "forge.addon.crm",
+        "--contract",
+        "crm.enterprise.journey.executor",
         "--worker",
         "<worker-id>",
         "--task",
@@ -3057,6 +3393,68 @@
             "title": "Execute runtime contract",
             "owner": "forge.addons.runtime",
             "evidence": "crm.operating.readiness.executor"
+          },
+          {
+            "id": "promote_result_to_workflow",
+            "title": "Promote result to workflow",
+            "owner": "forge.workflow.runtime",
+            "evidence": "artifact and event promotion"
+          },
+          {
+            "id": "refresh_operating_snapshot",
+            "title": "Refresh operating snapshot",
+            "owner": "forge.addon.crm",
+            "evidence": "crm.operating.snapshot.executor"
+          }
+        ],
+        "output_policy": {
+          "promote_result_to_workflow": true,
+          "browser_local_state_write": false,
+          "refresh_source": "forge_workflow_artifacts_and_events"
+        }
+      },
+      {
+        "action_id": "crm.run-enterprise-journey",
+        "label": "Run enterprise journey",
+        "surface_id": "crm.system-map",
+        "contract_id": "crm.enterprise.journey.executor",
+        "required_permission": "crm.workflow.mutate",
+        "selected_command": [
+          "forge",
+          "addons",
+          "execute-executor",
+          "--addon",
+          "forge.addon.crm",
+          "--contract",
+          "crm.enterprise.journey.executor",
+          "--worker",
+          "<worker-id>",
+          "--task",
+          "<task-ref>",
+          "--input",
+          "<json>",
+          "--context",
+          "<json>",
+          "--output",
+          "json"
+        ],
+        "permission_gate": {
+          "status": "requires_forge_permission",
+          "permission": "crm.workflow.mutate",
+          "approval_owner": "forge_permission_policy"
+        },
+        "operation_plan": [
+          {
+            "id": "check_addon_permission",
+            "title": "Check Addon permission",
+            "owner": "forge.permissions",
+            "evidence": "crm.workflow.mutate"
+          },
+          {
+            "id": "execute_runtime_contract",
+            "title": "Execute runtime contract",
+            "owner": "forge.addons.runtime",
+            "evidence": "crm.enterprise.journey.executor"
           },
           {
             "id": "promote_result_to_workflow",

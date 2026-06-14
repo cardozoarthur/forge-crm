@@ -34,7 +34,9 @@ const WORKFLOW_EDGES = [
   ["crm.document.approval", "crm.proposal.approval", "document validation gates proposal delivery"],
   ["crm.ai.copilot.recommendation", "crm.opportunity.pipeline", "approved recommendation mutates pipeline state"],
   ["crm.operational.observability", "crm.workflow.evolution", "observability findings generate controlled evolution candidates"],
-  ["crm.workflow.evolution", "crm.enterprise.readiness", "validated experiments update readiness evidence"]
+  ["crm.workflow.evolution", "crm.enterprise.readiness", "validated experiments update readiness evidence"],
+  ["crm.project.handoff", "crm.enterprise.customer_journey", "accepted handoff completes customer lifecycle evidence"],
+  ["crm.enterprise.customer_journey", "crm.enterprise.readiness", "accepted journey updates operating readiness evidence"]
 ];
 
 const DESIGN_TOKENS = {
@@ -607,6 +609,133 @@ function workflowEvolutionWorkbench(workflows, actionList) {
   };
 }
 
+function enterpriseJourneyWorkbench(workflows, actionList) {
+  const actionById = new Map(actionList.map((action) => [action.id, action]));
+  const journeyAction = actionById.get("crm.run-enterprise-journey");
+  const journeyWorkflow = workflows.find((workflow) => workflow.id === "crm.enterprise.customer_journey");
+  const stageLanes = [
+    {
+      id: "lead_capture",
+      title: "Lead capture",
+      workflow_id: "crm.lead.lifecycle",
+      contract_id: "crm.marketing.form_capture.executor",
+      required_artifacts: ["crm_lead_capture"],
+      required_events: ["crm.lead.created"]
+    },
+    {
+      id: "opportunity",
+      title: "Opportunity",
+      workflow_id: "crm.opportunity.pipeline",
+      contract_id: "crm.pipeline.stage_move.executor",
+      required_artifacts: ["crm_pipeline_board"],
+      required_events: ["crm.opportunity.stage_changed"]
+    },
+    {
+      id: "proposal",
+      title: "Proposal",
+      workflow_id: "crm.proposal.approval",
+      contract_id: "crm.proposal.generator.executor",
+      required_artifacts: ["crm_proposal"],
+      required_events: ["crm.proposal.generated"]
+    },
+    {
+      id: "contract",
+      title: "Contract",
+      workflow_id: "crm.contract.signature",
+      contract_id: "crm.commercial.contract_signature.executor",
+      required_artifacts: ["crm_contract", "crm_signature_receipt"],
+      required_events: ["crm.contract.signed"]
+    },
+    {
+      id: "account",
+      title: "Account",
+      workflow_id: "crm.account.management",
+      contract_id: "crm.commercial.account_management.executor",
+      required_artifacts: ["crm_account_plan"],
+      required_events: ["crm.account.health_reviewed"]
+    },
+    {
+      id: "support",
+      title: "Support",
+      workflow_id: "crm.ticket.sla",
+      contract_id: "crm.support.ticket_sla.executor",
+      required_artifacts: ["crm_support_summary"],
+      required_events: ["crm.ticket.created", "crm.sla.escalated"]
+    },
+    {
+      id: "handoff",
+      title: "Handoff",
+      workflow_id: "crm.project.handoff",
+      contract_id: "crm.operations.project_handoff.executor",
+      required_artifacts: ["crm_project_plan", "crm_task_plan"],
+      required_events: ["crm.project.handoff_requested"]
+    }
+  ];
+
+  return {
+    schema_version: "forge.crm_enterprise_journey_workbench.v1",
+    workflow_id: journeyWorkflow?.id || "crm.enterprise.customer_journey",
+    workflow_extension_id: journeyWorkflow?.workflow_extension_id || "crm_enterprise_customer_journey",
+    state_owner: "forge_workflow_runtime",
+    local_state_allowed: false,
+    action_id: journeyAction?.id || "crm.run-enterprise-journey",
+    contract_id: journeyAction?.contract_id || "crm.enterprise.journey.executor",
+    stage_lanes: stageLanes.map((stage) => ({
+      ...stage,
+      state_source: "Forge artifacts and events",
+      owner: "forge_workflow_runtime"
+    })),
+    acceptance_gates: [
+      {
+        id: "stage_artifact_evidence",
+        title: "Every stage has required artifact evidence",
+        owner: "Forge validation",
+        required: true
+      },
+      {
+        id: "stage_event_evidence",
+        title: "Every stage has required event evidence",
+        owner: "Forge validation",
+        required: true
+      },
+      {
+        id: "no_external_main_flow_dependency",
+        title: "No main-flow dependency bypasses Forge",
+        owner: "Forge validation",
+        required: true
+      },
+      {
+        id: "cross_domain_handoff_lineage",
+        title: "Cross-domain handoffs preserve workflow lineage",
+        owner: "Forge validation",
+        required: true
+      }
+    ],
+    operation_plan: [
+      {
+        id: "collect_stage_evidence",
+        title: "Collect promoted artifacts and events for every customer lifecycle stage",
+        owner: "forge.workflow.artifacts and forge.events.timeline"
+      },
+      {
+        id: "execute_enterprise_journey",
+        title: "Execute CRM enterprise journey acceptance contract",
+        owner: "crm.enterprise.journey.executor"
+      },
+      {
+        id: "promote_acceptance_package",
+        title: "Promote journey map and acceptance evidence to the Forge workflow",
+        owner: "forge.addon_runtime"
+      },
+      {
+        id: "refresh_readiness",
+        title: "Refresh enterprise readiness evidence",
+        owner: "crm.operating.readiness.executor"
+      }
+    ]
+  };
+}
+
 function actions() {
   return [
     {
@@ -662,6 +791,15 @@ function actions() {
       requires_permission: "crm.observability.inspect",
       mutates_workflow: true,
       command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.operating.readiness.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
+    },
+    {
+      id: "crm.run-enterprise-journey",
+      label: "Run enterprise journey",
+      surface_id: "crm.system-map",
+      contract_id: "crm.enterprise.journey.executor",
+      requires_permission: "crm.workflow.mutate",
+      mutates_workflow: true,
+      command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.enterprise.journey.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
     },
     {
       id: "crm.record-relationship-event",
@@ -1102,6 +1240,7 @@ export function buildCrmWebAppSnapshot(options = {}) {
     document_queue: documentQueueSnapshot,
     operational_workbench: buildOperationalWorkbench(workflows, actionList, documentQueueSnapshot),
     workflow_evolution_workbench: workflowEvolutionWorkbench(workflows, actionList),
+    enterprise_journey_workbench: enterpriseJourneyWorkbench(workflows, actionList),
     actions: actionList,
     action_invocation_plans: actionInvocationPlans(actionList),
     workflow_cadences: workflowCadences(workflows, actionList),

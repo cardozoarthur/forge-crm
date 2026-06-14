@@ -46,6 +46,13 @@ const USER_FACING_DELIVERABLES = [
     domain: "operations",
     surface_id: "crm.commercial-command",
     workflow_ids: ["crm.project.handoff"]
+  },
+  {
+    id: "enterprise_customer_journey",
+    title: "Enterprise customer journey",
+    domain: "operations",
+    surface_id: "crm.system-map",
+    workflow_ids: ["crm.enterprise.customer_journey"]
   }
 ];
 
@@ -183,6 +190,7 @@ function buildBenchmarkTracks(byId) {
         "crm.ticket.sla",
         "crm.document.approval",
         "crm.operational.observability",
+        "crm.enterprise.customer_journey",
         "crm.enterprise.readiness"
       ]
     },

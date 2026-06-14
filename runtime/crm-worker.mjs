@@ -46,6 +46,7 @@ export function createCrmWorkerServer() {
             "forge_crm.operating_copilot",
             "forge_crm.prepare_memory_promotion",
             "forge_crm.evolve_workflow",
+            "forge_crm.run_enterprise_journey",
             "forge_crm.inspect_observability",
             "forge_crm.generate_operating_readiness",
             "forge_crm.generate_proposal",
