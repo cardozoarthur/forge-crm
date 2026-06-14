@@ -27,7 +27,7 @@ Forge CRM is a product proof for Forge as a factory/framework for agentic workfl
 
 No important CRM automation should bypass Forge. External tools may execute bounded work, but Forge owns the workflow, state transitions, approvals, memory scope, artifact attachment, event history and validation gates.
 
-The current CRM worker exposes twenty-five Forge runtime entrypoints:
+The current CRM worker exposes twenty-six Forge runtime entrypoints:
 
 - `forge_crm.plan_system` for CRM system planning;
 - `forge_crm.bootstrap_tenant` for a Forge-owned tenant workflow pack;
@@ -36,6 +36,7 @@ The current CRM worker exposes twenty-five Forge runtime entrypoints:
 - `forge_crm.record_relationship_event` for entity relationships, unified timeline and pipeline stage events;
 - `forge_crm.move_opportunity_stage` for Forge-owned Kanban movement across multiple funnels with board, stage-change and forecast artifacts;
 - `forge_crm.operating_copilot` for opportunity priority, risk analysis, executive summary and next-step recommendations;
+- `forge_crm.run_area_copilot` for specialized commercial, support, marketing, operations and document copilot briefs;
 - `forge_crm.prepare_memory_promotion` for curated CRM knowledge summaries and governed `forge memory promote` requests;
 - `forge_crm.evolve_workflow` for governed Forge improve experiments, benchmarks, rollback plans and promotion decisions;
 - `forge_crm.run_enterprise_journey` for packaging a lead-to-support customer lifecycle as Forge-owned acceptance evidence;
@@ -86,7 +87,7 @@ The first web surface lives in `web/` and is declared by `crm.system-map.props.w
 
 - `scripts/generate-crm-web-snapshot.mjs` writes `web/data/operating-snapshot.json`;
 - `web/index.html` loads the snapshot;
-- `web/app.js` renders workflow graph, knowledge graph, business modules, document queue, enterprise journey workbench, operating copilot action and Forge action templates;
+- `web/app.js` renders workflow graph, knowledge graph, business modules, document queue, enterprise journey workbench, operating copilot and area copilot actions, and Forge action templates;
 - `web/styles.css` carries compact operational styling and design tokens.
 
 This is a business-user view over Forge-owned state. It does not introduce browser persistence, a CRM-local database or a side automation engine. Any action shown in the UI is represented as a Forge command template that routes through Addon runtime contracts and permission gates.

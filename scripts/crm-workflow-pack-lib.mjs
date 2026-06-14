@@ -475,11 +475,13 @@ const WORKFLOWS = [
     runtime_contracts: [
       "crm.lead.classifier.executor",
       "crm.ai.operating_copilot.executor",
+      "crm.ai.area_copilot.executor",
       "crm.memory.promotion.executor",
       "crm.proposal.generator.executor"
     ],
-    artifacts: ["crm_ai_recommendation", "crm_risk_analysis", "crm_report", "crm_knowledge_summary", "crm_memory_promotion_request"],
+    artifacts: ["crm_area_copilot_brief", "crm_ai_recommendation", "crm_risk_analysis", "crm_report", "crm_knowledge_summary", "crm_memory_promotion_request"],
     events: [
+      "crm.ai.area_copilot_generated",
       "crm.ai.recommendation_generated",
       "crm.ai.risk_flagged",
       "crm.next_action.approved",
@@ -491,6 +493,7 @@ const WORKFLOWS = [
     views: ["crm.ai-workbench"],
     validation_gates: [
       "recommendation includes evidence",
+      "specialized copilot recommendations are scoped by area and cite Forge evidence",
       "state mutation requires workflow approval",
       "memory promotion uses Forge memory governance"
     ]

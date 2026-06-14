@@ -459,6 +459,7 @@ function buildOperationalWorkbench(workflows, actionList, documentQueueSnapshot)
       workflow_ids: workflowIdsForSurface(workflows, "crm.ai-workbench"),
       action_ids: checkedActionIds(actionList, [
         "crm.run-operating-copilot",
+        "crm.run-area-copilot",
         "crm.prepare-memory-promotion",
         "crm.evolve-workflow",
         "crm.inspect-observability",
@@ -485,6 +486,58 @@ function buildOperationalWorkbench(workflows, actionList, documentQueueSnapshot)
         evidence_artifact_type: "crm_risk_analysis",
         target_action_id: "crm.manage-account",
         action_id: "crm.run-operating-copilot"
+      }
+    ],
+    specialized_copilots: [
+      {
+        area: "commercial",
+        title: "Commercial copilot",
+        workflow_id: "crm.opportunity.pipeline",
+        contract_id: "crm.ai.area_copilot.executor",
+        state_owner: "forge_workflow_runtime",
+        evidence_artifact_type: "crm_area_copilot_brief",
+        recommended_focus: "Revenue risk, forecast and next commercial step",
+        action_id: "crm.run-area-copilot"
+      },
+      {
+        area: "support",
+        title: "Support copilot",
+        workflow_id: "crm.ticket.sla",
+        contract_id: "crm.ai.area_copilot.executor",
+        state_owner: "forge_workflow_runtime",
+        evidence_artifact_type: "crm_area_copilot_brief",
+        recommended_focus: "SLA recovery and customer response",
+        action_id: "crm.run-area-copilot"
+      },
+      {
+        area: "marketing",
+        title: "Marketing copilot",
+        workflow_id: "crm.campaign.lifecycle",
+        contract_id: "crm.ai.area_copilot.executor",
+        state_owner: "forge_workflow_runtime",
+        evidence_artifact_type: "crm_area_copilot_brief",
+        recommended_focus: "Campaign segmentation and nurture adjustment",
+        action_id: "crm.run-area-copilot"
+      },
+      {
+        area: "operations",
+        title: "Operations copilot",
+        workflow_id: "crm.project.handoff",
+        contract_id: "crm.ai.area_copilot.executor",
+        state_owner: "forge_workflow_runtime",
+        evidence_artifact_type: "crm_area_copilot_brief",
+        recommended_focus: "Handoff, task owner and blocked wait recovery",
+        action_id: "crm.run-area-copilot"
+      },
+      {
+        area: "documents",
+        title: "Documents copilot",
+        workflow_id: "crm.document.approval",
+        contract_id: "crm.ai.area_copilot.executor",
+        state_owner: "forge_workflow_runtime",
+        evidence_artifact_type: "crm_area_copilot_brief",
+        recommended_focus: "Approval queue and document rework",
+        action_id: "crm.run-area-copilot"
       }
     ],
     memory_promotions: [
@@ -899,6 +952,15 @@ function actions() {
       requires_permission: "crm.ai.recommend",
       mutates_workflow: true,
       command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.ai.operating_copilot.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
+    },
+    {
+      id: "crm.run-area-copilot",
+      label: "Run area copilots",
+      surface_id: "crm.ai-workbench",
+      contract_id: "crm.ai.area_copilot.executor",
+      requires_permission: "crm.ai.recommend",
+      mutates_workflow: true,
+      command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.ai.area_copilot.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
     },
     {
       id: "crm.prepare-memory-promotion",

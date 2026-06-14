@@ -192,7 +192,24 @@ test("web app snapshot exposes an operational workbench backed by Forge artifact
   assert.ok(panels.get("marketing_calendar").forms.some((form) => form.capture_action_id === "crm.capture-form-submission"));
   assert.ok(panels.get("document_queue").documents.some((document) => document.approval_action_id === "crm.record-document-approval"));
   assert.ok(panels.get("ai_workbench").recommendations.some((recommendation) => recommendation.action_id === "crm.run-operating-copilot"));
+  assert.ok(panels.get("ai_workbench").specialized_copilots.some((copilot) => copilot.action_id === "crm.run-area-copilot"));
   assert.ok(panels.get("ai_workbench").memory_promotions.some((promotion) => promotion.action_id === "crm.prepare-memory-promotion"));
+});
+
+test("web app snapshot exposes specialized CRM area copilots in the AI workbench", () => {
+  const snapshot = buildCrmWebAppSnapshot({ tenant_id: "demo" });
+  const aiPanel = snapshot.operational_workbench.panels.find((panel) => panel.id === "ai_workbench");
+
+  assert.ok(aiPanel);
+  assert.equal(aiPanel.surface_id, "crm.ai-workbench");
+  assert.ok(aiPanel.action_ids.includes("crm.run-area-copilot"));
+  assert.deepEqual(
+    aiPanel.specialized_copilots.map((copilot) => copilot.area).sort(),
+    ["commercial", "documents", "marketing", "operations", "support"]
+  );
+  assert.ok(aiPanel.specialized_copilots.every((copilot) => copilot.state_owner === "forge_workflow_runtime"));
+  assert.ok(aiPanel.specialized_copilots.every((copilot) => copilot.contract_id === "crm.ai.area_copilot.executor"));
+  assert.ok(snapshot.actions.some((action) => action.id === "crm.run-area-copilot" && action.contract_id === "crm.ai.area_copilot.executor"));
 });
 
 test("web app snapshot exposes adaptive workflow evolution as Forge-governed experiments", () => {
@@ -257,6 +274,7 @@ test("web assets mount the generated CRM snapshot without a build step", async (
   assert.match(app, /renderSupportQueue/);
   assert.match(app, /renderMarketingCalendar/);
   assert.match(app, /renderAiWorkbench/);
+  assert.match(app, /specialized_copilots/);
   assert.match(app, /renderActionInvocationPlans/);
   assert.match(app, /renderWorkflowCadences/);
   assert.match(app, /renderWorkflowEvolutionWorkbench/);
@@ -269,6 +287,7 @@ test("web assets mount the generated CRM snapshot without a build step", async (
   assert.match(styles, /\.support-queue/);
   assert.match(styles, /\.marketing-calendar/);
   assert.match(styles, /\.ai-workbench/);
+  assert.match(styles, /\.area-copilot/);
   assert.match(styles, /\.action-plan/);
   assert.match(styles, /\.cadence-row/);
   assert.match(styles, /\.evolution-workbench/);

@@ -26,8 +26,8 @@
     "workflow_count": 16,
     "business_module_count": 6,
     "surface_count": 8,
-    "artifact_type_count": 50,
-    "event_type_count": 58,
+    "artifact_type_count": 51,
+    "event_type_count": 59,
     "complete_scope": true
   },
   "surfaces": [
@@ -457,6 +457,7 @@
       ],
       "artifact_types": [
         "crm_ai_recommendation",
+        "crm_area_copilot_brief",
         "crm_benchmark_report",
         "crm_core_gap_report",
         "crm_evolution_experiment",
@@ -468,6 +469,7 @@
         "crm_workflow_evolution_plan"
       ],
       "event_types": [
+        "crm.ai.area_copilot_generated",
         "crm.ai.recommendation_generated",
         "crm.ai.risk_flagged",
         "crm.core_gap.reported",
@@ -747,6 +749,7 @@
       ],
       "artifact_types": [
         "crm_ai_recommendation",
+        "crm_area_copilot_brief",
         "crm_benchmark_report",
         "crm_core_gap_report",
         "crm_document",
@@ -760,6 +763,7 @@
         "crm_workflow_evolution_plan"
       ],
       "event_types": [
+        "crm.ai.area_copilot_generated",
         "crm.ai.recommendation_generated",
         "crm.ai.risk_flagged",
         "crm.core_gap.reported",
@@ -781,6 +785,7 @@
         "memory promotion uses Forge memory governance",
         "promotion is blocked until benchmark evidence passes",
         "recommendation includes evidence",
+        "specialized copilot recommendations are scoped by area and cite Forge evidence",
         "state mutation requires workflow approval"
       ]
     }
@@ -1428,10 +1433,12 @@
         "runtime_contracts": [
           "crm.lead.classifier.executor",
           "crm.ai.operating_copilot.executor",
+          "crm.ai.area_copilot.executor",
           "crm.memory.promotion.executor",
           "crm.proposal.generator.executor"
         ],
         "artifact_types": [
+          "crm_area_copilot_brief",
           "crm_ai_recommendation",
           "crm_risk_analysis",
           "crm_report",
@@ -1439,6 +1446,7 @@
           "crm_memory_promotion_request"
         ],
         "event_types": [
+          "crm.ai.area_copilot_generated",
           "crm.ai.recommendation_generated",
           "crm.ai.risk_flagged",
           "crm.next_action.approved",
@@ -1450,6 +1458,7 @@
         ],
         "validation_gates": [
           "recommendation includes evidence",
+          "specialized copilot recommendations are scoped by area and cite Forge evidence",
           "state mutation requires workflow approval",
           "memory promotion uses Forge memory governance"
         ]
@@ -2213,6 +2222,7 @@
         ],
         "action_ids": [
           "crm.run-operating-copilot",
+          "crm.run-area-copilot",
           "crm.prepare-memory-promotion",
           "crm.evolve-workflow",
           "crm.inspect-observability",
@@ -2238,6 +2248,58 @@
             "evidence_artifact_type": "crm_risk_analysis",
             "target_action_id": "crm.manage-account",
             "action_id": "crm.run-operating-copilot"
+          }
+        ],
+        "specialized_copilots": [
+          {
+            "area": "commercial",
+            "title": "Commercial copilot",
+            "workflow_id": "crm.opportunity.pipeline",
+            "contract_id": "crm.ai.area_copilot.executor",
+            "state_owner": "forge_workflow_runtime",
+            "evidence_artifact_type": "crm_area_copilot_brief",
+            "recommended_focus": "Revenue risk, forecast and next commercial step",
+            "action_id": "crm.run-area-copilot"
+          },
+          {
+            "area": "support",
+            "title": "Support copilot",
+            "workflow_id": "crm.ticket.sla",
+            "contract_id": "crm.ai.area_copilot.executor",
+            "state_owner": "forge_workflow_runtime",
+            "evidence_artifact_type": "crm_area_copilot_brief",
+            "recommended_focus": "SLA recovery and customer response",
+            "action_id": "crm.run-area-copilot"
+          },
+          {
+            "area": "marketing",
+            "title": "Marketing copilot",
+            "workflow_id": "crm.campaign.lifecycle",
+            "contract_id": "crm.ai.area_copilot.executor",
+            "state_owner": "forge_workflow_runtime",
+            "evidence_artifact_type": "crm_area_copilot_brief",
+            "recommended_focus": "Campaign segmentation and nurture adjustment",
+            "action_id": "crm.run-area-copilot"
+          },
+          {
+            "area": "operations",
+            "title": "Operations copilot",
+            "workflow_id": "crm.project.handoff",
+            "contract_id": "crm.ai.area_copilot.executor",
+            "state_owner": "forge_workflow_runtime",
+            "evidence_artifact_type": "crm_area_copilot_brief",
+            "recommended_focus": "Handoff, task owner and blocked wait recovery",
+            "action_id": "crm.run-area-copilot"
+          },
+          {
+            "area": "documents",
+            "title": "Documents copilot",
+            "workflow_id": "crm.document.approval",
+            "contract_id": "crm.ai.area_copilot.executor",
+            "state_owner": "forge_workflow_runtime",
+            "evidence_artifact_type": "crm_area_copilot_brief",
+            "recommended_focus": "Approval queue and document rework",
+            "action_id": "crm.run-area-copilot"
           }
         ],
         "memory_promotions": [
@@ -2958,6 +3020,33 @@
         "forge.addon.crm",
         "--contract",
         "crm.ai.operating_copilot.executor",
+        "--worker",
+        "<worker-id>",
+        "--task",
+        "<task-ref>",
+        "--input",
+        "<json>",
+        "--context",
+        "<json>",
+        "--output",
+        "json"
+      ]
+    },
+    {
+      "id": "crm.run-area-copilot",
+      "label": "Run area copilots",
+      "surface_id": "crm.ai-workbench",
+      "contract_id": "crm.ai.area_copilot.executor",
+      "requires_permission": "crm.ai.recommend",
+      "mutates_workflow": true,
+      "command_template": [
+        "forge",
+        "addons",
+        "execute-executor",
+        "--addon",
+        "forge.addon.crm",
+        "--contract",
+        "crm.ai.area_copilot.executor",
         "--worker",
         "<worker-id>",
         "--task",
@@ -4137,6 +4226,68 @@
             "title": "Execute runtime contract",
             "owner": "forge.addons.runtime",
             "evidence": "crm.ai.operating_copilot.executor"
+          },
+          {
+            "id": "promote_result_to_workflow",
+            "title": "Promote result to workflow",
+            "owner": "forge.workflow.runtime",
+            "evidence": "artifact and event promotion"
+          },
+          {
+            "id": "refresh_operating_snapshot",
+            "title": "Refresh operating snapshot",
+            "owner": "forge.addon.crm",
+            "evidence": "crm.operating.snapshot.executor"
+          }
+        ],
+        "output_policy": {
+          "promote_result_to_workflow": true,
+          "browser_local_state_write": false,
+          "refresh_source": "forge_workflow_artifacts_and_events"
+        }
+      },
+      {
+        "action_id": "crm.run-area-copilot",
+        "label": "Run area copilots",
+        "surface_id": "crm.ai-workbench",
+        "contract_id": "crm.ai.area_copilot.executor",
+        "required_permission": "crm.ai.recommend",
+        "selected_command": [
+          "forge",
+          "addons",
+          "execute-executor",
+          "--addon",
+          "forge.addon.crm",
+          "--contract",
+          "crm.ai.area_copilot.executor",
+          "--worker",
+          "<worker-id>",
+          "--task",
+          "<task-ref>",
+          "--input",
+          "<json>",
+          "--context",
+          "<json>",
+          "--output",
+          "json"
+        ],
+        "permission_gate": {
+          "status": "requires_forge_permission",
+          "permission": "crm.ai.recommend",
+          "approval_owner": "forge_permission_policy"
+        },
+        "operation_plan": [
+          {
+            "id": "check_addon_permission",
+            "title": "Check Addon permission",
+            "owner": "forge.permissions",
+            "evidence": "crm.ai.recommend"
+          },
+          {
+            "id": "execute_runtime_contract",
+            "title": "Execute runtime contract",
+            "owner": "forge.addons.runtime",
+            "evidence": "crm.ai.area_copilot.executor"
           },
           {
             "id": "promote_result_to_workflow",

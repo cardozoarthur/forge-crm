@@ -342,6 +342,82 @@ test("operating copilot prioritizes opportunities without mutating CRM state", (
   assert.ok(result.events.some((event) => event.kind === "crm.ai.operating_copilot_generated"));
 });
 
+test("area copilot generates specialized CRM recommendations without mutating state", () => {
+  assert.equal(typeof runtime.buildAreaCopilotResult, "function");
+
+  const result = runtime.buildAreaCopilotResult(
+    workerRequest(
+      "forge_crm.run_area_copilot",
+      {
+        tenant_context: { tenant_id: "demo" },
+        area_contexts: [
+          {
+            area: "commercial",
+            workflow_id: "crm.opportunity.pipeline",
+            objective: "Protect renewal forecast",
+            evidence_artifacts: ["crm_forecast_report", "crm_account_plan"],
+            signals: ["priority deal has stale legal review"],
+            requested_outcome: "next commercial actions"
+          },
+          {
+            area: "support",
+            workflow_id: "crm.ticket.sla",
+            objective: "Prevent SLA breach",
+            evidence_artifacts: ["crm_support_summary"],
+            signals: ["critical ticket with 18 minutes left"],
+            requested_outcome: "support escalation plan"
+          },
+          {
+            area: "marketing",
+            workflow_id: "crm.campaign.lifecycle",
+            objective: "Improve lead quality",
+            evidence_artifacts: ["crm_campaign", "crm_segment"],
+            signals: ["enterprise segment conversion is below target"],
+            requested_outcome: "nurture adjustment"
+          },
+          {
+            area: "operations",
+            workflow_id: "crm.project.handoff",
+            objective: "Unblock onboarding",
+            evidence_artifacts: ["crm_project_plan", "crm_task_plan"],
+            signals: ["handoff is blocked by missing owner"],
+            requested_outcome: "handoff recovery"
+          },
+          {
+            area: "documents",
+            workflow_id: "crm.document.approval",
+            objective: "Clear approval queue",
+            evidence_artifacts: ["crm_document", "crm_approval_record"],
+            signals: ["proposal waits for finance approval"],
+            requested_outcome: "document rework plan"
+          }
+        ],
+        copilot_policy: {
+          mutation_policy: "recommendation_only_until_forge_approval",
+          require_evidence_refs: true,
+          required_areas: ["commercial", "support", "marketing", "operations", "documents"]
+        }
+      },
+      { contract_id: "crm.ai.area_copilot.executor", task_ref: "area-copilot-test" }
+    )
+  );
+
+  assert.equal(result.schema_version, "forge.addon_executor_result.v1");
+  assert.equal(result.status, "completed");
+  assert.equal(result.outputs.tenant_id, "demo");
+  assert.equal(result.outputs.area_count, 5);
+  assert.equal(result.outputs.ready_area_count, 5);
+  assert.equal(result.outputs.mutates_crm_state, false);
+  assert.equal(result.outputs.mutation_requires_workflow_approval, true);
+  assert.deepEqual(result.outputs.copilot_modes, ["commercial", "documents", "marketing", "operations", "support"]);
+  assert.ok(result.outputs.specialized_copilots.every((copilot) => copilot.workflow_id && copilot.evidence_artifacts.length > 0));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_area_copilot_brief"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_ai_recommendation"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_risk_analysis"));
+  assert.ok(result.events.some((event) => event.kind === "crm.ai.area_copilot_generated"));
+  assert.ok(result.events.some((event) => event.kind === "crm.ai.recommendation_generated"));
+});
+
 test("memory promotion executor prepares governed Forge memory promotion requests", () => {
   assert.equal(typeof runtime.buildMemoryPromotionCandidateResult, "function");
 

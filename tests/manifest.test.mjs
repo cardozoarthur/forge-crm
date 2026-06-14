@@ -109,6 +109,31 @@ test("manifest exposes CRM operating copilot as a recommendation-only executor",
   assert.ok(contract.constraints.some((constraint) => constraint.includes("does not mutate")));
 });
 
+test("manifest exposes specialized CRM area copilots as Forge recommendation contracts", () => {
+  const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.ai.area_copilot.executor");
+  assert.ok(contract);
+  assert.equal(contract.contract_type, "executor");
+  assert.equal(contract.capability_id, "crm_ai_automation");
+  assert.equal(contract.workflow_extension_id, "crm_ai_copilot_recommendation");
+  assert.equal(contract.entrypoint, "forge_crm.run_area_copilot");
+  assert.deepEqual(contract.permissions, ["crm.ai.recommend"]);
+  for (const input of ["area_contexts", "copilot_policy", "tenant_context"]) {
+    assert.ok(contract.inputs.includes(input), `missing area copilot input ${input}`);
+  }
+  for (const output of ["crm_area_copilot_brief", "crm_ai_recommendation", "crm_risk_analysis"]) {
+    assert.ok(contract.outputs.includes(output), `missing area copilot output ${output}`);
+  }
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("specialized by CRM area")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("does not mutate")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("Forge workflow approval")));
+
+  const artifactTypes = new Set(manifest.artifact_types.map((artifact) => artifact.id));
+  assert.ok(artifactTypes.has("crm_area_copilot_brief"));
+
+  const aiEvents = new Set(manifest.event_types.map((event) => event.id));
+  assert.ok(aiEvents.has("crm.ai"));
+});
+
 test("manifest exposes CRM memory promotion as governed Forge memory preparation", () => {
   const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.memory.promotion.executor");
   assert.ok(contract);
@@ -555,6 +580,7 @@ test("manifest exposes a Forge TUI operational cockpit with permission-gated CRM
     "crm.tui.automate-campaign",
     "crm.tui.generate-document",
     "crm.tui.run-operating-copilot",
+    "crm.tui.run-area-copilot",
     "crm.tui.generate-readiness-package"
   ]) {
     assert.ok(actionIds.has(actionId), `missing TUI action ${actionId}`);

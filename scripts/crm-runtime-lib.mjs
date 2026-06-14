@@ -684,6 +684,185 @@ export function buildOperatingCopilotResult(request) {
   };
 }
 
+const AREA_COPILOT_BASELINES = [
+  {
+    area: "commercial",
+    title: "Commercial copilot",
+    workflow_id: "crm.opportunity.pipeline",
+    surface_id: "crm.commercial-command",
+    default_action: "review_revenue_risk_and_next_commercial_step"
+  },
+  {
+    area: "support",
+    title: "Support copilot",
+    workflow_id: "crm.ticket.sla",
+    surface_id: "crm.support-queue",
+    default_action: "prioritize_sla_recovery_and_customer_response"
+  },
+  {
+    area: "marketing",
+    title: "Marketing copilot",
+    workflow_id: "crm.campaign.lifecycle",
+    surface_id: "crm.marketing-calendar",
+    default_action: "adjust_segment_campaign_and_nurture_workflows"
+  },
+  {
+    area: "operations",
+    title: "Operations copilot",
+    workflow_id: "crm.project.handoff",
+    surface_id: "crm.commercial-command",
+    default_action: "unblock_handoff_owner_and_internal_tasks"
+  },
+  {
+    area: "documents",
+    title: "Documents copilot",
+    workflow_id: "crm.document.approval",
+    surface_id: "crm.document-queue",
+    default_action: "clear_document_approval_or_rework_queue"
+  }
+];
+
+function normalizeAreaCopilotContext(areaContext) {
+  const context = asObject(areaContext);
+  const area = slug(context.area || context.domain || context.id, "area").replace(/-/g, "_");
+  const baseline = AREA_COPILOT_BASELINES.find((candidate) => candidate.area === area) || {};
+  const signals = asArray(context.signals ?? context.risk_signals ?? context.evidence_signals).map((signal) => String(signal));
+  const evidenceArtifacts = asArray(context.evidence_artifacts ?? context.artifacts ?? context.artifact_refs).map((artifact) => String(artifact));
+  const riskSignals = signals.filter((signal) =>
+    textIncludes(signal, ["risk", "breach", "blocked", "stale", "below", "waiting", "missing", "critical"])
+  );
+
+  return {
+    area,
+    title: context.title || baseline.title || `${area.replace(/_/g, " ")} copilot`,
+    workflow_id: context.workflow_id || baseline.workflow_id || null,
+    surface_id: context.surface_id || baseline.surface_id || "crm.ai-workbench",
+    objective: context.objective || context.goal || "Recommend the next Forge-tracked action",
+    requested_outcome: context.requested_outcome || "area recommendation",
+    evidence_artifacts: evidenceArtifacts,
+    signals,
+    risk_signals: riskSignals,
+    recommended_action: context.recommended_action || baseline.default_action || "request_forge_approval_for_next_area_step",
+    state_owner: "forge_workflow_runtime",
+    mutates_crm_state: false
+  };
+}
+
+export function buildAreaCopilotResult(request) {
+  const input = dispatchPayload(request);
+  const context = providedContext(request);
+  const tenantId = input.tenant_id || input.tenant_context?.tenant_id || input.tenant_context?.id || context.tenant || "default";
+  const taskRef = dispatchEnvelope(request).task_ref || `area-copilot-${slug(tenantId, "tenant")}`;
+  const policy = asObject(input.copilot_policy ?? input.recommendation_policy);
+  const providedContexts = asArray(input.area_contexts ?? input.areas);
+  const requiredAreas = asArray(policy.required_areas).length > 0
+    ? asArray(policy.required_areas).map((area) => slug(area, "area").replace(/-/g, "_"))
+    : AREA_COPILOT_BASELINES.map((area) => area.area);
+  const providedByArea = new Map(providedContexts.map((areaContext) => {
+    const normalized = normalizeAreaCopilotContext(areaContext);
+    return [normalized.area, normalized];
+  }));
+  const specializedCopilots = requiredAreas
+    .map((area) => normalizeAreaCopilotContext({ ...(providedByArea.get(area) || {}), area }))
+    .sort((left, right) => left.area.localeCompare(right.area));
+  const requireEvidenceRefs = policy.require_evidence_refs !== false;
+  const readyCopilots = specializedCopilots.filter((copilot) => copilot.workflow_id && (!requireEvidenceRefs || copilot.evidence_artifacts.length > 0));
+  const riskSignals = specializedCopilots.flatMap((copilot) =>
+    copilot.risk_signals.map((signal) => ({
+      area: copilot.area,
+      workflow_id: copilot.workflow_id,
+      signal
+    }))
+  );
+  const mutationPolicy = policy.mutation_policy || "recommendation_only_until_forge_approval";
+  const acceptanceStatus = readyCopilots.length === specializedCopilots.length ? "ready_for_area_review" : "missing_area_evidence";
+
+  return {
+    schema_version: "forge.addon_executor_result.v1",
+    status: "completed",
+    task_ref: taskRef,
+    summary: `CRM area copilots generated ${specializedCopilots.length} specialized recommendation briefs for ${tenantId}`,
+    outputs: {
+      tenant_id: tenantId,
+      workflow_id: input.workflow_id || "crm.ai.copilot.recommendation",
+      acceptance_status: acceptanceStatus,
+      area_count: specializedCopilots.length,
+      ready_area_count: readyCopilots.length,
+      risk_signal_count: riskSignals.length,
+      copilot_modes: specializedCopilots.map((copilot) => copilot.area),
+      specialized_copilots: specializedCopilots,
+      mutates_crm_state: false,
+      mutation_requires_workflow_approval: true,
+      forge_event_sourced: true
+    },
+    artifacts: [
+      {
+        kind: "crm_area_copilot_brief",
+        id: `crm-area-copilot-brief-${slug(tenantId, "tenant")}`,
+        title: `CRM area copilot brief for ${tenantId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          specialized_copilots: specializedCopilots,
+          policy: mutationPolicy,
+          state_owner: "forge_workflow_runtime"
+        }
+      },
+      {
+        kind: "crm_ai_recommendation",
+        id: `crm-area-copilot-recommendations-${slug(tenantId, "tenant")}`,
+        title: `CRM area recommendations for ${tenantId}`,
+        content_type: "application/json",
+        data: {
+          recommendations: specializedCopilots.map((copilot) => ({
+            area: copilot.area,
+            workflow_id: copilot.workflow_id,
+            recommended_action: copilot.recommended_action,
+            requires_forge_approval: true
+          })),
+          policy: mutationPolicy
+        }
+      },
+      {
+        kind: "crm_risk_analysis",
+        id: `crm-area-copilot-risks-${slug(tenantId, "tenant")}`,
+        title: `CRM area copilot risk signals for ${tenantId}`,
+        content_type: "application/json",
+        data: {
+          risk_signals: riskSignals,
+          risk_count: riskSignals.length,
+          closure_policy: "risk closure requires Forge workflow evidence"
+        }
+      }
+    ],
+    events: [
+      {
+        kind: "crm.ai.area_copilot_generated",
+        tenant_id: tenantId,
+        area_count: specializedCopilots.length,
+        ready_area_count: readyCopilots.length
+      },
+      {
+        kind: "crm.ai.recommendation_generated",
+        tenant_id: tenantId,
+        recommendation_count: specializedCopilots.length,
+        source_contract: "crm.ai.area_copilot.executor"
+      },
+      ...(riskSignals.length > 0
+        ? [
+            {
+              kind: "crm.ai.risk_flagged",
+              tenant_id: tenantId,
+              risk_count: riskSignals.length,
+              source_contract: "crm.ai.area_copilot.executor"
+            }
+          ]
+        : [])
+    ],
+    context_tenant: context.tenant || tenantId
+  };
+}
+
 export function buildMemoryPromotionCandidateResult(request) {
   const input = dispatchPayload(request);
   const context = providedContext(request);
@@ -3525,6 +3704,8 @@ export function executeCrmRuntimeRequest(request) {
       return buildOpportunityPipelineMoveResult(request);
     case "forge_crm.operating_copilot":
       return buildOperatingCopilotResult(request);
+    case "forge_crm.run_area_copilot":
+      return buildAreaCopilotResult(request);
     case "forge_crm.prepare_memory_promotion":
       return buildMemoryPromotionCandidateResult(request);
     case "forge_crm.evolve_workflow":

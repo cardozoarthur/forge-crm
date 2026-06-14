@@ -81,6 +81,7 @@ try {
       "forge_crm.record_relationship_event",
       "forge_crm.move_opportunity_stage",
       "forge_crm.operating_copilot",
+      "forge_crm.run_area_copilot",
       "forge_crm.prepare_memory_promotion",
       "forge_crm.evolve_workflow",
       "forge_crm.run_enterprise_journey",
@@ -108,6 +109,7 @@ try {
       "crm.relationship.timeline.executor",
       "crm.pipeline.stage_move.executor",
       "crm.ai.operating_copilot.executor",
+      "crm.ai.area_copilot.executor",
       "crm.memory.promotion.executor",
       "crm.workflow.evolution.executor",
       "crm.enterprise.journey.executor",
@@ -296,6 +298,80 @@ try {
   }
   if (copilot.executor_result.outputs.priority_opportunity_id !== "opp-smoke-priority") {
     throw new Error(`expected priority opportunity from copilot, got ${copilot.executor_result.outputs.priority_opportunity_id}`);
+  }
+
+  const areaCopilot = runForge([
+    "addons",
+    "execute-executor",
+    "--addon-dir",
+    "addons",
+    "--addon",
+    "forge.addon.crm",
+    "--contract",
+    "crm.ai.area_copilot.executor",
+    "--worker",
+    workerId,
+    "--task",
+    "crm-smoke-area-copilot",
+    "--workflow",
+    workflowId,
+    "--input",
+    JSON.stringify({
+      tenant_context: { id: "smoke", tenant_id: "smoke" },
+      area_contexts: [
+        {
+          area: "commercial",
+          workflow_id: "crm.opportunity.pipeline",
+          objective: "Protect priority opportunity",
+          evidence_artifacts: ["crm_forecast_report", "crm_pipeline_board"],
+          signals: ["priority deal has stale contract review"]
+        },
+        {
+          area: "support",
+          workflow_id: "crm.ticket.sla",
+          objective: "Prevent SLA breach",
+          evidence_artifacts: ["crm_support_summary"],
+          signals: ["critical ticket has 25 minutes remaining"]
+        },
+        {
+          area: "marketing",
+          workflow_id: "crm.campaign.lifecycle",
+          objective: "Improve lead quality",
+          evidence_artifacts: ["crm_campaign", "crm_segment"],
+          signals: ["enterprise segment conversion below target"]
+        },
+        {
+          area: "operations",
+          workflow_id: "crm.project.handoff",
+          objective: "Unblock customer handoff",
+          evidence_artifacts: ["crm_project_plan", "crm_task_plan"],
+          signals: ["handoff blocked by missing owner"]
+        },
+        {
+          area: "documents",
+          workflow_id: "crm.document.approval",
+          objective: "Clear approval queue",
+          evidence_artifacts: ["crm_document", "crm_approval_record"],
+          signals: ["proposal waiting for finance approval"]
+        }
+      ],
+      copilot_policy: {
+        mutation_policy: "recommendation_only_until_forge_approval",
+        require_evidence_refs: true,
+        required_areas: ["commercial", "support", "marketing", "operations", "documents"]
+      }
+    }),
+    "--context",
+    JSON.stringify({ tenant: "smoke" }),
+    "--output",
+    "json"
+  ]);
+
+  if (areaCopilot.promotion?.status !== "addon_executor_result_promoted") {
+    throw new Error(`expected area copilot promotion, got ${areaCopilot.promotion?.status || "missing"}`);
+  }
+  if (areaCopilot.executor_result.outputs.ready_area_count !== 5) {
+    throw new Error(`expected 5 ready area copilots, got ${areaCopilot.executor_result.outputs.ready_area_count}`);
   }
 
   const memoryPromotion = runForge([
@@ -1295,6 +1371,8 @@ try {
   const snapshotPromotedEventCount = operatingSnapshot.promotion?.event_count ?? 0;
   const copilotPromotedArtifactCount = copilot.promotion?.artifact_count ?? 0;
   const copilotPromotedEventCount = copilot.promotion?.event_count ?? 0;
+  const areaCopilotPromotedArtifactCount = areaCopilot.promotion?.artifact_count ?? 0;
+  const areaCopilotPromotedEventCount = areaCopilot.promotion?.event_count ?? 0;
   const memoryPromotedArtifactCount = memoryPromotion.promotion?.artifact_count ?? 0;
   const memoryPromotedEventCount = memoryPromotion.promotion?.event_count ?? 0;
   const observabilityPromotedArtifactCount = observabilityInspection.promotion?.artifact_count ?? 0;
@@ -1365,6 +1443,14 @@ try {
   }
   if (!workflowEventKinds.includes("crm.ai.operating_copilot_generated")) {
     throw new Error(`expected operating copilot event in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
+  }
+  if (areaCopilotPromotedArtifactCount < 3 || areaCopilotPromotedEventCount < 2) {
+    throw new Error(
+      `expected promoted area copilot artifacts/events, got artifacts=${areaCopilotPromotedArtifactCount} events=${areaCopilotPromotedEventCount}`
+    );
+  }
+  if (!workflowEventKinds.includes("crm.ai.area_copilot_generated")) {
+    throw new Error(`expected area copilot event in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
   }
   if (memoryPromotedArtifactCount < 2 || memoryPromotedEventCount < 2) {
     throw new Error(
@@ -1690,6 +1776,12 @@ try {
     copilot_risk_count: copilot.executor_result.outputs.risk_count,
     copilot_promoted_artifacts: copilotPromotedArtifactCount,
     copilot_promoted_events: copilotPromotedEventCount,
+    area_copilot_status: areaCopilot.status,
+    area_copilot_promotion_status: areaCopilot.promotion.status,
+    area_copilot_ready_area_count: areaCopilot.executor_result.outputs.ready_area_count,
+    area_copilot_modes: areaCopilot.executor_result.outputs.copilot_modes,
+    area_copilot_promoted_artifacts: areaCopilotPromotedArtifactCount,
+    area_copilot_promoted_events: areaCopilotPromotedEventCount,
     memory_promotion_status: memoryPromotion.status,
     memory_promotion_promotion_status: memoryPromotion.promotion.status,
     memory_promotion_to_scope: memoryPromotion.executor_result.outputs.to_scope,

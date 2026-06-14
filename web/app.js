@@ -319,6 +319,16 @@ export function renderAiWorkbench(snapshot) {
     recommendations.append(item);
   }
 
+  const areaCopilots = nodeElement("div", "area-copilot-list");
+  for (const copilot of panel.specialized_copilots || []) {
+    const item = nodeElement("article", "area-copilot");
+    item.append(nodeElement("strong", "", copilot.title || compactTitle(copilot.area)));
+    item.append(nodeElement("span", "", `${compactTitle(copilot.area)} · ${copilot.evidence_artifact_type}`));
+    item.append(nodeElement("small", "", copilot.recommended_focus));
+    item.append(nodeElement("code", "", actionLabel(snapshot, copilot.action_id)));
+    areaCopilots.append(item);
+  }
+
   const memory = nodeElement("div", "memory-promotion-list");
   for (const promotion of panel.memory_promotions) {
     const item = nodeElement("article", "memory-promotion");
@@ -333,7 +343,7 @@ export function renderAiWorkbench(snapshot) {
     "observability-line",
     `${panel.observability.risk_count} risks · ${panel.observability.lineage_source} · ${actionLabel(snapshot, panel.observability.readiness_action_id)}`
   );
-  section.append(recommendations, memory, observability);
+  section.append(recommendations, areaCopilots, memory, observability);
   return section;
 }
 

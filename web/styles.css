@@ -374,6 +374,7 @@ h3 {
 .campaign-grid,
 .form-list,
 .ai-recommendation-list,
+.area-copilot-list,
 .memory-promotion-list,
 .document-table {
   display: grid;
@@ -410,8 +411,13 @@ h3 {
 }
 
 .ai-recommendation,
+.area-copilot,
 .memory-promotion {
   border-left: 4px solid #285f9d;
+}
+
+.area-copilot {
+  border-left-color: #126c55;
 }
 
 .observability-line {
