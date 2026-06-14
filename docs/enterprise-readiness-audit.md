@@ -1,15 +1,15 @@
 # Forge CRM Enterprise Readiness Audit
 
-Tenant: demo
+Tenant: default
 Status: ready_for_forge_runtime_audit
 Repository: https://github.com/cardozoarthur/forge-crm.git
 
 ## Summary
 
-- Workflows: 21
-- Runtime contracts: 31
-- Artifact types: 66
-- Event types: 31
+- Workflows: 22
+- Runtime contracts: 32
+- Artifact types: 68
+- Event types: 32
 - User-facing deliverables ready: 8/8
 - Missing objective items: 0
 
@@ -18,7 +18,7 @@ Repository: https://github.com/cardozoarthur/forge-crm.git
 - Relationship workspace: ready; workflows=crm.lead.lifecycle, crm.opportunity.pipeline, crm.relationship.profile_enrichment; surface=crm.relationship-graph
 - Commercial command center: ready; workflows=crm.account.management, crm.contract.signature, crm.followup.forecast, crm.opportunity.pipeline, crm.proposal.approval; surface=crm.commercial-command
 - Support inbox: ready; workflows=crm.omnichannel.channel_intake, crm.ticket.sla; surface=crm.support-queue
-- Marketing automation: ready; workflows=crm.campaign.lifecycle, crm.lead.nurture, crm.marketing.landing_page; surface=crm.marketing-calendar
+- Marketing automation: ready; workflows=crm.campaign.lifecycle, crm.lead.nurture, crm.marketing.landing_page, crm.marketing.segment_builder; surface=crm.marketing-calendar
 - Document approvals: ready; workflows=crm.contract.signature, crm.document.approval, crm.proposal.approval; surface=crm.document-queue
 - Project handoff: ready; workflows=crm.project.handoff; surface=crm.commercial-command
 - Enterprise customer journey: ready; workflows=crm.enterprise.customer_journey; surface=crm.system-map

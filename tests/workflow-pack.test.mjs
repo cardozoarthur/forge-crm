@@ -382,6 +382,35 @@ test("marketing workflows route campaign automation and nurture through Forge", 
   assert.ok(pack.indexes.runtime_contracts.includes("crm.marketing.campaign_automation.executor"));
 });
 
+test("marketing segment builder creates Forge-owned segment definitions and audiences", () => {
+  const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
+  const workflow = pack.workflows.find((candidate) => candidate.id === "crm.marketing.segment_builder");
+  const campaignWorkflow = pack.workflows.find((candidate) => candidate.id === "crm.campaign.lifecycle");
+
+  assert.ok(workflow);
+  assert.equal(workflow.domain, "marketing");
+  assert.equal(workflow.workflow_extension_id, "crm_marketing_segment_builder");
+  assert.ok(workflow.runtime_contracts.includes("crm.marketing.segment_builder.executor"));
+  assert.ok(workflow.depends_on_workflows.includes("crm.lead.lifecycle"));
+  assert.ok(workflow.depends_on_workflows.includes("crm.relationship.profile_enrichment"));
+  assert.ok(workflow.object_types.includes("segment"));
+  assert.ok(workflow.object_types.includes("audience"));
+  assert.ok(workflow.object_types.includes("lead"));
+
+  for (const artifact of ["crm_segment_definition", "crm_segment_audience", "crm_segment", "crm_automation_plan"]) {
+    assert.ok(workflow.artifacts.includes(artifact), `missing segment builder artifact ${artifact}`);
+    assert.ok(pack.indexes.artifact_types.includes(artifact), `missing indexed segment builder artifact ${artifact}`);
+  }
+  for (const event of ["crm.segment.defined", "crm.segment.audience_selected", "crm.segment.ready_for_campaign"]) {
+    assert.ok(workflow.events.includes(event), `missing segment builder event ${event}`);
+  }
+
+  assert.ok(workflow.validation_gates.includes("segment membership changes require Forge workflow approval before campaign use"));
+  assert.ok(campaignWorkflow.depends_on_workflows.includes("crm.marketing.segment_builder"));
+  assert.ok(campaignWorkflow.runtime_contracts.includes("crm.marketing.segment_builder.executor"));
+  assert.ok(pack.indexes.runtime_contracts.includes("crm.marketing.segment_builder.executor"));
+});
+
 test("marketing form workflow routes form submissions into Forge lead lifecycle", () => {
   const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
   const campaignWorkflow = pack.workflows.find((candidate) => candidate.id === "crm.campaign.lifecycle");

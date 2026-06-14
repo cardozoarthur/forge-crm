@@ -295,6 +295,15 @@ export function renderMarketingCalendar(snapshot) {
     return section;
   }
 
+  const segments = nodeElement("div", "segment-list");
+  for (const segment of panel.segments || []) {
+    const item = nodeElement("article", `segment-row state-${segment.state}`);
+    item.append(nodeElement("strong", "", segment.name || segment.segment_id));
+    item.append(nodeElement("span", "", `${segment.audience_count} leads · ${compactTitle(segment.state)}`));
+    item.append(nodeElement("code", "", actionLabel(snapshot, segment.action_id)));
+    segments.append(item);
+  }
+
   const campaigns = nodeElement("div", "campaign-grid");
   for (const campaign of panel.campaigns) {
     const item = nodeElement("article", "campaign-row");
@@ -322,7 +331,7 @@ export function renderMarketingCalendar(snapshot) {
     forms.append(item);
   }
 
-  section.append(campaigns, landingPages, forms);
+  section.append(segments, campaigns, landingPages, forms);
   return section;
 }
 

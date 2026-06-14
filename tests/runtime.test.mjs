@@ -1497,6 +1497,63 @@ test("marketing campaign automation executor schedules nurture workflows as Forg
   assert.ok(result.events.some((event) => event.kind === "crm.nurture.step_due"));
 });
 
+test("marketing segment builder executor selects approved audiences as Forge artifacts", () => {
+  assert.equal(typeof runtime.buildMarketingSegmentBuilderResult, "function");
+
+  const result = runtime.buildMarketingSegmentBuilderResult(
+    workerRequest(
+      "forge_crm.build_marketing_segment",
+      {
+        tenant_context: { tenant_id: "demo" },
+        segment_request: {
+          id: "segment-enterprise-ops",
+          name: "Enterprise operations leaders",
+          goal: "Prioritize companies ready for workflow-owned CRM adoption",
+          target_personas: ["COO", "Head of Operations"],
+          campaign_id: "campaign-001"
+        },
+        audience_source: {
+          leads: [
+            { id: "lead-001", company: "Acme Logistics", role: "COO", score: 91, lifecycle_stage: "mql" },
+            { id: "lead-002", company: "Beta Transport", role: "Ops Director", score: 84, lifecycle_stage: "sql" },
+            { id: "lead-003", company: "Small Retail", role: "Owner", score: 48, lifecycle_stage: "raw" }
+          ],
+          relationship_profiles: [
+            { entity_id: "lead-001", signals: ["enterprise", "operations", "budget_confirmed"] },
+            { entity_id: "lead-002", signals: ["operations", "integration_need"] }
+          ]
+        },
+        selection_policy: {
+          min_score: 80,
+          required_signals: ["operations"],
+          max_audience: 25,
+          approver_role: "marketing.director"
+        }
+      },
+      { contract_id: "crm.marketing.segment_builder.executor", task_ref: "segment-builder-test" }
+    )
+  );
+
+  assert.equal(result.schema_version, "forge.addon_executor_result.v1");
+  assert.equal(result.status, "completed");
+  assert.equal(result.outputs.tenant_id, "demo");
+  assert.equal(result.outputs.segment_id, "segment-enterprise-ops");
+  assert.equal(result.outputs.workflow_id, "crm.marketing.segment_builder");
+  assert.equal(result.outputs.campaign_workflow_id, "crm.campaign.lifecycle");
+  assert.equal(result.outputs.audience_count, 2);
+  assert.equal(result.outputs.approval_state, "ready_for_approval");
+  assert.equal(result.outputs.mutates_crm_state, false);
+  assert.equal(result.outputs.forge_event_sourced, true);
+
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_segment_definition"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_segment_audience"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_segment"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_automation_plan"));
+  assert.ok(result.events.some((event) => event.kind === "crm.segment.defined"));
+  assert.ok(result.events.some((event) => event.kind === "crm.segment.audience_selected"));
+  assert.ok(result.events.some((event) => event.kind === "crm.segment.ready_for_campaign"));
+});
+
 test("marketing form capture executor converts submissions into Forge lead workflows", () => {
   assert.equal(typeof runtime.buildMarketingFormCaptureResult, "function");
 

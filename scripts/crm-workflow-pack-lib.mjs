@@ -265,13 +265,17 @@ const WORKFLOWS = [
     ],
     runtime_contracts: [
       "crm.marketing.campaign_automation.executor",
+      "crm.marketing.segment_builder.executor",
       "crm.marketing.landing_page.executor",
       "crm.marketing.form_capture.executor",
       "crm.document.generator.executor",
       "crm.document.validator"
     ],
+    depends_on_workflows: ["crm.marketing.segment_builder"],
     artifacts: [
       "crm_campaign",
+      "crm_segment_definition",
+      "crm_segment_audience",
       "crm_segment",
       "crm_automation_plan",
       "crm_email",
@@ -284,6 +288,7 @@ const WORKFLOWS = [
     ],
     events: [
       "crm.document.generated",
+      "crm.segment.ready_for_campaign",
       "crm.campaign.created",
       "crm.campaign.scheduled",
       "crm.landing_page.composed",
@@ -298,6 +303,34 @@ const WORKFLOWS = [
     permissions: ["crm.workflow.mutate", "crm.document.generate"],
     views: ["crm.marketing-calendar"],
     validation_gates: ["campaign artifacts approved", "schedule state visible"]
+  },
+  {
+    id: "crm.marketing.segment_builder",
+    title: "Marketing segment definition and audience selection",
+    domain: "marketing",
+    workflow_extension_id: "crm_marketing_segment_builder",
+    object_types: ["segment", "segmentation", "audience", "lead", "automation"],
+    states: ["request_received", "criteria_defined", "audience_selected", "approval_wait", "ready_for_campaign", "rework_required"],
+    transitions: [
+      ["request_received", "criteria_defined", "segment request normalized"],
+      ["criteria_defined", "audience_selected", "audience source filtered by policy"],
+      ["audience_selected", "approval_wait", "segment definition and audience artifacts attached"],
+      ["approval_wait", "ready_for_campaign", "Forge workflow approval recorded"],
+      ["approval_wait", "rework_required", "missing lineage or low confidence audience"],
+      ["rework_required", "criteria_defined", "selection policy revised"]
+    ],
+    runtime_contracts: ["crm.marketing.segment_builder.executor", "crm.ai.area_copilot.executor"],
+    depends_on_workflows: ["crm.lead.lifecycle", "crm.relationship.profile_enrichment"],
+    artifacts: ["crm_segment_definition", "crm_segment_audience", "crm_segment", "crm_automation_plan"],
+    events: ["crm.segment.defined", "crm.segment.audience_selected", "crm.segment.ready_for_campaign"],
+    memory_scopes: ["organization", "project", "processing"],
+    permissions: ["crm.workflow.mutate", "crm.ai.recommend"],
+    views: ["crm.marketing-calendar"],
+    validation_gates: [
+      "segment definition cites Forge relationship and lead evidence",
+      "segment membership changes require Forge workflow approval before campaign use",
+      "audience selection is attached as Forge artifacts before campaign automation"
+    ]
   },
   {
     id: "crm.marketing.landing_page",

@@ -23,11 +23,11 @@
     "external_delivery_requires_approval": true
   },
   "metrics": {
-    "workflow_count": 21,
+    "workflow_count": 22,
     "business_module_count": 7,
     "surface_count": 10,
-    "artifact_type_count": 61,
-    "event_type_count": 74,
+    "artifact_type_count": 63,
+    "event_type_count": 77,
     "complete_scope": true
   },
   "surfaces": [
@@ -378,6 +378,7 @@
       "state_source": "forge_workflow_artifacts_and_events",
       "workflow_ids": [
         "crm.campaign.lifecycle",
+        "crm.marketing.segment_builder",
         "crm.marketing.landing_page",
         "crm.lead.nurture"
       ],
@@ -389,10 +390,14 @@
         "scheduled",
         "running",
         "reported",
+        "request_received",
+        "criteria_defined",
+        "audience_selected",
+        "ready_for_campaign",
+        "rework_required",
         "content_drafted",
         "form_schema_ready",
         "published_artifact",
-        "rework_required",
         "entered",
         "wait_step",
         "message_ready",
@@ -410,7 +415,9 @@
         "crm_landing_page",
         "crm_presentation",
         "crm_report",
-        "crm_segment"
+        "crm_segment",
+        "crm_segment_audience",
+        "crm_segment_definition"
       ],
       "event_types": [
         "crm.campaign.created",
@@ -425,7 +432,10 @@
         "crm.lead.created",
         "crm.lead.requalified",
         "crm.nurture.message_sent",
-        "crm.nurture.step_due"
+        "crm.nurture.step_due",
+        "crm.segment.audience_selected",
+        "crm.segment.defined",
+        "crm.segment.ready_for_campaign"
       ],
       "mutation_requires_forge": true
     },
@@ -635,16 +645,21 @@
       "workflow_ids": [
         "crm.lead.lifecycle",
         "crm.relationship.profile_enrichment",
-        "crm.opportunity.pipeline"
+        "crm.opportunity.pipeline",
+        "crm.marketing.segment_builder"
       ],
       "artifact_types": [
         "crm_ai_recommendation",
+        "crm_automation_plan",
         "crm_enrichment_record",
         "crm_forecast_report",
         "crm_lead_capture",
         "crm_pipeline_board",
         "crm_relationship_profile",
         "crm_report",
+        "crm_segment",
+        "crm_segment_audience",
+        "crm_segment_definition",
         "crm_stage_change",
         "crm_timeline_snapshot"
       ],
@@ -657,14 +672,20 @@
         "crm.lead.created",
         "crm.opportunity.stage_changed",
         "crm.relationship.profile_updated",
-        "crm.relationship.recorded"
+        "crm.relationship.recorded",
+        "crm.segment.audience_selected",
+        "crm.segment.defined",
+        "crm.segment.ready_for_campaign"
       ],
       "validation_gates": [
+        "audience selection is attached as Forge artifacts before campaign automation",
         "classification evidence present",
         "enrichment sources are attached as Forge artifacts",
         "forecast impact recorded",
         "profile changes require Forge workflow approval before promotion",
         "relationship signals cite source lineage",
+        "segment definition cites Forge relationship and lead evidence",
+        "segment membership changes require Forge workflow approval before campaign use",
         "stage movement is event-backed",
         "state transition has owner and reason"
       ]
@@ -791,6 +812,7 @@
       "complete": true,
       "workflow_ids": [
         "crm.campaign.lifecycle",
+        "crm.marketing.segment_builder",
         "crm.marketing.landing_page",
         "crm.lead.nurture",
         "crm.work.queue.orchestration"
@@ -809,6 +831,8 @@
         "crm_queue_sla_risk_report",
         "crm_report",
         "crm_segment",
+        "crm_segment_audience",
+        "crm_segment_definition",
         "crm_work_queue_snapshot"
       ],
       "event_types": [
@@ -827,9 +851,13 @@
         "crm.nurture.step_due",
         "crm.queue.assignment_planned",
         "crm.queue.risk_flagged",
-        "crm.queue.snapshot_generated"
+        "crm.queue.snapshot_generated",
+        "crm.segment.audience_selected",
+        "crm.segment.defined",
+        "crm.segment.ready_for_campaign"
       ],
       "validation_gates": [
+        "audience selection is attached as Forge artifacts before campaign automation",
         "campaign artifacts approved",
         "every queue item cites artifact or event evidence",
         "external message approval present",
@@ -839,7 +867,9 @@
         "ownership gaps and SLA risks are returned to work before closure",
         "queue actions require Forge workflow approval before mutation",
         "schedule state visible",
-        "scheduled wait visible"
+        "scheduled wait visible",
+        "segment definition cites Forge relationship and lead evidence",
+        "segment membership changes require Forge workflow approval before campaign use"
       ]
     },
     {
@@ -1401,6 +1431,7 @@
         ],
         "runtime_contracts": [
           "crm.marketing.campaign_automation.executor",
+          "crm.marketing.segment_builder.executor",
           "crm.marketing.landing_page.executor",
           "crm.marketing.form_capture.executor",
           "crm.document.generator.executor",
@@ -1408,6 +1439,8 @@
         ],
         "artifact_types": [
           "crm_campaign",
+          "crm_segment_definition",
+          "crm_segment_audience",
           "crm_segment",
           "crm_automation_plan",
           "crm_email",
@@ -1420,6 +1453,7 @@
         ],
         "event_types": [
           "crm.document.generated",
+          "crm.segment.ready_for_campaign",
           "crm.campaign.created",
           "crm.campaign.scheduled",
           "crm.landing_page.composed",
@@ -1436,6 +1470,46 @@
         "validation_gates": [
           "campaign artifacts approved",
           "schedule state visible"
+        ]
+      },
+      {
+        "id": "crm.marketing.segment_builder",
+        "title": "Marketing segment definition and audience selection",
+        "domain": "marketing",
+        "state_count": 6,
+        "states": [
+          "request_received",
+          "criteria_defined",
+          "audience_selected",
+          "approval_wait",
+          "ready_for_campaign",
+          "rework_required"
+        ],
+        "wait_states": [
+          "approval_wait"
+        ],
+        "runtime_contracts": [
+          "crm.marketing.segment_builder.executor",
+          "crm.ai.area_copilot.executor"
+        ],
+        "artifact_types": [
+          "crm_segment_definition",
+          "crm_segment_audience",
+          "crm_segment",
+          "crm_automation_plan"
+        ],
+        "event_types": [
+          "crm.segment.defined",
+          "crm.segment.audience_selected",
+          "crm.segment.ready_for_campaign"
+        ],
+        "surface_ids": [
+          "crm.marketing-calendar"
+        ],
+        "validation_gates": [
+          "segment definition cites Forge relationship and lead evidence",
+          "segment membership changes require Forge workflow approval before campaign use",
+          "audience selection is attached as Forge artifacts before campaign automation"
         ]
       },
       {
@@ -1939,6 +2013,24 @@
         "from": "crm.contract.signature",
         "to": "crm.followup.forecast",
         "reason": "signed contract updates forecast and commission evidence",
+        "state_owner": "forge_workflow_runtime"
+      },
+      {
+        "from": "crm.lead.lifecycle",
+        "to": "crm.marketing.segment_builder",
+        "reason": "captured and enriched leads can enter segment selection",
+        "state_owner": "forge_workflow_runtime"
+      },
+      {
+        "from": "crm.relationship.profile_enrichment",
+        "to": "crm.marketing.segment_builder",
+        "reason": "approved relationship profiles provide audience signals",
+        "state_owner": "forge_workflow_runtime"
+      },
+      {
+        "from": "crm.marketing.segment_builder",
+        "to": "crm.campaign.lifecycle",
+        "reason": "approved segment audience starts campaign execution",
         "state_owner": "forge_workflow_runtime"
       },
       {
@@ -2643,10 +2735,12 @@
         "mutation_requires_forge": true,
         "workflow_ids": [
           "crm.campaign.lifecycle",
+          "crm.marketing.segment_builder",
           "crm.marketing.landing_page",
           "crm.lead.nurture"
         ],
         "action_ids": [
+          "crm.build-marketing-segment",
           "crm.automate-campaign",
           "crm.publish-landing-page",
           "crm.capture-form-submission",
@@ -2672,6 +2766,42 @@
             "approval_state": "waiting",
             "artifact_type": "crm_landing_page",
             "next_action_id": "crm.automate-campaign"
+          }
+        ],
+        "segments": [
+          {
+            "segment_id": "segment-enterprise-renewal",
+            "name": "Enterprise renewal accounts",
+            "workflow_id": "crm.marketing.segment_builder",
+            "contract_id": "crm.marketing.segment_builder.executor",
+            "state": "approval_wait",
+            "audience_count": 42,
+            "source_workflows": [
+              "crm.lead.lifecycle",
+              "crm.relationship.profile_enrichment"
+            ],
+            "artifact_types": [
+              "crm_segment_definition",
+              "crm_segment_audience"
+            ],
+            "action_id": "crm.build-marketing-segment"
+          },
+          {
+            "segment_id": "segment-ops-demo",
+            "name": "Operations demo demand",
+            "workflow_id": "crm.marketing.segment_builder",
+            "contract_id": "crm.marketing.segment_builder.executor",
+            "state": "criteria_defined",
+            "audience_count": 18,
+            "source_workflows": [
+              "crm.lead.lifecycle",
+              "crm.relationship.profile_enrichment"
+            ],
+            "artifact_types": [
+              "crm_segment_definition",
+              "crm_segment_audience"
+            ],
+            "action_id": "crm.build-marketing-segment"
           }
         ],
         "landing_pages": [
@@ -4081,6 +4211,33 @@
         "forge.addon.crm",
         "--contract",
         "crm.marketing.campaign_automation.executor",
+        "--worker",
+        "<worker-id>",
+        "--task",
+        "<task-ref>",
+        "--input",
+        "<json>",
+        "--context",
+        "<json>",
+        "--output",
+        "json"
+      ]
+    },
+    {
+      "id": "crm.build-marketing-segment",
+      "label": "Build segment",
+      "surface_id": "crm.marketing-calendar",
+      "contract_id": "crm.marketing.segment_builder.executor",
+      "requires_permission": "crm.workflow.mutate",
+      "mutates_workflow": true,
+      "command_template": [
+        "forge",
+        "addons",
+        "execute-executor",
+        "--addon",
+        "forge.addon.crm",
+        "--contract",
+        "crm.marketing.segment_builder.executor",
         "--worker",
         "<worker-id>",
         "--task",
@@ -5772,6 +5929,68 @@
             "title": "Execute runtime contract",
             "owner": "forge.addons.runtime",
             "evidence": "crm.marketing.campaign_automation.executor"
+          },
+          {
+            "id": "promote_result_to_workflow",
+            "title": "Promote result to workflow",
+            "owner": "forge.workflow.runtime",
+            "evidence": "artifact and event promotion"
+          },
+          {
+            "id": "refresh_operating_snapshot",
+            "title": "Refresh operating snapshot",
+            "owner": "forge.addon.crm",
+            "evidence": "crm.operating.snapshot.executor"
+          }
+        ],
+        "output_policy": {
+          "promote_result_to_workflow": true,
+          "browser_local_state_write": false,
+          "refresh_source": "forge_workflow_artifacts_and_events"
+        }
+      },
+      {
+        "action_id": "crm.build-marketing-segment",
+        "label": "Build segment",
+        "surface_id": "crm.marketing-calendar",
+        "contract_id": "crm.marketing.segment_builder.executor",
+        "required_permission": "crm.workflow.mutate",
+        "selected_command": [
+          "forge",
+          "addons",
+          "execute-executor",
+          "--addon",
+          "forge.addon.crm",
+          "--contract",
+          "crm.marketing.segment_builder.executor",
+          "--worker",
+          "<worker-id>",
+          "--task",
+          "<task-ref>",
+          "--input",
+          "<json>",
+          "--context",
+          "<json>",
+          "--output",
+          "json"
+        ],
+        "permission_gate": {
+          "status": "requires_forge_permission",
+          "permission": "crm.workflow.mutate",
+          "approval_owner": "forge_permission_policy"
+        },
+        "operation_plan": [
+          {
+            "id": "check_addon_permission",
+            "title": "Check Addon permission",
+            "owner": "forge.permissions",
+            "evidence": "crm.workflow.mutate"
+          },
+          {
+            "id": "execute_runtime_contract",
+            "title": "Execute runtime contract",
+            "owner": "forge.addons.runtime",
+            "evidence": "crm.marketing.segment_builder.executor"
           },
           {
             "id": "promote_result_to_workflow",

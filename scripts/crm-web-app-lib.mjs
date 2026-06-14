@@ -33,6 +33,9 @@ const WORKFLOW_EDGES = [
   ["crm.opportunity.pipeline", "crm.proposal.approval", "approved offer terms request proposal artifact"],
   ["crm.proposal.approval", "crm.contract.signature", "approved proposal starts contract workflow"],
   ["crm.contract.signature", "crm.followup.forecast", "signed contract updates forecast and commission evidence"],
+  ["crm.lead.lifecycle", "crm.marketing.segment_builder", "captured and enriched leads can enter segment selection"],
+  ["crm.relationship.profile_enrichment", "crm.marketing.segment_builder", "approved relationship profiles provide audience signals"],
+  ["crm.marketing.segment_builder", "crm.campaign.lifecycle", "approved segment audience starts campaign execution"],
   ["crm.campaign.lifecycle", "crm.lead.nurture", "approved campaign schedules nurture workflow"],
   ["crm.campaign.lifecycle", "crm.marketing.landing_page", "approved campaign brief composes landing page artifact"],
   ["crm.marketing.landing_page", "crm.lead.lifecycle", "published form schema routes captured leads"],
@@ -471,6 +474,7 @@ function buildOperationalWorkbench(workflows, actionList, documentQueueSnapshot)
       surface_id: "crm.marketing-calendar",
       workflow_ids: workflowIdsForSurface(workflows, "crm.marketing-calendar"),
       action_ids: checkedActionIds(actionList, [
+        "crm.build-marketing-segment",
         "crm.automate-campaign",
         "crm.publish-landing-page",
         "crm.capture-form-submission",
@@ -497,6 +501,30 @@ function buildOperationalWorkbench(workflows, actionList, documentQueueSnapshot)
         approval_state: "waiting",
         artifact_type: "crm_landing_page",
         next_action_id: "crm.automate-campaign"
+      }
+    ],
+    segments: [
+      {
+        segment_id: "segment-enterprise-renewal",
+        name: "Enterprise renewal accounts",
+        workflow_id: "crm.marketing.segment_builder",
+        contract_id: "crm.marketing.segment_builder.executor",
+        state: "approval_wait",
+        audience_count: 42,
+        source_workflows: ["crm.lead.lifecycle", "crm.relationship.profile_enrichment"],
+        artifact_types: ["crm_segment_definition", "crm_segment_audience"],
+        action_id: "crm.build-marketing-segment"
+      },
+      {
+        segment_id: "segment-ops-demo",
+        name: "Operations demo demand",
+        workflow_id: "crm.marketing.segment_builder",
+        contract_id: "crm.marketing.segment_builder.executor",
+        state: "criteria_defined",
+        audience_count: 18,
+        source_workflows: ["crm.lead.lifecycle", "crm.relationship.profile_enrichment"],
+        artifact_types: ["crm_segment_definition", "crm_segment_audience"],
+        action_id: "crm.build-marketing-segment"
       }
     ],
     landing_pages: [
@@ -1293,6 +1321,15 @@ function actions() {
       requires_permission: "crm.workflow.mutate",
       mutates_workflow: true,
       command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.marketing.campaign_automation.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
+    },
+    {
+      id: "crm.build-marketing-segment",
+      label: "Build segment",
+      surface_id: "crm.marketing-calendar",
+      contract_id: "crm.marketing.segment_builder.executor",
+      requires_permission: "crm.workflow.mutate",
+      mutates_workflow: true,
+      command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.marketing.segment_builder.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
     },
     {
       id: "crm.publish-landing-page",

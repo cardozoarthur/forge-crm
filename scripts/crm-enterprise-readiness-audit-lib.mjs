@@ -31,7 +31,7 @@ const USER_FACING_DELIVERABLES = [
     title: "Marketing automation",
     domain: "marketing",
     surface_id: "crm.marketing-calendar",
-    workflow_ids: ["crm.campaign.lifecycle", "crm.marketing.landing_page", "crm.lead.nurture"]
+    workflow_ids: ["crm.marketing.segment_builder", "crm.campaign.lifecycle", "crm.marketing.landing_page", "crm.lead.nurture"]
   },
   {
     id: "document_approvals",

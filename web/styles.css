@@ -309,6 +309,7 @@ h3 {
 .pipeline-card,
 .commercial-row,
 .support-ticket,
+.segment-row,
 .campaign-row,
 .landing-page-row,
 .form-row,
@@ -341,6 +342,7 @@ h3 {
 .pipeline-card small,
 .commercial-row span,
 .support-ticket span,
+.segment-row span,
 .campaign-row span,
 .landing-page-row span,
 .form-row span,
@@ -361,6 +363,7 @@ h3 {
 .pipeline-card code,
 .commercial-row code,
 .support-ticket code,
+.segment-row code,
 .campaign-row code,
 .landing-page-row code,
 .form-row code,
@@ -388,6 +391,7 @@ h3 {
 .commercial-list,
 .support-ticket-list,
 .channel-intake-list,
+.segment-list,
 .campaign-grid,
 .landing-page-list,
 .form-list,
@@ -434,6 +438,7 @@ h3 {
   border-left-color: #9b4d19;
 }
 
+.segment-row,
 .campaign-row,
 .landing-page-row,
 .form-row {

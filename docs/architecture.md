@@ -27,7 +27,7 @@ Forge CRM is a product proof for Forge as a factory/framework for agentic workfl
 
 No important CRM automation should bypass Forge. External tools may execute bounded work, but Forge owns the workflow, state transitions, approvals, memory scope, artifact attachment, event history and validation gates.
 
-The current CRM worker exposes thirty-one Forge runtime entrypoints:
+The current CRM worker exposes thirty-two Forge runtime entrypoints:
 
 - `forge_crm.plan_system` for CRM system planning;
 - `forge_crm.bootstrap_tenant` for a Forge-owned tenant workflow pack;
@@ -53,6 +53,7 @@ The current CRM worker exposes thirty-one Forge runtime entrypoints:
 - `forge_crm.publish_landing_page` for approval-gated landing pages, form schemas and automation plans as Forge artifacts;
 - `forge_crm.validate_document` for approval and lineage checks;
 - `forge_crm.record_document_approval` for approval/rework decisions, handoff records and external-delivery unblock events;
+- `forge_crm.build_marketing_segment` for segment definitions, audience selection and campaign readiness artifacts;
 - `forge_crm.automate_campaign` for segment-backed campaign scheduling and lead nurture workflow events;
 - `forge_crm.capture_form_submission` for landing-page form submissions, consent records and lead lifecycle intake;
 - `forge_crm.normalize_channel_intake` for approved channel adapter checks and normalized support intake artifacts before ticket creation;
@@ -65,7 +66,7 @@ The worker returns Forge Addon result schemas and does not persist CRM state dir
 
 ## Tenant Workflow Pack
 
-`scripts/crm-workflow-pack-lib.mjs` produces the first operational workflow model for a CRM tenant. It declares 21 Forge-owned workflows across relationship profile enrichment, commercial, support, marketing, operations, cross-domain work queues, user experience/design system, AI automation, operational observability, enterprise readiness and end-to-end customer journey acceptance. Each workflow carries explicit states, transitions, object types, runtime contracts, artifact types, events, memory scopes, permissions, validation gates and mutation policy.
+`scripts/crm-workflow-pack-lib.mjs` produces the first operational workflow model for a CRM tenant. It declares 22 Forge-owned workflows across relationship profile enrichment, commercial, support, marketing segment building, campaigns, operations, cross-domain work queues, user experience/design system, AI automation, operational observability, enterprise readiness and end-to-end customer journey acceptance. Each workflow carries explicit states, transitions, object types, runtime contracts, artifact types, events, memory scopes, permissions, validation gates and mutation policy.
 
 The pack uses `workflow_id`, `artifact_id` and `event_id` as durable identities. External primary keys and direct external persistence are explicitly disabled.
 
@@ -94,7 +95,7 @@ The first web surface lives in `web/` and is declared by `crm.system-map.props.w
 
 - `scripts/generate-crm-web-snapshot.mjs` writes `web/data/operating-snapshot.json`;
 - `web/index.html` loads the snapshot;
-- `web/app.js` renders workflow graph, knowledge graph, relationship profile enrichment, business modules, support channel intake, marketing landing pages, document queue, cross-domain work queue, design system, enterprise journey workbench, operating copilot and area copilot actions, and Forge action templates;
+- `web/app.js` renders workflow graph, knowledge graph, relationship profile enrichment, business modules, support channel intake, marketing segments and landing pages, document queue, cross-domain work queue, design system, enterprise journey workbench, operating copilot and area copilot actions, and Forge action templates;
 - `web/styles.css` carries compact operational styling and design tokens.
 
 This is a business-user view over Forge-owned state. It does not introduce browser persistence, a CRM-local database or a side automation engine. Any action shown in the UI is represented as a Forge command template that routes through Addon runtime contracts and permission gates.

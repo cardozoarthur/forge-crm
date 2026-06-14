@@ -570,6 +570,36 @@ test("manifest exposes CRM marketing campaign automation as a Forge-owned execut
   assert.ok(artifactTypes.has("crm_automation_plan"));
 });
 
+test("manifest exposes CRM marketing segment builder as a Forge-owned executor", () => {
+  const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.marketing.segment_builder.executor");
+  assert.ok(contract);
+  assert.equal(contract.contract_type, "executor");
+  assert.equal(contract.capability_id, "crm_marketing_automation");
+  assert.equal(contract.workflow_extension_id, "crm_marketing_segment_builder");
+  assert.equal(contract.entrypoint, "forge_crm.build_marketing_segment");
+  assert.deepEqual(contract.permissions, ["crm.workflow.mutate", "crm.ai.recommend"]);
+
+  for (const input of ["segment_request", "audience_source", "selection_policy", "tenant_context"]) {
+    assert.ok(contract.inputs.includes(input), `missing segment builder input ${input}`);
+  }
+  for (const output of ["crm_segment_definition", "crm_segment_audience", "crm_segment", "crm_automation_plan"]) {
+    assert.ok(contract.outputs.includes(output), `missing segment builder output ${output}`);
+  }
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("does not persist CRM state outside Forge")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("campaign automation")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("Forge workflow approval")));
+
+  const workflowExtensionIds = new Set(manifest.workflows.map((extension) => extension.id));
+  assert.ok(workflowExtensionIds.has("crm_marketing_segment_builder"));
+
+  const artifactTypes = new Set(manifest.artifact_types.map((artifact) => artifact.id));
+  assert.ok(artifactTypes.has("crm_segment_definition"));
+  assert.ok(artifactTypes.has("crm_segment_audience"));
+
+  const eventTypes = new Set(manifest.event_types.map((event) => event.id));
+  assert.ok(eventTypes.has("crm.segment"));
+});
+
 test("manifest exposes CRM marketing form capture as a Forge-owned executor", () => {
   const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.marketing.form_capture.executor");
   assert.ok(contract);

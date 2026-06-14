@@ -98,6 +98,7 @@ try {
       "forge_crm.validate_document",
       "forge_crm.record_document_approval",
       "forge_crm.automate_campaign",
+      "forge_crm.build_marketing_segment",
       "forge_crm.publish_landing_page",
       "forge_crm.capture_form_submission",
       "forge_crm.normalize_channel_intake",
@@ -131,6 +132,7 @@ try {
       "crm.document.validator",
       "crm.document.approval.executor",
       "crm.marketing.campaign_automation.executor",
+      "crm.marketing.segment_builder.executor",
       "crm.marketing.landing_page.executor",
       "crm.marketing.form_capture.executor",
       "crm.support.channel_intake.executor",
@@ -1207,6 +1209,62 @@ try {
     throw new Error("expected document approval to unblock external delivery");
   }
 
+  const marketingSegment = runForge([
+    "addons",
+    "execute-executor",
+    "--addon-dir",
+    "addons",
+    "--addon",
+    "forge.addon.crm",
+    "--contract",
+    "crm.marketing.segment_builder.executor",
+    "--worker",
+    workerId,
+    "--task",
+    "crm-smoke-marketing-segment",
+    "--workflow",
+    workflowId,
+    "--input",
+    JSON.stringify({
+      tenant_context: { id: "smoke", tenant_id: "smoke" },
+      segment_request: {
+        id: "segment-smoke-enterprise",
+        name: "Enterprise operations leaders",
+        goal: "Create enterprise pipeline",
+        target_personas: ["COO", "Head of Operations"],
+        campaign_id: "campaign-smoke"
+      },
+      audience_source: {
+        leads: [
+          { id: "lead-smoke-001", company: "Example Logistics", role: "COO", score: 92, lifecycle_stage: "mql" },
+          { id: "lead-smoke-002", company: "Atlas Foods", role: "Head of Operations", score: 86, lifecycle_stage: "sql" },
+          { id: "lead-smoke-003", company: "Small Retail", role: "Owner", score: 42, lifecycle_stage: "raw" }
+        ],
+        relationship_profiles: [
+          { entity_id: "lead-smoke-001", signals: ["enterprise", "operations", "budget_confirmed"] },
+          { entity_id: "lead-smoke-002", signals: ["operations", "integration_need"] }
+        ]
+      },
+      selection_policy: {
+        min_score: 80,
+        required_signals: ["operations"],
+        max_audience: 25,
+        approver_role: "marketing.director"
+      }
+    }),
+    "--context",
+    JSON.stringify({ tenant: "smoke" }),
+    "--output",
+    "json"
+  ]);
+
+  if (marketingSegment.promotion?.status !== "addon_executor_result_promoted") {
+    throw new Error(`expected marketing segment promotion, got ${marketingSegment.promotion?.status || "missing"}`);
+  }
+  if (marketingSegment.executor_result.outputs.approval_state !== "ready_for_approval") {
+    throw new Error(`expected marketing segment ready_for_approval, got ${marketingSegment.executor_result.outputs.approval_state}`);
+  }
+
   const marketingAutomation = runForge([
     "addons",
     "execute-executor",
@@ -1744,6 +1802,8 @@ try {
   const documentPromotedEventCount = documentGenerator.promotion?.event_count ?? 0;
   const documentApprovalPromotedArtifactCount = documentApproval.promotion?.artifact_count ?? 0;
   const documentApprovalPromotedEventCount = documentApproval.promotion?.event_count ?? 0;
+  const marketingSegmentPromotedArtifactCount = marketingSegment.promotion?.artifact_count ?? 0;
+  const marketingSegmentPromotedEventCount = marketingSegment.promotion?.event_count ?? 0;
   const marketingPromotedArtifactCount = marketingAutomation.promotion?.artifact_count ?? 0;
   const marketingPromotedEventCount = marketingAutomation.promotion?.event_count ?? 0;
   const landingPagePromotedArtifactCount = marketingLandingPage.promotion?.artifact_count ?? 0;
@@ -1959,6 +2019,16 @@ try {
     );
   }
   for (const eventKind of ["crm.document.approved", "crm.document.delivery_unblocked"]) {
+    if (!workflowEventKinds.includes(eventKind)) {
+      throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
+    }
+  }
+  if (marketingSegmentPromotedArtifactCount < 4 || marketingSegmentPromotedEventCount < 3) {
+    throw new Error(
+      `expected promoted marketing segment artifacts/events, got artifacts=${marketingSegmentPromotedArtifactCount} events=${marketingSegmentPromotedEventCount}`
+    );
+  }
+  for (const eventKind of ["crm.segment.defined", "crm.segment.audience_selected", "crm.segment.ready_for_campaign"]) {
     if (!workflowEventKinds.includes(eventKind)) {
       throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
     }
@@ -2273,6 +2343,12 @@ try {
     document_approval_external_delivery_allowed: documentApproval.executor_result.outputs.external_delivery_allowed,
     document_approval_promoted_artifacts: documentApprovalPromotedArtifactCount,
     document_approval_promoted_events: documentApprovalPromotedEventCount,
+    marketing_segment_status: marketingSegment.status,
+    marketing_segment_promotion_status: marketingSegment.promotion.status,
+    marketing_segment_approval_state: marketingSegment.executor_result.outputs.approval_state,
+    marketing_segment_audience_count: marketingSegment.executor_result.outputs.audience_count,
+    marketing_segment_promoted_artifacts: marketingSegmentPromotedArtifactCount,
+    marketing_segment_promoted_events: marketingSegmentPromotedEventCount,
     marketing_automation_status: marketingAutomation.status,
     marketing_automation_promotion_status: marketingAutomation.promotion.status,
     marketing_automation_scheduled_state: marketingAutomation.executor_result.outputs.scheduled_state,

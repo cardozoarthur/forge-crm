@@ -3598,6 +3598,173 @@ export function buildMarketingCampaignAutomationResult(request) {
   };
 }
 
+export function buildMarketingSegmentBuilderResult(request) {
+  const input = dispatchPayload(request);
+  const context = providedContext(request);
+  const tenantId = input.tenant_id || input.tenant_context?.tenant_id || input.tenant_context?.id || context.tenant || "default";
+  const segmentRequest = asObject(input.segment_request ?? input.segment ?? input.request);
+  const audienceSource = asObject(input.audience_source ?? input.audience ?? input.source);
+  const selectionPolicy = asObject(input.selection_policy ?? input.policy);
+  const workflowId = String(input.workflow_id || "crm.marketing.segment_builder");
+  const campaignWorkflowId = String(input.campaign_workflow_id || "crm.campaign.lifecycle");
+  const campaignIdValue = String(segmentRequest.campaign_id || input.campaign_id || "campaign_pending");
+  const id = segmentId(segmentRequest, dispatchEnvelope(request).task_ref || "segment");
+  const taskRef = dispatchEnvelope(request).task_ref || `build-segment-${slug(id, "segment")}`;
+  const minScore = numberFrom(selectionPolicy.min_score ?? selectionPolicy.minimum_score, 0);
+  const maxAudience = Math.max(1, numberFrom(selectionPolicy.max_audience ?? selectionPolicy.limit, 50));
+  const requiredSignals = unique(asArray(selectionPolicy.required_signals).map((signal) => String(signal).toLowerCase())).filter(Boolean);
+  const leads = asArray(audienceSource.leads ?? input.leads).map(asObject);
+  const relationshipProfiles = asArray(audienceSource.relationship_profiles ?? audienceSource.profiles ?? input.relationship_profiles).map(asObject);
+  const signalByEntity = new Map();
+
+  for (const profile of relationshipProfiles) {
+    const entityId = String(profile.entity_id || profile.lead_id || profile.id || "");
+    if (!entityId) {
+      continue;
+    }
+    const signals = unique(asArray(profile.signals ?? profile.relationship_signals).map((signal) => String(signal).toLowerCase())).filter(Boolean);
+    signalByEntity.set(entityId, signals);
+  }
+
+  const selectedLeads = leads
+    .filter((lead) => {
+      const idValue = leadId(lead);
+      const score = numberFrom(lead.score ?? lead.fit_score ?? lead.qualification_score, 0);
+      const signals = signalByEntity.get(idValue) || [];
+      const signalMatches =
+        requiredSignals.length === 0 || requiredSignals.every((signal) => signals.includes(signal) || String(lead.role || "").toLowerCase().includes(signal));
+      return score >= minScore && signalMatches;
+    })
+    .slice(0, maxAudience);
+  const selectedLeadIds = selectedLeads.map((lead) => leadId(lead));
+  const approvalState = selectedLeadIds.length > 0 ? "ready_for_approval" : "rework_required";
+  const lineage = {
+    workflow_id: workflowId,
+    campaign_workflow_id: campaignWorkflowId,
+    task_ref: taskRef,
+    source_contract: "crm.marketing.segment_builder.executor",
+    tenant_id: tenantId,
+    segment_id: id,
+    campaign_id: campaignIdValue
+  };
+  const criteria = {
+    min_score: minScore,
+    required_signals: requiredSignals,
+    target_personas: asArray(segmentRequest.target_personas),
+    max_audience: maxAudience
+  };
+
+  return {
+    schema_version: "forge.addon_executor_result.v1",
+    status: "completed",
+    task_ref: taskRef,
+    summary: `Marketing segment ${id} selected ${selectedLeadIds.length} leads through Forge audience workflow evidence`,
+    outputs: {
+      tenant_id: tenantId,
+      segment_id: id,
+      workflow_id: workflowId,
+      campaign_workflow_id: campaignWorkflowId,
+      campaign_id: campaignIdValue,
+      audience_count: selectedLeadIds.length,
+      approval_state: approvalState,
+      mutates_crm_state: false,
+      forge_event_sourced: true
+    },
+    artifacts: [
+      {
+        kind: "crm_segment_definition",
+        id: `segment-definition-${slug(id, "segment")}`,
+        title: `Segment definition for ${segmentRequest.name || id}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          segment_id: id,
+          segment_request: segmentRequest,
+          criteria,
+          selection_policy: selectionPolicy,
+          approval_state: approvalState,
+          lineage,
+          state_owner: "forge_workflow_runtime",
+          external_database_required: false
+        }
+      },
+      {
+        kind: "crm_segment_audience",
+        id: `segment-audience-${slug(id, "segment")}`,
+        title: `Selected audience for ${segmentRequest.name || id}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          segment_id: id,
+          lead_ids: selectedLeadIds,
+          selected_leads: selectedLeads,
+          rejected_count: Math.max(0, leads.length - selectedLeadIds.length),
+          source_profile_count: relationshipProfiles.length,
+          approval_required: true,
+          lineage
+        }
+      },
+      {
+        kind: "crm_segment",
+        id: `segment-${slug(id, "segment")}`,
+        title: `Campaign segment ${segmentRequest.name || id}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          segment_id: id,
+          name: segmentRequest.name || id,
+          lead_ids: selectedLeadIds,
+          criteria,
+          approval_state: approvalState,
+          lineage,
+          mutation_policy: "segment membership changes must be promoted by Forge workflow events"
+        }
+      },
+      {
+        kind: "crm_automation_plan",
+        id: `segment-automation-plan-${slug(id, "segment")}`,
+        title: `Campaign readiness plan for segment ${segmentRequest.name || id}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          segment_id: id,
+          campaign_id: campaignIdValue,
+          workflow_id: workflowId,
+          campaign_workflow_id: campaignWorkflowId,
+          next_contract_id: "crm.marketing.campaign_automation.executor",
+          next_state: approvalState === "ready_for_approval" ? "approval_wait" : "rework_required",
+          approval_role: selectionPolicy.approver_role || "marketing.approver",
+          lineage
+        }
+      }
+    ],
+    events: [
+      {
+        kind: "crm.segment.defined",
+        tenant_id: tenantId,
+        segment_id: id,
+        workflow_id: workflowId
+      },
+      {
+        kind: "crm.segment.audience_selected",
+        tenant_id: tenantId,
+        segment_id: id,
+        audience_count: selectedLeadIds.length,
+        workflow_id: workflowId
+      },
+      {
+        kind: "crm.segment.ready_for_campaign",
+        tenant_id: tenantId,
+        segment_id: id,
+        campaign_id: campaignIdValue,
+        approval_state: approvalState,
+        workflow_id: campaignWorkflowId
+      }
+    ],
+    context_tenant: context.tenant || tenantId
+  };
+}
+
 export function buildMarketingLandingPageResult(request) {
   const input = dispatchPayload(request);
   const context = providedContext(request);
@@ -4705,6 +4872,8 @@ export function executeCrmRuntimeRequest(request) {
       return buildDocumentApprovalDecisionResult(request);
     case "forge_crm.automate_campaign":
       return buildMarketingCampaignAutomationResult(request);
+    case "forge_crm.build_marketing_segment":
+      return buildMarketingSegmentBuilderResult(request);
     case "forge_crm.publish_landing_page":
       return buildMarketingLandingPageResult(request);
     case "forge_crm.capture_form_submission":

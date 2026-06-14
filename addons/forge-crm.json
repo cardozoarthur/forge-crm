@@ -350,6 +350,7 @@
       ],
       "workflow_extensions": [
         "crm_campaign_lifecycle",
+        "crm_marketing_segment_builder",
         "crm_marketing_landing_page",
         "crm_lead_nurture"
       ],
@@ -361,6 +362,8 @@
       ],
       "artifact_types": [
         "crm_campaign",
+        "crm_segment_definition",
+        "crm_segment_audience",
         "crm_segment",
         "crm_automation_plan",
         "crm_form_submission",
@@ -615,6 +618,11 @@
       "id": "crm_campaign_lifecycle",
       "kind": "marketing_workflow",
       "description": "Plan, approve, run and report campaigns as workflow artifacts."
+    },
+    {
+      "id": "crm_marketing_segment_builder",
+      "kind": "marketing_workflow",
+      "description": "Define marketing segments and select approved audiences as Forge workflow artifacts."
     },
     {
       "id": "crm_marketing_landing_page",
@@ -1395,6 +1403,36 @@
       ]
     },
     {
+      "id": "crm.marketing.segment_builder.executor",
+      "title": "CRM marketing segment builder",
+      "contract_type": "executor",
+      "capability_id": "crm_marketing_automation",
+      "workflow_extension_id": "crm_marketing_segment_builder",
+      "runtime": "external_api",
+      "entrypoint": "forge_crm.build_marketing_segment",
+      "inputs": [
+        "segment_request",
+        "audience_source",
+        "selection_policy",
+        "tenant_context"
+      ],
+      "outputs": [
+        "crm_segment_definition",
+        "crm_segment_audience",
+        "crm_segment",
+        "crm_automation_plan"
+      ],
+      "permissions": [
+        "crm.workflow.mutate",
+        "crm.ai.recommend"
+      ],
+      "constraints": [
+        "segment builder does not persist CRM state outside Forge",
+        "approved segment artifacts must feed campaign automation",
+        "segment membership changes require Forge workflow approval before campaign automation"
+      ]
+    },
+    {
       "id": "crm.marketing.landing_page.executor",
       "title": "CRM landing page publishing",
       "contract_type": "executor",
@@ -2020,6 +2058,49 @@
             "campaign",
             "segment",
             "approval"
+          ]
+        },
+        {
+          "id": "crm.tui.build-marketing-segment",
+          "label": "Build segment",
+          "description": "Define a CRM marketing segment and select an approval-gated audience through Forge.",
+          "palette_group": "CRM",
+          "source_panel": "crm.operational-cockpit",
+          "type": "command",
+          "target": "forge addons execute-executor",
+          "method": "CLI",
+          "permission": "crm.workflow.mutate",
+          "requires_confirmation": true,
+          "risk_level": "high",
+          "mutates_workflow": true,
+          "command_template": [
+            "addons",
+            "execute-executor",
+            "--addon",
+            "forge.addon.crm",
+            "--contract",
+            "crm.marketing.segment_builder.executor",
+            "--worker",
+            "<worker-id>",
+            "--task",
+            "<task-ref>",
+            "--input",
+            "<json>",
+            "--context",
+            "<json>",
+            "--output",
+            "json"
+          ],
+          "keywords": [
+            "crm",
+            "segment",
+            "marketing"
+          ],
+          "payload_schema": [
+            "segment_request",
+            "audience_source",
+            "selection_policy",
+            "tenant_context"
           ]
         },
         {
@@ -2665,6 +2746,16 @@
       "generic_kind": "artifact"
     },
     {
+      "id": "crm_segment_definition",
+      "title": "CRM segment definition",
+      "generic_kind": "artifact"
+    },
+    {
+      "id": "crm_segment_audience",
+      "title": "CRM segment audience",
+      "generic_kind": "artifact"
+    },
+    {
       "id": "crm_automation_plan",
       "title": "CRM automation plan",
       "generic_kind": "artifact"
@@ -3004,6 +3095,11 @@
     {
       "id": "crm.campaign",
       "title": "CRM campaign event",
+      "transport": "crm"
+    },
+    {
+      "id": "crm.segment",
+      "title": "CRM segment event",
       "transport": "crm"
     },
     {
