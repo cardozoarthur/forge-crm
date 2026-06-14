@@ -13,6 +13,7 @@ test("public CI validates Forge CRM against a real Forge Core binary", async () 
   assert.match(ci, /cargo build --release --manifest-path forge-core\/Cargo\.toml/);
   assert.match(ci, /forge-core\/target\/release\/forge addons validate --addon-dir addons --output json/);
   assert.match(ci, /forge-core\/target\/release\/forge addons catalog --addon-dir addons --output json/);
+  assert.match(ci, /forge-core\/target\/release\/forge ops snapshot --project-root \. --addon-dir addons --output json/);
   assert.match(
     ci,
     /forge-core\/target\/release\/forge addons package --manifest addons\/forge-crm\.json --repository https:\/\/github\.com\/cardozoarthur\/forge-crm --channel stable --package-path \/tmp\/forge-crm\.package\.json --output json/

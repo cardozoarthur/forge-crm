@@ -189,7 +189,8 @@
         "crm_promotion_decision"
       ],
       "view_ids": [
-        "crm.system-map"
+        "crm.system-map",
+        "crm.ops-console"
       ]
     },
     {
@@ -502,7 +503,8 @@
       ],
       "view_ids": [
         "crm.design-system",
-        "crm.system-map"
+        "crm.system-map",
+        "crm.ops-console"
       ]
     },
     {
@@ -598,7 +600,8 @@
       ],
       "view_ids": [
         "crm.system-map",
-        "crm.ai-workbench"
+        "crm.ai-workbench",
+        "crm.ops-console"
       ]
     }
   ],
@@ -3925,6 +3928,272 @@
         "state_source": "forge_workflow_artifacts_and_events",
         "local_state_allowed": false,
         "action_contract": "forge.interactive.addon_action_contract.v1"
+      }
+    },
+    {
+      "id": "crm.ops-console",
+      "title": "Forge CRM Ops Console",
+      "surface": "ops_console",
+      "type": "dashboard",
+      "component": "ForgeCrmOpsConsole",
+      "route": "/ops/forge-crm",
+      "layout": {
+        "zone": "main",
+        "order": 46,
+        "width": "full",
+        "height": "full",
+        "density": "dense"
+      },
+      "data_bindings": [
+        {
+          "id": "crm-ops-operational-twin",
+          "source": "forge.ops.snapshot.operational_digital_twin",
+          "query": "workflow.crm.*",
+          "scope": "workflow",
+          "refresh_seconds": 5,
+          "required_capability": "crm_workflow_factory"
+        },
+        {
+          "id": "crm-ops-addon-observability",
+          "source": "forge.ops.snapshot.addon_observability",
+          "query": "addon.forge.addon.crm",
+          "scope": "project",
+          "refresh_seconds": 10,
+          "required_capability": "crm_observability"
+        },
+        {
+          "id": "crm-ops-memory-context",
+          "source": "forge.ops.snapshot.memory_context_governance",
+          "query": "project.forge-crm.memory_policy",
+          "scope": "project",
+          "refresh_seconds": 30,
+          "required_capability": "crm_workflow_factory"
+        },
+        {
+          "id": "crm-ops-renderers",
+          "source": "forge.ops.snapshot.addon_view_renderers",
+          "query": "addon.forge.addon.crm.safe_renderers",
+          "scope": "project",
+          "refresh_seconds": 10,
+          "required_capability": "crm_user_experience"
+        }
+      ],
+      "actions": [
+        {
+          "id": "crm.ops.refresh-snapshot",
+          "label": "Refresh Ops snapshot",
+          "description": "Reload the Forge operational snapshot for the CRM Addon projection.",
+          "palette_group": "CRM",
+          "source_panel": "crm.ops-console",
+          "type": "command",
+          "target": "forge ops snapshot",
+          "method": "CLI",
+          "permission": "crm.observability.inspect",
+          "requires_confirmation": false,
+          "risk_level": "medium",
+          "mutates_workflow": false,
+          "command_template": [
+            "ops",
+            "snapshot",
+            "--project-root",
+            "<project-root>",
+            "--addon-dir",
+            "addons",
+            "--output",
+            "json"
+          ],
+          "keywords": [
+            "crm",
+            "ops",
+            "snapshot"
+          ],
+          "payload_schema": [
+            "project_root",
+            "addon_dir"
+          ]
+        },
+        {
+          "id": "crm.ops.inspect-observability",
+          "label": "Inspect CRM observability",
+          "description": "Generate CRM observability evidence through the Forge Addon executor contract.",
+          "palette_group": "CRM",
+          "source_panel": "crm.ops-console",
+          "type": "command",
+          "target": "forge addons execute-executor",
+          "method": "CLI",
+          "permission": "crm.observability.inspect",
+          "requires_confirmation": true,
+          "risk_level": "medium",
+          "mutates_workflow": true,
+          "command_template": [
+            "addons",
+            "execute-executor",
+            "--addon",
+            "forge.addon.crm",
+            "--contract",
+            "crm.observability.inspector.executor",
+            "--worker",
+            "<worker-id>",
+            "--task",
+            "<task-ref>",
+            "--input",
+            "<json>",
+            "--context",
+            "<json>",
+            "--output",
+            "json"
+          ],
+          "keywords": [
+            "crm",
+            "ops",
+            "observability"
+          ],
+          "payload_schema": [
+            "workflow_state",
+            "event_timeline",
+            "artifact_lineage",
+            "tenant_context"
+          ]
+        },
+        {
+          "id": "crm.ops.run-operating-copilot",
+          "label": "Run CRM operating copilot",
+          "description": "Generate bounded CRM recommendations from Forge workflow evidence.",
+          "palette_group": "CRM",
+          "source_panel": "crm.ops-console",
+          "type": "command",
+          "target": "forge addons execute-executor",
+          "method": "CLI",
+          "permission": "crm.ai.recommend",
+          "requires_confirmation": true,
+          "risk_level": "medium",
+          "mutates_workflow": true,
+          "command_template": [
+            "addons",
+            "execute-executor",
+            "--addon",
+            "forge.addon.crm",
+            "--contract",
+            "crm.ai.operating_copilot.executor",
+            "--worker",
+            "<worker-id>",
+            "--task",
+            "<task-ref>",
+            "--input",
+            "<json>",
+            "--context",
+            "<json>",
+            "--output",
+            "json"
+          ],
+          "keywords": [
+            "crm",
+            "ops",
+            "copilot"
+          ],
+          "payload_schema": [
+            "operating_snapshot",
+            "decision_context",
+            "recommendation_policy"
+          ]
+        },
+        {
+          "id": "crm.ops.generate-readiness-package",
+          "label": "Generate readiness package",
+          "description": "Produce the CRM operating readiness package from Forge workflow evidence.",
+          "palette_group": "CRM",
+          "source_panel": "crm.ops-console",
+          "type": "command",
+          "target": "forge addons execute-executor",
+          "method": "CLI",
+          "permission": "crm.observability.inspect",
+          "requires_confirmation": true,
+          "risk_level": "medium",
+          "mutates_workflow": true,
+          "command_template": [
+            "addons",
+            "execute-executor",
+            "--addon",
+            "forge.addon.crm",
+            "--contract",
+            "crm.operating.readiness.executor",
+            "--worker",
+            "<worker-id>",
+            "--task",
+            "<task-ref>",
+            "--input",
+            "<json>",
+            "--context",
+            "<json>",
+            "--output",
+            "json"
+          ],
+          "keywords": [
+            "crm",
+            "ops",
+            "readiness"
+          ],
+          "payload_schema": [
+            "workflow_pack",
+            "operating_snapshot",
+            "validation_evidence"
+          ]
+        },
+        {
+          "id": "crm.ops.run-enterprise-journey",
+          "label": "Run enterprise journey",
+          "description": "Package lead-to-support CRM operating evidence as a Forge-owned journey acceptance record.",
+          "palette_group": "CRM",
+          "source_panel": "crm.ops-console",
+          "type": "command",
+          "target": "forge addons execute-executor",
+          "method": "CLI",
+          "permission": "crm.workflow.mutate",
+          "requires_confirmation": true,
+          "risk_level": "high",
+          "mutates_workflow": true,
+          "command_template": [
+            "addons",
+            "execute-executor",
+            "--addon",
+            "forge.addon.crm",
+            "--contract",
+            "crm.enterprise.journey.executor",
+            "--worker",
+            "<worker-id>",
+            "--task",
+            "<task-ref>",
+            "--input",
+            "<json>",
+            "--context",
+            "<json>",
+            "--output",
+            "json"
+          ],
+          "keywords": [
+            "crm",
+            "ops",
+            "journey"
+          ],
+          "payload_schema": [
+            "journey_context",
+            "stage_evidence",
+            "acceptance_policy"
+          ]
+        }
+      ],
+      "permissions": [
+        "crm.workflow.mutate",
+        "crm.observability.inspect",
+        "crm.ai.recommend"
+      ],
+      "props": {
+        "renderer_contract": "forge.ops.addon_view_renderer.v1",
+        "state_owner": "forge_ops_snapshot",
+        "state_source": "forge_workflow_artifacts_events_memory_and_addon_contracts",
+        "local_state_allowed": false,
+        "client_event_contract": "forge.ops.addon_renderer_event.v1",
+        "runtime_boundary": "CRM state is rendered from Forge workflow artifacts, events, memory governance and Addon runtime contracts."
       }
     },
     {

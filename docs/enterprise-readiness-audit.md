@@ -10,7 +10,7 @@ Repository: https://github.com/cardozoarthur/forge-crm.git
 - Runtime contracts: 41
 - Artifact types: 89
 - Event types: 39
-- Views: 11
+- Views: 12
 - User-facing deliverables ready: 13/13
 - Missing objective items: 0
 - Complete scope: true
@@ -23,7 +23,7 @@ Repository: https://github.com/cardozoarthur/forge-crm.git
 - Runtime contracts: 41
 - Artifact types: 89
 - Event types: 39
-- Views: 11
+- Views: 12
 - Public repository declared: true
 
 ## Local State Policy

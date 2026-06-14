@@ -1165,6 +1165,69 @@ test("manifest exposes a Forge TUI operational cockpit with permission-gated CRM
   }
 });
 
+test("manifest exposes CRM as a Forge Ops Console projection", () => {
+  const opsConsole = manifest.views.find((view) => view.id === "crm.ops-console");
+  assert.ok(opsConsole);
+  assert.equal(opsConsole.surface, "ops_console");
+  assert.equal(opsConsole.type, "dashboard");
+  assert.equal(opsConsole.component, "ForgeCrmOpsConsole");
+  assert.equal(opsConsole.route, "/ops/forge-crm");
+  assert.equal(opsConsole.layout.zone, "main");
+  assert.equal(opsConsole.layout.width, "full");
+  assert.equal(opsConsole.layout.height, "full");
+  assert.equal(opsConsole.layout.density, "dense");
+
+  const bindingSources = new Set(opsConsole.data_bindings.map((binding) => binding.source));
+  for (const source of [
+    "forge.ops.snapshot.operational_digital_twin",
+    "forge.ops.snapshot.addon_observability",
+    "forge.ops.snapshot.memory_context_governance",
+    "forge.ops.snapshot.addon_view_renderers"
+  ]) {
+    assert.ok(bindingSources.has(source), `missing Ops Console source ${source}`);
+  }
+
+  for (const permission of ["crm.observability.inspect", "crm.workflow.mutate", "crm.ai.recommend"]) {
+    assert.ok(opsConsole.permissions.includes(permission), `missing Ops Console permission ${permission}`);
+  }
+
+  const actionIds = new Set(opsConsole.actions.map((action) => action.id));
+  for (const actionId of [
+    "crm.ops.refresh-snapshot",
+    "crm.ops.inspect-observability",
+    "crm.ops.generate-readiness-package",
+    "crm.ops.run-enterprise-journey"
+  ]) {
+    assert.ok(actionIds.has(actionId), `missing Ops Console action ${actionId}`);
+  }
+
+  for (const action of opsConsole.actions) {
+    assert.equal(action.palette_group, "CRM");
+    assert.equal(action.source_panel, "crm.ops-console");
+    assert.equal(action.type, "command");
+    assert.equal(action.method, "CLI");
+    assert.ok(action.permission, `${action.id} needs a permission`);
+    assert.ok(opsConsole.permissions.includes(action.permission), `${action.id} permission must be declared by Ops Console`);
+    assert.ok(action.command_template.length > 0, `${action.id} needs command template`);
+    assert.ok(["ops", "addons"].includes(action.command_template[0]), `${action.id} must route through Forge CLI contracts`);
+    assert.ok(action.command_template.includes("--output"));
+    assert.ok(action.command_template.includes("json"));
+    assert.ok(action.keywords.includes("crm"));
+    assert.ok(action.keywords.includes("ops"));
+    assert.ok(action.payload_schema.length > 0, `${action.id} needs payload schema`);
+    assert.ok(!action.command_template.includes("node"), `${action.id} must not bypass Forge through node`);
+    assert.ok(!action.command_template.includes("npm"), `${action.id} must not bypass Forge through npm`);
+    if (action.mutates_workflow) {
+      assert.ok(action.requires_confirmation, `${action.id} mutates workflow and needs confirmation`);
+    }
+  }
+
+  const capabilityIds = new Map(manifest.capabilities.map((capability) => [capability.id, capability]));
+  for (const capabilityId of ["crm_workflow_factory", "crm_user_experience", "crm_observability"]) {
+    assert.ok(capabilityIds.get(capabilityId).view_ids.includes("crm.ops-console"));
+  }
+});
+
 test("manifest keeps Forge TUI cockpit actions in parity with web CRM command contracts", () => {
   const cockpit = manifest.views.find((view) => view.id === "crm.operational-cockpit");
   assert.ok(cockpit);

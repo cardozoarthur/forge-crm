@@ -34,6 +34,9 @@ jobs:
       - name: Validate Forge CRM memory governance
         run: forge-core/target/release/forge memory policy --project-root . --output json
 
+      - name: Validate Forge CRM Ops snapshot
+        run: forge-core/target/release/forge ops snapshot --project-root . --addon-dir addons --output json
+
       - name: Validate Forge CRM Addon
         run: forge-core/target/release/forge addons validate --addon-dir addons --output json
 
