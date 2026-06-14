@@ -97,6 +97,7 @@ try {
       "forge_crm.validate_document",
       "forge_crm.record_document_approval",
       "forge_crm.automate_campaign",
+      "forge_crm.publish_landing_page",
       "forge_crm.capture_form_submission",
       "forge_crm.ingest_omnichannel_message",
       "forge_crm.triage_ticket_sla",
@@ -127,6 +128,7 @@ try {
       "crm.document.validator",
       "crm.document.approval.executor",
       "crm.marketing.campaign_automation.executor",
+      "crm.marketing.landing_page.executor",
       "crm.marketing.form_capture.executor",
       "crm.support.omnichannel_message.executor",
       "crm.support.ticket_sla.executor",
@@ -1197,6 +1199,66 @@ try {
     throw new Error(`expected marketing automation scheduled state, got ${marketingAutomation.executor_result.outputs.scheduled_state}`);
   }
 
+  const marketingLandingPage = runForge([
+    "addons",
+    "execute-executor",
+    "--addon-dir",
+    "addons",
+    "--addon",
+    "forge.addon.crm",
+    "--contract",
+    "crm.marketing.landing_page.executor",
+    "--worker",
+    workerId,
+    "--task",
+    "crm-smoke-landing-page",
+    "--workflow",
+    workflowId,
+    "--input",
+    JSON.stringify({
+      tenant_context: { id: "smoke", tenant_id: "smoke" },
+      campaign: {
+        id: "campaign-smoke",
+        name: "Workflow CRM launch",
+        owner: "marketing.ops"
+      },
+      landing_page: {
+        id: "landing-smoke",
+        slug: "workflow-crm-launch",
+        headline: "Operate your CRM through Forge workflows",
+        sections: ["problem", "proof", "workflow_cta"]
+      },
+      form_schema: {
+        id: "form-smoke-enterprise-demo",
+        required_fields: ["email", "company", "role"],
+        optional_fields: ["budget", "pain"],
+        consent_required: true
+      },
+      approval_policy: {
+        requires_approval: true,
+        approver_role: "marketing.director"
+      },
+      routing_policy: {
+        lead_workflow_id: "crm.lead.lifecycle",
+        nurture_workflow_id: "crm.lead.nurture"
+      }
+    }),
+    "--context",
+    JSON.stringify({ tenant: "smoke" }),
+    "--output",
+    "json"
+  ]);
+
+  if (marketingLandingPage.promotion?.status !== "addon_executor_result_promoted") {
+    throw new Error(`expected landing page promotion, got ${marketingLandingPage.promotion?.status || "missing"}`);
+  }
+  if (marketingLandingPage.executor_result.outputs.publication_state !== "approval_wait") {
+    throw new Error(`expected landing page approval_wait state, got ${marketingLandingPage.executor_result.outputs.publication_state}`);
+  }
+  if (marketingLandingPage.executor_result.outputs.external_publication_allowed !== false) {
+    throw new Error("expected landing page external publication to stay blocked before approval");
+  }
+
   const marketingFormCapture = runForge([
     "addons",
     "execute-executor",
@@ -1565,6 +1627,8 @@ try {
   const documentApprovalPromotedEventCount = documentApproval.promotion?.event_count ?? 0;
   const marketingPromotedArtifactCount = marketingAutomation.promotion?.artifact_count ?? 0;
   const marketingPromotedEventCount = marketingAutomation.promotion?.event_count ?? 0;
+  const landingPagePromotedArtifactCount = marketingLandingPage.promotion?.artifact_count ?? 0;
+  const landingPagePromotedEventCount = marketingLandingPage.promotion?.event_count ?? 0;
   const marketingFormPromotedArtifactCount = marketingFormCapture.promotion?.artifact_count ?? 0;
   const marketingFormPromotedEventCount = marketingFormCapture.promotion?.event_count ?? 0;
   const omnichannelIngestionPromotedArtifactCount = omnichannelIngestion.promotion?.artifact_count ?? 0;
@@ -1774,6 +1838,20 @@ try {
     );
   }
   for (const eventKind of ["crm.campaign.created", "crm.campaign.scheduled", "crm.nurture.step_due"]) {
+    if (!workflowEventKinds.includes(eventKind)) {
+      throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
+    }
+  }
+  if (landingPagePromotedArtifactCount < 3 || landingPagePromotedEventCount < 3) {
+    throw new Error(
+      `expected promoted landing page artifacts/events, got artifacts=${landingPagePromotedArtifactCount} events=${landingPagePromotedEventCount}`
+    );
+  }
+  for (const eventKind of [
+    "crm.landing_page.composed",
+    "crm.landing_page.approval_requested",
+    "crm.form.schema_published"
+  ]) {
     if (!workflowEventKinds.includes(eventKind)) {
       throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
     }
@@ -2054,6 +2132,12 @@ try {
     marketing_automation_scheduled_state: marketingAutomation.executor_result.outputs.scheduled_state,
     marketing_automation_promoted_artifacts: marketingPromotedArtifactCount,
     marketing_automation_promoted_events: marketingPromotedEventCount,
+    marketing_landing_page_status: marketingLandingPage.status,
+    marketing_landing_page_promotion_status: marketingLandingPage.promotion.status,
+    marketing_landing_page_publication_state: marketingLandingPage.executor_result.outputs.publication_state,
+    marketing_landing_page_external_publication_allowed: marketingLandingPage.executor_result.outputs.external_publication_allowed,
+    marketing_landing_page_promoted_artifacts: landingPagePromotedArtifactCount,
+    marketing_landing_page_promoted_events: landingPagePromotedEventCount,
     marketing_form_capture_status: marketingFormCapture.status,
     marketing_form_capture_promotion_status: marketingFormCapture.promotion.status,
     marketing_form_capture_lead_state: marketingFormCapture.executor_result.outputs.lead_state,

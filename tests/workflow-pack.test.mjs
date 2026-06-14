@@ -351,6 +351,30 @@ test("marketing form workflow routes form submissions into Forge lead lifecycle"
   assert.ok(pack.indexes.runtime_contracts.includes("crm.marketing.form_capture.executor"));
 });
 
+test("marketing landing page workflow publishes pages and form schemas through Forge", () => {
+  const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
+  const workflow = pack.workflows.find((candidate) => candidate.id === "crm.marketing.landing_page");
+  const campaignWorkflow = pack.workflows.find((candidate) => candidate.id === "crm.campaign.lifecycle");
+
+  assert.ok(workflow);
+  assert.equal(workflow.domain, "marketing");
+  assert.ok(workflow.runtime_contracts.includes("crm.marketing.landing_page.executor"));
+  assert.ok(workflow.object_types.includes("landing_page"));
+  assert.ok(workflow.object_types.includes("form_schema"));
+  assert.ok(workflow.artifacts.includes("crm_landing_page"));
+  assert.ok(workflow.artifacts.includes("crm_form_schema"));
+  assert.ok(workflow.artifacts.includes("crm_automation_plan"));
+  assert.ok(workflow.events.includes("crm.landing_page.composed"));
+  assert.ok(workflow.events.includes("crm.landing_page.approval_requested"));
+  assert.ok(workflow.events.includes("crm.form.schema_published"));
+  assert.ok(workflow.validation_gates.includes("external publication blocked until Forge approval is recorded"));
+  assert.ok(workflow.depends_on_workflows.includes("crm.campaign.lifecycle"));
+  assert.ok(workflow.depends_on_workflows.includes("crm.lead.nurture"));
+  assert.ok(campaignWorkflow.runtime_contracts.includes("crm.marketing.landing_page.executor"));
+  assert.ok(pack.indexes.runtime_contracts.includes("crm.marketing.landing_page.executor"));
+  assert.ok(pack.indexes.artifact_types.includes("crm_form_schema"));
+});
+
 test("operations workflow routes project handoff and task planning through Forge", () => {
   const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
   const workflow = pack.workflows.find((candidate) => candidate.id === "crm.project.handoff");

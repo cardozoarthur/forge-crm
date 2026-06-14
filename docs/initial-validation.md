@@ -12,15 +12,16 @@ node scripts/generate-crm-web-snapshot.mjs smoke
 npm run web:snapshot
 /home/arthur/projects/forge-core/target/release/forge addons validate --addon-dir /home/arthur/projects/forge-crm/addons --output json
 /home/arthur/projects/forge-core/target/release/forge addons resolve --goal "Create a workflow-first CRM" --addon-dir /home/arthur/projects/forge-crm/addons --output json
+/home/arthur/projects/forge-core/target/release/forge addons package --manifest addons/forge-crm.json --repository https://github.com/cardozoarthur/forge-crm --channel stable --package-path forge-crm-0.1.0.package.json --output json
 FORGE_BIN=/home/arthur/projects/forge-core/target/release/forge npm run smoke:forge
 ```
 
 ## Result
 
-- Node tests passed: 97 tests, 0 failures.
-- CRM workflow pack generation produced `schema_version=forge.crm_workflow_pack.v1`, 18 workflows, 76 object types and complete scope coverage.
+- Node tests passed: 104 tests, 0 failures.
+- CRM workflow pack generation produced `schema_version=forge.crm_workflow_pack.v1`, 19 workflows, 77 object types and complete scope coverage.
 - CRM operating model generation produced `schema_version=forge.crm_operating_model.v1`, 10 operator surfaces and 7 complete business modules.
-- CRM web snapshot generation produced `schema_version=forge.crm_web_app_snapshot.v1`, 10 business surfaces, 18 workflow graph nodes, document queue lanes, 6 cross-domain work queue modes, 5 design-system components, enterprise journey workbench, 5 specialized area copilots and 26 Forge command actions without browser persistence.
+- CRM web snapshot generation produced `schema_version=forge.crm_web_app_snapshot.v1`, 10 business surfaces, 19 workflow graph nodes, document queue lanes, 6 cross-domain work queue modes, 5 design-system components, enterprise journey workbench, 5 specialized area copilots and 27 Forge command actions without browser persistence.
 - CRM relationship timeline executor produced `crm_timeline_snapshot` and `crm_entity_model` artifacts and promoted `crm.relationship.recorded`, `crm.opportunity.stage_changed` and `crm.forecast.updated` events without direct CRM state mutation.
 - CRM pipeline stage movement produced `crm_pipeline_board`, `crm_stage_change` and `crm_forecast_report` artifacts and promoted `crm.opportunity.stage_changed` and `crm.forecast.updated` events across multiple funnels without direct CRM state mutation.
 - CRM operating copilot produced `crm_ai_recommendation`, `crm_risk_analysis` and `crm_report` artifacts with no direct CRM state mutation.
@@ -36,6 +37,7 @@ FORGE_BIN=/home/arthur/projects/forge-core/target/release/forge npm run smoke:fo
 - CRM document generator produced Forge-gated `crm_document`, `crm_contract`, `crm_campaign`, `crm_email`, `crm_landing_page`, `crm_report` and `crm_presentation` artifacts with no direct CRM state mutation or external delivery.
 - CRM document approval executor produced `crm_approval_record` and `crm_handoff_record` artifacts and promoted `crm.document.approved` plus `crm.document.delivery_unblocked` events without direct CRM state mutation.
 - CRM marketing campaign automation produced `crm_campaign`, `crm_segment`, `crm_automation_plan` and `crm_landing_page` artifacts and promoted `crm.campaign.created`, `crm.campaign.scheduled` and `crm.nurture.step_due` events without direct CRM state mutation.
+- CRM marketing landing page executor produced `crm_landing_page`, `crm_form_schema` and `crm_automation_plan` artifacts, promoted `crm.landing_page.composed`, `crm.form.schema_published` and `crm.landing_page.approval_requested` events, and kept external publication blocked until Forge approval.
 - CRM marketing form capture produced `crm_form_submission`, `crm_lead_capture`, `crm_consent_record` and `crm_automation_plan` artifacts and promoted `crm.form.submitted`, `crm.lead.created` and `crm.nurture.step_due` events without direct CRM state mutation.
 - CRM omnichannel message ingestion produced `crm_message_thread`, `crm_channel_receipt` and `crm_support_summary` artifacts and promoted `crm.message.received` and `crm.ticket.created` events before SLA triage or handoff, without direct CRM state mutation.
 - CRM ticket SLA triage produced `crm_support_summary` and `crm_handoff_record` artifacts and promoted `crm.message.received`, `crm.ticket.created` and `crm.sla.escalated` events without direct CRM state mutation.
@@ -43,8 +45,9 @@ FORGE_BIN=/home/arthur/projects/forge-core/target/release/forge npm run smoke:fo
 - CRM enterprise customer journey executor produced `crm_enterprise_journey_map`, `crm_operating_acceptance_evidence` and `crm_cross_domain_handoff_map` artifacts, accepted 7 lead-to-support stages and promoted `crm.journey.started`, `crm.journey.stage_completed` and `crm.journey.acceptance_reported` events without direct CRM state mutation.
 - Forge Addon validation passed: `status=valid`, `issue_count=0`.
 - Forge capability resolution sees `forge.addon.crm` as an authorization-blocked Addon capability, preserving human approval before execution while keeping the CRM discoverable.
-- Runtime smoke passed through Forge `external_api`: tenant bootstrap, operating snapshot, relationship timeline, pipeline stage movement, operating copilot, specialized area copilots, cross-domain work queue orchestration, design-system generation, memory promotion preparation, observability inspection, operating readiness, enterprise customer journey acceptance, lead classifier, proposal executor, commercial follow-up forecast, account management, contract signature, document generator, document approval decision, marketing campaign automation, marketing form capture, omnichannel message ingestion, ticket SLA triage and project handoff planning completed, document validator passed, and omnichannel handoff delivered.
-- Tenant bootstrap returned `addon_executor_completed`, `bootstrap_workflow_count=18` and `bootstrap_complete_scope=true`.
+- Forge Addon package generation passed with 29 runtime contracts, 63 artifact types and 31 event types.
+- Runtime smoke passed through Forge `external_api`: tenant bootstrap, operating snapshot, relationship timeline, pipeline stage movement, operating copilot, specialized area copilots, cross-domain work queue orchestration, design-system generation, memory promotion preparation, observability inspection, operating readiness, enterprise customer journey acceptance, lead classifier, proposal executor, commercial follow-up forecast, account management, contract signature, document generator, document approval decision, marketing campaign automation, marketing landing page publishing, marketing form capture, omnichannel message ingestion, ticket SLA triage and project handoff planning completed, document validator passed, and omnichannel handoff delivered.
+- Tenant bootstrap returned `addon_executor_completed`, `bootstrap_workflow_count=19` and `bootstrap_complete_scope=true`.
 - Operating snapshot returned `addon_executor_completed`, `operator_surface_count=10`, `business_module_count=7` and promoted `crm.operating.snapshot_generated` into the workflow timeline.
 - Area copilot returned `addon_executor_completed`, `area_copilot_ready_area_count=5`, promoted 3 artifacts and 3 events including `crm.ai.area_copilot_generated`.
 - Work queue returned `addon_executor_completed`, `work_queue_queue_count=6`, `work_queue_risk_item_count=4`, promoted 3 artifacts and 3 events including `crm.queue.snapshot_generated`, `crm.queue.assignment_planned` and `crm.queue.risk_flagged`.

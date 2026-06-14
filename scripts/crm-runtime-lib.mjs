@@ -3278,6 +3278,14 @@ function leadIdFromSubmission(submission, fields, fallback = "lead") {
   return String(submission.lead_id || fields.email || fields.phone || submission.email || submission.id || fallback);
 }
 
+function landingPageId(landingPage, fallback = "landing-page") {
+  return String(landingPage.id || landingPage.landing_page_id || landingPage.slug || landingPage.name || fallback);
+}
+
+function formSchemaId(formSchema, fallback = "form-schema") {
+  return String(formSchema.id || formSchema.form_id || formSchema.schema_id || fallback);
+}
+
 export function buildMarketingCampaignAutomationResult(request) {
   const input = dispatchPayload(request);
   const context = providedContext(request);
@@ -3425,6 +3433,176 @@ export function buildMarketingCampaignAutomationResult(request) {
         workflow_id: nurtureWorkflowId
       }
     ],
+    context_tenant: context.tenant || tenantId
+  };
+}
+
+export function buildMarketingLandingPageResult(request) {
+  const input = dispatchPayload(request);
+  const context = providedContext(request);
+  const tenantId = input.tenant_id || input.tenant_context?.tenant_id || input.tenant_context?.id || context.tenant || "default";
+  const campaign = asObject(input.campaign);
+  const landingPage = asObject(input.landing_page ?? input.landingPage);
+  const formSchema = asObject(input.form_schema ?? input.form);
+  const approvalPolicy = asObject(input.approval_policy);
+  const routingPolicy = asObject(input.routing_policy);
+  const assets = asArray(input.assets ?? input.approved_assets);
+  const campaignIdValue = campaignId(campaign, input.campaign_id || "campaign");
+  const pageId = landingPageId(landingPage, `landing-page-${campaignIdValue}`);
+  const schemaId = formSchemaId(formSchema, `form-${pageId}`);
+  const workflowId = String(input.workflow_id || "crm.marketing.landing_page");
+  const campaignWorkflowId = String(input.campaign_workflow_id || "crm.campaign.lifecycle");
+  const leadWorkflowId = String(routingPolicy.lead_workflow_id || input.lead_workflow_id || "crm.lead.lifecycle");
+  const nurtureWorkflowId = String(routingPolicy.nurture_workflow_id || input.nurture_workflow_id || "crm.lead.nurture");
+  const taskRef = dispatchEnvelope(request).task_ref || `publish-landing-page-${slug(pageId, "landing-page")}`;
+  const approvalRequired = approvalPolicy.requires_approval !== false;
+  const approved =
+    approvalPolicy.approved === true ||
+    approvalPolicy.approval_state === "approved" ||
+    approvalPolicy.state === "approved";
+  const publicationState = approvalRequired && !approved ? "approval_wait" : "ready_for_publish";
+  const externalPublicationAllowed = !approvalRequired || approved;
+  const requiredFields = unique(asArray(formSchema.required_fields ?? formSchema.required).map((field) => String(field))).filter(Boolean);
+  const optionalFields = unique(asArray(formSchema.optional_fields ?? formSchema.optional).map((field) => String(field))).filter(Boolean);
+  const consentRequired = formSchema.consent_required !== false;
+  const lineage = {
+    workflow_id: workflowId,
+    campaign_workflow_id: campaignWorkflowId,
+    lead_workflow_id: leadWorkflowId,
+    nurture_workflow_id: nurtureWorkflowId,
+    task_ref: taskRef,
+    source_contract: "crm.marketing.landing_page.executor",
+    tenant_id: tenantId,
+    campaign_id: campaignIdValue,
+    landing_page_id: pageId,
+    form_schema_id: schemaId
+  };
+
+  const events = [
+    {
+      kind: "crm.landing_page.composed",
+      tenant_id: tenantId,
+      campaign_id: campaignIdValue,
+      landing_page_id: pageId,
+      form_schema_id: schemaId,
+      workflow_id: workflowId
+    },
+    {
+      kind: "crm.form.schema_published",
+      tenant_id: tenantId,
+      campaign_id: campaignIdValue,
+      landing_page_id: pageId,
+      form_schema_id: schemaId,
+      workflow_id: workflowId
+    }
+  ];
+
+  if (approvalRequired && !approved) {
+    events.push({
+      kind: "crm.landing_page.approval_requested",
+      tenant_id: tenantId,
+      campaign_id: campaignIdValue,
+      landing_page_id: pageId,
+      approver_role: approvalPolicy.approver_role || "marketing.approver",
+      workflow_id: workflowId
+    });
+  } else {
+    events.push({
+      kind: "crm.landing_page.ready_for_publish",
+      tenant_id: tenantId,
+      campaign_id: campaignIdValue,
+      landing_page_id: pageId,
+      workflow_id: workflowId
+    });
+  }
+
+  return {
+    schema_version: "forge.addon_executor_result.v1",
+    status: "completed",
+    task_ref: taskRef,
+    summary: `Landing page ${pageId} composed for campaign ${campaignIdValue} through Forge marketing workflows`,
+    outputs: {
+      tenant_id: tenantId,
+      campaign_id: campaignIdValue,
+      landing_page_id: pageId,
+      form_schema_id: schemaId,
+      workflow_id: workflowId,
+      campaign_workflow_id: campaignWorkflowId,
+      lead_workflow_id: leadWorkflowId,
+      nurture_workflow_id: nurtureWorkflowId,
+      publication_state: publicationState,
+      external_publication_allowed: externalPublicationAllowed,
+      required_field_count: requiredFields.length,
+      consent_required: consentRequired,
+      mutates_crm_state: false,
+      forge_event_sourced: true
+    },
+    artifacts: [
+      {
+        kind: "crm_landing_page",
+        id: `landing-page-${slug(pageId, "landing-page")}`,
+        title: `Landing page ${landingPage.title || landingPage.headline || pageId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          campaign_id: campaignIdValue,
+          landing_page_id: pageId,
+          slug: landingPage.slug || slug(pageId, "landing-page"),
+          headline: landingPage.headline || landingPage.title || campaign.name || pageId,
+          sections: asArray(landingPage.sections),
+          assets,
+          publication_state: publicationState,
+          external_publication_allowed: externalPublicationAllowed,
+          approval_policy: approvalPolicy,
+          form_schema_id: schemaId,
+          lineage,
+          state_owner: "forge_workflow_runtime",
+          external_database_required: false,
+          direct_browser_persistence: false
+        }
+      },
+      {
+        kind: "crm_form_schema",
+        id: `form-schema-${slug(schemaId, "form")}`,
+        title: `Form schema ${formSchema.title || schemaId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          campaign_id: campaignIdValue,
+          landing_page_id: pageId,
+          form_schema_id: schemaId,
+          required_fields: requiredFields,
+          optional_fields: optionalFields,
+          consent_required: consentRequired,
+          consent_artifact_type: "crm_consent_record",
+          capture_contract: "crm.marketing.form_capture.executor",
+          next_workflow_id: leadWorkflowId,
+          lineage,
+          mutation_policy: "form schema changes must be promoted by Forge workflow events"
+        }
+      },
+      {
+        kind: "crm_automation_plan",
+        id: `landing-page-routing-${slug(pageId, "landing-page")}`,
+        title: `Landing page routing plan for ${pageId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          campaign_id: campaignIdValue,
+          landing_page_id: pageId,
+          form_schema_id: schemaId,
+          publication_state: publicationState,
+          capture_contract: "crm.marketing.form_capture.executor",
+          lead_workflow_id: leadWorkflowId,
+          nurture_workflow_id: nurtureWorkflowId,
+          campaign_workflow_id: campaignWorkflowId,
+          external_publication_policy: "external publication requires Forge approval and artifact lineage",
+          form_submission_policy: "form submissions enter crm.lead.lifecycle through Forge events",
+          lineage
+        }
+      }
+    ],
+    events,
     context_tenant: context.tenant || tenantId
   };
 }
@@ -4197,6 +4375,8 @@ export function executeCrmRuntimeRequest(request) {
       return buildDocumentApprovalDecisionResult(request);
     case "forge_crm.automate_campaign":
       return buildMarketingCampaignAutomationResult(request);
+    case "forge_crm.publish_landing_page":
+      return buildMarketingLandingPageResult(request);
     case "forge_crm.capture_form_submission":
       return buildMarketingFormCaptureResult(request);
     case "forge_crm.plan_project_handoff":

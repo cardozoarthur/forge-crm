@@ -74,6 +74,7 @@ test("web app snapshot provides Forge command actions instead of local automatio
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.support.ticket_sla.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.operations.project_handoff.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.marketing.campaign_automation.executor"));
+  assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.marketing.landing_page.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.marketing.form_capture.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.proposal.generator.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.document.generator.executor"));
@@ -194,6 +195,8 @@ test("web app snapshot exposes an operational workbench backed by Forge artifact
   assert.ok(panels.get("support_queue").tickets.some((ticket) => ticket.sla_status === "at_risk"));
   assert.ok(panels.get("support_queue").channels.includes("whatsapp"));
   assert.ok(panels.get("marketing_calendar").campaigns.some((campaign) => campaign.next_action_id === "crm.automate-campaign"));
+  assert.ok(panels.get("marketing_calendar").landing_pages.some((page) => page.publish_action_id === "crm.publish-landing-page"));
+  assert.ok(panels.get("marketing_calendar").landing_pages.every((page) => page.contract_id === "crm.marketing.landing_page.executor"));
   assert.ok(panels.get("marketing_calendar").forms.some((form) => form.capture_action_id === "crm.capture-form-submission"));
   assert.ok(panels.get("document_queue").documents.some((document) => document.approval_action_id === "crm.record-document-approval"));
   assert.ok(panels.get("work_queue").queues.some((queue) => queue.action_id === "crm.run-work-queue"));

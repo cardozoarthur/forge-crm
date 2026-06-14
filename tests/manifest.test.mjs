@@ -548,6 +548,32 @@ test("manifest exposes CRM marketing form capture as a Forge-owned executor", ()
   assert.ok(artifactTypes.has("crm_consent_record"));
 });
 
+test("manifest exposes CRM landing page publishing as a Forge-owned executor", () => {
+  const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.marketing.landing_page.executor");
+  assert.ok(contract);
+  assert.equal(contract.contract_type, "executor");
+  assert.equal(contract.capability_id, "crm_marketing_automation");
+  assert.equal(contract.workflow_extension_id, "crm_marketing_landing_page");
+  assert.equal(contract.entrypoint, "forge_crm.publish_landing_page");
+  assert.deepEqual(contract.permissions, ["crm.workflow.mutate", "crm.document.generate"]);
+  for (const input of ["campaign", "landing_page", "form_schema", "approval_policy", "routing_policy", "tenant_context"]) {
+    assert.ok(contract.inputs.includes(input), `missing landing page input ${input}`);
+  }
+  for (const output of ["crm_landing_page", "crm_form_schema", "crm_automation_plan"]) {
+    assert.ok(contract.outputs.includes(output), `missing landing page output ${output}`);
+  }
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("does not persist")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("approval")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("form submissions")));
+
+  const artifactTypes = new Set(manifest.artifact_types.map((artifact) => artifact.id));
+  assert.ok(artifactTypes.has("crm_landing_page"));
+  assert.ok(artifactTypes.has("crm_form_schema"));
+
+  const eventTypes = new Set(manifest.event_types.map((event) => event.id));
+  assert.ok(eventTypes.has("crm.landing_page"));
+});
+
 test("manifest exposes CRM project handoff operations as a Forge-owned executor", () => {
   const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.operations.project_handoff.executor");
   assert.ok(contract);
@@ -633,6 +659,7 @@ test("manifest exposes a Forge TUI operational cockpit with permission-gated CRM
     "crm.tui.review-followup-forecast",
     "crm.tui.triage-ticket-sla",
     "crm.tui.automate-campaign",
+    "crm.tui.publish-landing-page",
     "crm.tui.generate-document",
     "crm.tui.run-operating-copilot",
     "crm.tui.run-area-copilot",

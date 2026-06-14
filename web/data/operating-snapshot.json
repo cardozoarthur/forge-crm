@@ -23,11 +23,11 @@
     "external_delivery_requires_approval": true
   },
   "metrics": {
-    "workflow_count": 18,
+    "workflow_count": 19,
     "business_module_count": 7,
     "surface_count": 10,
-    "artifact_type_count": 57,
-    "event_type_count": 64,
+    "artifact_type_count": 58,
+    "event_type_count": 68,
     "complete_scope": true
   },
   "surfaces": [
@@ -356,6 +356,7 @@
       "state_source": "forge_workflow_artifacts_and_events",
       "workflow_ids": [
         "crm.campaign.lifecycle",
+        "crm.marketing.landing_page",
         "crm.lead.nurture"
       ],
       "lanes": [
@@ -366,6 +367,10 @@
         "scheduled",
         "running",
         "reported",
+        "content_drafted",
+        "form_schema_ready",
+        "published_artifact",
+        "rework_required",
         "entered",
         "wait_step",
         "message_ready",
@@ -378,6 +383,7 @@
         "crm_campaign",
         "crm_consent_record",
         "crm_email",
+        "crm_form_schema",
         "crm_form_submission",
         "crm_landing_page",
         "crm_presentation",
@@ -389,7 +395,11 @@
         "crm.campaign.reported",
         "crm.campaign.scheduled",
         "crm.document.generated",
+        "crm.form.schema_published",
         "crm.form.submitted",
+        "crm.landing_page.approval_requested",
+        "crm.landing_page.composed",
+        "crm.landing_page.ready_for_publish",
         "crm.lead.created",
         "crm.lead.requalified",
         "crm.nurture.message_sent",
@@ -742,6 +752,7 @@
       "complete": true,
       "workflow_ids": [
         "crm.campaign.lifecycle",
+        "crm.marketing.landing_page",
         "crm.lead.nurture",
         "crm.work.queue.orchestration"
       ],
@@ -751,6 +762,7 @@
         "crm_campaign",
         "crm_consent_record",
         "crm_email",
+        "crm_form_schema",
         "crm_form_submission",
         "crm_landing_page",
         "crm_presentation",
@@ -765,7 +777,11 @@
         "crm.campaign.reported",
         "crm.campaign.scheduled",
         "crm.document.generated",
+        "crm.form.schema_published",
         "crm.form.submitted",
+        "crm.landing_page.approval_requested",
+        "crm.landing_page.composed",
+        "crm.landing_page.ready_for_publish",
         "crm.lead.created",
         "crm.lead.requalified",
         "crm.nurture.message_sent",
@@ -778,6 +794,9 @@
         "campaign artifacts approved",
         "every queue item cites artifact or event evidence",
         "external message approval present",
+        "external publication blocked until Forge approval is recorded",
+        "form schema is published before form capture",
+        "landing page artifact has Forge lineage",
         "ownership gaps and SLA risks are returned to work before closure",
         "queue actions require Forge workflow approval before mutation",
         "schedule state visible",
@@ -1263,6 +1282,7 @@
         ],
         "runtime_contracts": [
           "crm.marketing.campaign_automation.executor",
+          "crm.marketing.landing_page.executor",
           "crm.marketing.form_capture.executor",
           "crm.document.generator.executor",
           "crm.document.validator"
@@ -1273,6 +1293,7 @@
           "crm_automation_plan",
           "crm_email",
           "crm_landing_page",
+          "crm_form_schema",
           "crm_form_submission",
           "crm_consent_record",
           "crm_presentation",
@@ -1282,6 +1303,9 @@
           "crm.document.generated",
           "crm.campaign.created",
           "crm.campaign.scheduled",
+          "crm.landing_page.composed",
+          "crm.landing_page.approval_requested",
+          "crm.form.schema_published",
           "crm.form.submitted",
           "crm.lead.created",
           "crm.nurture.step_due",
@@ -1293,6 +1317,50 @@
         "validation_gates": [
           "campaign artifacts approved",
           "schedule state visible"
+        ]
+      },
+      {
+        "id": "crm.marketing.landing_page",
+        "title": "Landing page and form schema publishing",
+        "domain": "marketing",
+        "state_count": 7,
+        "states": [
+          "brief",
+          "content_drafted",
+          "form_schema_ready",
+          "approval_wait",
+          "published_artifact",
+          "running",
+          "rework_required"
+        ],
+        "wait_states": [
+          "approval_wait"
+        ],
+        "runtime_contracts": [
+          "crm.marketing.landing_page.executor",
+          "crm.marketing.form_capture.executor",
+          "crm.document.validator"
+        ],
+        "artifact_types": [
+          "crm_landing_page",
+          "crm_form_schema",
+          "crm_automation_plan",
+          "crm_consent_record"
+        ],
+        "event_types": [
+          "crm.landing_page.composed",
+          "crm.landing_page.approval_requested",
+          "crm.landing_page.ready_for_publish",
+          "crm.form.schema_published",
+          "crm.form.submitted"
+        ],
+        "surface_ids": [
+          "crm.marketing-calendar"
+        ],
+        "validation_gates": [
+          "landing page artifact has Forge lineage",
+          "form schema is published before form capture",
+          "external publication blocked until Forge approval is recorded"
         ]
       },
       {
@@ -1746,6 +1814,24 @@
         "from": "crm.campaign.lifecycle",
         "to": "crm.lead.nurture",
         "reason": "approved campaign schedules nurture workflow",
+        "state_owner": "forge_workflow_runtime"
+      },
+      {
+        "from": "crm.campaign.lifecycle",
+        "to": "crm.marketing.landing_page",
+        "reason": "approved campaign brief composes landing page artifact",
+        "state_owner": "forge_workflow_runtime"
+      },
+      {
+        "from": "crm.marketing.landing_page",
+        "to": "crm.lead.lifecycle",
+        "reason": "published form schema routes captured leads",
+        "state_owner": "forge_workflow_runtime"
+      },
+      {
+        "from": "crm.marketing.landing_page",
+        "to": "crm.lead.nurture",
+        "reason": "landing page routing prepares nurture entry",
         "state_owner": "forge_workflow_runtime"
       },
       {
@@ -2301,10 +2387,12 @@
         "mutation_requires_forge": true,
         "workflow_ids": [
           "crm.campaign.lifecycle",
+          "crm.marketing.landing_page",
           "crm.lead.nurture"
         ],
         "action_ids": [
           "crm.automate-campaign",
+          "crm.publish-landing-page",
           "crm.capture-form-submission",
           "crm.deliver-handoff"
         ],
@@ -2328,6 +2416,21 @@
             "approval_state": "waiting",
             "artifact_type": "crm_landing_page",
             "next_action_id": "crm.automate-campaign"
+          }
+        ],
+        "landing_pages": [
+          {
+            "landing_page_id": "lp-demo-request",
+            "campaign_id": "cmp-logistics-demo",
+            "workflow_id": "crm.marketing.landing_page",
+            "contract_id": "crm.marketing.landing_page.executor",
+            "state": "approval_wait",
+            "publication_state": "approval_wait",
+            "external_publication_allowed": false,
+            "artifact_type": "crm_landing_page",
+            "form_schema_artifact_type": "crm_form_schema",
+            "publish_action_id": "crm.publish-landing-page",
+            "capture_action_id": "crm.capture-form-submission"
           }
         ],
         "forms": [
@@ -3668,6 +3771,33 @@
         "forge.addon.crm",
         "--contract",
         "crm.marketing.campaign_automation.executor",
+        "--worker",
+        "<worker-id>",
+        "--task",
+        "<task-ref>",
+        "--input",
+        "<json>",
+        "--context",
+        "<json>",
+        "--output",
+        "json"
+      ]
+    },
+    {
+      "id": "crm.publish-landing-page",
+      "label": "Publish landing page",
+      "surface_id": "crm.marketing-calendar",
+      "contract_id": "crm.marketing.landing_page.executor",
+      "requires_permission": "crm.workflow.mutate",
+      "mutates_workflow": true,
+      "command_template": [
+        "forge",
+        "addons",
+        "execute-executor",
+        "--addon",
+        "forge.addon.crm",
+        "--contract",
+        "crm.marketing.landing_page.executor",
         "--worker",
         "<worker-id>",
         "--task",
@@ -5208,6 +5338,68 @@
             "title": "Execute runtime contract",
             "owner": "forge.addons.runtime",
             "evidence": "crm.marketing.campaign_automation.executor"
+          },
+          {
+            "id": "promote_result_to_workflow",
+            "title": "Promote result to workflow",
+            "owner": "forge.workflow.runtime",
+            "evidence": "artifact and event promotion"
+          },
+          {
+            "id": "refresh_operating_snapshot",
+            "title": "Refresh operating snapshot",
+            "owner": "forge.addon.crm",
+            "evidence": "crm.operating.snapshot.executor"
+          }
+        ],
+        "output_policy": {
+          "promote_result_to_workflow": true,
+          "browser_local_state_write": false,
+          "refresh_source": "forge_workflow_artifacts_and_events"
+        }
+      },
+      {
+        "action_id": "crm.publish-landing-page",
+        "label": "Publish landing page",
+        "surface_id": "crm.marketing-calendar",
+        "contract_id": "crm.marketing.landing_page.executor",
+        "required_permission": "crm.workflow.mutate",
+        "selected_command": [
+          "forge",
+          "addons",
+          "execute-executor",
+          "--addon",
+          "forge.addon.crm",
+          "--contract",
+          "crm.marketing.landing_page.executor",
+          "--worker",
+          "<worker-id>",
+          "--task",
+          "<task-ref>",
+          "--input",
+          "<json>",
+          "--context",
+          "<json>",
+          "--output",
+          "json"
+        ],
+        "permission_gate": {
+          "status": "requires_forge_permission",
+          "permission": "crm.workflow.mutate",
+          "approval_owner": "forge_permission_policy"
+        },
+        "operation_plan": [
+          {
+            "id": "check_addon_permission",
+            "title": "Check Addon permission",
+            "owner": "forge.permissions",
+            "evidence": "crm.workflow.mutate"
+          },
+          {
+            "id": "execute_runtime_contract",
+            "title": "Execute runtime contract",
+            "owner": "forge.addons.runtime",
+            "evidence": "crm.marketing.landing_page.executor"
           },
           {
             "id": "promote_result_to_workflow",

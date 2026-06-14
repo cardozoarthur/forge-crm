@@ -32,6 +32,9 @@ const WORKFLOW_EDGES = [
   ["crm.proposal.approval", "crm.contract.signature", "approved proposal starts contract workflow"],
   ["crm.contract.signature", "crm.followup.forecast", "signed contract updates forecast and commission evidence"],
   ["crm.campaign.lifecycle", "crm.lead.nurture", "approved campaign schedules nurture workflow"],
+  ["crm.campaign.lifecycle", "crm.marketing.landing_page", "approved campaign brief composes landing page artifact"],
+  ["crm.marketing.landing_page", "crm.lead.lifecycle", "published form schema routes captured leads"],
+  ["crm.marketing.landing_page", "crm.lead.nurture", "landing page routing prepares nurture entry"],
   ["crm.lead.nurture", "crm.lead.lifecycle", "response classification updates lead lifecycle"],
   ["crm.ticket.sla", "crm.project.handoff", "resolved support issue can create internal handoff"],
   ["crm.project.handoff", "crm.document.approval", "handoff deliverables enter document queue"],
@@ -372,7 +375,12 @@ function buildOperationalWorkbench(workflows, actionList, documentQueueSnapshot)
       title: "Marketing calendar",
       surface_id: "crm.marketing-calendar",
       workflow_ids: workflowIdsForSurface(workflows, "crm.marketing-calendar"),
-      action_ids: checkedActionIds(actionList, ["crm.automate-campaign", "crm.capture-form-submission", "crm.deliver-handoff"])
+      action_ids: checkedActionIds(actionList, [
+        "crm.automate-campaign",
+        "crm.publish-landing-page",
+        "crm.capture-form-submission",
+        "crm.deliver-handoff"
+      ])
     }),
     campaigns: [
       {
@@ -394,6 +402,21 @@ function buildOperationalWorkbench(workflows, actionList, documentQueueSnapshot)
         approval_state: "waiting",
         artifact_type: "crm_landing_page",
         next_action_id: "crm.automate-campaign"
+      }
+    ],
+    landing_pages: [
+      {
+        landing_page_id: "lp-demo-request",
+        campaign_id: "cmp-logistics-demo",
+        workflow_id: "crm.marketing.landing_page",
+        contract_id: "crm.marketing.landing_page.executor",
+        state: "approval_wait",
+        publication_state: "approval_wait",
+        external_publication_allowed: false,
+        artifact_type: "crm_landing_page",
+        form_schema_artifact_type: "crm_form_schema",
+        publish_action_id: "crm.publish-landing-page",
+        capture_action_id: "crm.capture-form-submission"
       }
     ],
     forms: [
@@ -1157,6 +1180,15 @@ function actions() {
       requires_permission: "crm.workflow.mutate",
       mutates_workflow: true,
       command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.marketing.campaign_automation.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
+    },
+    {
+      id: "crm.publish-landing-page",
+      label: "Publish landing page",
+      surface_id: "crm.marketing-calendar",
+      contract_id: "crm.marketing.landing_page.executor",
+      requires_permission: "crm.workflow.mutate",
+      mutates_workflow: true,
+      command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.marketing.landing_page.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
     },
     {
       id: "crm.capture-form-submission",

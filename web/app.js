@@ -259,6 +259,15 @@ export function renderMarketingCalendar(snapshot) {
     campaigns.append(item);
   }
 
+  const landingPages = nodeElement("div", "landing-page-list");
+  for (const page of panel.landing_pages || []) {
+    const item = nodeElement("article", "landing-page-row");
+    item.append(nodeElement("strong", "", page.landing_page_id));
+    item.append(nodeElement("span", "", `${compactTitle(page.publication_state)} · ${page.form_schema_artifact_type}`));
+    item.append(nodeElement("code", "", actionLabel(snapshot, page.publish_action_id)));
+    landingPages.append(item);
+  }
+
   const forms = nodeElement("div", "form-list");
   for (const form of panel.forms) {
     const item = nodeElement("article", "form-row");
@@ -268,7 +277,7 @@ export function renderMarketingCalendar(snapshot) {
     forms.append(item);
   }
 
-  section.append(campaigns, forms);
+  section.append(campaigns, landingPages, forms);
   return section;
 }
 

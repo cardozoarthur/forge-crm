@@ -420,6 +420,61 @@ test("area copilot generates specialized CRM recommendations without mutating st
   assert.ok(result.events.some((event) => event.kind === "crm.ai.recommendation_generated"));
 });
 
+test("landing page executor composes campaign pages and form schema through Forge", () => {
+  assert.equal(typeof runtime.buildMarketingLandingPageResult, "function");
+
+  const result = runtime.buildMarketingLandingPageResult(
+    workerRequest(
+      "forge_crm.publish_landing_page",
+      {
+        tenant_context: { tenant_id: "demo" },
+        campaign: {
+          id: "cmp-logistics-demo",
+          name: "Logistics demo request",
+          owner: "marketing.ops"
+        },
+        landing_page: {
+          id: "lp-demo-request",
+          slug: "demo-request",
+          headline: "Operate sales and support through Forge workflows"
+        },
+        form_schema: {
+          id: "form-demo-request",
+          required_fields: ["email", "company", "role"],
+          consent_required: true
+        },
+        approval_policy: {
+          requires_approval: true,
+          approver_role: "marketing.director"
+        },
+        routing_policy: {
+          lead_workflow_id: "crm.lead.lifecycle",
+          nurture_workflow_id: "crm.lead.nurture"
+        }
+      },
+      { contract_id: "crm.marketing.landing_page.executor", task_ref: "landing-page-test" }
+    )
+  );
+
+  assert.equal(result.schema_version, "forge.addon_executor_result.v1");
+  assert.equal(result.status, "completed");
+  assert.equal(result.outputs.tenant_id, "demo");
+  assert.equal(result.outputs.workflow_id, "crm.marketing.landing_page");
+  assert.equal(result.outputs.landing_page_id, "lp-demo-request");
+  assert.equal(result.outputs.form_schema_id, "form-demo-request");
+  assert.equal(result.outputs.publication_state, "approval_wait");
+  assert.equal(result.outputs.external_publication_allowed, false);
+  assert.equal(result.outputs.mutates_crm_state, false);
+  assert.equal(result.outputs.forge_event_sourced, true);
+
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_landing_page"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_form_schema"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_automation_plan"));
+  assert.ok(result.events.some((event) => event.kind === "crm.landing_page.composed"));
+  assert.ok(result.events.some((event) => event.kind === "crm.landing_page.approval_requested"));
+  assert.ok(result.events.some((event) => event.kind === "crm.form.schema_published"));
+});
+
 test("work queue orchestrator packages approvals SLAs documents campaigns and handoffs through Forge", () => {
   assert.equal(typeof buildWorkQueueOrchestrationResult, "function");
 

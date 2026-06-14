@@ -344,10 +344,12 @@
       ],
       "workflow_extensions": [
         "crm_campaign_lifecycle",
+        "crm_marketing_landing_page",
         "crm_lead_nurture"
       ],
       "deliverables": [
         "Campaign workflow",
+        "Landing page workflow",
         "Segment definition",
         "Lead nurture sequence"
       ],
@@ -360,6 +362,7 @@
         "crm_consent_record",
         "crm_email",
         "crm_landing_page",
+        "crm_form_schema",
         "crm_presentation"
       ],
       "view_ids": [
@@ -596,6 +599,11 @@
       "id": "crm_campaign_lifecycle",
       "kind": "marketing_workflow",
       "description": "Plan, approve, run and report campaigns as workflow artifacts."
+    },
+    {
+      "id": "crm_marketing_landing_page",
+      "kind": "marketing_workflow",
+      "description": "Compose landing pages and form schemas as Forge workflow artifacts before publication or capture."
     },
     {
       "id": "crm_lead_nurture",
@@ -1341,6 +1349,37 @@
       ]
     },
     {
+      "id": "crm.marketing.landing_page.executor",
+      "title": "CRM landing page publishing",
+      "contract_type": "executor",
+      "capability_id": "crm_marketing_automation",
+      "workflow_extension_id": "crm_marketing_landing_page",
+      "runtime": "external_api",
+      "entrypoint": "forge_crm.publish_landing_page",
+      "inputs": [
+        "campaign",
+        "landing_page",
+        "form_schema",
+        "approval_policy",
+        "routing_policy",
+        "tenant_context"
+      ],
+      "outputs": [
+        "crm_landing_page",
+        "crm_form_schema",
+        "crm_automation_plan"
+      ],
+      "permissions": [
+        "crm.workflow.mutate",
+        "crm.document.generate"
+      ],
+      "constraints": [
+        "landing page publishing does not persist CRM state outside Forge",
+        "external publication requires Forge approval and artifact lineage",
+        "form submissions must route into Forge lead lifecycle through approved form schema artifacts"
+      ]
+    },
+    {
       "id": "crm.marketing.form_capture.executor",
       "title": "CRM marketing form capture",
       "contract_type": "executor",
@@ -1818,6 +1857,49 @@
             "campaign",
             "segment",
             "approval"
+          ]
+        },
+        {
+          "id": "crm.tui.publish-landing-page",
+          "label": "Publish landing page",
+          "description": "Compose a landing page and form schema as Forge artifacts before approval-gated publication.",
+          "palette_group": "CRM",
+          "source_panel": "crm.operational-cockpit",
+          "type": "command",
+          "target": "forge addons execute-executor",
+          "method": "CLI",
+          "permission": "crm.workflow.mutate",
+          "requires_confirmation": true,
+          "risk_level": "high",
+          "mutates_workflow": true,
+          "command_template": [
+            "addons",
+            "execute-executor",
+            "--addon",
+            "forge.addon.crm",
+            "--contract",
+            "crm.marketing.landing_page.executor",
+            "--worker",
+            "<worker-id>",
+            "--task",
+            "<task-ref>",
+            "--input",
+            "<json>",
+            "--context",
+            "<json>",
+            "--output",
+            "json"
+          ],
+          "keywords": [
+            "crm",
+            "landing page",
+            "form"
+          ],
+          "payload_schema": [
+            "campaign",
+            "landing_page",
+            "form_schema",
+            "approval_policy"
           ]
         },
         {
@@ -2450,6 +2532,11 @@
       "generic_kind": "document"
     },
     {
+      "id": "crm_form_schema",
+      "title": "CRM form schema",
+      "generic_kind": "artifact"
+    },
+    {
       "id": "crm_presentation",
       "title": "CRM presentation",
       "generic_kind": "presentation"
@@ -2739,6 +2826,11 @@
     {
       "id": "crm.campaign",
       "title": "CRM campaign event",
+      "transport": "crm"
+    },
+    {
+      "id": "crm.landing_page",
+      "title": "CRM landing page event",
       "transport": "crm"
     },
     {

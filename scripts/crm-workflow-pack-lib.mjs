@@ -198,6 +198,7 @@ const WORKFLOWS = [
     ],
     runtime_contracts: [
       "crm.marketing.campaign_automation.executor",
+      "crm.marketing.landing_page.executor",
       "crm.marketing.form_capture.executor",
       "crm.document.generator.executor",
       "crm.document.validator"
@@ -208,6 +209,7 @@ const WORKFLOWS = [
       "crm_automation_plan",
       "crm_email",
       "crm_landing_page",
+      "crm_form_schema",
       "crm_form_submission",
       "crm_consent_record",
       "crm_presentation",
@@ -217,6 +219,9 @@ const WORKFLOWS = [
       "crm.document.generated",
       "crm.campaign.created",
       "crm.campaign.scheduled",
+      "crm.landing_page.composed",
+      "crm.landing_page.approval_requested",
+      "crm.form.schema_published",
       "crm.form.submitted",
       "crm.lead.created",
       "crm.nurture.step_due",
@@ -226,6 +231,44 @@ const WORKFLOWS = [
     permissions: ["crm.workflow.mutate", "crm.document.generate"],
     views: ["crm.marketing-calendar"],
     validation_gates: ["campaign artifacts approved", "schedule state visible"]
+  },
+  {
+    id: "crm.marketing.landing_page",
+    title: "Landing page and form schema publishing",
+    domain: "marketing",
+    workflow_extension_id: "crm_marketing_landing_page",
+    object_types: ["landing_page", "form", "form_schema", "automation", "lead_nurturing"],
+    states: ["brief", "content_drafted", "form_schema_ready", "approval_wait", "published_artifact", "running", "rework_required"],
+    transitions: [
+      ["brief", "content_drafted", "campaign brief and page content attached"],
+      ["content_drafted", "form_schema_ready", "form schema artifact generated"],
+      ["form_schema_ready", "approval_wait", "publication approval requested"],
+      ["approval_wait", "published_artifact", "Forge approval recorded"],
+      ["published_artifact", "running", "approved page artifact used for form capture"],
+      ["approval_wait", "rework_required", "approval or validation returned rework"]
+    ],
+    runtime_contracts: [
+      "crm.marketing.landing_page.executor",
+      "crm.marketing.form_capture.executor",
+      "crm.document.validator"
+    ],
+    depends_on_workflows: ["crm.campaign.lifecycle", "crm.lead.nurture"],
+    artifacts: ["crm_landing_page", "crm_form_schema", "crm_automation_plan", "crm_consent_record"],
+    events: [
+      "crm.landing_page.composed",
+      "crm.landing_page.approval_requested",
+      "crm.landing_page.ready_for_publish",
+      "crm.form.schema_published",
+      "crm.form.submitted"
+    ],
+    memory_scopes: ["organization", "project"],
+    permissions: ["crm.workflow.mutate", "crm.document.generate"],
+    views: ["crm.marketing-calendar"],
+    validation_gates: [
+      "landing page artifact has Forge lineage",
+      "form schema is published before form capture",
+      "external publication blocked until Forge approval is recorded"
+    ]
   },
   {
     id: "crm.lead.nurture",
