@@ -1,7 +1,18 @@
 const REQUIRED_SCOPE = {
   relationship: ["lead", "contact", "company", "opportunity", "pipeline_kanban", "multiple_funnels", "complete_history", "unified_timeline"],
   commercial: ["proposal", "contract", "signature", "follow_up", "forecast", "goal", "commission", "account_management"],
-  support: ["ticket", "sla", "chat", "whatsapp", "telegram", "email", "omnichannel_center", "approved_channel_adapter", "message_normalization"],
+  support: [
+    "ticket",
+    "sla",
+    "chat",
+    "whatsapp",
+    "telegram",
+    "email",
+    "omnichannel_center",
+    "approved_channel_adapter",
+    "message_normalization",
+    "reply"
+  ],
   marketing: ["campaign", "segmentation", "automation", "landing_page", "form", "lead_nurturing"],
   operations: [
     "project",
@@ -304,7 +315,7 @@ const WORKFLOWS = [
       ["ticket_routing_decided", "closed", "ticket routing not required"],
       ["handoff_wait", "closed", "handoff receipt attached"]
     ],
-    runtime_contracts: ["crm.support.omnichannel_message.executor", "crm.omnichannel.handoff"],
+    runtime_contracts: ["crm.support.omnichannel_message.executor", "crm.support.reply_composer.executor", "crm.omnichannel.handoff"],
     depends_on_workflows: ["crm.omnichannel.channel_intake"],
     artifacts: ["crm_message_thread", "crm_channel_receipt", "crm_support_summary"],
     events: ["crm.message.received", "crm.ticket.created", "crm.handoff.delivered"],
@@ -334,6 +345,7 @@ const WORKFLOWS = [
     runtime_contracts: [
       "crm.support.omnichannel_center.executor",
       "crm.support.omnichannel_message.executor",
+      "crm.support.reply_composer.executor",
       "crm.support.ticket_sla.executor",
       "crm.omnichannel.handoff"
     ],
@@ -373,6 +385,7 @@ const WORKFLOWS = [
       "crm.support.omnichannel_center.executor",
       "crm.support.channel_intake.executor",
       "crm.support.omnichannel_message.executor",
+      "crm.support.reply_composer.executor",
       "crm.omnichannel.handoff"
     ],
     depends_on_workflows: ["crm.omnichannel.channel_intake", "crm.omnichannel.message"],
@@ -390,6 +403,34 @@ const WORKFLOWS = [
       "omnichannel center state is sourced from Forge artifacts and events",
       "approved channel intake is required before conversation unification",
       "conversation lineage cites channel receipts and identity evidence"
+    ]
+  },
+  {
+    id: "crm.omnichannel.reply",
+    title: "Approval-gated customer reply composition",
+    domain: "support",
+    workflow_extension_id: "crm_omnichannel_reply",
+    object_types: ["chat", "whatsapp", "telegram", "email", "reply", "approval", "handoff", "support_summary"],
+    states: ["reply_requested", "draft_composed", "approval_wait", "delivery_blocked", "approved_for_handoff", "sent", "rework_required"],
+    transitions: [
+      ["reply_requested", "draft_composed", "conversation and ticket context attached"],
+      ["draft_composed", "approval_wait", "reply artifact and approval record generated"],
+      ["approval_wait", "delivery_blocked", "external send blocked until approval"],
+      ["approval_wait", "approved_for_handoff", "Forge approval recorded"],
+      ["approved_for_handoff", "sent", "approved handoff receipt attached"],
+      ["approval_wait", "rework_required", "approver requested reply changes"]
+    ],
+    runtime_contracts: ["crm.support.reply_composer.executor", "crm.omnichannel.handoff"],
+    depends_on_workflows: ["crm.omnichannel.message", "crm.ticket.sla", "crm.omnichannel.center"],
+    artifacts: ["crm_channel_response", "crm_approval_record", "crm_handoff_record", "crm_support_summary"],
+    events: ["crm.reply.drafted", "crm.reply.approval_requested", "crm.handoff.delivery_blocked", "crm.handoff.delivered"],
+    memory_scopes: ["organization", "project", "processing"],
+    permissions: ["crm.omnichannel.ingest", "crm.workflow.mutate"],
+    views: ["crm.support-queue"],
+    validation_gates: [
+      "customer replies are drafted as Forge artifacts before external send",
+      "external channel delivery is blocked until Forge approval is recorded",
+      "reply lineage cites conversation thread, ticket SLA and channel identity evidence"
     ]
   },
   {

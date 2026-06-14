@@ -5827,6 +5827,183 @@ export function buildOmnichannelCenterResult(request) {
   };
 }
 
+export function buildSupportReplyComposerResult(request) {
+  const input = dispatchPayload(request);
+  const context = providedContext(request);
+  const envelope = dispatchEnvelope(request);
+  const tenantId = input.tenant_id || input.tenant_context?.tenant_id || input.tenant_context?.id || context.tenant || "default";
+  const thread = asObject(input.conversation_thread ?? input.thread ?? input.message_thread);
+  const ticket = asObject(input.ticket_context ?? input.ticket);
+  const replyPolicy = asObject(input.reply_policy);
+  const channelContext = asObject(input.channel_context ?? input.channel_policy);
+  const workflowId = String(input.workflow_id || "crm.omnichannel.reply");
+  const threadId = String(thread.id || thread.thread_id || envelope.subject || "support-thread");
+  const supportTicketId = ticketId(ticket, envelope.task_ref || "support-ticket");
+  const channel = String(
+    channelContext.preferred_channel || thread.channel || input.channel || asArray(channelContext.allowed_channels)[0] || "email"
+  ).toLowerCase();
+  const taskRef = envelope.task_ref || `compose-reply-${slug(supportTicketId, "ticket")}`;
+  const customer = String(thread.customer || ticket.customer || ticket.account || input.customer || "customer");
+  const latestMessage = String(thread.latest_message || thread.message || thread.summary || ticket.summary || "Customer requested support follow-up.");
+  const nextStep = String(replyPolicy.suggested_next_step || replyPolicy.next_step || "confirm next support step with the customer");
+  const approverRole = String(replyPolicy.approver_role || replyPolicy.approver || "support.lead");
+  const requiresApproval = replyPolicy.requires_human_approval !== false;
+  const approved = replyPolicy.approved === true || replyPolicy.approval_state === "approved";
+  const replyState = requiresApproval && !approved ? "approval_wait" : "approved_for_handoff";
+  const allowedChannels = asArray(channelContext.allowed_channels).map((item) => String(item).toLowerCase());
+  const channelAllowed = allowedChannels.length === 0 || allowedChannels.includes(channel);
+  const adapterAuthorized = channelContext.adapter_authorized !== false;
+  const externalSendAllowed = false;
+  const responseId = `channel-response-${slug(threadId, "thread")}`;
+  const approvalId = `reply-approval-${slug(responseId, "response")}`;
+  const handoffId = `reply-handoff-${slug(supportTicketId, "ticket")}`;
+  const lineage = {
+    workflow_id: workflowId,
+    message_workflow_id: String(input.message_workflow_id || "crm.omnichannel.message"),
+    ticket_workflow_id: String(input.ticket_workflow_id || "crm.ticket.sla"),
+    center_workflow_id: String(input.center_workflow_id || "crm.omnichannel.center"),
+    task_ref: taskRef,
+    source_contract: "crm.support.reply_composer.executor",
+    tenant_id: tenantId,
+    thread_id: threadId,
+    ticket_id: supportTicketId,
+    channel,
+    external_send_allowed: externalSendAllowed
+  };
+  const replyBody = [
+    `Hi ${customer},`,
+    `we reviewed your ${channel} message: "${latestMessage}".`,
+    `Next step: ${nextStep}.`,
+    "This reply is waiting for Forge approval before any external delivery."
+  ].join(" ");
+
+  return {
+    schema_version: "forge.addon_executor_result.v1",
+    status: "completed",
+    task_ref: taskRef,
+    summary: `Support reply for ${supportTicketId} drafted on ${channel} and blocked until Forge approval`,
+    outputs: {
+      tenant_id: tenantId,
+      workflow_id: workflowId,
+      ticket_id: supportTicketId,
+      thread_id: threadId,
+      channel,
+      reply_state: replyState,
+      channel_allowed: channelAllowed,
+      adapter_authorized: adapterAuthorized,
+      external_send_allowed: externalSendAllowed,
+      mutates_crm_state: false,
+      forge_event_sourced: true
+    },
+    artifacts: [
+      {
+        kind: "crm_channel_response",
+        id: responseId,
+        title: `Draft ${channel} reply for ${customer}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          workflow_id: workflowId,
+          ticket_id: supportTicketId,
+          thread_id: threadId,
+          channel,
+          customer,
+          subject: thread.subject || ticket.subject || `Support reply for ${supportTicketId}`,
+          body: replyBody,
+          reply_policy: replyPolicy,
+          channel_context: channelContext,
+          approval_state: replyState,
+          external_send_allowed: externalSendAllowed,
+          lineage,
+          state_owner: "forge_workflow_runtime",
+          external_database_required: false
+        }
+      },
+      {
+        kind: "crm_approval_record",
+        id: approvalId,
+        title: `Reply approval for ${supportTicketId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          workflow_id: workflowId,
+          approval_state: replyState,
+          approver_role: approverRole,
+          approval_required: requiresApproval,
+          approved,
+          artifact_ref: `forge://artifact/crm_channel_response/${responseId}`,
+          lineage,
+          reason: requiresApproval && !approved ? "Support reply requires Forge approval before external handoff" : "Forge approval recorded"
+        }
+      },
+      {
+        kind: "crm_handoff_record",
+        id: handoffId,
+        title: `Blocked reply handoff for ${supportTicketId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          workflow_id: workflowId,
+          ticket_id: supportTicketId,
+          channel,
+          handoff_state: "delivery_blocked",
+          external_send_allowed: externalSendAllowed,
+          blocked_reason: "External channel delivery requires a recorded Forge approval and handoff execution",
+          approval_artifact_ref: `forge://artifact/crm_approval_record/${approvalId}`,
+          response_artifact_ref: `forge://artifact/crm_channel_response/${responseId}`,
+          lineage
+        }
+      },
+      {
+        kind: "crm_support_summary",
+        id: `support-reply-summary-${slug(supportTicketId, "ticket")}`,
+        title: `Support reply summary for ${supportTicketId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          workflow_id: workflowId,
+          ticket_id: supportTicketId,
+          thread_id: threadId,
+          channel,
+          reply_state: replyState,
+          external_send_allowed: externalSendAllowed,
+          next_state: requiresApproval && !approved ? "approval_wait" : "handoff_ready",
+          lineage
+        }
+      }
+    ],
+    events: [
+      {
+        kind: "crm.reply.drafted",
+        tenant_id: tenantId,
+        workflow_id: workflowId,
+        ticket_id: supportTicketId,
+        thread_id: threadId,
+        channel,
+        response_id: responseId
+      },
+      {
+        kind: "crm.reply.approval_requested",
+        tenant_id: tenantId,
+        workflow_id: workflowId,
+        ticket_id: supportTicketId,
+        approver_role: approverRole,
+        approval_artifact_id: approvalId
+      },
+      {
+        kind: "crm.handoff.delivery_blocked",
+        tenant_id: tenantId,
+        workflow_id: workflowId,
+        ticket_id: supportTicketId,
+        channel,
+        external_send_allowed: externalSendAllowed,
+        blocked_reason: "approval_required"
+      }
+    ],
+    context_tenant: context.tenant || tenantId
+  };
+}
+
 export function buildOmnichannelMessageIngestionResult(request) {
   const input = dispatchPayload(request);
   const context = providedContext(request);
@@ -6278,6 +6455,8 @@ export function executeCrmRuntimeRequest(request) {
       return buildOmnichannelCenterResult(request);
     case "forge_crm.ingest_omnichannel_message":
       return buildOmnichannelMessageIngestionResult(request);
+    case "forge_crm.compose_support_reply":
+      return buildSupportReplyComposerResult(request);
     case "forge_crm.triage_ticket_sla":
       return buildTicketSlaResult(request);
     case "forge_crm.deliver_handoff":

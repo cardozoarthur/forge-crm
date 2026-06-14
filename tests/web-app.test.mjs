@@ -77,6 +77,7 @@ test("web app snapshot provides Forge command actions instead of local automatio
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.support.channel_intake.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.support.omnichannel_center.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.support.omnichannel_message.executor"));
+  assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.support.reply_composer.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.support.ticket_sla.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.operations.project_handoff.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.marketing.campaign_automation.executor"));
@@ -241,6 +242,9 @@ test("web app snapshot exposes an operational workbench backed by Forge artifact
   );
   assert.ok(panels.get("support_queue").omnichannel_center.some((center) => center.action_id === "crm.run-omnichannel-center"));
   assert.ok(panels.get("support_queue").omnichannel_center.every((center) => center.contract_id === "crm.support.omnichannel_center.executor"));
+  assert.ok(panels.get("support_queue").reply_queue.some((reply) => reply.action_id === "crm.compose-support-reply"));
+  assert.ok(panels.get("support_queue").reply_queue.every((reply) => reply.contract_id === "crm.support.reply_composer.executor"));
+  assert.ok(panels.get("support_queue").reply_queue.every((reply) => reply.external_send_allowed === false));
   assert.ok(panels.get("marketing_calendar").campaigns.some((campaign) => campaign.next_action_id === "crm.automate-campaign"));
   assert.ok(panels.get("marketing_calendar").segments.some((segment) => segment.action_id === "crm.build-marketing-segment"));
   assert.ok(panels.get("marketing_calendar").segments.every((segment) => segment.contract_id === "crm.marketing.segment_builder.executor"));
@@ -295,6 +299,30 @@ test("web app snapshot exposes omnichannel message threads before ticket SLA", (
   assert.ok(supportPanel.message_threads.every((thread) => thread.state_owner === "forge_workflow_runtime"));
   assert.ok(supportPanel.message_threads.every((thread) => thread.contract_id === "crm.support.omnichannel_message.executor"));
   assert.ok(supportPanel.message_threads.every((thread) => thread.ticket_workflow_id === "crm.ticket.sla"));
+});
+
+test("web app snapshot exposes approval-gated support reply composition", () => {
+  const snapshot = buildCrmWebAppSnapshot({ tenant_id: "demo" });
+  const action = snapshot.actions.find((candidate) => candidate.id === "crm.compose-support-reply");
+  const supportPanel = snapshot.operational_workbench.panels.find((panel) => panel.id === "support_queue");
+
+  assert.ok(action);
+  assert.equal(action.surface_id, "crm.support-queue");
+  assert.equal(action.contract_id, "crm.support.reply_composer.executor");
+  assert.equal(action.requires_permission, "crm.omnichannel.ingest");
+  assert.deepEqual(action.command_template.slice(0, 3), ["forge", "addons", "execute-executor"]);
+
+  assert.ok(supportPanel);
+  assert.ok(supportPanel.action_ids.includes("crm.compose-support-reply"));
+  assert.ok(supportPanel.workflow_ids.includes("crm.omnichannel.reply"));
+  assert.ok(supportPanel.reply_queue.length >= 4);
+  assert.ok(supportPanel.reply_queue.every((reply) => reply.state_owner === "forge_workflow_runtime"));
+  assert.ok(supportPanel.reply_queue.every((reply) => reply.workflow_id === "crm.omnichannel.reply"));
+  assert.ok(supportPanel.reply_queue.every((reply) => reply.approval_state === "approval_wait"));
+  assert.deepEqual(
+    supportPanel.reply_queue.map((reply) => reply.channel).sort(),
+    ["chat", "email", "telegram", "whatsapp"]
+  );
 });
 
 test("web app snapshot exposes document library versioning as a Forge command surface", () => {

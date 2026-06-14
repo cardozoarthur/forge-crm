@@ -124,6 +124,7 @@ try {
       "forge_crm.normalize_channel_intake",
       "forge_crm.unify_omnichannel_center",
       "forge_crm.ingest_omnichannel_message",
+      "forge_crm.compose_support_reply",
       "forge_crm.triage_ticket_sla",
       "forge_crm.plan_project_handoff",
       "forge_crm.deliver_handoff"
@@ -166,6 +167,7 @@ try {
       "crm.support.channel_intake.executor",
       "crm.support.omnichannel_center.executor",
       "crm.support.omnichannel_message.executor",
+      "crm.support.reply_composer.executor",
       "crm.support.ticket_sla.executor",
       "crm.operations.project_handoff.executor",
       "crm.omnichannel.handoff"
@@ -2201,6 +2203,66 @@ try {
     );
   }
 
+  const supportReply = runForge([
+    "addons",
+    "execute-executor",
+    "--addon-dir",
+    "addons",
+    "--addon",
+    "forge.addon.crm",
+    "--contract",
+    "crm.support.reply_composer.executor",
+    "--worker",
+    workerId,
+    "--task",
+    "crm-smoke-support-reply",
+    "--workflow",
+    workflowId,
+    "--input",
+    JSON.stringify({
+      tenant_context: { id: "smoke", tenant_id: "smoke" },
+      conversation_thread: {
+        id: "thread-smoke-whatsapp",
+        channel: "whatsapp",
+        customer: "Example Logistics",
+        subject: "Operations blocked",
+        latest_message: "Operations are blocked and need support.",
+        message_ids: ["msg-smoke-omni-001"]
+      },
+      ticket_context: {
+        id: "ticket-smoke-001",
+        priority: "critical",
+        sla_status: "at_risk",
+        owner_queue: "support-escalation"
+      },
+      channel_context: {
+        allowed_channels: ["chat", "whatsapp", "telegram", "email"],
+        preferred_channel: "whatsapp",
+        adapter_authorized: true
+      },
+      reply_policy: {
+        tone: "clear and accountable",
+        requires_human_approval: true,
+        suggested_next_step: "confirm escalation owner and share recovery ETA",
+        approver_role: "support.lead"
+      }
+    }),
+    "--context",
+    JSON.stringify({ tenant: "smoke" }),
+    "--output",
+    "json"
+  ]);
+
+  if (supportReply.promotion?.status !== "addon_executor_result_promoted") {
+    throw new Error(`expected support reply promotion, got ${supportReply.promotion?.status || "missing"}`);
+  }
+  if (supportReply.executor_result.outputs.workflow_id !== "crm.omnichannel.reply") {
+    throw new Error(`expected support reply workflow crm.omnichannel.reply, got ${supportReply.executor_result.outputs.workflow_id}`);
+  }
+  if (supportReply.executor_result.outputs.external_send_allowed !== false) {
+    throw new Error("expected support reply external_send_allowed false");
+  }
+
   const ticketSla = runForge([
     "addons",
     "execute-executor",
@@ -2480,6 +2542,8 @@ try {
   const omnichannelIngestionPromotedEventCount = omnichannelIngestion.promotion?.event_count ?? 0;
   const omnichannelCenterPromotedArtifactCount = omnichannelCenter.promotion?.artifact_count ?? 0;
   const omnichannelCenterPromotedEventCount = omnichannelCenter.promotion?.event_count ?? 0;
+  const supportReplyPromotedArtifactCount = supportReply.promotion?.artifact_count ?? 0;
+  const supportReplyPromotedEventCount = supportReply.promotion?.event_count ?? 0;
   const ticketSlaPromotedArtifactCount = ticketSla.promotion?.artifact_count ?? 0;
   const ticketSlaPromotedEventCount = ticketSla.promotion?.event_count ?? 0;
   const operationsPromotedArtifactCount = operationsProjectHandoff.promotion?.artifact_count ?? 0;
@@ -2824,6 +2888,16 @@ try {
     );
   }
   for (const eventKind of ["crm.omnichannel.center_snapshot", "crm.conversation.unified", "crm.channel.identity_mapped"]) {
+    if (!workflowEventKinds.includes(eventKind)) {
+      throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
+    }
+  }
+  if (supportReplyPromotedArtifactCount < 4 || supportReplyPromotedEventCount < 3) {
+    throw new Error(
+      `expected promoted support reply artifacts/events, got artifacts=${supportReplyPromotedArtifactCount} events=${supportReplyPromotedEventCount}`
+    );
+  }
+  for (const eventKind of ["crm.reply.drafted", "crm.reply.approval_requested", "crm.handoff.delivery_blocked"]) {
     if (!workflowEventKinds.includes(eventKind)) {
       throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
     }
@@ -3173,6 +3247,12 @@ try {
     omnichannel_center_unified_conversations: omnichannelCenter.executor_result.outputs.unified_conversation_count,
     omnichannel_center_promoted_artifacts: omnichannelCenterPromotedArtifactCount,
     omnichannel_center_promoted_events: omnichannelCenterPromotedEventCount,
+    support_reply_status: supportReply.status,
+    support_reply_promotion_status: supportReply.promotion.status,
+    support_reply_state: supportReply.executor_result.outputs.reply_state,
+    support_reply_external_send_allowed: supportReply.executor_result.outputs.external_send_allowed,
+    support_reply_promoted_artifacts: supportReplyPromotedArtifactCount,
+    support_reply_promoted_events: supportReplyPromotedEventCount,
     ticket_sla_status: ticketSla.status,
     ticket_sla_promotion_status: ticketSla.promotion.status,
     ticket_sla_state: ticketSla.executor_result.outputs.sla_state,

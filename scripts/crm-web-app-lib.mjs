@@ -46,6 +46,9 @@ const WORKFLOW_EDGES = [
   ["crm.omnichannel.channel_intake", "crm.omnichannel.message", "approved channel intake records Forge-owned message threads"],
   ["crm.omnichannel.message", "crm.omnichannel.center", "message threads feed unified conversation routing"],
   ["crm.omnichannel.message", "crm.ticket.sla", "message routing creates SLA-ready support work"],
+  ["crm.omnichannel.message", "crm.omnichannel.reply", "message thread context starts approval-gated reply composition"],
+  ["crm.ticket.sla", "crm.omnichannel.reply", "SLA state informs customer response urgency"],
+  ["crm.omnichannel.center", "crm.omnichannel.reply", "unified conversation identity informs channel reply"],
   ["crm.omnichannel.channel_intake", "crm.ticket.sla", "approved channel intake creates SLA-ready support work"],
   ["crm.ticket.sla", "crm.project.handoff", "resolved support issue can create internal handoff"],
   ["crm.project.handoff", "crm.document.approval", "handoff deliverables enter document queue"],
@@ -447,6 +450,7 @@ function buildOperationalWorkbench(workflows, actionList, documentQueueSnapshot)
         "crm.normalize-channel-intake",
         "crm.run-omnichannel-center",
         "crm.ingest-omnichannel-message",
+        "crm.compose-support-reply",
         "crm.triage-ticket-sla",
         "crm.deliver-handoff"
       ])
@@ -556,6 +560,68 @@ function buildOperationalWorkbench(workflows, actionList, documentQueueSnapshot)
         unified_conversation_count: 1,
         owner_queue: "support",
         action_id: "crm.run-omnichannel-center"
+      }
+    ],
+    reply_queue: [
+      {
+        response_id: "reply-chat-northstar-ops",
+        workflow_id: "crm.omnichannel.reply",
+        contract_id: "crm.support.reply_composer.executor",
+        state_owner: "forge_workflow_runtime",
+        channel: "chat",
+        account: "Northstar Retail",
+        thread_id: "thread-chat-northstar-ops",
+        ticket_id: "sup-1042",
+        approval_state: "approval_wait",
+        external_send_allowed: false,
+        response_artifact_type: "crm_channel_response",
+        approval_artifact_type: "crm_approval_record",
+        action_id: "crm.compose-support-reply"
+      },
+      {
+        response_id: "reply-whatsapp-northstar-blocked",
+        workflow_id: "crm.omnichannel.reply",
+        contract_id: "crm.support.reply_composer.executor",
+        state_owner: "forge_workflow_runtime",
+        channel: "whatsapp",
+        account: "Northstar Retail",
+        thread_id: "thread-whatsapp-northstar-blocked",
+        ticket_id: "sup-1042",
+        approval_state: "approval_wait",
+        external_send_allowed: false,
+        response_artifact_type: "crm_channel_response",
+        approval_artifact_type: "crm_approval_record",
+        action_id: "crm.compose-support-reply"
+      },
+      {
+        response_id: "reply-telegram-helio-install",
+        workflow_id: "crm.omnichannel.reply",
+        contract_id: "crm.support.reply_composer.executor",
+        state_owner: "forge_workflow_runtime",
+        channel: "telegram",
+        account: "Helio Grid",
+        thread_id: "thread-telegram-helio-install",
+        ticket_id: "sup-1057",
+        approval_state: "approval_wait",
+        external_send_allowed: false,
+        response_artifact_type: "crm_channel_response",
+        approval_artifact_type: "crm_approval_record",
+        action_id: "crm.compose-support-reply"
+      },
+      {
+        response_id: "reply-email-acme-renewal",
+        workflow_id: "crm.omnichannel.reply",
+        contract_id: "crm.support.reply_composer.executor",
+        state_owner: "forge_workflow_runtime",
+        channel: "email",
+        account: "Acme Logistics",
+        thread_id: "thread-email-acme-renewal",
+        ticket_id: "sup-1061",
+        approval_state: "approval_wait",
+        external_send_allowed: false,
+        response_artifact_type: "crm_channel_response",
+        approval_artifact_type: "crm_approval_record",
+        action_id: "crm.compose-support-reply"
       }
     ],
     sla_targets: [
@@ -1881,6 +1947,15 @@ function actions() {
       requires_permission: "crm.omnichannel.ingest",
       mutates_workflow: true,
       command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.support.omnichannel_message.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
+    },
+    {
+      id: "crm.compose-support-reply",
+      label: "Compose support reply",
+      surface_id: "crm.support-queue",
+      contract_id: "crm.support.reply_composer.executor",
+      requires_permission: "crm.omnichannel.ingest",
+      mutates_workflow: true,
+      command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.support.reply_composer.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
     },
     {
       id: "crm.triage-ticket-sla",

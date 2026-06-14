@@ -323,14 +323,16 @@
         "crm_omnichannel_channel_intake",
         "crm_omnichannel_center",
         "crm_ticket_sla",
-        "crm_omnichannel_message"
+        "crm_omnichannel_message",
+        "crm_omnichannel_reply"
       ],
       "deliverables": [
         "Support queue",
         "Unified omnichannel center",
         "SLA workflow",
         "Channel handoff history",
-        "Channel intake receipts"
+        "Channel intake receipts",
+        "Approval-gated channel replies"
       ],
       "event_triggers": [
         "crm.message.received",
@@ -344,7 +346,8 @@
         "crm_support_queue_snapshot",
         "crm_support_summary",
         "crm_message_thread",
-        "crm_channel_receipt"
+        "crm_channel_receipt",
+        "crm_channel_response"
       ],
       "view_ids": [
         "crm.support-queue"
@@ -669,6 +672,11 @@
       "id": "crm_omnichannel_message",
       "kind": "event_workflow",
       "description": "Route chat, WhatsApp, Telegram and email events into CRM workflows."
+    },
+    {
+      "id": "crm_omnichannel_reply",
+      "kind": "support_workflow",
+      "description": "Compose chat, WhatsApp, Telegram and email replies as approval-gated Forge artifacts before external delivery."
     },
     {
       "id": "crm_campaign_lifecycle",
@@ -1872,6 +1880,37 @@
       ]
     },
     {
+      "id": "crm.support.reply_composer.executor",
+      "title": "CRM support reply composition",
+      "contract_type": "executor",
+      "capability_id": "crm_support_omnichannel",
+      "workflow_extension_id": "crm_omnichannel_reply",
+      "runtime": "external_api",
+      "entrypoint": "forge_crm.compose_support_reply",
+      "inputs": [
+        "conversation_thread",
+        "ticket_context",
+        "reply_policy",
+        "channel_context",
+        "tenant_context"
+      ],
+      "outputs": [
+        "crm_channel_response",
+        "crm_approval_record",
+        "crm_handoff_record",
+        "crm_support_summary"
+      ],
+      "permissions": [
+        "crm.omnichannel.ingest",
+        "crm.workflow.mutate"
+      ],
+      "constraints": [
+        "support reply composition does not send externally or persist CRM state outside Forge",
+        "chat, WhatsApp, Telegram and email replies require Forge approval before handoff delivery",
+        "draft response, approval record and delivery block must remain attached to Forge workflow lineage"
+      ]
+    },
+    {
       "id": "crm.support.ticket_sla.executor",
       "title": "CRM ticket SLA triage",
       "contract_type": "executor",
@@ -2872,6 +2911,51 @@
             "channel_threads",
             "identity_records",
             "routing_policy",
+            "tenant_context"
+          ]
+        },
+        {
+          "id": "crm.tui.compose-support-reply",
+          "label": "Compose support reply",
+          "description": "Draft a customer reply for chat, WhatsApp, Telegram or email as a Forge artifact before approval-gated external delivery.",
+          "palette_group": "CRM",
+          "source_panel": "crm.operational-cockpit",
+          "type": "command",
+          "target": "forge addons execute-executor",
+          "method": "CLI",
+          "permission": "crm.omnichannel.ingest",
+          "requires_confirmation": true,
+          "risk_level": "high",
+          "mutates_workflow": true,
+          "command_template": [
+            "addons",
+            "execute-executor",
+            "--addon",
+            "forge.addon.crm",
+            "--contract",
+            "crm.support.reply_composer.executor",
+            "--worker",
+            "<worker-id>",
+            "--task",
+            "<task-ref>",
+            "--input",
+            "<json>",
+            "--context",
+            "<json>",
+            "--output",
+            "json"
+          ],
+          "keywords": [
+            "crm",
+            "support",
+            "reply",
+            "omnichannel"
+          ],
+          "payload_schema": [
+            "conversation_thread",
+            "ticket_context",
+            "reply_policy",
+            "channel_context",
             "tenant_context"
           ]
         },
@@ -4181,6 +4265,11 @@
       "generic_kind": "artifact"
     },
     {
+      "id": "crm_channel_response",
+      "title": "CRM channel response",
+      "generic_kind": "message"
+    },
+    {
       "id": "crm_omnichannel_center_snapshot",
       "title": "CRM omnichannel center snapshot",
       "generic_kind": "report"
@@ -4465,6 +4554,11 @@
     {
       "id": "crm.conversation",
       "title": "CRM unified conversation event",
+      "transport": "crm"
+    },
+    {
+      "id": "crm.reply",
+      "title": "CRM support reply event",
       "transport": "crm"
     },
     {

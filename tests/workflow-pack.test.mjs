@@ -522,6 +522,40 @@ test("support omnichannel center unifies conversations and channel identities th
   assert.ok(pack.indexes.runtime_contracts.includes("crm.support.omnichannel_center.executor"));
 });
 
+test("support reply workflow composes approval-gated customer responses through Forge", () => {
+  const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
+  const workflow = pack.workflows.find((candidate) => candidate.id === "crm.omnichannel.reply");
+  const messageWorkflow = pack.workflows.find((candidate) => candidate.id === "crm.omnichannel.message");
+  const ticketWorkflow = pack.workflows.find((candidate) => candidate.id === "crm.ticket.sla");
+  const centerWorkflow = pack.workflows.find((candidate) => candidate.id === "crm.omnichannel.center");
+
+  assert.ok(workflow);
+  assert.equal(workflow.domain, "support");
+  assert.equal(workflow.workflow_extension_id, "crm_omnichannel_reply");
+  assert.ok(workflow.runtime_contracts.includes("crm.support.reply_composer.executor"));
+  assert.ok(workflow.depends_on_workflows.includes("crm.omnichannel.message"));
+  assert.ok(workflow.depends_on_workflows.includes("crm.ticket.sla"));
+  assert.ok(workflow.depends_on_workflows.includes("crm.omnichannel.center"));
+
+  for (const objectType of ["chat", "whatsapp", "telegram", "email", "reply", "approval"]) {
+    assert.ok(workflow.object_types.includes(objectType), `missing reply object ${objectType}`);
+  }
+  for (const artifact of ["crm_channel_response", "crm_approval_record", "crm_handoff_record", "crm_support_summary"]) {
+    assert.ok(workflow.artifacts.includes(artifact), `missing reply artifact ${artifact}`);
+    assert.ok(pack.indexes.artifact_types.includes(artifact), `missing indexed reply artifact ${artifact}`);
+  }
+  for (const event of ["crm.reply.drafted", "crm.reply.approval_requested", "crm.handoff.delivery_blocked"]) {
+    assert.ok(workflow.events.includes(event), `missing reply event ${event}`);
+  }
+
+  assert.ok(workflow.validation_gates.includes("customer replies are drafted as Forge artifacts before external send"));
+  assert.ok(workflow.validation_gates.includes("external channel delivery is blocked until Forge approval is recorded"));
+  assert.ok(pack.indexes.runtime_contracts.includes("crm.support.reply_composer.executor"));
+  assert.ok(messageWorkflow.runtime_contracts.includes("crm.support.reply_composer.executor"));
+  assert.ok(ticketWorkflow.runtime_contracts.includes("crm.support.reply_composer.executor"));
+  assert.ok(centerWorkflow.runtime_contracts.includes("crm.support.reply_composer.executor"));
+});
+
 test("marketing workflows route campaign automation and nurture through Forge", () => {
   const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
 

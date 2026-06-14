@@ -23,11 +23,11 @@
     "external_delivery_requires_approval": true
   },
   "metrics": {
-    "workflow_count": 30,
+    "workflow_count": 31,
     "business_module_count": 7,
     "surface_count": 10,
-    "artifact_type_count": 83,
-    "event_type_count": 96,
+    "artifact_type_count": 84,
+    "event_type_count": 99,
     "complete_scope": true
   },
   "surfaces": [
@@ -363,6 +363,7 @@
         "crm.omnichannel.message",
         "crm.ticket.sla",
         "crm.omnichannel.center",
+        "crm.omnichannel.reply",
         "crm.work.queue.orchestration",
         "crm.enterprise.customer_journey"
       ],
@@ -388,10 +389,15 @@
         "identity_matched",
         "routing_ready",
         "rework_required",
+        "reply_requested",
+        "draft_composed",
+        "approval_wait",
+        "delivery_blocked",
+        "approved_for_handoff",
+        "sent",
         "queue_snapshot_requested",
         "queue_snapshot_ready",
         "assignment_planned",
-        "approval_wait",
         "work_in_progress",
         "risk_review_wait",
         "lead_capture",
@@ -404,10 +410,12 @@
         "operating_acceptance"
       ],
       "artifact_types": [
+        "crm_approval_record",
         "crm_business_runbook",
         "crm_channel_identity_map",
         "crm_channel_intake",
         "crm_channel_receipt",
+        "crm_channel_response",
         "crm_cross_domain_handoff_map",
         "crm_enterprise_journey_map",
         "crm_handoff_record",
@@ -427,6 +435,7 @@
         "crm.channel.identity_mapped",
         "crm.conversation.unified",
         "crm.handoff.delivered",
+        "crm.handoff.delivery_blocked",
         "crm.journey.acceptance_reported",
         "crm.journey.stage_completed",
         "crm.journey.started",
@@ -436,6 +445,8 @@
         "crm.queue.assignment_planned",
         "crm.queue.risk_flagged",
         "crm.queue.snapshot_generated",
+        "crm.reply.approval_requested",
+        "crm.reply.drafted",
         "crm.sla.escalated",
         "crm.ticket.created"
       ],
@@ -925,12 +936,15 @@
         "crm.omnichannel.message",
         "crm.ticket.sla",
         "crm.omnichannel.center",
+        "crm.omnichannel.reply",
         "crm.work.queue.orchestration"
       ],
       "artifact_types": [
+        "crm_approval_record",
         "crm_channel_identity_map",
         "crm_channel_intake",
         "crm_channel_receipt",
+        "crm_channel_response",
         "crm_handoff_record",
         "crm_message_thread",
         "crm_omnichannel_center_snapshot",
@@ -947,12 +961,15 @@
         "crm.channel.identity_mapped",
         "crm.conversation.unified",
         "crm.handoff.delivered",
+        "crm.handoff.delivery_blocked",
         "crm.message.normalized",
         "crm.message.received",
         "crm.omnichannel.center_snapshot",
         "crm.queue.assignment_planned",
         "crm.queue.risk_flagged",
         "crm.queue.snapshot_generated",
+        "crm.reply.approval_requested",
+        "crm.reply.drafted",
         "crm.sla.escalated",
         "crm.ticket.created"
       ],
@@ -963,7 +980,9 @@
         "channel intake must not persist CRM state outside Forge",
         "channel receipt attached",
         "conversation lineage cites channel receipts and identity evidence",
+        "customer replies are drafted as Forge artifacts before external send",
         "every queue item cites artifact or event evidence",
+        "external channel delivery is blocked until Forge approval is recorded",
         "external replies require approved omnichannel handoff",
         "handoff receipt attached",
         "message thread and channel receipt artifacts exist before SLA triage",
@@ -971,6 +990,7 @@
         "omnichannel center state is sourced from Forge artifacts and events",
         "ownership gaps and SLA risks are returned to work before closure",
         "queue actions require Forge workflow approval before mutation",
+        "reply lineage cites conversation thread, ticket SLA and channel identity evidence",
         "ticket creation targets the Forge SLA workflow"
       ]
     },
@@ -1048,6 +1068,7 @@
         "crm.contract.signature",
         "crm.forecast.review",
         "crm.account.management",
+        "crm.omnichannel.reply",
         "crm.project.handoff",
         "crm.document.approval",
         "crm.document.library",
@@ -1064,6 +1085,7 @@
         "crm_audit_report",
         "crm_business_review_report",
         "crm_business_runbook",
+        "crm_channel_response",
         "crm_contract",
         "crm_cost_report",
         "crm_cross_domain_handoff_map",
@@ -1093,6 +1115,7 @@
         "crm_subworkflow_lineage_map",
         "crm_subworkflow_plan",
         "crm_subworkflow_validation_report",
+        "crm_support_summary",
         "crm_task_plan",
         "crm_user_outcome_manifest",
         "crm_work_queue_snapshot"
@@ -1118,6 +1141,8 @@
         "crm.file.recorded",
         "crm.forecast.reviewed",
         "crm.goal.progress_reviewed",
+        "crm.handoff.delivered",
+        "crm.handoff.delivery_blocked",
         "crm.journey.acceptance_reported",
         "crm.journey.stage_completed",
         "crm.journey.started",
@@ -1131,6 +1156,8 @@
         "crm.queue.assignment_planned",
         "crm.queue.risk_flagged",
         "crm.queue.snapshot_generated",
+        "crm.reply.approval_requested",
+        "crm.reply.drafted",
         "crm.risk.reviewed",
         "crm.subworkflow.bound",
         "crm.subworkflow.promoted",
@@ -1149,11 +1176,13 @@
         "child subworkflows are validated before parent journey promotion",
         "contract approval lineage present",
         "cross-domain handoffs preserve workflow and artifact lineage",
+        "customer replies are drafted as Forge artifacts before external send",
         "document library state is represented by Forge artifacts and events",
         "document versions require Forge artifact lineage before promotion",
         "every queue item cites artifact or event evidence",
         "executive KPIs are derived from Forge workflow artifacts and events",
         "expansion forecast event-backed",
+        "external channel delivery is blocked until Forge approval is recorded",
         "forecast review does not send external follow-ups",
         "forecast snapshot lineage present",
         "inspection does not create CRM-local observability state",
@@ -1167,6 +1196,7 @@
         "recommended decisions remain advisory until Forge approval",
         "remediation requires Forge workflow mutation",
         "renewal state explicit",
+        "reply lineage cites conversation thread, ticket SLA and channel identity evidence",
         "rework reason recorded before any operable claim",
         "risk review owner visible",
         "signature receipt attached",
@@ -1701,6 +1731,7 @@
         ],
         "runtime_contracts": [
           "crm.support.omnichannel_message.executor",
+          "crm.support.reply_composer.executor",
           "crm.omnichannel.handoff"
         ],
         "artifact_types": [
@@ -1741,6 +1772,7 @@
         "runtime_contracts": [
           "crm.support.omnichannel_center.executor",
           "crm.support.omnichannel_message.executor",
+          "crm.support.reply_composer.executor",
           "crm.support.ticket_sla.executor",
           "crm.omnichannel.handoff"
         ],
@@ -1786,6 +1818,7 @@
           "crm.support.omnichannel_center.executor",
           "crm.support.channel_intake.executor",
           "crm.support.omnichannel_message.executor",
+          "crm.support.reply_composer.executor",
           "crm.omnichannel.handoff"
         ],
         "artifact_types": [
@@ -1806,6 +1839,48 @@
           "omnichannel center state is sourced from Forge artifacts and events",
           "approved channel intake is required before conversation unification",
           "conversation lineage cites channel receipts and identity evidence"
+        ]
+      },
+      {
+        "id": "crm.omnichannel.reply",
+        "title": "Approval-gated customer reply composition",
+        "domain": "support",
+        "state_count": 7,
+        "states": [
+          "reply_requested",
+          "draft_composed",
+          "approval_wait",
+          "delivery_blocked",
+          "approved_for_handoff",
+          "sent",
+          "rework_required"
+        ],
+        "wait_states": [
+          "approval_wait"
+        ],
+        "runtime_contracts": [
+          "crm.support.reply_composer.executor",
+          "crm.omnichannel.handoff"
+        ],
+        "artifact_types": [
+          "crm_channel_response",
+          "crm_approval_record",
+          "crm_handoff_record",
+          "crm_support_summary"
+        ],
+        "event_types": [
+          "crm.reply.drafted",
+          "crm.reply.approval_requested",
+          "crm.handoff.delivery_blocked",
+          "crm.handoff.delivered"
+        ],
+        "surface_ids": [
+          "crm.support-queue"
+        ],
+        "validation_gates": [
+          "customer replies are drafted as Forge artifacts before external send",
+          "external channel delivery is blocked until Forge approval is recorded",
+          "reply lineage cites conversation thread, ticket SLA and channel identity evidence"
         ]
       },
       {
@@ -2652,6 +2727,24 @@
         "state_owner": "forge_workflow_runtime"
       },
       {
+        "from": "crm.omnichannel.message",
+        "to": "crm.omnichannel.reply",
+        "reason": "message thread context starts approval-gated reply composition",
+        "state_owner": "forge_workflow_runtime"
+      },
+      {
+        "from": "crm.ticket.sla",
+        "to": "crm.omnichannel.reply",
+        "reason": "SLA state informs customer response urgency",
+        "state_owner": "forge_workflow_runtime"
+      },
+      {
+        "from": "crm.omnichannel.center",
+        "to": "crm.omnichannel.reply",
+        "reason": "unified conversation identity informs channel reply",
+        "state_owner": "forge_workflow_runtime"
+      },
+      {
         "from": "crm.omnichannel.channel_intake",
         "to": "crm.ticket.sla",
         "reason": "approved channel intake creates SLA-ready support work",
@@ -3340,6 +3433,7 @@
           "crm.omnichannel.message",
           "crm.ticket.sla",
           "crm.omnichannel.center",
+          "crm.omnichannel.reply",
           "crm.work.queue.orchestration",
           "crm.enterprise.customer_journey"
         ],
@@ -3347,6 +3441,7 @@
           "crm.normalize-channel-intake",
           "crm.run-omnichannel-center",
           "crm.ingest-omnichannel-message",
+          "crm.compose-support-reply",
           "crm.triage-ticket-sla",
           "crm.deliver-handoff"
         ],
@@ -3467,6 +3562,68 @@
             "unified_conversation_count": 1,
             "owner_queue": "support",
             "action_id": "crm.run-omnichannel-center"
+          }
+        ],
+        "reply_queue": [
+          {
+            "response_id": "reply-chat-northstar-ops",
+            "workflow_id": "crm.omnichannel.reply",
+            "contract_id": "crm.support.reply_composer.executor",
+            "state_owner": "forge_workflow_runtime",
+            "channel": "chat",
+            "account": "Northstar Retail",
+            "thread_id": "thread-chat-northstar-ops",
+            "ticket_id": "sup-1042",
+            "approval_state": "approval_wait",
+            "external_send_allowed": false,
+            "response_artifact_type": "crm_channel_response",
+            "approval_artifact_type": "crm_approval_record",
+            "action_id": "crm.compose-support-reply"
+          },
+          {
+            "response_id": "reply-whatsapp-northstar-blocked",
+            "workflow_id": "crm.omnichannel.reply",
+            "contract_id": "crm.support.reply_composer.executor",
+            "state_owner": "forge_workflow_runtime",
+            "channel": "whatsapp",
+            "account": "Northstar Retail",
+            "thread_id": "thread-whatsapp-northstar-blocked",
+            "ticket_id": "sup-1042",
+            "approval_state": "approval_wait",
+            "external_send_allowed": false,
+            "response_artifact_type": "crm_channel_response",
+            "approval_artifact_type": "crm_approval_record",
+            "action_id": "crm.compose-support-reply"
+          },
+          {
+            "response_id": "reply-telegram-helio-install",
+            "workflow_id": "crm.omnichannel.reply",
+            "contract_id": "crm.support.reply_composer.executor",
+            "state_owner": "forge_workflow_runtime",
+            "channel": "telegram",
+            "account": "Helio Grid",
+            "thread_id": "thread-telegram-helio-install",
+            "ticket_id": "sup-1057",
+            "approval_state": "approval_wait",
+            "external_send_allowed": false,
+            "response_artifact_type": "crm_channel_response",
+            "approval_artifact_type": "crm_approval_record",
+            "action_id": "crm.compose-support-reply"
+          },
+          {
+            "response_id": "reply-email-acme-renewal",
+            "workflow_id": "crm.omnichannel.reply",
+            "contract_id": "crm.support.reply_composer.executor",
+            "state_owner": "forge_workflow_runtime",
+            "channel": "email",
+            "account": "Acme Logistics",
+            "thread_id": "thread-email-acme-renewal",
+            "ticket_id": "sup-1061",
+            "approval_state": "approval_wait",
+            "external_send_allowed": false,
+            "response_artifact_type": "crm_channel_response",
+            "approval_artifact_type": "crm_approval_record",
+            "action_id": "crm.compose-support-reply"
           }
         ],
         "sla_targets": [
@@ -5665,6 +5822,33 @@
       ]
     },
     {
+      "id": "crm.compose-support-reply",
+      "label": "Compose support reply",
+      "surface_id": "crm.support-queue",
+      "contract_id": "crm.support.reply_composer.executor",
+      "requires_permission": "crm.omnichannel.ingest",
+      "mutates_workflow": true,
+      "command_template": [
+        "forge",
+        "addons",
+        "execute-executor",
+        "--addon",
+        "forge.addon.crm",
+        "--contract",
+        "crm.support.reply_composer.executor",
+        "--worker",
+        "<worker-id>",
+        "--task",
+        "<task-ref>",
+        "--input",
+        "<json>",
+        "--context",
+        "<json>",
+        "--output",
+        "json"
+      ]
+    },
+    {
       "id": "crm.triage-ticket-sla",
       "label": "Triage ticket SLA",
       "surface_id": "crm.support-queue",
@@ -7823,6 +8007,68 @@
             "title": "Execute runtime contract",
             "owner": "forge.addons.runtime",
             "evidence": "crm.support.omnichannel_message.executor"
+          },
+          {
+            "id": "promote_result_to_workflow",
+            "title": "Promote result to workflow",
+            "owner": "forge.workflow.runtime",
+            "evidence": "artifact and event promotion"
+          },
+          {
+            "id": "refresh_operating_snapshot",
+            "title": "Refresh operating snapshot",
+            "owner": "forge.addon.crm",
+            "evidence": "crm.operating.snapshot.executor"
+          }
+        ],
+        "output_policy": {
+          "promote_result_to_workflow": true,
+          "browser_local_state_write": false,
+          "refresh_source": "forge_workflow_artifacts_and_events"
+        }
+      },
+      {
+        "action_id": "crm.compose-support-reply",
+        "label": "Compose support reply",
+        "surface_id": "crm.support-queue",
+        "contract_id": "crm.support.reply_composer.executor",
+        "required_permission": "crm.omnichannel.ingest",
+        "selected_command": [
+          "forge",
+          "addons",
+          "execute-executor",
+          "--addon",
+          "forge.addon.crm",
+          "--contract",
+          "crm.support.reply_composer.executor",
+          "--worker",
+          "<worker-id>",
+          "--task",
+          "<task-ref>",
+          "--input",
+          "<json>",
+          "--context",
+          "<json>",
+          "--output",
+          "json"
+        ],
+        "permission_gate": {
+          "status": "requires_forge_permission",
+          "permission": "crm.omnichannel.ingest",
+          "approval_owner": "forge_permission_policy"
+        },
+        "operation_plan": [
+          {
+            "id": "check_addon_permission",
+            "title": "Check Addon permission",
+            "owner": "forge.permissions",
+            "evidence": "crm.omnichannel.ingest"
+          },
+          {
+            "id": "execute_runtime_contract",
+            "title": "Execute runtime contract",
+            "owner": "forge.addons.runtime",
+            "evidence": "crm.support.reply_composer.executor"
           },
           {
             "id": "promote_result_to_workflow",

@@ -1929,6 +1929,64 @@ test("omnichannel center executor unifies channel threads and identities without
   assert.ok(result.events.some((event) => event.kind === "crm.channel.identity_mapped"));
 });
 
+test("support reply composer drafts approved-channel responses without external send", () => {
+  assert.equal(typeof runtime.buildSupportReplyComposerResult, "function");
+
+  const result = runtime.buildSupportReplyComposerResult(
+    workerRequest(
+      "forge_crm.compose_support_reply",
+      {
+        tenant_context: { tenant_id: "demo" },
+        conversation_thread: {
+          id: "thread-whatsapp-001",
+          channel: "whatsapp",
+          customer: "Acme Logistics",
+          latest_message: "Can you confirm the onboarding SLA?",
+          message_ids: ["msg-001", "msg-002"]
+        },
+        ticket_context: {
+          id: "ticket-001",
+          priority: "high",
+          sla_status: "at_risk",
+          owner_queue: "support-escalation"
+        },
+        channel_context: {
+          allowed_channels: ["chat", "whatsapp", "telegram", "email"],
+          preferred_channel: "whatsapp",
+          adapter_authorized: true
+        },
+        reply_policy: {
+          tone: "clear and accountable",
+          requires_human_approval: true,
+          suggested_next_step: "share onboarding SLA and request approval for project kickoff",
+          approver_role: "support.lead"
+        }
+      },
+      { contract_id: "crm.support.reply_composer.executor", task_ref: "support-reply-test" }
+    )
+  );
+
+  assert.equal(result.schema_version, "forge.addon_executor_result.v1");
+  assert.equal(result.status, "completed");
+  assert.equal(result.outputs.tenant_id, "demo");
+  assert.equal(result.outputs.workflow_id, "crm.omnichannel.reply");
+  assert.equal(result.outputs.ticket_id, "ticket-001");
+  assert.equal(result.outputs.thread_id, "thread-whatsapp-001");
+  assert.equal(result.outputs.channel, "whatsapp");
+  assert.equal(result.outputs.reply_state, "approval_wait");
+  assert.equal(result.outputs.external_send_allowed, false);
+  assert.equal(result.outputs.mutates_crm_state, false);
+  assert.equal(result.outputs.forge_event_sourced, true);
+
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_channel_response"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_approval_record"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_handoff_record"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_support_summary"));
+  assert.ok(result.events.some((event) => event.kind === "crm.reply.drafted"));
+  assert.ok(result.events.some((event) => event.kind === "crm.reply.approval_requested"));
+  assert.ok(result.events.some((event) => event.kind === "crm.handoff.delivery_blocked"));
+});
+
 test("marketing campaign automation executor schedules nurture workflows as Forge artifacts", () => {
   assert.equal(typeof runtime.buildMarketingCampaignAutomationResult, "function");
 

@@ -814,6 +814,43 @@ test("manifest exposes CRM omnichannel center as a Forge-owned executor", () => 
   assert.ok(eventTypes.has("crm.conversation"));
 });
 
+test("manifest exposes CRM support reply composition as a Forge-owned executor", () => {
+  const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.support.reply_composer.executor");
+  assert.ok(contract);
+  assert.equal(contract.contract_type, "executor");
+  assert.equal(contract.capability_id, "crm_support_omnichannel");
+  assert.equal(contract.workflow_extension_id, "crm_omnichannel_reply");
+  assert.equal(contract.entrypoint, "forge_crm.compose_support_reply");
+  assert.deepEqual(contract.permissions, ["crm.omnichannel.ingest", "crm.workflow.mutate"]);
+
+  for (const input of ["conversation_thread", "ticket_context", "reply_policy", "channel_context", "tenant_context"]) {
+    assert.ok(contract.inputs.includes(input), `missing reply composer input ${input}`);
+  }
+  for (const output of ["crm_channel_response", "crm_approval_record", "crm_handoff_record", "crm_support_summary"]) {
+    assert.ok(contract.outputs.includes(output), `missing reply composer output ${output}`);
+  }
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("does not send externally")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("Forge approval")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("chat, WhatsApp, Telegram and email")));
+
+  const workflowExtensionIds = new Set(manifest.workflows.map((extension) => extension.id));
+  assert.ok(workflowExtensionIds.has("crm_omnichannel_reply"));
+
+  const artifactTypes = new Set(manifest.artifact_types.map((artifact) => artifact.id));
+  assert.ok(artifactTypes.has("crm_channel_response"));
+
+  const eventTypes = new Set(manifest.event_types.map((event) => event.id));
+  assert.ok(eventTypes.has("crm.reply"));
+
+  const action = manifest.views
+    .find((view) => view.id === "crm.operational-cockpit")
+    .actions.find((candidate) => candidate.id === "crm.tui.compose-support-reply");
+  assert.ok(action);
+  assert.equal(action.permission, "crm.omnichannel.ingest");
+  assert.ok(action.command_template.includes("crm.support.reply_composer.executor"));
+  assert.ok(action.requires_confirmation);
+});
+
 test("manifest exposes CRM marketing campaign automation as a Forge-owned executor", () => {
   const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.marketing.campaign_automation.executor");
   assert.ok(contract);
@@ -1062,6 +1099,7 @@ test("manifest exposes a Forge TUI operational cockpit with permission-gated CRM
     "crm.tui.normalize-channel-intake",
     "crm.tui.ingest-omnichannel-message",
     "crm.tui.run-omnichannel-center",
+    "crm.tui.compose-support-reply",
     "crm.tui.triage-ticket-sla",
     "crm.tui.automate-campaign",
     "crm.tui.run-lead-nurture",
@@ -1158,6 +1196,7 @@ test("CRM scope is workflow-backed across core business areas", () => {
     "crm_document_approval",
     "crm_document_library",
     "crm_omnichannel_center",
+    "crm_omnichannel_reply",
     "crm_subworkflow_orchestration",
     "crm_workflow_automation_designer",
     "crm_ai_copilot_recommendation"

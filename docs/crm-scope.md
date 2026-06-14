@@ -31,6 +31,7 @@
 - Telegram
 - Email
 - Omnichannel center
+- Approval-gated customer replies
 
 ## Marketing
 
@@ -61,4 +62,3 @@
 - Next-step recommendations
 - Workflow-based automations
 - Specialized copilots by area
-
