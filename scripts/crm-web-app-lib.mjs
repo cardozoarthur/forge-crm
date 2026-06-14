@@ -43,6 +43,9 @@ const WORKFLOW_EDGES = [
   ["crm.marketing.landing_page", "crm.lead.lifecycle", "published form schema routes captured leads"],
   ["crm.marketing.landing_page", "crm.lead.nurture", "landing page routing prepares nurture entry"],
   ["crm.lead.nurture", "crm.lead.lifecycle", "response classification updates lead lifecycle"],
+  ["crm.omnichannel.channel_intake", "crm.omnichannel.message", "approved channel intake records Forge-owned message threads"],
+  ["crm.omnichannel.message", "crm.omnichannel.center", "message threads feed unified conversation routing"],
+  ["crm.omnichannel.message", "crm.ticket.sla", "message routing creates SLA-ready support work"],
   ["crm.omnichannel.channel_intake", "crm.ticket.sla", "approved channel intake creates SLA-ready support work"],
   ["crm.ticket.sla", "crm.project.handoff", "resolved support issue can create internal handoff"],
   ["crm.project.handoff", "crm.document.approval", "handoff deliverables enter document queue"],
@@ -469,6 +472,64 @@ function buildOperationalWorkbench(workflows, actionList, documentQueueSnapshot)
         intake_state: "authorization_check",
         ticket_creation_allowed: false,
         action_id: "crm.normalize-channel-intake"
+      }
+    ],
+    message_threads: [
+      {
+        thread_id: "thread-chat-northstar-ops",
+        workflow_id: "crm.omnichannel.message",
+        contract_id: "crm.support.omnichannel_message.executor",
+        state_owner: "forge_workflow_runtime",
+        channel: "chat",
+        account: "Northstar Retail",
+        thread_state: "thread_updated",
+        message_count: 4,
+        ticket_workflow_id: "crm.ticket.sla",
+        receipt_artifact_type: "crm_channel_receipt",
+        thread_artifact_type: "crm_message_thread",
+        action_id: "crm.ingest-omnichannel-message"
+      },
+      {
+        thread_id: "thread-whatsapp-northstar-blocked",
+        workflow_id: "crm.omnichannel.message",
+        contract_id: "crm.support.omnichannel_message.executor",
+        state_owner: "forge_workflow_runtime",
+        channel: "whatsapp",
+        account: "Northstar Retail",
+        thread_state: "ticket_routing_decided",
+        message_count: 7,
+        ticket_workflow_id: "crm.ticket.sla",
+        receipt_artifact_type: "crm_channel_receipt",
+        thread_artifact_type: "crm_message_thread",
+        action_id: "crm.ingest-omnichannel-message"
+      },
+      {
+        thread_id: "thread-telegram-helio-install",
+        workflow_id: "crm.omnichannel.message",
+        contract_id: "crm.support.omnichannel_message.executor",
+        state_owner: "forge_workflow_runtime",
+        channel: "telegram",
+        account: "Helio Grid",
+        thread_state: "message_normalized",
+        message_count: 2,
+        ticket_workflow_id: "crm.ticket.sla",
+        receipt_artifact_type: "crm_channel_receipt",
+        thread_artifact_type: "crm_message_thread",
+        action_id: "crm.ingest-omnichannel-message"
+      },
+      {
+        thread_id: "thread-email-acme-renewal",
+        workflow_id: "crm.omnichannel.message",
+        contract_id: "crm.support.omnichannel_message.executor",
+        state_owner: "forge_workflow_runtime",
+        channel: "email",
+        account: "Acme Logistics",
+        thread_state: "handoff_wait",
+        message_count: 3,
+        ticket_workflow_id: "crm.ticket.sla",
+        receipt_artifact_type: "crm_channel_receipt",
+        thread_artifact_type: "crm_message_thread",
+        action_id: "crm.ingest-omnichannel-message"
       }
     ],
     omnichannel_center: [

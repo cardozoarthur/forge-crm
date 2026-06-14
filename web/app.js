@@ -296,17 +296,32 @@ export function renderSupportQueue(snapshot) {
 
   const centers = nodeElement("div", "omnichannel-center-list");
   for (const center of panel.omnichannel_center || []) {
-    const item = nodeElement("article", `omnichannel-center-row state-${center.state}`);
+    const item = nodeElement("article", `omnichannel-center-row state-${center.center_state || center.state}`);
     item.append(nodeElement("strong", "", center.account || center.center_id));
     item.append(
       nodeElement(
         "span",
         "",
-        `${center.channel_count} channels · ${center.unified_conversation_count} conversations · ${compactTitle(center.state)}`
+        `${(center.channels || []).length} channels · ${center.unified_conversation_count} conversations · ${compactTitle(center.center_state || center.state)}`
       )
     );
     item.append(nodeElement("code", "", actionLabel(snapshot, center.action_id)));
     centers.append(item);
+  }
+
+  const threads = nodeElement("div", "message-thread-list");
+  for (const thread of panel.message_threads || []) {
+    const item = nodeElement("article", `message-thread state-${thread.thread_state}`);
+    item.append(nodeElement("strong", "", `${thread.account || thread.thread_id} · ${thread.channel}`));
+    item.append(
+      nodeElement(
+        "span",
+        "",
+        `${thread.message_count} messages · ${compactTitle(thread.thread_state)} · ${thread.ticket_workflow_id}`
+      )
+    );
+    item.append(nodeElement("code", "", actionLabel(snapshot, thread.action_id)));
+    threads.append(item);
   }
 
   const tickets = nodeElement("div", "support-ticket-list");
@@ -318,7 +333,7 @@ export function renderSupportQueue(snapshot) {
     tickets.append(item);
   }
 
-  section.append(channels, intakes, centers, tickets);
+  section.append(channels, intakes, threads, centers, tickets);
   return section;
 }
 

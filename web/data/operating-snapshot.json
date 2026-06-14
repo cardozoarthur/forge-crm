@@ -23,7 +23,7 @@
     "external_delivery_requires_approval": true
   },
   "metrics": {
-    "workflow_count": 28,
+    "workflow_count": 29,
     "business_module_count": 7,
     "surface_count": 10,
     "artifact_type_count": 82,
@@ -353,6 +353,7 @@
       "state_source": "forge_workflow_artifacts_and_events",
       "workflow_ids": [
         "crm.omnichannel.channel_intake",
+        "crm.omnichannel.message",
         "crm.ticket.sla",
         "crm.omnichannel.center",
         "crm.work.queue.orchestration",
@@ -364,6 +365,11 @@
         "normalized",
         "authorization_blocked",
         "ready_for_ticket",
+        "message_normalized",
+        "thread_updated",
+        "ticket_routing_decided",
+        "handoff_wait",
+        "closed",
         "received",
         "triage",
         "owner_assigned",
@@ -374,7 +380,6 @@
         "threads_normalized",
         "identity_matched",
         "routing_ready",
-        "handoff_wait",
         "rework_required",
         "queue_snapshot_requested",
         "queue_snapshot_ready",
@@ -382,7 +387,6 @@
         "approval_wait",
         "work_in_progress",
         "risk_review_wait",
-        "closed",
         "lead_capture",
         "opportunity",
         "proposal",
@@ -902,6 +906,7 @@
       "complete": true,
       "workflow_ids": [
         "crm.omnichannel.channel_intake",
+        "crm.omnichannel.message",
         "crm.ticket.sla",
         "crm.omnichannel.center",
         "crm.work.queue.orchestration"
@@ -943,11 +948,14 @@
         "channel receipt attached",
         "conversation lineage cites channel receipts and identity evidence",
         "every queue item cites artifact or event evidence",
+        "external replies require approved omnichannel handoff",
         "handoff receipt attached",
+        "message thread and channel receipt artifacts exist before SLA triage",
         "normalized message artifact required before SLA workflow",
         "omnichannel center state is sourced from Forge artifacts and events",
         "ownership gaps and SLA risks are returned to work before closure",
-        "queue actions require Forge workflow approval before mutation"
+        "queue actions require Forge workflow approval before mutation",
+        "ticket creation targets the Forge SLA workflow"
       ]
     },
     {
@@ -1611,6 +1619,45 @@
           "approved channel adapter required before ticket creation",
           "normalized message artifact required before SLA workflow",
           "channel intake must not persist CRM state outside Forge"
+        ]
+      },
+      {
+        "id": "crm.omnichannel.message",
+        "title": "Omnichannel message thread workflow",
+        "domain": "support",
+        "state_count": 6,
+        "states": [
+          "adapter_event_received",
+          "message_normalized",
+          "thread_updated",
+          "ticket_routing_decided",
+          "handoff_wait",
+          "closed"
+        ],
+        "wait_states": [
+          "handoff_wait"
+        ],
+        "runtime_contracts": [
+          "crm.support.omnichannel_message.executor",
+          "crm.omnichannel.handoff"
+        ],
+        "artifact_types": [
+          "crm_message_thread",
+          "crm_channel_receipt",
+          "crm_support_summary"
+        ],
+        "event_types": [
+          "crm.message.received",
+          "crm.ticket.created",
+          "crm.handoff.delivered"
+        ],
+        "surface_ids": [
+          "crm.support-queue"
+        ],
+        "validation_gates": [
+          "message thread and channel receipt artifacts exist before SLA triage",
+          "ticket creation targets the Forge SLA workflow",
+          "external replies require approved omnichannel handoff"
         ]
       },
       {
@@ -2524,6 +2571,24 @@
       },
       {
         "from": "crm.omnichannel.channel_intake",
+        "to": "crm.omnichannel.message",
+        "reason": "approved channel intake records Forge-owned message threads",
+        "state_owner": "forge_workflow_runtime"
+      },
+      {
+        "from": "crm.omnichannel.message",
+        "to": "crm.omnichannel.center",
+        "reason": "message threads feed unified conversation routing",
+        "state_owner": "forge_workflow_runtime"
+      },
+      {
+        "from": "crm.omnichannel.message",
+        "to": "crm.ticket.sla",
+        "reason": "message routing creates SLA-ready support work",
+        "state_owner": "forge_workflow_runtime"
+      },
+      {
+        "from": "crm.omnichannel.channel_intake",
         "to": "crm.ticket.sla",
         "reason": "approved channel intake creates SLA-ready support work",
         "state_owner": "forge_workflow_runtime"
@@ -3207,6 +3272,7 @@
         "mutation_requires_forge": true,
         "workflow_ids": [
           "crm.omnichannel.channel_intake",
+          "crm.omnichannel.message",
           "crm.ticket.sla",
           "crm.omnichannel.center",
           "crm.work.queue.orchestration",
@@ -3245,6 +3311,64 @@
             "intake_state": "authorization_check",
             "ticket_creation_allowed": false,
             "action_id": "crm.normalize-channel-intake"
+          }
+        ],
+        "message_threads": [
+          {
+            "thread_id": "thread-chat-northstar-ops",
+            "workflow_id": "crm.omnichannel.message",
+            "contract_id": "crm.support.omnichannel_message.executor",
+            "state_owner": "forge_workflow_runtime",
+            "channel": "chat",
+            "account": "Northstar Retail",
+            "thread_state": "thread_updated",
+            "message_count": 4,
+            "ticket_workflow_id": "crm.ticket.sla",
+            "receipt_artifact_type": "crm_channel_receipt",
+            "thread_artifact_type": "crm_message_thread",
+            "action_id": "crm.ingest-omnichannel-message"
+          },
+          {
+            "thread_id": "thread-whatsapp-northstar-blocked",
+            "workflow_id": "crm.omnichannel.message",
+            "contract_id": "crm.support.omnichannel_message.executor",
+            "state_owner": "forge_workflow_runtime",
+            "channel": "whatsapp",
+            "account": "Northstar Retail",
+            "thread_state": "ticket_routing_decided",
+            "message_count": 7,
+            "ticket_workflow_id": "crm.ticket.sla",
+            "receipt_artifact_type": "crm_channel_receipt",
+            "thread_artifact_type": "crm_message_thread",
+            "action_id": "crm.ingest-omnichannel-message"
+          },
+          {
+            "thread_id": "thread-telegram-helio-install",
+            "workflow_id": "crm.omnichannel.message",
+            "contract_id": "crm.support.omnichannel_message.executor",
+            "state_owner": "forge_workflow_runtime",
+            "channel": "telegram",
+            "account": "Helio Grid",
+            "thread_state": "message_normalized",
+            "message_count": 2,
+            "ticket_workflow_id": "crm.ticket.sla",
+            "receipt_artifact_type": "crm_channel_receipt",
+            "thread_artifact_type": "crm_message_thread",
+            "action_id": "crm.ingest-omnichannel-message"
+          },
+          {
+            "thread_id": "thread-email-acme-renewal",
+            "workflow_id": "crm.omnichannel.message",
+            "contract_id": "crm.support.omnichannel_message.executor",
+            "state_owner": "forge_workflow_runtime",
+            "channel": "email",
+            "account": "Acme Logistics",
+            "thread_state": "handoff_wait",
+            "message_count": 3,
+            "ticket_workflow_id": "crm.ticket.sla",
+            "receipt_artifact_type": "crm_channel_receipt",
+            "thread_artifact_type": "crm_message_thread",
+            "action_id": "crm.ingest-omnichannel-message"
           }
         ],
         "omnichannel_center": [

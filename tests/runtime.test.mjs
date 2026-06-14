@@ -310,6 +310,7 @@ test("operating readiness maps Forge evidence into user-facing CRM deliverables"
             "relationship workspace",
             "commercial command center",
             "support inbox",
+            "omnichannel conversation threads",
             "marketing automation",
             "document approvals",
             "project handoff",
@@ -336,8 +337,8 @@ test("operating readiness maps Forge evidence into user-facing CRM deliverables"
   assert.equal(result.status, "completed");
   assert.equal(result.outputs.tenant_id, "demo");
   assert.equal(result.outputs.success_criteria_status, "operable_with_evidence");
-  assert.equal(result.outputs.user_facing_deliverable_count, 12);
-  assert.equal(result.outputs.ready_domain_count, 12);
+  assert.equal(result.outputs.user_facing_deliverable_count, 13);
+  assert.equal(result.outputs.ready_domain_count, 13);
   assert.equal(result.outputs.forge_only_operations, true);
   assert.equal(result.outputs.main_flow_dependency_external, false);
   assert.equal(result.outputs.mutates_crm_state, false);
@@ -423,7 +424,7 @@ test("executive reporting executor builds KPI dashboard and summary without loca
       {
         tenant_context: { tenant_id: "demo" },
         operating_snapshot: {
-          workflow_count: 28,
+          workflow_count: 29,
           business_module_count: 7,
           surface_count: 10,
           state_owner: "forge_workflow_runtime"
@@ -1729,8 +1730,8 @@ test("omnichannel message ingestion records channel intake before SLA or handoff
   assert.equal(result.outputs.tenant_id, "demo");
   assert.equal(result.outputs.channel, "whatsapp");
   assert.equal(result.outputs.message_id, "msg-001");
-  assert.equal(result.outputs.workflow_id, "crm.ticket.sla");
-  assert.equal(result.outputs.message_workflow_id, "crm.omnichannel.message");
+  assert.equal(result.outputs.workflow_id, "crm.omnichannel.message");
+  assert.equal(result.outputs.ticket_workflow_id, "crm.ticket.sla");
   assert.equal(result.outputs.ticket_state, "received");
   assert.equal(result.outputs.owner_queue, "support");
   assert.equal(result.outputs.mutates_crm_state, false);
@@ -1739,8 +1740,8 @@ test("omnichannel message ingestion records channel intake before SLA or handoff
   assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_message_thread"));
   assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_channel_receipt"));
   assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_support_summary"));
-  assert.ok(result.events.some((event) => event.kind === "crm.message.received"));
-  assert.ok(result.events.some((event) => event.kind === "crm.ticket.created"));
+  assert.ok(result.events.some((event) => event.kind === "crm.message.received" && event.workflow_id === "crm.omnichannel.message"));
+  assert.ok(result.events.some((event) => event.kind === "crm.ticket.created" && event.workflow_id === "crm.ticket.sla"));
 });
 
 test("channel intake executor normalizes approved provider events before ticket creation", () => {

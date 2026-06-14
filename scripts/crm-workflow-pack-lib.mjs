@@ -264,6 +264,34 @@ const WORKFLOWS = [
     ]
   },
   {
+    id: "crm.omnichannel.message",
+    title: "Omnichannel message thread workflow",
+    domain: "support",
+    workflow_extension_id: "crm_omnichannel_message",
+    object_types: ["message_thread", "channel_receipt", "customer", "support_queue", "ticket", "handoff", "chat", "whatsapp", "telegram", "email"],
+    states: ["adapter_event_received", "message_normalized", "thread_updated", "ticket_routing_decided", "handoff_wait", "closed"],
+    transitions: [
+      ["adapter_event_received", "message_normalized", "approved channel intake receipt attached"],
+      ["message_normalized", "thread_updated", "message thread artifact appended"],
+      ["thread_updated", "ticket_routing_decided", "routing policy evaluated"],
+      ["ticket_routing_decided", "handoff_wait", "handoff required before external reply"],
+      ["ticket_routing_decided", "closed", "ticket routing not required"],
+      ["handoff_wait", "closed", "handoff receipt attached"]
+    ],
+    runtime_contracts: ["crm.support.omnichannel_message.executor", "crm.omnichannel.handoff"],
+    depends_on_workflows: ["crm.omnichannel.channel_intake"],
+    artifacts: ["crm_message_thread", "crm_channel_receipt", "crm_support_summary"],
+    events: ["crm.message.received", "crm.ticket.created", "crm.handoff.delivered"],
+    memory_scopes: ["organization", "project", "processing"],
+    permissions: ["crm.omnichannel.ingest"],
+    views: ["crm.support-queue"],
+    validation_gates: [
+      "message thread and channel receipt artifacts exist before SLA triage",
+      "ticket creation targets the Forge SLA workflow",
+      "external replies require approved omnichannel handoff"
+    ]
+  },
+  {
     id: "crm.ticket.sla",
     title: "Ticket, SLA and omnichannel support",
     domain: "support",
@@ -289,7 +317,7 @@ const WORKFLOWS = [
     permissions: ["crm.omnichannel.ingest"],
     views: ["crm.support-queue"],
     validation_gates: ["channel receipt attached", "SLA wait state explicit", "handoff receipt attached"],
-    depends_on_workflows: ["crm.omnichannel.channel_intake", "crm.omnichannel.center"]
+    depends_on_workflows: ["crm.omnichannel.channel_intake", "crm.omnichannel.message", "crm.omnichannel.center"]
   },
   {
     id: "crm.omnichannel.center",
@@ -321,7 +349,7 @@ const WORKFLOWS = [
       "crm.support.omnichannel_message.executor",
       "crm.omnichannel.handoff"
     ],
-    depends_on_workflows: ["crm.omnichannel.channel_intake"],
+    depends_on_workflows: ["crm.omnichannel.channel_intake", "crm.omnichannel.message"],
     artifacts: [
       "crm_omnichannel_center_snapshot",
       "crm_unified_conversation",

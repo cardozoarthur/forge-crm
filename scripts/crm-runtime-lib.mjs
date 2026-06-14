@@ -2746,6 +2746,14 @@ const READINESS_OUTCOME_DOMAINS = [
     required_events: ["crm.message.received", "crm.ticket.created", "crm.sla.escalated"]
   },
   {
+    id: "omnichannel_conversation_threads",
+    title: "Omnichannel conversation threads",
+    deliverable: "omnichannel conversation threads",
+    workflow_ids: ["crm.omnichannel.message", "crm.omnichannel.center", "crm.ticket.sla"],
+    required_artifacts: ["crm_message_thread", "crm_channel_receipt", "crm_unified_conversation"],
+    required_events: ["crm.message.received", "crm.conversation.unified", "crm.ticket.created"]
+  },
+  {
     id: "marketing",
     title: "Marketing automation and capture",
     deliverable: "marketing automation",
@@ -5530,8 +5538,8 @@ export function buildOmnichannelMessageIngestionResult(request) {
   const threadId = String(input.thread_id || message.thread_id || adapterEvent.thread_id || `thread-${slug(accountId, "account")}`);
   const ticketId = String(input.ticket_id || message.ticket_id || `ticket-${slug(messageId, "message")}`);
   const taskRef = envelope.task_ref || `ingest-message-${slug(messageId, "message")}`;
-  const workflowId = String(input.workflow_id || "crm.ticket.sla");
-  const messageWorkflowId = String(input.message_workflow_id || "crm.omnichannel.message");
+  const workflowId = String(input.workflow_id || input.message_workflow_id || "crm.omnichannel.message");
+  const ticketWorkflowId = String(input.ticket_workflow_id || input.target_workflow_id || "crm.ticket.sla");
   const priorityKeywords =
     asArray(routingPolicy.priority_keywords).length > 0
       ? asArray(routingPolicy.priority_keywords).map((keyword) => String(keyword).toLowerCase())
@@ -5543,7 +5551,8 @@ export function buildOmnichannelMessageIngestionResult(request) {
   const receivedAt = adapterEvent.received_at || message.received_at || input.received_at || null;
   const lineage = {
     workflow_id: workflowId,
-    message_workflow_id: messageWorkflowId,
+    message_workflow_id: workflowId,
+    ticket_workflow_id: ticketWorkflowId,
     task_ref: taskRef,
     source_contract: "crm.support.omnichannel_message.executor",
     tenant_id: tenantId,
@@ -5565,7 +5574,8 @@ export function buildOmnichannelMessageIngestionResult(request) {
       thread_id: threadId,
       ticket_id: createTicket ? ticketId : null,
       workflow_id: workflowId,
-      message_workflow_id: messageWorkflowId,
+      message_workflow_id: workflowId,
+      ticket_workflow_id: ticketWorkflowId,
       ticket_state: createTicket ? "received" : "message_received",
       owner_queue: ownerQueue,
       priority_detected: priorityDetected,
@@ -5644,8 +5654,8 @@ export function buildOmnichannelMessageIngestionResult(request) {
         message_id: messageId,
         thread_id: threadId,
         channel,
-        workflow_id: messageWorkflowId,
-        target_workflow_id: workflowId
+        workflow_id: workflowId,
+        target_workflow_id: ticketWorkflowId
       },
       ...(createTicket
         ? [
@@ -5656,7 +5666,7 @@ export function buildOmnichannelMessageIngestionResult(request) {
               message_id: messageId,
               channel,
               owner_queue: ownerQueue,
-              workflow_id: workflowId
+              workflow_id: ticketWorkflowId
             }
           ]
         : [])

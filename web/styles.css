@@ -309,6 +309,7 @@ h3 {
 
 .pipeline-card,
 .commercial-row,
+.message-thread,
 .omnichannel-center-row,
 .support-ticket,
 .segment-row,
@@ -343,6 +344,7 @@ h3 {
 .pipeline-card span,
 .pipeline-card small,
 .commercial-row span,
+.message-thread span,
 .omnichannel-center-row span,
 .support-ticket span,
 .segment-row span,
@@ -365,6 +367,7 @@ h3 {
 
 .pipeline-card code,
 .commercial-row code,
+.message-thread code,
 .omnichannel-center-row code,
 .support-ticket code,
 .segment-row code,
@@ -394,6 +397,7 @@ h3 {
 
 .commercial-list,
 .support-ticket-list,
+.message-thread-list,
 .omnichannel-center-list,
 .channel-intake-list,
 .segment-list,
@@ -424,6 +428,15 @@ h3 {
 
 .support-ticket {
   border-left: 4px solid #126c55;
+}
+
+.message-thread {
+  border-left: 4px solid #285f9d;
+}
+
+.message-thread.state-ticket_routing_decided,
+.message-thread.state-handoff_wait {
+  border-left-color: #9b4d19;
 }
 
 .channel-intake {

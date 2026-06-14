@@ -27,6 +27,13 @@ const USER_FACING_DELIVERABLES = [
     workflow_ids: ["crm.omnichannel.channel_intake", "crm.omnichannel.center", "crm.ticket.sla"]
   },
   {
+    id: "omnichannel_conversation_threads",
+    title: "Omnichannel conversation threads",
+    domain: "support",
+    surface_id: "crm.support-queue",
+    workflow_ids: ["crm.omnichannel.message", "crm.omnichannel.center", "crm.ticket.sla"]
+  },
+  {
     id: "marketing_automation",
     title: "Marketing automation",
     domain: "marketing",

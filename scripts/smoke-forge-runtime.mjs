@@ -789,13 +789,13 @@ try {
     JSON.stringify({
       tenant_context: { id: "smoke", tenant_id: "smoke" },
       operating_snapshot: {
-        workflow_count: 28,
+        workflow_count: 29,
         surface_count: 10,
         state_owner: "forge_workflow_runtime",
         external_database_required: false
       },
       workflow_metrics: {
-        workflow_count: 28,
+        workflow_count: 29,
         approval_wait_count: 4,
         blocked_wait_count: 1,
         promoted_artifact_count: observabilityInspection.promotion?.artifact_count ?? 0
@@ -1071,6 +1071,7 @@ try {
           "relationship workspace",
           "commercial command center",
           "support inbox",
+          "omnichannel conversation threads",
           "marketing automation",
           "workflow automation designer",
           "goal and commission settlement",
@@ -2001,6 +2002,12 @@ try {
   }
   if (omnichannelIngestion.executor_result.outputs.ticket_state !== "received") {
     throw new Error(`expected omnichannel ingestion ticket_state received, got ${omnichannelIngestion.executor_result.outputs.ticket_state}`);
+  }
+  if (omnichannelIngestion.executor_result.outputs.workflow_id !== "crm.omnichannel.message") {
+    throw new Error(`expected omnichannel ingestion workflow crm.omnichannel.message, got ${omnichannelIngestion.executor_result.outputs.workflow_id}`);
+  }
+  if (omnichannelIngestion.executor_result.outputs.ticket_workflow_id !== "crm.ticket.sla") {
+    throw new Error(`expected omnichannel ingestion ticket workflow crm.ticket.sla, got ${omnichannelIngestion.executor_result.outputs.ticket_workflow_id}`);
   }
 
   const omnichannelCenter = runForge([

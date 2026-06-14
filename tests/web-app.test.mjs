@@ -223,6 +223,15 @@ test("web app snapshot exposes an operational workbench backed by Forge artifact
   assert.ok(panels.get("support_queue").channels.includes("whatsapp"));
   assert.ok(panels.get("support_queue").channel_intake.some((intake) => intake.action_id === "crm.normalize-channel-intake"));
   assert.ok(panels.get("support_queue").channel_intake.every((intake) => intake.contract_id === "crm.support.channel_intake.executor"));
+  assert.ok(panels.get("support_queue").message_threads.some((thread) => thread.action_id === "crm.ingest-omnichannel-message"));
+  assert.ok(panels.get("support_queue").message_threads.every((thread) => thread.workflow_id === "crm.omnichannel.message"));
+  assert.deepEqual(
+    panels
+      .get("support_queue")
+      .message_threads.map((thread) => thread.channel)
+      .sort(),
+    ["chat", "email", "telegram", "whatsapp"]
+  );
   assert.ok(panels.get("support_queue").omnichannel_center.some((center) => center.action_id === "crm.run-omnichannel-center"));
   assert.ok(panels.get("support_queue").omnichannel_center.every((center) => center.contract_id === "crm.support.omnichannel_center.executor"));
   assert.ok(panels.get("marketing_calendar").campaigns.some((campaign) => campaign.next_action_id === "crm.automate-campaign"));
@@ -259,6 +268,26 @@ test("web app snapshot exposes the omnichannel center as a Forge command surface
   assert.ok(supportPanel.workflow_ids.includes("crm.omnichannel.center"));
   assert.ok(supportPanel.omnichannel_center.some((center) => center.center_state === "routing_ready"));
   assert.ok(supportPanel.omnichannel_center.every((center) => center.state_owner === "forge_workflow_runtime"));
+});
+
+test("web app snapshot exposes omnichannel message threads before ticket SLA", () => {
+  const snapshot = buildCrmWebAppSnapshot({ tenant_id: "demo" });
+  const action = snapshot.actions.find((candidate) => candidate.id === "crm.ingest-omnichannel-message");
+  const supportPanel = snapshot.operational_workbench.panels.find((panel) => panel.id === "support_queue");
+
+  assert.ok(action);
+  assert.equal(action.surface_id, "crm.support-queue");
+  assert.equal(action.contract_id, "crm.support.omnichannel_message.executor");
+  assert.equal(action.requires_permission, "crm.omnichannel.ingest");
+  assert.deepEqual(action.command_template.slice(0, 3), ["forge", "addons", "execute-executor"]);
+
+  assert.ok(supportPanel);
+  assert.ok(supportPanel.action_ids.includes("crm.ingest-omnichannel-message"));
+  assert.ok(supportPanel.workflow_ids.includes("crm.omnichannel.message"));
+  assert.ok(supportPanel.message_threads.length >= 4);
+  assert.ok(supportPanel.message_threads.every((thread) => thread.state_owner === "forge_workflow_runtime"));
+  assert.ok(supportPanel.message_threads.every((thread) => thread.contract_id === "crm.support.omnichannel_message.executor"));
+  assert.ok(supportPanel.message_threads.every((thread) => thread.ticket_workflow_id === "crm.ticket.sla"));
 });
 
 test("web app snapshot exposes document library versioning as a Forge command surface", () => {

@@ -433,15 +433,26 @@ test("support workflow routes ticket SLA triage through Forge", () => {
 
 test("support workflow ingests omnichannel messages before ticket SLA and handoff", () => {
   const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
-  const workflow = pack.workflows.find((candidate) => candidate.id === "crm.ticket.sla");
+  const workflow = pack.workflows.find((candidate) => candidate.id === "crm.omnichannel.message");
+  const ticketWorkflow = pack.workflows.find((candidate) => candidate.id === "crm.ticket.sla");
 
   assert.ok(workflow);
+  assert.equal(workflow.domain, "support");
+  assert.equal(workflow.workflow_extension_id, "crm_omnichannel_message");
   assert.ok(workflow.runtime_contracts.includes("crm.support.omnichannel_message.executor"));
+  assert.ok(workflow.runtime_contracts.includes("crm.omnichannel.handoff"));
+  assert.ok(workflow.depends_on_workflows.includes("crm.omnichannel.channel_intake"));
+  assert.ok(workflow.object_types.includes("message_thread"));
+  assert.ok(workflow.object_types.includes("channel_receipt"));
+  for (const channel of ["chat", "whatsapp", "telegram", "email"]) {
+    assert.ok(workflow.object_types.includes(channel), `missing omnichannel object ${channel}`);
+  }
   assert.ok(workflow.artifacts.includes("crm_message_thread"));
   assert.ok(workflow.artifacts.includes("crm_channel_receipt"));
   assert.ok(workflow.events.includes("crm.message.received"));
   assert.ok(workflow.events.includes("crm.ticket.created"));
   assert.ok(pack.indexes.runtime_contracts.includes("crm.support.omnichannel_message.executor"));
+  assert.ok(ticketWorkflow.depends_on_workflows.includes("crm.omnichannel.message"));
 });
 
 test("support channel intake normalizes approved adapters before ticket SLA", () => {
