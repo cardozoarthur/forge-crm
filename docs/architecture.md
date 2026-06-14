@@ -36,6 +36,7 @@ The current CRM worker exposes seventeen Forge runtime entrypoints:
 - `forge_crm.record_relationship_event` for entity relationships, unified timeline and pipeline stage events;
 - `forge_crm.move_opportunity_stage` for Forge-owned Kanban movement across multiple funnels with board, stage-change and forecast artifacts;
 - `forge_crm.operating_copilot` for opportunity priority, risk analysis, executive summary and next-step recommendations;
+- `forge_crm.prepare_memory_promotion` for curated CRM knowledge summaries and governed `forge memory promote` requests;
 - `forge_crm.generate_proposal` for draft proposal artifacts;
 - `forge_crm.review_followup_forecast` for follow-up scheduling, forecast, goal progress and commission evidence;
 - `forge_crm.manage_account` for account health, renewal, expansion and success-plan task workflows;

@@ -96,6 +96,22 @@ test("AI automation workflow routes operating copilot through a runtime contract
   assert.ok(pack.indexes.runtime_contracts.includes("crm.ai.operating_copilot.executor"));
 });
 
+test("AI automation workflow prepares governed memory promotion through Forge", () => {
+  const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
+  const workflow = pack.workflows.find((candidate) => candidate.id === "crm.ai.copilot.recommendation");
+
+  assert.ok(workflow);
+  assert.ok(workflow.runtime_contracts.includes("crm.memory.promotion.executor"));
+  assert.ok(workflow.artifacts.includes("crm_knowledge_summary"));
+  assert.ok(workflow.artifacts.includes("crm_memory_promotion_request"));
+  assert.ok(workflow.events.includes("crm.memory.knowledge_curated"));
+  assert.ok(workflow.events.includes("crm.memory.promotion_requested"));
+  assert.ok(workflow.memory_scopes.includes("organization"));
+  assert.ok(workflow.memory_scopes.includes("project"));
+  assert.ok(workflow.memory_scopes.includes("processing"));
+  assert.ok(pack.indexes.runtime_contracts.includes("crm.memory.promotion.executor"));
+});
+
 test("relationship and pipeline workflows route timeline updates through Forge", () => {
   const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
 

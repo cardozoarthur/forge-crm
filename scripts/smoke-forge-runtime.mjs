@@ -81,6 +81,7 @@ try {
       "forge_crm.record_relationship_event",
       "forge_crm.move_opportunity_stage",
       "forge_crm.operating_copilot",
+      "forge_crm.prepare_memory_promotion",
       "forge_crm.generate_proposal",
       "forge_crm.review_followup_forecast",
       "forge_crm.manage_account",
@@ -103,6 +104,7 @@ try {
       "crm.relationship.timeline.executor",
       "crm.pipeline.stage_move.executor",
       "crm.ai.operating_copilot.executor",
+      "crm.memory.promotion.executor",
       "crm.proposal.generator.executor",
       "crm.commercial.followup_forecast.executor",
       "crm.commercial.account_management.executor",
@@ -285,6 +287,58 @@ try {
   }
   if (copilot.executor_result.outputs.priority_opportunity_id !== "opp-smoke-priority") {
     throw new Error(`expected priority opportunity from copilot, got ${copilot.executor_result.outputs.priority_opportunity_id}`);
+  }
+
+  const memoryPromotion = runForge([
+    "addons",
+    "execute-executor",
+    "--addon-dir",
+    "addons",
+    "--addon",
+    "forge.addon.crm",
+    "--contract",
+    "crm.memory.promotion.executor",
+    "--worker",
+    workerId,
+    "--task",
+    "crm-smoke-memory-promotion",
+    "--workflow",
+    workflowId,
+    "--input",
+    JSON.stringify({
+      tenant_context: { id: "smoke", tenant_id: "smoke", organization_id: "smoke-org" },
+      workflow_id: "crm.ai.copilot.recommendation",
+      source_memory: {
+        scope: "processing",
+        source_path: ".forge/runs/smoke/customer-signal.md",
+        audience: "private",
+        summary: "Critical SLA alerts should outrank renewal nudges."
+      },
+      curated_knowledge: {
+        summary: "Prioritize critical SLA alerts ahead of renewal nudges while account support tickets remain open.",
+        source_refs: ["ticket-smoke-001", "account-smoke"],
+        evidence: ["critical SLA", "renewal workflow active"]
+      },
+      promotion_policy: {
+        to_scope: "organization",
+        memory_level: "standard",
+        visibility: "internal",
+        shareability: "organization_shared",
+        approved_by: "forge-crm-smoke",
+        reason: "Reusable CRM support and renewal policy"
+      }
+    }),
+    "--context",
+    JSON.stringify({ tenant: "smoke" }),
+    "--output",
+    "json"
+  ]);
+
+  if (memoryPromotion.promotion?.status !== "addon_executor_result_promoted") {
+    throw new Error(`expected memory promotion preparation, got ${memoryPromotion.promotion?.status || "missing"}`);
+  }
+  if (memoryPromotion.executor_result.outputs.core_promotion_owner !== "forge.memory.promote") {
+    throw new Error(`expected Forge memory promotion owner, got ${memoryPromotion.executor_result.outputs.core_promotion_owner}`);
   }
 
   const relationshipTimeline = runForge([
@@ -952,6 +1006,8 @@ try {
   const snapshotPromotedEventCount = operatingSnapshot.promotion?.event_count ?? 0;
   const copilotPromotedArtifactCount = copilot.promotion?.artifact_count ?? 0;
   const copilotPromotedEventCount = copilot.promotion?.event_count ?? 0;
+  const memoryPromotedArtifactCount = memoryPromotion.promotion?.artifact_count ?? 0;
+  const memoryPromotedEventCount = memoryPromotion.promotion?.event_count ?? 0;
   const relationshipPromotedArtifactCount = relationshipTimeline.promotion?.artifact_count ?? 0;
   const relationshipPromotedEventCount = relationshipTimeline.promotion?.event_count ?? 0;
   const pipelinePromotedArtifactCount = pipelineStageMove.promotion?.artifact_count ?? 0;
@@ -1012,6 +1068,16 @@ try {
   }
   if (!workflowEventKinds.includes("crm.ai.operating_copilot_generated")) {
     throw new Error(`expected operating copilot event in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
+  }
+  if (memoryPromotedArtifactCount < 2 || memoryPromotedEventCount < 2) {
+    throw new Error(
+      `expected promoted memory governance artifacts/events, got artifacts=${memoryPromotedArtifactCount} events=${memoryPromotedEventCount}`
+    );
+  }
+  for (const eventKind of ["crm.memory.knowledge_curated", "crm.memory.promotion_requested"]) {
+    if (!workflowEventKinds.includes(eventKind)) {
+      throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
+    }
   }
   if (relationshipPromotedArtifactCount < 2 || relationshipPromotedEventCount < 3) {
     throw new Error(
@@ -1277,6 +1343,12 @@ try {
     copilot_risk_count: copilot.executor_result.outputs.risk_count,
     copilot_promoted_artifacts: copilotPromotedArtifactCount,
     copilot_promoted_events: copilotPromotedEventCount,
+    memory_promotion_status: memoryPromotion.status,
+    memory_promotion_promotion_status: memoryPromotion.promotion.status,
+    memory_promotion_to_scope: memoryPromotion.executor_result.outputs.to_scope,
+    memory_promotion_core_owner: memoryPromotion.executor_result.outputs.core_promotion_owner,
+    memory_promotion_promoted_artifacts: memoryPromotedArtifactCount,
+    memory_promotion_promoted_events: memoryPromotedEventCount,
     relationship_timeline_status: relationshipTimeline.status,
     relationship_timeline_promotion_status: relationshipTimeline.promotion.status,
     relationship_timeline_pipeline_stage: relationshipTimeline.executor_result.outputs.pipeline_stage,

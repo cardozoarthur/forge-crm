@@ -320,13 +320,28 @@ const WORKFLOWS = [
       ["review_wait", "approved_action", "human or policy approval recorded"],
       ["review_wait", "discarded", "reason recorded"]
     ],
-    runtime_contracts: ["crm.lead.classifier.executor", "crm.ai.operating_copilot.executor", "crm.proposal.generator.executor"],
-    artifacts: ["crm_ai_recommendation", "crm_risk_analysis", "crm_report"],
-    events: ["crm.ai.recommendation_generated", "crm.ai.risk_flagged", "crm.next_action.approved"],
+    runtime_contracts: [
+      "crm.lead.classifier.executor",
+      "crm.ai.operating_copilot.executor",
+      "crm.memory.promotion.executor",
+      "crm.proposal.generator.executor"
+    ],
+    artifacts: ["crm_ai_recommendation", "crm_risk_analysis", "crm_report", "crm_knowledge_summary", "crm_memory_promotion_request"],
+    events: [
+      "crm.ai.recommendation_generated",
+      "crm.ai.risk_flagged",
+      "crm.next_action.approved",
+      "crm.memory.knowledge_curated",
+      "crm.memory.promotion_requested"
+    ],
     memory_scopes: ["organization", "project", "processing"],
     permissions: ["crm.ai.recommend"],
     views: ["crm.ai-workbench"],
-    validation_gates: ["recommendation includes evidence", "state mutation requires workflow approval"]
+    validation_gates: [
+      "recommendation includes evidence",
+      "state mutation requires workflow approval",
+      "memory promotion uses Forge memory governance"
+    ]
   }
 ];
 

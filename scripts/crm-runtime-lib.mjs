@@ -680,6 +680,134 @@ export function buildOperatingCopilotResult(request) {
   };
 }
 
+export function buildMemoryPromotionCandidateResult(request) {
+  const input = dispatchPayload(request);
+  const context = providedContext(request);
+  const tenantId = input.tenant_id || input.tenant_context?.tenant_id || input.tenant_context?.id || context.tenant || "default";
+  const sourceMemory = asObject(input.source_memory ?? input.memory);
+  const curatedKnowledge = asObject(input.curated_knowledge ?? input.knowledge);
+  const policy = asObject(input.promotion_policy ?? input.memory_policy);
+  const workflowId = String(input.workflow_id || sourceMemory.workflow_id || dispatchEnvelope(request).workflow_id || "crm.ai.copilot.recommendation");
+  const taskRef = dispatchEnvelope(request).task_ref || `memory-promotion-${slug(tenantId, "tenant")}`;
+  const fromScope = String(policy.from_scope || sourceMemory.scope || "processing");
+  const toScope = String(policy.to_scope || policy.scope || "project");
+  const memoryLevel = String(policy.memory_level || (toScope === "processing" ? "short_term" : "standard"));
+  const visibility = String(policy.visibility || policy.audience || "internal");
+  const shareability = String(policy.shareability || `${toScope}_shared`);
+  const approvedBy = policy.approved_by || policy.approver || null;
+  const reason = policy.reason || "Curated CRM knowledge is reusable for future workflow context";
+  const summary = String(curatedKnowledge.summary || sourceMemory.summary || "Curated CRM knowledge");
+  const sourceRefs = asArray(curatedKnowledge.source_refs ?? curatedKnowledge.sources);
+  const evidence = asArray(curatedKnowledge.evidence);
+  const sourcePath = String(sourceMemory.source_path || sourceMemory.path || `artifacts/${workflowId}/crm-knowledge-summary.json`);
+  const commandApprover = approvedBy || "<approver>";
+  const promotionCommand = [
+    "forge memory promote",
+    `--workflow ${workflowId}`,
+    `--from-scope ${fromScope}`,
+    `--to-scope ${toScope}`,
+    `--source-path ${sourcePath}`,
+    `--summary ${JSON.stringify(summary)}`,
+    `--approved-by ${commandApprover}`,
+    `--reason ${JSON.stringify(reason)}`,
+    `--visibility ${visibility}`,
+    `--shareability ${shareability}`
+  ].join(" ");
+  const lineage = {
+    workflow_id: workflowId,
+    task_ref: taskRef,
+    source_contract: "crm.memory.promotion.executor",
+    tenant_id: tenantId,
+    source_scope: fromScope,
+    target_scope: toScope
+  };
+
+  return {
+    schema_version: "forge.addon_executor_result.v1",
+    status: "completed",
+    task_ref: taskRef,
+    summary: `Prepared governed CRM memory promotion from ${fromScope} to ${toScope}`,
+    outputs: {
+      tenant_id: tenantId,
+      workflow_id: workflowId,
+      from_scope: fromScope,
+      to_scope: toScope,
+      memory_level: memoryLevel,
+      visibility,
+      shareability,
+      approval_required: true,
+      approved_by: approvedBy,
+      core_promotion_owner: "forge.memory.promote",
+      promotion_command: promotionCommand,
+      mutates_crm_state: false,
+      forge_event_sourced: true
+    },
+    artifacts: [
+      {
+        kind: "crm_knowledge_summary",
+        id: `crm-knowledge-summary-${slug(tenantId, "tenant")}-${slug(toScope, "scope")}`,
+        title: `CRM curated knowledge for ${tenantId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          summary,
+          source_refs: sourceRefs,
+          evidence,
+          source_scope: fromScope,
+          target_scope: toScope,
+          visibility,
+          shareability,
+          memory_level: memoryLevel,
+          lineage,
+          raw_private_memory_included: false
+        }
+      },
+      {
+        kind: "crm_memory_promotion_request",
+        id: `crm-memory-promotion-${slug(tenantId, "tenant")}-${slug(toScope, "scope")}`,
+        title: `CRM memory promotion request for ${tenantId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          workflow_id: workflowId,
+          source_path: sourcePath,
+          from_scope: fromScope,
+          to_scope: toScope,
+          memory_level: memoryLevel,
+          visibility,
+          shareability,
+          approved_by: approvedBy,
+          reason,
+          promotion_command: promotionCommand,
+          core_promotion_owner: "forge.memory.promote",
+          approval_required: true,
+          lineage
+        }
+      }
+    ],
+    events: [
+      {
+        kind: "crm.memory.knowledge_curated",
+        tenant_id: tenantId,
+        workflow_id: workflowId,
+        source_scope: fromScope,
+        target_scope: toScope,
+        source_ref_count: sourceRefs.length
+      },
+      {
+        kind: "crm.memory.promotion_requested",
+        tenant_id: tenantId,
+        workflow_id: workflowId,
+        from_scope: fromScope,
+        to_scope: toScope,
+        approved_by: approvedBy,
+        approval_required: true
+      }
+    ],
+    context_tenant: context.tenant || tenantId
+  };
+}
+
 export function buildProposalGeneratorResult(request) {
   const input = dispatchPayload(request);
   const opportunity = asObject(input.opportunity ?? input);
@@ -2546,6 +2674,8 @@ export function executeCrmRuntimeRequest(request) {
       return buildOpportunityPipelineMoveResult(request);
     case "forge_crm.operating_copilot":
       return buildOperatingCopilotResult(request);
+    case "forge_crm.prepare_memory_promotion":
+      return buildMemoryPromotionCandidateResult(request);
     case "forge_crm.generate_proposal":
       return buildProposalGeneratorResult(request);
     case "forge_crm.review_followup_forecast":

@@ -283,6 +283,57 @@ test("operating copilot prioritizes opportunities without mutating CRM state", (
   assert.ok(result.events.some((event) => event.kind === "crm.ai.operating_copilot_generated"));
 });
 
+test("memory promotion executor prepares governed Forge memory promotion requests", () => {
+  assert.equal(typeof runtime.buildMemoryPromotionCandidateResult, "function");
+
+  const result = runtime.buildMemoryPromotionCandidateResult(
+    workerRequest(
+      "forge_crm.prepare_memory_promotion",
+      {
+        tenant_context: { tenant_id: "demo", organization_id: "acme" },
+        source_memory: {
+          scope: "processing",
+          source_path: ".forge/runs/run-001/customer-signal.md",
+          audience: "private",
+          summary: "Customer asked to prioritize SLA breach alerts before renewal work."
+        },
+        curated_knowledge: {
+          summary: "Prioritize SLA breach alerts ahead of renewal workflow nudges for accounts with open critical tickets.",
+          source_refs: ["ticket-001", "account-acme"],
+          evidence: ["critical SLA breach", "renewal in progress"]
+        },
+        promotion_policy: {
+          to_scope: "organization",
+          memory_level: "standard",
+          visibility: "internal",
+          shareability: "organization_shared",
+          approved_by: "success-lead",
+          reason: "Reusable customer-success policy"
+        }
+      },
+      { contract_id: "crm.memory.promotion.executor", task_ref: "memory-promotion-test" }
+    )
+  );
+
+  assert.equal(result.schema_version, "forge.addon_executor_result.v1");
+  assert.equal(result.status, "completed");
+  assert.equal(result.outputs.tenant_id, "demo");
+  assert.equal(result.outputs.from_scope, "processing");
+  assert.equal(result.outputs.to_scope, "organization");
+  assert.equal(result.outputs.memory_level, "standard");
+  assert.equal(result.outputs.visibility, "internal");
+  assert.equal(result.outputs.shareability, "organization_shared");
+  assert.equal(result.outputs.approval_required, true);
+  assert.equal(result.outputs.core_promotion_owner, "forge.memory.promote");
+  assert.equal(result.outputs.mutates_crm_state, false);
+  assert.equal(result.outputs.forge_event_sourced, true);
+  assert.ok(result.outputs.promotion_command.includes("forge memory promote"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_knowledge_summary"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_memory_promotion_request"));
+  assert.ok(result.events.some((event) => event.kind === "crm.memory.knowledge_curated"));
+  assert.ok(result.events.some((event) => event.kind === "crm.memory.promotion_requested"));
+});
+
 test("proposal generator emits a draft proposal artifact gated by Forge approval", () => {
   const result = buildProposalGeneratorResult(
     workerRequest("forge_crm.generate_proposal", {

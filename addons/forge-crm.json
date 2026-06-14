@@ -633,6 +633,33 @@
       ]
     },
     {
+      "id": "crm.memory.promotion.executor",
+      "title": "CRM governed memory promotion preparation",
+      "contract_type": "executor",
+      "capability_id": "crm_ai_automation",
+      "workflow_extension_id": "crm_ai_copilot_recommendation",
+      "runtime": "external_api",
+      "entrypoint": "forge_crm.prepare_memory_promotion",
+      "inputs": [
+        "source_memory",
+        "curated_knowledge",
+        "promotion_policy",
+        "tenant_context"
+      ],
+      "outputs": [
+        "crm_knowledge_summary",
+        "crm_memory_promotion_request"
+      ],
+      "permissions": [
+        "crm.ai.recommend"
+      ],
+      "constraints": [
+        "memory promotion preparation does not write memory directly",
+        "actual promotion must be executed by forge memory promote with approval and lineage",
+        "raw private processing memory must be summarized before organization or global sharing"
+      ]
+    },
+    {
       "id": "crm.tenant.bootstrap.executor",
       "title": "CRM tenant workflow bootstrap",
       "contract_type": "executor",
@@ -1468,6 +1495,16 @@
       "generic_kind": "artifact"
     },
     {
+      "id": "crm_knowledge_summary",
+      "title": "CRM knowledge summary",
+      "generic_kind": "artifact"
+    },
+    {
+      "id": "crm_memory_promotion_request",
+      "title": "CRM memory promotion request",
+      "generic_kind": "artifact"
+    },
+    {
       "id": "crm_ai_recommendation",
       "title": "CRM AI recommendation",
       "generic_kind": "artifact"
@@ -1552,6 +1589,11 @@
     {
       "id": "crm.document",
       "title": "CRM document event",
+      "transport": "crm"
+    },
+    {
+      "id": "crm.memory",
+      "title": "CRM memory event",
       "transport": "crm"
     },
     {
@@ -1880,6 +1922,18 @@
     }
   ],
   "memory_providers": [
+    {
+      "id": "crm.global_memory",
+      "title": "CRM global memory",
+      "provider_type": "forge_memory",
+      "scopes": [
+        "global"
+      ],
+      "memory_levels": [
+        "standard",
+        "full"
+      ]
+    },
     {
       "id": "crm.organization_memory",
       "title": "CRM organization memory",

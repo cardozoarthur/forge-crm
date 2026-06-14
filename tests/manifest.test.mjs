@@ -86,6 +86,32 @@ test("manifest exposes CRM operating copilot as a recommendation-only executor",
   assert.ok(contract.constraints.some((constraint) => constraint.includes("does not mutate")));
 });
 
+test("manifest exposes CRM memory promotion as governed Forge memory preparation", () => {
+  const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.memory.promotion.executor");
+  assert.ok(contract);
+  assert.equal(contract.contract_type, "executor");
+  assert.equal(contract.capability_id, "crm_ai_automation");
+  assert.equal(contract.workflow_extension_id, "crm_ai_copilot_recommendation");
+  assert.equal(contract.entrypoint, "forge_crm.prepare_memory_promotion");
+  assert.deepEqual(contract.permissions, ["crm.ai.recommend"]);
+  assert.ok(contract.inputs.includes("source_memory"));
+  assert.ok(contract.inputs.includes("curated_knowledge"));
+  assert.ok(contract.inputs.includes("promotion_policy"));
+  assert.ok(contract.outputs.includes("crm_knowledge_summary"));
+  assert.ok(contract.outputs.includes("crm_memory_promotion_request"));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("forge memory promote")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("does not write memory directly")));
+
+  const artifactTypes = new Set(manifest.artifact_types.map((artifact) => artifact.id));
+  assert.ok(artifactTypes.has("crm_knowledge_summary"));
+  assert.ok(artifactTypes.has("crm_memory_promotion_request"));
+
+  const providerScopes = new Set(manifest.memory_providers.flatMap((provider) => provider.scopes));
+  for (const scope of ["global", "organization", "project", "processing"]) {
+    assert.ok(providerScopes.has(scope), `missing memory scope ${scope}`);
+  }
+});
+
 test("manifest exposes CRM pipeline stage movement as a Forge-owned executor", () => {
   const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.pipeline.stage_move.executor");
   assert.ok(contract);

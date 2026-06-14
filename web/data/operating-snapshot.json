@@ -26,8 +26,8 @@
     "workflow_count": 12,
     "business_module_count": 6,
     "surface_count": 8,
-    "artifact_type_count": 32,
-    "event_type_count": 42,
+    "artifact_type_count": 34,
+    "event_type_count": 44,
     "complete_scope": true
   },
   "surfaces": [
@@ -338,12 +338,16 @@
       ],
       "artifact_types": [
         "crm_ai_recommendation",
+        "crm_knowledge_summary",
+        "crm_memory_promotion_request",
         "crm_report",
         "crm_risk_analysis"
       ],
       "event_types": [
         "crm.ai.recommendation_generated",
         "crm.ai.risk_flagged",
+        "crm.memory.knowledge_curated",
+        "crm.memory.promotion_requested",
         "crm.next_action.approved"
       ],
       "mutation_requires_forge": true
@@ -582,6 +586,8 @@
       "artifact_types": [
         "crm_ai_recommendation",
         "crm_document",
+        "crm_knowledge_summary",
+        "crm_memory_promotion_request",
         "crm_proposal",
         "crm_report",
         "crm_risk_analysis"
@@ -590,12 +596,15 @@
         "crm.ai.recommendation_generated",
         "crm.ai.risk_flagged",
         "crm.document.approval_requested",
+        "crm.memory.knowledge_curated",
+        "crm.memory.promotion_requested",
         "crm.next_action.approved",
         "crm.proposal.generated"
       ],
       "validation_gates": [
         "artifact lineage present",
         "external delivery blocked until approval",
+        "memory promotion uses Forge memory governance",
         "recommendation includes evidence",
         "state mutation requires workflow approval"
       ]
@@ -1075,24 +1084,30 @@
         "runtime_contracts": [
           "crm.lead.classifier.executor",
           "crm.ai.operating_copilot.executor",
+          "crm.memory.promotion.executor",
           "crm.proposal.generator.executor"
         ],
         "artifact_types": [
           "crm_ai_recommendation",
           "crm_risk_analysis",
-          "crm_report"
+          "crm_report",
+          "crm_knowledge_summary",
+          "crm_memory_promotion_request"
         ],
         "event_types": [
           "crm.ai.recommendation_generated",
           "crm.ai.risk_flagged",
-          "crm.next_action.approved"
+          "crm.next_action.approved",
+          "crm.memory.knowledge_curated",
+          "crm.memory.promotion_requested"
         ],
         "surface_ids": [
           "crm.ai-workbench"
         ],
         "validation_gates": [
           "recommendation includes evidence",
-          "state mutation requires workflow approval"
+          "state mutation requires workflow approval",
+          "memory promotion uses Forge memory governance"
         ]
       }
     ],
@@ -1697,6 +1712,33 @@
         "forge.addon.crm",
         "--contract",
         "crm.ai.operating_copilot.executor",
+        "--worker",
+        "<worker-id>",
+        "--task",
+        "<task-ref>",
+        "--input",
+        "<json>",
+        "--context",
+        "<json>",
+        "--output",
+        "json"
+      ]
+    },
+    {
+      "id": "crm.prepare-memory-promotion",
+      "label": "Prepare memory promotion",
+      "surface_id": "crm.ai-workbench",
+      "contract_id": "crm.memory.promotion.executor",
+      "requires_permission": "crm.ai.recommend",
+      "mutates_workflow": true,
+      "command_template": [
+        "forge",
+        "addons",
+        "execute-executor",
+        "--addon",
+        "forge.addon.crm",
+        "--contract",
+        "crm.memory.promotion.executor",
         "--worker",
         "<worker-id>",
         "--task",
