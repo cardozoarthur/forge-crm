@@ -146,6 +146,7 @@
         "crm_enterprise_customer_journey",
         "crm_subworkflow_orchestration",
         "crm_workflow_automation_designer",
+        "crm_workflow_factory_blueprint",
         "crm_approval_governance",
         "crm_workflow_evolution"
       ],
@@ -154,6 +155,7 @@
         "workflow-backed entity model",
         "CRM subworkflow orchestration plan",
         "CRM workflow automation design",
+        "CRM workflow-system factory blueprint",
         "CRM approval governance workbench",
         "CRM operating readiness package",
         "Forge Core gap report"
@@ -185,6 +187,9 @@
         "crm_workflow_automation_spec",
         "crm_trigger_condition_map",
         "crm_automation_validation_report",
+        "crm_workflow_factory_blueprint",
+        "crm_workflow_module_catalog",
+        "crm_factory_portability_report",
         "crm_workflow_evolution_plan",
         "crm_evolution_experiment",
         "crm_benchmark_report",
@@ -766,6 +771,11 @@
       "description": "Design CRM trigger, condition and action graphs that compile to Forge workflows, schedules and event listeners."
     },
     {
+      "id": "crm_workflow_factory_blueprint",
+      "kind": "operations_workflow",
+      "description": "Export the CRM as a reusable Forge workflow-system blueprint with module templates, runtime contracts, portability gates and forge-core gap routing."
+    },
+    {
       "id": "crm_workflow_evolution",
       "kind": "agentic_workflow",
       "description": "Turn CRM observability bottlenecks into Forge improve experiments, benchmarks and governed promotion decisions."
@@ -1303,6 +1313,35 @@
         "readiness must map success criteria to user-facing deliverables",
         "readiness evidence must come from Forge workflows, artifacts, events and validation gates",
         "readiness inspection does not create CRM-local state"
+      ]
+    },
+    {
+      "id": "crm.factory.blueprint_export.executor",
+      "title": "CRM workflow-system factory blueprint export",
+      "contract_type": "executor",
+      "capability_id": "crm_workflow_factory",
+      "workflow_extension_id": "crm_workflow_factory_blueprint",
+      "runtime": "external_api",
+      "entrypoint": "forge_crm.export_factory_blueprint",
+      "inputs": [
+        "workflow_pack",
+        "operating_snapshot",
+        "core_gap_policy",
+        "tenant_context"
+      ],
+      "outputs": [
+        "crm_workflow_factory_blueprint",
+        "crm_workflow_module_catalog",
+        "crm_factory_portability_report"
+      ],
+      "permissions": [
+        "crm.observability.inspect",
+        "crm.workflow.mutate"
+      ],
+      "constraints": [
+        "blueprint export produces a reusable workflow-system blueprint from Forge-owned CRM evidence",
+        "blueprint export does not create CRM-local state or local automation engines",
+        "Core primitive gaps must remain routed to forge-core"
       ]
     },
     {
@@ -3827,6 +3866,50 @@
             "validation_evidence"
           ]
         },
+        {
+          "id": "crm.tui.export-factory-blueprint",
+          "label": "Export factory blueprint",
+          "description": "Export the CRM as a reusable Forge workflow-system blueprint with module, contract and Core gap evidence.",
+          "palette_group": "CRM",
+          "source_panel": "crm.operational-cockpit",
+          "type": "command",
+          "target": "forge addons execute-executor",
+          "method": "CLI",
+          "permission": "crm.observability.inspect",
+          "requires_confirmation": false,
+          "risk_level": "medium",
+          "mutates_workflow": true,
+          "command_template": [
+            "addons",
+            "execute-executor",
+            "--addon",
+            "forge.addon.crm",
+            "--contract",
+            "crm.factory.blueprint_export.executor",
+            "--worker",
+            "<worker-id>",
+            "--task",
+            "<task-ref>",
+            "--input",
+            "<json>",
+            "--context",
+            "<json>",
+            "--output",
+            "json"
+          ],
+          "keywords": [
+            "crm",
+            "factory",
+            "blueprint",
+            "workflow"
+          ],
+          "payload_schema": [
+            "workflow_pack",
+            "operating_snapshot",
+            "core_gap_policy",
+            "tenant_context"
+          ]
+        },
     {
       "id": "crm.tui.evolve-workflow",
       "label": "Evolve CRM workflow",
@@ -4449,6 +4532,21 @@
       "generic_kind": "report"
     },
     {
+      "id": "crm_workflow_factory_blueprint",
+      "title": "CRM workflow factory blueprint",
+      "generic_kind": "artifact"
+    },
+    {
+      "id": "crm_workflow_module_catalog",
+      "title": "CRM workflow module catalog",
+      "generic_kind": "artifact"
+    },
+    {
+      "id": "crm_factory_portability_report",
+      "title": "CRM factory portability report",
+      "generic_kind": "report"
+    },
+    {
       "id": "crm_workflow_pack",
       "title": "CRM workflow pack",
       "generic_kind": "artifact"
@@ -4928,6 +5026,11 @@
     {
       "id": "crm.forecast",
       "title": "CRM forecast event",
+      "transport": "crm"
+    },
+    {
+      "id": "crm.factory",
+      "title": "CRM factory event",
       "transport": "crm"
     },
     {

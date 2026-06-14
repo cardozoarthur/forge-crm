@@ -1,4 +1,5 @@
 import { buildCrmPlan } from "./crm-plan-lib.mjs";
+import { buildWorkflowFactoryBlueprint } from "./crm-factory-blueprint-lib.mjs";
 import { buildCrmOperatingModel, buildCrmWorkflowPack, buildTenantBootstrapResult } from "./crm-workflow-pack-lib.mjs";
 
 export { buildTenantBootstrapResult };
@@ -1517,6 +1518,124 @@ export function buildApprovalGovernanceResult(request) {
   };
 }
 
+export function buildFactoryBlueprintExportResult(request) {
+  const input = dispatchPayload(request);
+  const context = providedContext(request);
+  const tenantId = input.tenant_id || input.tenant_context?.tenant_id || input.tenant_context?.id || context.tenant || "default";
+  const taskRef = dispatchEnvelope(request).task_ref || `factory-blueprint-${slug(tenantId, "tenant")}`;
+  const fallbackPack = buildCrmWorkflowPack({ tenant_id: tenantId });
+  const suppliedPack = asObject(input.workflow_pack);
+  const suppliedSnapshot = asObject(input.operating_snapshot);
+  const workflows = asArray(suppliedPack.workflows).length > 0 ? asArray(suppliedPack.workflows) : fallbackPack.workflows;
+  const surfaces = asArray(suppliedSnapshot.surfaces).length > 0
+    ? asArray(suppliedSnapshot.surfaces)
+    : Object.values(fallbackPack.operating_model.operator_surfaces);
+  const coreGapPolicy = asObject(input.core_gap_policy ?? suppliedPack.core_gap_policy ?? fallbackPack.core_gap_policy);
+  const blueprint = buildWorkflowFactoryBlueprint({
+    tenant_id: tenantId,
+    workflows,
+    surfaces,
+    core_gap_policy: coreGapPolicy
+  });
+  const moduleCatalog = {
+    schema_version: "forge.crm_workflow_module_catalog.v1",
+    tenant_id: tenantId,
+    addon_id: ADDON_ID,
+    state_owner: "forge_workflow_runtime",
+    local_state_allowed: false,
+    modules: blueprint.module_templates,
+    module_count: blueprint.module_templates.length
+  };
+  const portabilityReport = {
+    schema_version: "forge.crm_factory_portability_report.v1",
+    tenant_id: tenantId,
+    addon_id: ADDON_ID,
+    workflow_id: blueprint.workflow_id,
+    state: blueprint.portability_report.state,
+    target_framework: blueprint.target_framework,
+    target_repository_for_core_gaps: blueprint.portability_report.target_repository_for_core_gaps,
+    portability_gates: blueprint.portability_gates,
+    missing_runtime_contract_modules: blueprint.portability_report.missing_runtime_contract_modules,
+    local_state_allowed: false
+  };
+  const lineage = {
+    workflow_id: blueprint.workflow_id,
+    task_ref: taskRef,
+    source_contract: blueprint.runtime_contract_id,
+    tenant_id: tenantId
+  };
+
+  return {
+    schema_version: "forge.addon_executor_result.v1",
+    status: "completed",
+    task_ref: taskRef,
+    summary: `CRM workflow-system factory blueprint exported with ${moduleCatalog.module_count} module(s)`,
+    outputs: {
+      tenant_id: tenantId,
+      workflow_id: blueprint.workflow_id,
+      module_count: moduleCatalog.module_count,
+      portability_state: portabilityReport.state,
+      target_framework: blueprint.target_framework,
+      target_repository_for_core_gaps: portabilityReport.target_repository_for_core_gaps,
+      mutates_crm_state: false,
+      forge_event_sourced: true
+    },
+    artifacts: [
+      {
+        kind: "crm_workflow_factory_blueprint",
+        id: `crm-workflow-factory-blueprint-${slug(tenantId, "tenant")}`,
+        title: `CRM workflow-system factory blueprint for ${tenantId}`,
+        content_type: "application/json",
+        data: {
+          ...blueprint,
+          lineage
+        }
+      },
+      {
+        kind: "crm_workflow_module_catalog",
+        id: `crm-workflow-module-catalog-${slug(tenantId, "tenant")}`,
+        title: `CRM workflow module catalog for ${tenantId}`,
+        content_type: "application/json",
+        data: {
+          ...moduleCatalog,
+          lineage
+        }
+      },
+      {
+        kind: "crm_factory_portability_report",
+        id: `crm-factory-portability-report-${slug(tenantId, "tenant")}`,
+        title: `CRM factory portability report for ${tenantId}`,
+        content_type: "application/json",
+        data: {
+          ...portabilityReport,
+          lineage
+        }
+      }
+    ],
+    events: [
+      {
+        kind: "crm.factory.blueprint_exported",
+        tenant_id: tenantId,
+        workflow_id: blueprint.workflow_id,
+        module_count: moduleCatalog.module_count
+      },
+      {
+        kind: "crm.factory.module_mapped",
+        tenant_id: tenantId,
+        workflow_id: blueprint.workflow_id,
+        module_count: moduleCatalog.module_count
+      },
+      {
+        kind: "crm.factory.core_gap_reviewed",
+        tenant_id: tenantId,
+        workflow_id: blueprint.workflow_id,
+        target_repository: portabilityReport.target_repository_for_core_gaps
+      }
+    ],
+    context_tenant: context.tenant || tenantId
+  };
+}
+
 const DESIGN_SYSTEM_BASE_TOKENS = {
   color: {
     background: "#f6f7f4",
@@ -3011,6 +3130,22 @@ const READINESS_OUTCOME_DOMAINS = [
     workflow_ids: ["crm.workflow.automation_design"],
     required_artifacts: ["crm_workflow_automation_spec", "crm_trigger_condition_map", "crm_automation_validation_report"],
     required_events: ["crm.automation.designed", "crm.automation.validated", "crm.automation.queued"]
+  },
+  {
+    id: "workflow_system_factory_blueprint",
+    title: "Workflow-system factory blueprint",
+    deliverable: "workflow-system factory blueprint",
+    workflow_ids: ["crm.workflow.factory_blueprint"],
+    required_artifacts: [
+      "crm_workflow_factory_blueprint",
+      "crm_workflow_module_catalog",
+      "crm_factory_portability_report"
+    ],
+    required_events: [
+      "crm.factory.blueprint_exported",
+      "crm.factory.module_mapped",
+      "crm.factory.core_gap_reviewed"
+    ]
   },
   {
     id: "goal_commission_settlement",
@@ -6612,6 +6747,8 @@ export function executeCrmRuntimeRequest(request) {
       return buildWorkQueueOrchestrationResult(request);
     case "forge_crm.govern_approval_queue":
       return buildApprovalGovernanceResult(request);
+    case "forge_crm.export_factory_blueprint":
+      return buildFactoryBlueprintExportResult(request);
     case "forge_crm.generate_design_system":
       return buildDesignSystemResult(request);
     case "forge_crm.prepare_memory_promotion":

@@ -132,6 +132,42 @@ test("workflow pack includes Forge-owned design system generation", () => {
   assert.ok(pack.indexes.runtime_contracts.includes("crm.design_system.executor"));
 });
 
+test("workflow pack includes a reusable workflow-system factory blueprint export", () => {
+  const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
+  const workflow = pack.workflows.find((candidate) => candidate.id === "crm.workflow.factory_blueprint");
+
+  assert.ok(workflow);
+  assert.equal(workflow.domain, "operations");
+  assert.equal(workflow.workflow_extension_id, "crm_workflow_factory_blueprint");
+  assert.ok(workflow.runtime_contracts.includes("crm.factory.blueprint_export.executor"));
+  assert.ok(workflow.object_types.includes("workflow_system_blueprint"));
+  assert.ok(workflow.object_types.includes("module_template"));
+  assert.ok(workflow.object_types.includes("core_primitive_mapping"));
+  assert.ok(workflow.depends_on_workflows.includes("crm.enterprise.readiness"));
+  assert.ok(workflow.depends_on_workflows.includes("crm.workflow.automation_design"));
+
+  for (const artifact of [
+    "crm_workflow_factory_blueprint",
+    "crm_workflow_module_catalog",
+    "crm_factory_portability_report"
+  ]) {
+    assert.ok(workflow.artifacts.includes(artifact), `missing factory artifact ${artifact}`);
+    assert.ok(pack.indexes.artifact_types.includes(artifact), `missing indexed factory artifact ${artifact}`);
+  }
+
+  for (const event of [
+    "crm.factory.blueprint_exported",
+    "crm.factory.module_mapped",
+    "crm.factory.core_gap_reviewed"
+  ]) {
+    assert.ok(workflow.events.includes(event), `missing factory event ${event}`);
+  }
+
+  assert.ok(workflow.validation_gates.includes("every module maps to Forge workflows and runtime contracts"));
+  assert.ok(workflow.validation_gates.includes("Core primitive gaps are routed to forge-core before Addon workarounds"));
+  assert.ok(pack.indexes.runtime_contracts.includes("crm.factory.blueprint_export.executor"));
+});
+
 test("AI automation workflow routes operating copilot through a runtime contract", () => {
   const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
   const aiWorkflow = pack.workflows.find((workflow) => workflow.id === "crm.ai.copilot.recommendation");

@@ -337,8 +337,8 @@ test("operating readiness maps Forge evidence into user-facing CRM deliverables"
   assert.equal(result.status, "completed");
   assert.equal(result.outputs.tenant_id, "demo");
   assert.equal(result.outputs.success_criteria_status, "operable_with_evidence");
-  assert.equal(result.outputs.user_facing_deliverable_count, 13);
-  assert.equal(result.outputs.ready_domain_count, 13);
+  assert.equal(result.outputs.user_facing_deliverable_count, 14);
+  assert.equal(result.outputs.ready_domain_count, 14);
   assert.equal(result.outputs.forge_only_operations, true);
   assert.equal(result.outputs.main_flow_dependency_external, false);
   assert.equal(result.outputs.mutates_crm_state, false);
@@ -361,6 +361,10 @@ test("operating readiness maps Forge evidence into user-facing CRM deliverables"
   assert.ok(
     outcomeManifest.data.outcomes.some((outcome) => outcome.deliverable === "workflow automation designer"),
     "missing workflow automation designer user outcome"
+  );
+  assert.ok(
+    outcomeManifest.data.outcomes.some((outcome) => outcome.deliverable === "workflow-system factory blueprint"),
+    "missing workflow-system factory blueprint user outcome"
   );
   assert.ok(
     outcomeManifest.data.outcomes.some((outcome) => outcome.deliverable === "executive reporting"),
@@ -785,6 +789,66 @@ test("approval governance executor records decisions and returns incomplete work
   assert.ok(result.events.some((event) => event.kind === "crm.approval.decision_recorded"));
   assert.ok(result.events.some((event) => event.kind === "crm.approval.rework_returned"));
   assert.ok(result.events.some((event) => event.kind === "crm.approval.event_promoted"));
+});
+
+test("factory blueprint export packages reusable agentic workflow-system modules", () => {
+  assert.equal(typeof runtime.buildFactoryBlueprintExportResult, "function");
+
+  const result = runtime.buildFactoryBlueprintExportResult(
+    workerRequest(
+      "forge_crm.export_factory_blueprint",
+      {
+        tenant_context: { tenant_id: "demo" },
+        core_gap_policy: {
+          repository: "forge-core",
+          categories: ["durable_workflows", "approvals", "artifact_lineage", "observability"]
+        },
+        workflow_pack: {
+          workflows: [
+            {
+              id: "crm.lead.lifecycle",
+              domain: "relationship",
+              runtime_contracts: ["crm.lead.classifier.executor"],
+              artifacts: ["crm_ai_recommendation"],
+              events: ["crm.lead.classified"],
+              validation_gates: ["classification evidence present"]
+            },
+            {
+              id: "crm.approval.governance",
+              domain: "operations",
+              runtime_contracts: ["crm.workflow.approval_governance.executor"],
+              artifacts: ["crm_approval_governance_queue"],
+              events: ["crm.approval.decision_recorded"],
+              validation_gates: ["approval decisions include approver and reason"]
+            }
+          ]
+        },
+        operating_snapshot: {
+          surfaces: [
+            { id: "crm.relationship-graph", workflow_ids: ["crm.lead.lifecycle"] },
+            { id: "crm.ai-workbench", workflow_ids: ["crm.approval.governance"] }
+          ]
+        }
+      },
+      { contract_id: "crm.factory.blueprint_export.executor", task_ref: "factory-blueprint-test" }
+    )
+  );
+
+  assert.equal(result.schema_version, "forge.addon_executor_result.v1");
+  assert.equal(result.status, "completed");
+  assert.equal(result.outputs.tenant_id, "demo");
+  assert.equal(result.outputs.workflow_id, "crm.workflow.factory_blueprint");
+  assert.equal(result.outputs.module_count, 2);
+  assert.equal(result.outputs.portability_state, "ready_for_reuse");
+  assert.equal(result.outputs.target_repository_for_core_gaps, "forge-core");
+  assert.equal(result.outputs.mutates_crm_state, false);
+  assert.equal(result.outputs.forge_event_sourced, true);
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_workflow_factory_blueprint"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_workflow_module_catalog"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_factory_portability_report"));
+  assert.ok(result.events.some((event) => event.kind === "crm.factory.blueprint_exported"));
+  assert.ok(result.events.some((event) => event.kind === "crm.factory.module_mapped"));
+  assert.ok(result.events.some((event) => event.kind === "crm.factory.core_gap_reviewed"));
 });
 
 test("design system executor packages Penpot Open Design tokens and components through Forge", () => {

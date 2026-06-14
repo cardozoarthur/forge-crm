@@ -561,18 +561,19 @@ test("web app snapshot exposes operating readiness workbench for company operati
   assert.equal(workbench.main_flow_dependency_external, false);
 
   assert.equal(workbench.domain_coverage.complete, true);
-  assert.equal(workbench.domain_coverage.domains.length, 13);
+  assert.equal(workbench.domain_coverage.domains.length, 14);
   assert.ok(workbench.domain_coverage.domains.every((domain) => domain.ready === true));
   assert.ok(workbench.domain_coverage.domains.every((domain) => domain.workflow_ids.length > 0));
   assert.ok(workbench.domain_coverage.domains.every((domain) => domain.artifact_evidence.length > 0));
   assert.ok(workbench.domain_coverage.domains.every((domain) => domain.event_evidence.length > 0));
   assert.ok(workbench.domain_coverage.domains.every((domain) => domain.runtime_contract_evidence.length > 0));
 
-  assert.equal(workbench.user_outcomes.length, 13);
+  assert.equal(workbench.user_outcomes.length, 14);
   assert.ok(workbench.user_outcomes.some((outcome) => outcome.deliverable === "commercial command center"));
   assert.ok(workbench.user_outcomes.some((outcome) => outcome.deliverable === "support inbox"));
   assert.ok(workbench.user_outcomes.some((outcome) => outcome.deliverable === "omnichannel conversation threads"));
   assert.ok(workbench.user_outcomes.some((outcome) => outcome.deliverable === "enterprise customer journey"));
+  assert.ok(workbench.user_outcomes.some((outcome) => outcome.deliverable === "workflow-system factory blueprint"));
   assert.ok(workbench.daily_operations.every((operation) => operation.command_owner === "forge"));
   assert.ok(
     workbench.daily_operations.every(
@@ -654,6 +655,42 @@ test("web app snapshot exposes approval governance as a Forge-owned operating su
   assert.equal(action.requires_permission, "crm.workflow.mutate");
 });
 
+test("web app snapshot exposes the CRM as a reusable Forge workflow-system blueprint", () => {
+  const snapshot = buildCrmWebAppSnapshot({ tenant_id: "demo" });
+  const workbench = snapshot.workflow_factory_blueprint_workbench;
+
+  assert.ok(workbench);
+  assert.equal(workbench.schema_version, "forge.crm_workflow_factory_blueprint_workbench.v1");
+  assert.equal(workbench.state_owner, "forge_workflow_runtime");
+  assert.equal(workbench.local_state_allowed, false);
+  assert.equal(workbench.workflow_id, "crm.workflow.factory_blueprint");
+  assert.equal(workbench.contract_id, "crm.factory.blueprint_export.executor");
+  assert.equal(workbench.action_id, "crm.export-factory-blueprint");
+  assert.equal(workbench.target_framework, "Forge Universal Workflow Framework");
+  assert.ok(workbench.module_templates.length >= 6);
+  assert.ok(workbench.module_templates.every((module) => module.workflow_ids.length > 0));
+  assert.ok(workbench.module_templates.every((module) => module.runtime_contracts.length > 0));
+  assert.ok(workbench.module_templates.every((module) => module.artifact_types.length > 0));
+  assert.ok(workbench.core_primitive_mapping.some((mapping) => mapping.primitive === "approvals"));
+  assert.ok(workbench.core_primitive_mapping.every((mapping) => mapping.repository === "forge-core"));
+  assert.deepEqual(
+    workbench.operation_plan.map((step) => step.id),
+    [
+      "collect_workflow_modules",
+      "map_runtime_contracts",
+      "audit_core_primitives",
+      "export_blueprint_artifacts",
+      "route_core_gaps"
+    ]
+  );
+  assert.ok(workbench.portability_gates.every((gate) => gate.owner === "Forge validation"));
+
+  const action = snapshot.actions.find((candidate) => candidate.id === "crm.export-factory-blueprint");
+  assert.ok(action);
+  assert.equal(action.contract_id, "crm.factory.blueprint_export.executor");
+  assert.equal(action.requires_permission, "crm.observability.inspect");
+});
+
 test("web app snapshot exposes CRM subworkflow orchestration through Forge child workflow bindings", () => {
   const snapshot = buildCrmWebAppSnapshot({ tenant_id: "demo" });
   const workbench = snapshot.subworkflow_orchestration_workbench;
@@ -728,6 +765,7 @@ test("web assets mount the generated CRM snapshot without a build step", async (
   assert.match(app, /renderEnterpriseJourneyWorkbench/);
   assert.match(app, /renderOperatingReadinessWorkbench/);
   assert.match(app, /renderApprovalGovernanceWorkbench/);
+  assert.match(app, /renderWorkflowFactoryBlueprintWorkbench/);
   assert.match(app, /renderSubworkflowOrchestrationWorkbench/);
   assert.match(app, /renderWorkflowAutomationDesignerWorkbench/);
   assert.match(app, /renderGoalCommissionWorkbench/);
@@ -749,6 +787,7 @@ test("web assets mount the generated CRM snapshot without a build step", async (
   assert.match(styles, /\.journey-workbench/);
   assert.match(styles, /\.readiness-workbench/);
   assert.match(styles, /\.approval-governance/);
+  assert.match(styles, /\.factory-blueprint/);
   assert.match(styles, /\.subworkflow-workbench/);
   assert.match(styles, /\.automation-designer/);
   assert.match(styles, /\.goal-commission/);

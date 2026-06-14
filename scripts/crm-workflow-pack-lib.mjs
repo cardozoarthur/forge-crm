@@ -1,3 +1,5 @@
+import { buildWorkflowFactoryBlueprint } from "./crm-factory-blueprint-lib.mjs";
+
 const REQUIRED_SCOPE = {
   relationship: ["lead", "contact", "company", "opportunity", "pipeline_kanban", "multiple_funnels", "complete_history", "unified_timeline"],
   commercial: ["proposal", "contract", "signature", "follow_up", "forecast", "goal", "commission", "account_management"],
@@ -850,6 +852,46 @@ const WORKFLOWS = [
     ]
   },
   {
+    id: "crm.workflow.factory_blueprint",
+    title: "Reusable workflow-system factory blueprint",
+    domain: "operations",
+    workflow_extension_id: "crm_workflow_factory_blueprint",
+    object_types: ["workflow_system_blueprint", "module_template", "core_primitive_mapping", "portability_gate"],
+    states: [
+      "workflow_modules_collected",
+      "runtime_contracts_mapped",
+      "core_primitives_audited",
+      "blueprint_exported",
+      "core_gap_reviewed"
+    ],
+    transitions: [
+      ["workflow_modules_collected", "runtime_contracts_mapped", "module contracts resolved"],
+      ["runtime_contracts_mapped", "core_primitives_audited", "Forge Core primitive dependency map generated"],
+      ["core_primitives_audited", "blueprint_exported", "portable workflow-system blueprint artifacts attached"],
+      ["blueprint_exported", "core_gap_reviewed", "Core gaps routed to forge-core policy"]
+    ],
+    runtime_contracts: ["crm.factory.blueprint_export.executor"],
+    depends_on_workflows: ["crm.enterprise.readiness", "crm.workflow.automation_design", "crm.subworkflow.orchestration"],
+    artifacts: [
+      "crm_workflow_factory_blueprint",
+      "crm_workflow_module_catalog",
+      "crm_factory_portability_report"
+    ],
+    events: [
+      "crm.factory.blueprint_exported",
+      "crm.factory.module_mapped",
+      "crm.factory.core_gap_reviewed"
+    ],
+    memory_scopes: ["organization", "project"],
+    permissions: ["crm.observability.inspect", "crm.workflow.mutate"],
+    views: ["crm.system-map", "crm.ai-workbench"],
+    validation_gates: [
+      "every module maps to Forge workflows and runtime contracts",
+      "blueprint export remains an artifact and does not create CRM-local state",
+      "Core primitive gaps are routed to forge-core before Addon workarounds"
+    ]
+  },
+  {
     id: "crm.approval.governance",
     title: "CRM approval governance",
     domain: "operations",
@@ -1307,6 +1349,16 @@ export function buildCrmWorkflowPack(options = {}) {
   const eventTypes = unique(workflows.flatMap((workflow) => workflow.events)).sort();
   const coverage = scopeCoverage(workflows);
   const operatingModel = buildCrmOperatingModel({ tenant_id: tenantId, workflows, coverage });
+  const coreGapPolicy = {
+    repository: "forge-core",
+    rule: "If a workflow primitive, memory scope, approval gate, artifact lineage or observability capability is missing, implement it in forge-core before adding CRM-local persistence."
+  };
+  const factoryBlueprint = buildWorkflowFactoryBlueprint({
+    tenant_id: tenantId,
+    workflows,
+    surfaces: Object.values(operatingModel.operator_surfaces),
+    core_gap_policy: coreGapPolicy
+  });
 
   return {
     schema_version: "forge.crm_workflow_pack.v1",
@@ -1322,6 +1374,7 @@ export function buildCrmWorkflowPack(options = {}) {
     },
     workflows,
     operating_model: operatingModel,
+    factory_blueprint: factoryBlueprint,
     coverage,
     summary: {
       workflow_count: workflows.length,
@@ -1337,10 +1390,7 @@ export function buildCrmWorkflowPack(options = {}) {
       artifact_types: artifactTypes,
       event_types: eventTypes
     },
-    core_gap_policy: {
-      repository: "forge-core",
-      rule: "If a workflow primitive, memory scope, approval gate, artifact lineage or observability capability is missing, implement it in forge-core before adding CRM-local persistence."
-    }
+    core_gap_policy: coreGapPolicy
   };
 }
 
@@ -1385,6 +1435,13 @@ export function buildTenantBootstrapResult(request = {}) {
           runtime_contracts: pack.indexes.runtime_contracts,
           state_model: pack.state_model
         }
+      },
+      {
+        kind: "crm_workflow_factory_blueprint",
+        id: `crm-workflow-factory-blueprint-${pack.tenant_id}`,
+        title: `CRM workflow-system factory blueprint for ${pack.tenant_id}`,
+        content_type: "application/json",
+        data: pack.factory_blueprint
       },
       {
         kind: "crm_operating_model",

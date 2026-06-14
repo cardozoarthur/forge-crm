@@ -6,9 +6,9 @@
   "addon_name": "Forge CRM",
   "addon_version": "0.1.0",
   "manifest_path": "addons/forge-crm.json",
-  "manifest_sha256": "851dcb36c9b1615bee2bb19bafe00ea1a642484b6239e8289bda9e1acc9b0378",
-  "manifest_canonical_sha256": "56da321c0b8b5158ab6a87d26c95b3a6018db6e3e9e4346be16660fb206b3f94",
-  "manifest_bytes": 167328,
+  "manifest_sha256": "db61afe236e1782c17f2a37b785aa8d05852f86932d307c5d3392d7745ebdb73",
+  "manifest_canonical_sha256": "b65ee0ab967593b72fe78b825df296d4b4413156db81423b8ce999cd6bb0bbb5",
+  "manifest_bytes": 175566,
   "distribution": {
     "repository": "https://github.com/cardozoarthur/forge-crm",
     "channel": "stable",
@@ -23,15 +23,15 @@
     "scheme": "ed25519_detached",
     "signature": "",
     "public_key": "",
-    "payload_sha256": "e50f10264b6af8fa0ac8100aa0b616ef838636f1f68b6b005e9f2ab1dcc98b76",
+    "payload_sha256": "337f0a60645e4f199ad829b7a2f9491c34d14868a1e0633f3affeb7d8aaf9e6a",
     "verification_note": "package records detached signature metadata; trust verification is a marketplace policy gate"
   },
   "summary": {
     "capability_count": 9,
     "dependency_count": 1,
     "permission_count": 5,
-    "workflow_extension_count": 32,
-    "runtime_contract_count": 41,
+    "workflow_extension_count": 34,
+    "runtime_contract_count": 43,
     "view_count": 12,
     "event_adapter_count": 3,
     "integration_count": 4,
@@ -68,12 +68,14 @@
       "crm.design_system.executor",
       "crm.memory.promotion.executor",
       "crm.workflow.evolution.executor",
+      "crm.workflow.approval_governance.executor",
       "crm.workflow.automation_designer.executor",
       "crm.enterprise.journey.executor",
       "crm.workflow.subworkflow_orchestrator.executor",
       "crm.observability.inspector.executor",
       "crm.analytics.executive_report.executor",
       "crm.operating.readiness.executor",
+      "crm.factory.blueprint_export.executor",
       "crm.tenant.bootstrap.executor",
       "crm.operating.snapshot.executor",
       "crm.proposal.generator.executor",
@@ -307,6 +309,8 @@
           "crm_enterprise_customer_journey",
           "crm_subworkflow_orchestration",
           "crm_workflow_automation_designer",
+          "crm_workflow_factory_blueprint",
+          "crm_approval_governance",
           "crm_workflow_evolution"
         ],
         "deliverables": [
@@ -314,6 +318,8 @@
           "workflow-backed entity model",
           "CRM subworkflow orchestration plan",
           "CRM workflow automation design",
+          "CRM workflow-system factory blueprint",
+          "CRM approval governance workbench",
           "CRM operating readiness package",
           "Forge Core gap report"
         ],
@@ -346,6 +352,9 @@
           "crm_workflow_automation_spec",
           "crm_trigger_condition_map",
           "crm_automation_validation_report",
+          "crm_workflow_factory_blueprint",
+          "crm_workflow_module_catalog",
+          "crm_factory_portability_report",
           "crm_workflow_evolution_plan",
           "crm_evolution_experiment",
           "crm_benchmark_report",
@@ -611,6 +620,7 @@
           "crm_document_approval",
           "crm_document_library",
           "crm_work_queue_orchestration",
+          "crm_approval_governance",
           "crm_subworkflow_orchestration"
         ],
         "deliverables": [
@@ -619,6 +629,7 @@
           "Document audit trail",
           "Document library",
           "Cross-domain work queue",
+          "Approval governance queue",
           "Subworkflow orchestration"
         ],
         "constraints": [],
@@ -936,6 +947,11 @@
         "description": "Map enterprise CRM success criteria to user-facing deliverables backed by Forge workflows, artifacts, events and validation evidence."
       },
       {
+        "id": "crm_approval_governance",
+        "kind": "operations_workflow",
+        "description": "Inspect approval queues, permission gates and rework decisions as Forge workflow artifacts and events."
+      },
+      {
         "id": "crm_enterprise_customer_journey",
         "kind": "operations_workflow",
         "description": "Package a full lead-to-support customer lifecycle as Forge workflow acceptance evidence."
@@ -949,6 +965,11 @@
         "id": "crm_workflow_automation_designer",
         "kind": "automation_workflow",
         "description": "Design CRM trigger, condition and action graphs that compile to Forge workflows, schedules and event listeners."
+      },
+      {
+        "id": "crm_workflow_factory_blueprint",
+        "kind": "operations_workflow",
+        "description": "Export the CRM as a reusable Forge workflow-system blueprint with module templates, runtime contracts, portability gates and forge-core gap routing."
       },
       {
         "id": "crm_workflow_evolution",
@@ -1275,6 +1296,39 @@
         ]
       },
       {
+        "id": "crm.workflow.approval_governance.executor",
+        "title": "CRM approval governance",
+        "contract_type": "executor",
+        "capability_id": "crm_internal_operations",
+        "workflow_extension_id": "crm_approval_governance",
+        "runtime": "external_api",
+        "entrypoint": "forge_crm.govern_approval_queue",
+        "inputs": [
+          "approval_queue",
+          "permission_gates",
+          "decision_policy",
+          "tenant_context"
+        ],
+        "outputs": [
+          "crm_approval_governance_queue",
+          "crm_permission_gate_report",
+          "crm_approval_decision_batch",
+          "crm_approval_rework_reason"
+        ],
+        "permissions": [
+          "crm.workflow.mutate",
+          "crm.document.generate",
+          "crm.omnichannel.ingest",
+          "crm.ai.recommend",
+          "crm.observability.inspect"
+        ],
+        "constraints": [
+          "approval governance does not persist CRM state outside Forge",
+          "every approval or rework decision must cite source workflow lineage",
+          "incomplete approvals return to source workflow tasks with explicit reason"
+        ]
+      },
+      {
         "id": "crm.workflow.automation_designer.executor",
         "title": "CRM workflow automation designer",
         "contract_type": "executor",
@@ -1455,6 +1509,35 @@
           "readiness must map success criteria to user-facing deliverables",
           "readiness evidence must come from Forge workflows, artifacts, events and validation gates",
           "readiness inspection does not create CRM-local state"
+        ]
+      },
+      {
+        "id": "crm.factory.blueprint_export.executor",
+        "title": "CRM workflow-system factory blueprint export",
+        "contract_type": "executor",
+        "capability_id": "crm_workflow_factory",
+        "workflow_extension_id": "crm_workflow_factory_blueprint",
+        "runtime": "external_api",
+        "entrypoint": "forge_crm.export_factory_blueprint",
+        "inputs": [
+          "workflow_pack",
+          "operating_snapshot",
+          "core_gap_policy",
+          "tenant_context"
+        ],
+        "outputs": [
+          "crm_workflow_factory_blueprint",
+          "crm_workflow_module_catalog",
+          "crm_factory_portability_report"
+        ],
+        "permissions": [
+          "crm.observability.inspect",
+          "crm.workflow.mutate"
+        ],
+        "constraints": [
+          "blueprint export produces a reusable workflow-system blueprint from Forge-owned CRM evidence",
+          "blueprint export does not create CRM-local state or local automation engines",
+          "Core primitive gaps must remain routed to forge-core"
         ]
       },
       {
@@ -3857,6 +3940,50 @@
             ]
           },
           {
+            "id": "crm.tui.govern-approval-queue",
+            "label": "Govern approval queue",
+            "description": "Inspect approval artifacts, permission gates and rework decisions through Forge workflow governance.",
+            "palette_group": "CRM",
+            "source_panel": "crm.operational-cockpit",
+            "type": "command",
+            "target": "forge addons execute-executor",
+            "method": "CLI",
+            "permission": "crm.workflow.mutate",
+            "requires_confirmation": true,
+            "risk_level": "high",
+            "mutates_workflow": true,
+            "command_template": [
+              "addons",
+              "execute-executor",
+              "--addon",
+              "forge.addon.crm",
+              "--contract",
+              "crm.workflow.approval_governance.executor",
+              "--worker",
+              "<worker-id>",
+              "--task",
+              "<task-ref>",
+              "--input",
+              "<json>",
+              "--context",
+              "<json>",
+              "--output",
+              "json"
+            ],
+            "keywords": [
+              "crm",
+              "approval",
+              "governance",
+              "rework"
+            ],
+            "payload_schema": [
+              "approval_queue",
+              "permission_gates",
+              "decision_policy",
+              "tenant_context"
+            ]
+          },
+          {
             "id": "crm.tui.generate-design-system",
             "label": "Generate design system",
             "description": "Publish CRM design tokens and component catalog as Forge artifacts.",
@@ -3941,6 +4068,50 @@
               "workflow_pack",
               "operating_snapshot",
               "validation_evidence"
+            ]
+          },
+          {
+            "id": "crm.tui.export-factory-blueprint",
+            "label": "Export factory blueprint",
+            "description": "Export the CRM as a reusable Forge workflow-system blueprint with module, contract and Core gap evidence.",
+            "palette_group": "CRM",
+            "source_panel": "crm.operational-cockpit",
+            "type": "command",
+            "target": "forge addons execute-executor",
+            "method": "CLI",
+            "permission": "crm.observability.inspect",
+            "requires_confirmation": false,
+            "risk_level": "medium",
+            "mutates_workflow": true,
+            "command_template": [
+              "addons",
+              "execute-executor",
+              "--addon",
+              "forge.addon.crm",
+              "--contract",
+              "crm.factory.blueprint_export.executor",
+              "--worker",
+              "<worker-id>",
+              "--task",
+              "<task-ref>",
+              "--input",
+              "<json>",
+              "--context",
+              "<json>",
+              "--output",
+              "json"
+            ],
+            "keywords": [
+              "crm",
+              "factory",
+              "blueprint",
+              "workflow"
+            ],
+            "payload_schema": [
+              "workflow_pack",
+              "operating_snapshot",
+              "core_gap_policy",
+              "tenant_context"
             ]
           },
           {
@@ -4342,6 +4513,50 @@
             ]
           },
           {
+            "id": "crm.ops.govern-approval-queue",
+            "label": "Govern approval queue",
+            "description": "Inspect approval artifacts, permission gates and rework decisions through Forge workflow governance.",
+            "palette_group": "CRM",
+            "source_panel": "crm.ops-console",
+            "type": "command",
+            "target": "forge addons execute-executor",
+            "method": "CLI",
+            "permission": "crm.workflow.mutate",
+            "requires_confirmation": true,
+            "risk_level": "high",
+            "mutates_workflow": true,
+            "command_template": [
+              "addons",
+              "execute-executor",
+              "--addon",
+              "forge.addon.crm",
+              "--contract",
+              "crm.workflow.approval_governance.executor",
+              "--worker",
+              "<worker-id>",
+              "--task",
+              "<task-ref>",
+              "--input",
+              "<json>",
+              "--context",
+              "<json>",
+              "--output",
+              "json"
+            ],
+            "keywords": [
+              "crm",
+              "ops",
+              "approval",
+              "governance",
+              "rework"
+            ],
+            "payload_schema": [
+              "approval_queue",
+              "permission_gates",
+              "decision_policy"
+            ]
+          },
+          {
             "id": "crm.ops.run-enterprise-journey",
             "label": "Run enterprise journey",
             "description": "Package lead-to-support CRM operating evidence as a Forge-owned journey acceptance record.",
@@ -4536,6 +4751,21 @@
       {
         "id": "crm_core_gap_report",
         "title": "Forge Core gap report",
+        "generic_kind": "report"
+      },
+      {
+        "id": "crm_workflow_factory_blueprint",
+        "title": "CRM workflow factory blueprint",
+        "generic_kind": "artifact"
+      },
+      {
+        "id": "crm_workflow_module_catalog",
+        "title": "CRM workflow module catalog",
+        "generic_kind": "artifact"
+      },
+      {
+        "id": "crm_factory_portability_report",
+        "title": "CRM factory portability report",
         "generic_kind": "report"
       },
       {
@@ -4824,6 +5054,26 @@
         "generic_kind": "artifact"
       },
       {
+        "id": "crm_approval_governance_queue",
+        "title": "CRM approval governance queue",
+        "generic_kind": "artifact"
+      },
+      {
+        "id": "crm_permission_gate_report",
+        "title": "CRM permission gate report",
+        "generic_kind": "report"
+      },
+      {
+        "id": "crm_approval_decision_batch",
+        "title": "CRM approval decision batch",
+        "generic_kind": "artifact"
+      },
+      {
+        "id": "crm_approval_rework_reason",
+        "title": "CRM approval rework reason",
+        "generic_kind": "artifact"
+      },
+      {
         "id": "crm_handoff_record",
         "title": "CRM handoff record",
         "generic_kind": "artifact"
@@ -5001,6 +5251,11 @@
         "transport": "crm"
       },
       {
+        "id": "crm.factory",
+        "title": "CRM factory event",
+        "transport": "crm"
+      },
+      {
         "id": "crm.goal",
         "title": "CRM goal event",
         "transport": "crm"
@@ -5093,6 +5348,11 @@
       {
         "id": "crm.readiness",
         "title": "CRM readiness event",
+        "transport": "crm"
+      },
+      {
+        "id": "crm.approval",
+        "title": "CRM approval governance event",
         "transport": "crm"
       },
       {

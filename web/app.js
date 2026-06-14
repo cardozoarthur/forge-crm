@@ -779,6 +779,49 @@ export function renderApprovalGovernanceWorkbench(snapshot) {
   return section;
 }
 
+export function renderWorkflowFactoryBlueprintWorkbench(snapshot) {
+  const workbench = snapshot.workflow_factory_blueprint_workbench;
+  const section = nodeElement("section", "panel factory-blueprint");
+  section.dataset.surfacePanel = "crm.system-map";
+  section.append(nodeElement("h2", "", "Workflow Factory Blueprint"));
+  if (!workbench) {
+    section.append(nodeElement("p", "muted-copy", "Workflow factory blueprint unavailable in this snapshot."));
+    return section;
+  }
+
+  section.append(nodeElement("p", "panel-source", `${workbench.workflow_id} · ${workbench.contract_id}`));
+  section.append(nodeElement("code", "", actionLabel(snapshot, workbench.action_id)));
+
+  const modules = nodeElement("div", "factory-module-grid");
+  for (const module of workbench.module_templates || []) {
+    const item = nodeElement("article", "factory-module");
+    item.append(nodeElement("strong", "", module.title));
+    item.append(nodeElement("span", "", `${module.domain} · ${module.workflow_ids.length} workflow`));
+    item.append(nodeElement("small", "", `${module.runtime_contracts.length} contracts · ${module.artifact_types.length} artifacts`));
+    item.title = module.validation_gates.join(", ");
+    modules.append(item);
+  }
+
+  const primitives = nodeElement("div", "factory-primitive-grid");
+  for (const mapping of workbench.core_primitive_mapping || []) {
+    const item = nodeElement("article", "factory-primitive");
+    item.append(nodeElement("strong", "", compactTitle(mapping.primitive)));
+    item.append(nodeElement("span", "", mapping.repository));
+    primitives.append(item);
+  }
+
+  const gates = nodeElement("ol", "factory-gate-list");
+  for (const gate of workbench.portability_gates || []) {
+    const item = nodeElement("li", "factory-gate");
+    item.append(nodeElement("strong", "", gate.title));
+    item.append(nodeElement("span", "", gate.owner));
+    gates.append(item);
+  }
+
+  section.append(modules, primitives, gates);
+  return section;
+}
+
 export function renderSubworkflowOrchestrationWorkbench(snapshot) {
   const workbench = snapshot.subworkflow_orchestration_workbench;
   const section = nodeElement("section", "panel subworkflow-workbench");
@@ -1068,6 +1111,7 @@ function render(snapshot) {
   workspace.append(renderEnterpriseJourneyWorkbench(snapshot));
   workspace.append(renderOperatingReadinessWorkbench(snapshot));
   workspace.append(renderApprovalGovernanceWorkbench(snapshot));
+  workspace.append(renderWorkflowFactoryBlueprintWorkbench(snapshot));
   workspace.append(renderSubworkflowOrchestrationWorkbench(snapshot));
   workspace.append(renderWorkflowAutomationDesignerWorkbench(snapshot));
   workspace.append(renderExecutiveReportingWorkbench(snapshot));

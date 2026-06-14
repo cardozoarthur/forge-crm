@@ -354,6 +354,53 @@ test("manifest exposes CRM operating readiness as a user-facing outcome package"
   assert.ok(eventTypes.has("crm.outcome"));
 });
 
+test("manifest exposes CRM factory blueprint export as a reusable system contract", () => {
+  const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.factory.blueprint_export.executor");
+  assert.ok(contract);
+  assert.equal(contract.contract_type, "executor");
+  assert.equal(contract.capability_id, "crm_workflow_factory");
+  assert.equal(contract.workflow_extension_id, "crm_workflow_factory_blueprint");
+  assert.equal(contract.entrypoint, "forge_crm.export_factory_blueprint");
+  assert.deepEqual(contract.permissions, ["crm.observability.inspect", "crm.workflow.mutate"]);
+
+  for (const input of ["workflow_pack", "operating_snapshot", "core_gap_policy", "tenant_context"]) {
+    assert.ok(contract.inputs.includes(input), `missing factory blueprint input ${input}`);
+  }
+
+  for (const output of [
+    "crm_workflow_factory_blueprint",
+    "crm_workflow_module_catalog",
+    "crm_factory_portability_report"
+  ]) {
+    assert.ok(contract.outputs.includes(output), `missing factory blueprint output ${output}`);
+  }
+
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("reusable workflow-system blueprint")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("does not create CRM-local state")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("forge-core")));
+
+  const factoryCapability = manifest.capabilities.find((capability) => capability.id === "crm_workflow_factory");
+  assert.ok(factoryCapability.workflow_extensions.includes("crm_workflow_factory_blueprint"));
+  assert.ok(factoryCapability.artifact_types.includes("crm_workflow_factory_blueprint"));
+  assert.ok(factoryCapability.artifact_types.includes("crm_workflow_module_catalog"));
+  assert.ok(factoryCapability.artifact_types.includes("crm_factory_portability_report"));
+
+  const workflowExtensionIds = new Set(manifest.workflows.map((extension) => extension.id));
+  assert.ok(workflowExtensionIds.has("crm_workflow_factory_blueprint"));
+
+  const artifactTypes = new Set(manifest.artifact_types.map((artifact) => artifact.id));
+  for (const artifactType of [
+    "crm_workflow_factory_blueprint",
+    "crm_workflow_module_catalog",
+    "crm_factory_portability_report"
+  ]) {
+    assert.ok(artifactTypes.has(artifactType), `missing artifact type ${artifactType}`);
+  }
+
+  const eventTypes = new Set(manifest.event_types.map((event) => event.id));
+  assert.ok(eventTypes.has("crm.factory"));
+});
+
 test("manifest exposes adaptive CRM workflow evolution through Forge", () => {
   const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.workflow.evolution.executor");
   assert.ok(contract);

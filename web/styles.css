@@ -890,6 +890,11 @@ h3 {
   border-left: 4px solid #9b4d19;
 }
 
+.factory-blueprint {
+  grid-column: 1 / -1;
+  border-left: 4px solid #285f9d;
+}
+
 .subworkflow-workbench {
   border-left: 4px solid #285f9d;
 }
@@ -914,6 +919,8 @@ h3 {
 .readiness-gates,
 .approval-queue-grid,
 .approval-gate-grid,
+.factory-module-grid,
+.factory-primitive-grid,
 .subworkflow-bindings,
 .subworkflow-gates,
 .automation-graph,
@@ -934,6 +941,9 @@ h3 {
 .readiness-gate,
 .approval-queue-item,
 .approval-gate,
+.factory-module,
+.factory-primitive,
+.factory-gate,
 .subworkflow-binding,
 .subworkflow-gate,
 .automation-node,
@@ -963,6 +973,9 @@ h3 {
 .readiness-gate strong,
 .approval-queue-item strong,
 .approval-gate strong,
+.factory-module strong,
+.factory-primitive strong,
+.factory-gate strong,
 .subworkflow-binding strong,
 .subworkflow-gate strong,
 .automation-node strong,
@@ -997,6 +1010,10 @@ h3 {
 .approval-queue-item span,
 .approval-queue-item small,
 .approval-gate span,
+.factory-module span,
+.factory-module small,
+.factory-primitive span,
+.factory-gate span,
 .automation-node span,
 .automation-node small,
 .automation-palette span,
@@ -1019,6 +1036,7 @@ h3 {
 .automation-gates,
 .readiness-gates,
 .approval-operation-plan,
+.factory-gate-list,
 .executive-reporting-gates,
 .goal-commission-gates {
   display: grid;
@@ -1037,6 +1055,7 @@ h3 {
 
 .readiness-workbench > code,
 .approval-governance > code,
+.factory-blueprint > code,
 .approval-queue-item code {
   display: inline-block;
   margin-top: 8px;
@@ -1047,6 +1066,12 @@ h3 {
 
 .approval-queue-item {
   border-left: 4px solid #9b4d19;
+}
+
+.factory-module,
+.factory-primitive,
+.factory-gate {
+  border-left: 4px solid #285f9d;
 }
 
 .approval-operation-step {

@@ -48,6 +48,7 @@ export function createCrmWorkerServer() {
             "forge_crm.run_area_copilot",
             "forge_crm.orchestrate_work_queue",
             "forge_crm.govern_approval_queue",
+            "forge_crm.export_factory_blueprint",
             "forge_crm.prepare_memory_promotion",
             "forge_crm.evolve_workflow",
             "forge_crm.design_workflow_automation",

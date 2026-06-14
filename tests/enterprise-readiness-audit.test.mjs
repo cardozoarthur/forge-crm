@@ -58,13 +58,14 @@ test("enterprise readiness audit keeps CRM as a public Forge Addon and maps benc
     assert.ok(track.evidence.event_types.length > 0, `${trackId} needs event evidence`);
   }
 
-  assert.equal(audit.user_facing_deliverables.length, 13);
+  assert.equal(audit.user_facing_deliverables.length, 14);
   assert.ok(audit.user_facing_deliverables.some((deliverable) => deliverable.id === "goal_commission_settlement"));
   assert.ok(audit.user_facing_deliverables.some((deliverable) => deliverable.id === "executive_reporting"));
   assert.ok(audit.user_facing_deliverables.some((deliverable) => deliverable.id === "omnichannel_conversation_threads"));
+  assert.ok(audit.user_facing_deliverables.some((deliverable) => deliverable.id === "workflow_system_factory_blueprint"));
   assert.ok(audit.user_facing_deliverables.every((deliverable) => deliverable.ready === true));
   assert.equal(audit.summary.missing_objective_item_count, 0);
-  assert.equal(audit.summary.ready_user_facing_deliverable_count, 13);
+  assert.equal(audit.summary.ready_user_facing_deliverable_count, 14);
   assert.deepEqual(
     audit.forge_core_requirements
       .filter((requirement) => requirement.status === "requires_forge_core_gap_review")
@@ -136,8 +137,8 @@ test("enterprise readiness Markdown report is generated from current audit evide
   const markdown = enterpriseReadinessAuditToMarkdown(audit);
   const committed = await readFile(new URL("../docs/enterprise-readiness-audit.md", import.meta.url), "utf8");
 
-  assert.match(markdown, /- Workflows: 32/);
-  assert.match(markdown, /- Runtime contracts: 42/);
+  assert.match(markdown, /- Workflows: 33/);
+  assert.match(markdown, /- Runtime contracts: 43/);
   assert.match(markdown, /## Forge Core Requirements/);
   assert.match(markdown, /## Distribution Evidence/);
   assert.match(markdown, /Distribution status: ready_for_public_addon_distribution/);

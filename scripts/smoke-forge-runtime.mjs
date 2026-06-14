@@ -98,6 +98,7 @@ try {
       "forge_crm.run_area_copilot",
       "forge_crm.orchestrate_work_queue",
       "forge_crm.govern_approval_queue",
+      "forge_crm.export_factory_blueprint",
       "forge_crm.orchestrate_subworkflows",
       "forge_crm.generate_design_system",
       "forge_crm.prepare_memory_promotion",
@@ -142,6 +143,7 @@ try {
       "crm.ai.area_copilot.executor",
       "crm.queue.orchestrator.executor",
       "crm.workflow.approval_governance.executor",
+      "crm.factory.blueprint_export.executor",
       "crm.workflow.subworkflow_orchestrator.executor",
       "crm.design_system.executor",
       "crm.memory.promotion.executor",
@@ -1111,6 +1113,66 @@ try {
 
   const workflowPackArtifact = bootstrap.executor_result.artifacts.find((artifact) => artifact.kind === "crm_workflow_pack");
   const operatingSnapshotArtifact = operatingSnapshot.executor_result.artifacts.find((artifact) => artifact.kind === "crm_operating_snapshot");
+  const workflowPackForBlueprint = {
+    core_gap_policy: workflowPackArtifact?.data?.core_gap_policy,
+    workflows: (workflowPackArtifact?.data?.workflows || []).map((workflow) => ({
+      id: workflow.id,
+      title: workflow.title,
+      domain: workflow.domain,
+      workflow_extension_id: workflow.workflow_extension_id,
+      runtime_contracts: workflow.runtime_contracts,
+      artifacts: workflow.artifacts,
+      events: workflow.events,
+      validation_gates: workflow.validation_gates,
+      views: workflow.views
+    }))
+  };
+  const operatingSnapshotForBlueprint = {
+    surfaces: Object.values(operatingSnapshotArtifact?.data?.operator_surfaces || {}).map((surface) => ({
+      id: surface.view_id,
+      workflow_ids: surface.workflow_ids
+    }))
+  };
+  const factoryBlueprint = runForge([
+    "addons",
+    "execute-executor",
+    "--addon-dir",
+    "addons",
+    "--addon",
+    "forge.addon.crm",
+    "--contract",
+    "crm.factory.blueprint_export.executor",
+    "--worker",
+    workerId,
+    "--task",
+    "crm-smoke-factory-blueprint",
+    "--workflow",
+    workflowId,
+    "--input",
+    JSON.stringify({
+      tenant_context: { id: "smoke", tenant_id: "smoke" },
+      workflow_pack: workflowPackForBlueprint,
+      operating_snapshot: operatingSnapshotForBlueprint,
+      core_gap_policy: {
+        repository: "forge-core",
+        categories: ["durable_workflows", "approvals", "artifact_lineage", "observability"]
+      }
+    }),
+    "--context",
+    JSON.stringify({ tenant: "smoke" }),
+    "--output",
+    "json"
+  ]);
+
+  if (factoryBlueprint.promotion?.status !== "addon_executor_result_promoted") {
+    throw new Error(`expected factory blueprint promotion, got ${factoryBlueprint.promotion?.status || "missing"}`);
+  }
+  if (factoryBlueprint.executor_result.outputs.portability_state !== "ready_for_reuse") {
+    throw new Error(
+      `expected factory blueprint ready_for_reuse, got ${factoryBlueprint.executor_result.outputs.portability_state}`
+    );
+  }
+
   const operatingReadiness = runForge([
     "addons",
     "execute-executor",
@@ -1149,6 +1211,7 @@ try {
           "omnichannel conversation threads",
           "marketing automation",
           "workflow automation designer",
+          "workflow-system factory blueprint",
           "goal and commission settlement",
           "executive reporting",
           "document approvals",
@@ -2559,6 +2622,8 @@ try {
   const workQueuePromotedEventCount = workQueue.promotion?.event_count ?? 0;
   const approvalGovernancePromotedArtifactCount = approvalGovernance.promotion?.artifact_count ?? 0;
   const approvalGovernancePromotedEventCount = approvalGovernance.promotion?.event_count ?? 0;
+  const factoryBlueprintPromotedArtifactCount = factoryBlueprint.promotion?.artifact_count ?? 0;
+  const factoryBlueprintPromotedEventCount = factoryBlueprint.promotion?.event_count ?? 0;
   const subworkflowPromotedArtifactCount = subworkflowOrchestration.promotion?.artifact_count ?? 0;
   const subworkflowPromotedEventCount = subworkflowOrchestration.promotion?.event_count ?? 0;
   const designSystemPromotedArtifactCount = designSystem.promotion?.artifact_count ?? 0;
@@ -2687,6 +2752,20 @@ try {
     "crm.approval.decision_recorded",
     "crm.approval.rework_returned",
     "crm.approval.event_promoted"
+  ]) {
+    if (!workflowEventKinds.includes(eventKind)) {
+      throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
+    }
+  }
+  if (factoryBlueprintPromotedArtifactCount < 3 || factoryBlueprintPromotedEventCount < 3) {
+    throw new Error(
+      `expected promoted factory blueprint artifacts/events, got artifacts=${factoryBlueprintPromotedArtifactCount} events=${factoryBlueprintPromotedEventCount}`
+    );
+  }
+  for (const eventKind of [
+    "crm.factory.blueprint_exported",
+    "crm.factory.module_mapped",
+    "crm.factory.core_gap_reviewed"
   ]) {
     if (!workflowEventKinds.includes(eventKind)) {
       throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
@@ -3174,6 +3253,12 @@ try {
     approval_governance_rework_count: approvalGovernance.executor_result.outputs.rework_count,
     approval_governance_promoted_artifacts: approvalGovernancePromotedArtifactCount,
     approval_governance_promoted_events: approvalGovernancePromotedEventCount,
+    factory_blueprint_status: factoryBlueprint.status,
+    factory_blueprint_promotion_status: factoryBlueprint.promotion.status,
+    factory_blueprint_module_count: factoryBlueprint.executor_result.outputs.module_count,
+    factory_blueprint_portability_state: factoryBlueprint.executor_result.outputs.portability_state,
+    factory_blueprint_promoted_artifacts: factoryBlueprintPromotedArtifactCount,
+    factory_blueprint_promoted_events: factoryBlueprintPromotedEventCount,
     subworkflow_orchestration_status: subworkflowOrchestration.status,
     subworkflow_orchestration_promotion_status: subworkflowOrchestration.promotion.status,
     subworkflow_orchestration_state: subworkflowOrchestration.executor_result.outputs.orchestration_state,

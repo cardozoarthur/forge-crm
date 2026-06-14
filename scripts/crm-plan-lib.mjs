@@ -1,3 +1,5 @@
+import { buildCrmWorkflowPack } from "./crm-workflow-pack-lib.mjs";
+
 const moduleTasks = [
   {
     id: "task-001",
@@ -122,6 +124,8 @@ const moduleTasks = [
 ];
 
 export function buildCrmPlan(goal = "Create a workflow-first enterprise CRM on Forge") {
+  const pack = buildCrmWorkflowPack({ tenant_id: "default" });
+
   return {
     schema_version: "forge.addon_planning_strategy_result.v1",
     status: "planned",
@@ -137,6 +141,7 @@ export function buildCrmPlan(goal = "Create a workflow-first enterprise CRM on F
       workflow_extension_id: "crm_workflow_factory_system_bootstrap",
       tasks: moduleTasks
     },
+    factory_blueprint: pack.factory_blueprint,
     tasks: moduleTasks,
     artifacts: [
       {

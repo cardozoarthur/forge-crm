@@ -80,6 +80,13 @@ const USER_FACING_DELIVERABLES = [
     workflow_ids: ["crm.workflow.automation_design"]
   },
   {
+    id: "workflow_system_factory_blueprint",
+    title: "Workflow-system factory blueprint",
+    domain: "operations",
+    surface_id: "crm.system-map",
+    workflow_ids: ["crm.workflow.factory_blueprint"]
+  },
+  {
     id: "goal_commission_settlement",
     title: "Goal and commission settlement",
     domain: "commercial",

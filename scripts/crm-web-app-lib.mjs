@@ -1337,7 +1337,8 @@ function readinessDispatchRequest({ tenantId, pack, model }) {
             "document management",
             "internal operations",
             "AI recommendations",
-            "enterprise customer journey"
+            "enterprise customer journey",
+            "workflow-system factory blueprint"
           ]
         }
       },
@@ -1585,6 +1586,33 @@ function approvalGovernanceWorkbench(workflows, actionList) {
         owner: "crm.operating.snapshot.executor"
       }
     ]
+  };
+}
+
+function workflowFactoryBlueprintWorkbench(factoryBlueprint, actionList) {
+  const actionById = new Map(actionList.map((action) => [action.id, action]));
+  const action = actionById.get("crm.export-factory-blueprint");
+
+  return {
+    schema_version: "forge.crm_workflow_factory_blueprint_workbench.v1",
+    workflow_id: factoryBlueprint.workflow_id,
+    workflow_extension_id: factoryBlueprint.workflow_extension_id,
+    state_owner: factoryBlueprint.state_owner,
+    local_state_allowed: factoryBlueprint.local_state_allowed,
+    target_framework: factoryBlueprint.target_framework,
+    action_id: action?.id || "crm.export-factory-blueprint",
+    contract_id: action?.contract_id || factoryBlueprint.runtime_contract_id,
+    module_templates: factoryBlueprint.module_templates,
+    core_primitive_mapping: factoryBlueprint.core_primitive_mapping,
+    portability_gates: factoryBlueprint.portability_gates,
+    operation_plan: factoryBlueprint.operation_plan,
+    portability_report: factoryBlueprint.portability_report,
+    artifact_types: [
+      "crm_workflow_factory_blueprint",
+      "crm_workflow_module_catalog",
+      "crm_factory_portability_report"
+    ],
+    rework_policy: "route missing Core primitives to forge-core before CRM-local workarounds"
   };
 }
 
@@ -2012,6 +2040,15 @@ function actions() {
       requires_permission: "crm.workflow.mutate",
       mutates_workflow: true,
       command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.workflow.approval_governance.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
+    },
+    {
+      id: "crm.export-factory-blueprint",
+      label: "Export factory blueprint",
+      surface_id: "crm.system-map",
+      contract_id: "crm.factory.blueprint_export.executor",
+      requires_permission: "crm.observability.inspect",
+      mutates_workflow: true,
+      command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.factory.blueprint_export.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
     },
     {
       id: "crm.run-enterprise-journey",
@@ -2733,6 +2770,7 @@ export function buildCrmWebAppSnapshot(options = {}) {
     enterprise_journey_workbench: enterpriseJourneyWorkbench(workflows, actionList),
     operating_readiness_workbench: operatingReadinessWorkbench({ tenantId, pack, model, actionList }),
     approval_governance_workbench: approvalGovernanceWorkbench(workflows, actionList),
+    workflow_factory_blueprint_workbench: workflowFactoryBlueprintWorkbench(pack.factory_blueprint, actionList),
     subworkflow_orchestration_workbench: subworkflowOrchestrationWorkbench(workflows, actionList),
     workflow_automation_designer_workbench: workflowAutomationDesignerWorkbench(workflows, actionList),
     executive_reporting_workbench: executiveReportingWorkbench(workflows, actionList),
