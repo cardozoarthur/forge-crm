@@ -132,6 +132,28 @@ const WORKFLOWS = [
     validation_gates: ["scheduled wait visible", "forecast and commission evidence attached"]
   },
   {
+    id: "crm.account.management",
+    title: "Account health, renewal and expansion management",
+    domain: "commercial",
+    workflow_extension_id: "crm_account_management",
+    object_types: ["account_management", "account", "renewal", "expansion", "task"],
+    states: ["account_review_requested", "health_reviewed", "success_plan_active", "renewal_planned", "expansion_identified", "risk_mitigation"],
+    transitions: [
+      ["account_review_requested", "health_reviewed", "health signals attached"],
+      ["health_reviewed", "success_plan_active", "success plan tasks created"],
+      ["success_plan_active", "renewal_planned", "renewal date recorded"],
+      ["success_plan_active", "expansion_identified", "expansion forecast attached"],
+      ["health_reviewed", "risk_mitigation", "risk flags require owner action"]
+    ],
+    runtime_contracts: ["crm.commercial.account_management.executor"],
+    artifacts: ["crm_account_plan", "crm_health_report", "crm_forecast_report", "crm_task_plan"],
+    events: ["crm.account.health_reviewed", "crm.account.renewal_planned", "crm.account.expansion_identified", "crm.task.created"],
+    memory_scopes: ["organization", "project"],
+    permissions: ["crm.workflow.mutate"],
+    views: ["crm.commercial-command"],
+    validation_gates: ["account owner visible", "renewal state explicit", "expansion forecast event-backed"]
+  },
+  {
     id: "crm.ticket.sla",
     title: "Ticket, SLA and omnichannel support",
     domain: "support",

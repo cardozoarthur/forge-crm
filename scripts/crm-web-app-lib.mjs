@@ -205,6 +205,15 @@ function actions() {
       command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.commercial.followup_forecast.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
     },
     {
+      id: "crm.manage-account",
+      label: "Manage account",
+      surface_id: "crm.commercial-command",
+      contract_id: "crm.commercial.account_management.executor",
+      requires_permission: "crm.workflow.mutate",
+      mutates_workflow: true,
+      command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.commercial.account_management.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
+    },
+    {
       id: "crm.plan-project-handoff",
       label: "Plan project handoff",
       surface_id: "crm.commercial-command",

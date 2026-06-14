@@ -760,6 +760,219 @@ export function buildCommercialFollowupForecastResult(request) {
   };
 }
 
+function accountId(account, fallback = "crm-account") {
+  return String(account.id || account.account_id || account.company_id || account.name || fallback);
+}
+
+function engagementScore(value) {
+  const normalized = String(value || "").toLowerCase();
+  if (["high", "strong", "executive", "champion"].some((pattern) => normalized.includes(pattern))) {
+    return 10;
+  }
+  if (["medium", "regular", "normal"].some((pattern) => normalized.includes(pattern))) {
+    return 5;
+  }
+  if (["low", "weak", "stale"].some((pattern) => normalized.includes(pattern))) {
+    return -10;
+  }
+  return 0;
+}
+
+function healthState(score) {
+  if (score >= 75) {
+    return "healthy";
+  }
+  if (score >= 50) {
+    return "watch";
+  }
+  return "at_risk";
+}
+
+export function buildCommercialAccountManagementResult(request) {
+  const input = dispatchPayload(request);
+  const context = providedContext(request);
+  const tenantId = input.tenant_id || input.tenant_context?.tenant_id || input.tenant_context?.id || context.tenant || "default";
+  const account = asObject(input.account ?? input.account_context);
+  const signals = asObject(input.health_signals);
+  const expansionOpportunities = asArray(input.expansion_opportunities ?? input.expansions).map((opportunity, index) => {
+    const record = asObject(opportunity);
+    const amount = numberFrom(record.amount ?? record.value, 0);
+    const probability = probabilityFrom(record.probability ?? record.close_probability);
+    return {
+      id: String(record.id || record.opportunity_id || `expansion-${index + 1}`),
+      name: record.name || record.title || `Expansion ${index + 1}`,
+      amount,
+      probability,
+      forecast_amount: Math.round(amount * probability)
+    };
+  });
+  const successPlan = asObject(input.success_plan);
+  const requiredActions = asArray(successPlan.required_actions ?? input.required_actions)
+    .map((action) => String(action).trim())
+    .filter(Boolean);
+  const id = accountId(account, dispatchEnvelope(request).task_ref || "account");
+  const name = account.name || account.account || id;
+  const owner = account.owner || successPlan.owner || "account-management";
+  const workflowId = String(input.workflow_id || "crm.account.management");
+  const taskRef = dispatchEnvelope(request).task_ref || `account-management-${slug(id, "account")}`;
+  const usageScore = numberFrom(signals.product_usage_percent ?? signals.usage_percent, 0);
+  const criticalTickets = numberFrom(signals.open_critical_tickets ?? signals.critical_ticket_count, 0);
+  const invoiceDelta = String(signals.invoice_status || "").toLowerCase() === "current" ? 5 : -10;
+  const score = Math.max(0, Math.min(100, Math.round(usageScore - criticalTickets * 25 + engagementScore(signals.stakeholder_engagement) + invoiceDelta)));
+  const accountHealthState = healthState(score);
+  const expansionForecastAmount = expansionOpportunities.reduce((total, opportunity) => total + opportunity.forecast_amount, 0);
+  const renewalAt = account.renewal_at || input.renewal_at || null;
+  const renewalState = renewalAt ? "renewal_planned" : "renewal_date_missing";
+  const nextState = requiredActions.length > 0 || successPlan.objective ? "success_plan_active" : accountHealthState === "at_risk" ? "risk_mitigation" : "account_reviewed";
+  const lineage = {
+    workflow_id: workflowId,
+    task_ref: taskRef,
+    source_contract: "crm.commercial.account_management.executor",
+    tenant_id: tenantId,
+    account_id: id
+  };
+  const tasks = requiredActions.map((title, index) => ({
+    id: `account-task-${slug(id, "account")}-${index + 1}`,
+    title,
+    owner,
+    status: "ready",
+    workflow_id: workflowId
+  }));
+
+  return {
+    schema_version: "forge.addon_executor_result.v1",
+    status: "completed",
+    task_ref: taskRef,
+    summary: `Account ${name} reviewed with ${accountHealthState} health and ${expansionForecastAmount} expansion forecast`,
+    outputs: {
+      tenant_id: tenantId,
+      account_id: id,
+      workflow_id: workflowId,
+      owner,
+      health_state: accountHealthState,
+      health_score: score,
+      renewal_state: renewalState,
+      renewal_at: renewalAt,
+      expansion_opportunity_count: expansionOpportunities.length,
+      expansion_forecast_amount: expansionForecastAmount,
+      next_state: nextState,
+      mutates_crm_state: false,
+      forge_event_sourced: true
+    },
+    artifacts: [
+      {
+        kind: "crm_account_plan",
+        id: `account-plan-${slug(id, "account")}`,
+        title: `Account plan for ${name}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          account_id: id,
+          account,
+          owner,
+          lifecycle_stage: account.lifecycle_stage || "active",
+          success_plan: successPlan,
+          next_state: nextState,
+          lineage,
+          state_owner: "forge_workflow_runtime",
+          external_database_required: false
+        }
+      },
+      {
+        kind: "crm_health_report",
+        id: `account-health-${slug(id, "account")}`,
+        title: `Account health report for ${name}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          account_id: id,
+          health_signals: signals,
+          health_score: score,
+          health_state: accountHealthState,
+          risk_flags: accountHealthState === "healthy" ? [] : ["account_needs_review"],
+          lineage
+        }
+      },
+      {
+        kind: "crm_forecast_report",
+        id: `account-expansion-forecast-${slug(id, "account")}`,
+        title: `Expansion forecast for ${name}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          account_id: id,
+          arr: numberFrom(account.arr ?? account.annual_recurring_revenue, 0),
+          renewal_at: renewalAt,
+          renewal_state: renewalState,
+          expansion_opportunities: expansionOpportunities,
+          expansion_forecast_amount: expansionForecastAmount,
+          lineage
+        }
+      },
+      {
+        kind: "crm_task_plan",
+        id: `account-task-plan-${slug(id, "account")}`,
+        title: `Account task plan for ${name}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          account_id: id,
+          tasks,
+          task_workflow_policy: "account success actions are Forge workflow tasks with owner and lineage",
+          lineage
+        }
+      }
+    ],
+    events: [
+      {
+        kind: "crm.account.health_reviewed",
+        tenant_id: tenantId,
+        account_id: id,
+        workflow_id: workflowId,
+        health_state: accountHealthState,
+        health_score: score,
+        owner
+      },
+      ...(renewalAt
+        ? [
+            {
+              kind: "crm.account.renewal_planned",
+              tenant_id: tenantId,
+              account_id: id,
+              workflow_id: workflowId,
+              renewal_at: renewalAt,
+              owner
+            }
+          ]
+        : []),
+      ...(expansionOpportunities.length > 0
+        ? [
+            {
+              kind: "crm.account.expansion_identified",
+              tenant_id: tenantId,
+              account_id: id,
+              workflow_id: workflowId,
+              expansion_opportunity_count: expansionOpportunities.length,
+              expansion_forecast_amount: expansionForecastAmount
+            }
+          ]
+        : []),
+      ...(tasks.length > 0
+        ? [
+            {
+              kind: "crm.task.created",
+              tenant_id: tenantId,
+              account_id: id,
+              workflow_id: workflowId,
+              task_count: tasks.length
+            }
+          ]
+        : [])
+    ],
+    context_tenant: context.tenant || tenantId
+  };
+}
+
 const DOCUMENT_ARTIFACT_KINDS = [
   "crm_document",
   "crm_contract",
@@ -1571,6 +1784,8 @@ export function executeCrmRuntimeRequest(request) {
       return buildProposalGeneratorResult(request);
     case "forge_crm.review_followup_forecast":
       return buildCommercialFollowupForecastResult(request);
+    case "forge_crm.manage_account":
+      return buildCommercialAccountManagementResult(request);
     case "forge_crm.generate_document":
       return buildDocumentGeneratorResult(request);
     case "forge_crm.validate_document":

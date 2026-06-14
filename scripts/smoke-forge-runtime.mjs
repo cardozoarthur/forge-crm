@@ -82,6 +82,7 @@ try {
       "forge_crm.operating_copilot",
       "forge_crm.generate_proposal",
       "forge_crm.review_followup_forecast",
+      "forge_crm.manage_account",
       "forge_crm.generate_document",
       "forge_crm.validate_document",
       "forge_crm.automate_campaign",
@@ -98,6 +99,7 @@ try {
       "crm.ai.operating_copilot.executor",
       "crm.proposal.generator.executor",
       "crm.commercial.followup_forecast.executor",
+      "crm.commercial.account_management.executor",
       "crm.document.generator.executor",
       "crm.document.validator",
       "crm.marketing.campaign_automation.executor",
@@ -385,6 +387,65 @@ try {
     throw new Error(`expected commercial follow-up wait state, got ${commercialFollowupForecast.executor_result.outputs.followup_state}`);
   }
 
+  const accountManagement = runForge([
+    "addons",
+    "execute-executor",
+    "--addon-dir",
+    "addons",
+    "--addon",
+    "forge.addon.crm",
+    "--contract",
+    "crm.commercial.account_management.executor",
+    "--worker",
+    workerId,
+    "--task",
+    "crm-smoke-account-management",
+    "--workflow",
+    workflowId,
+    "--input",
+    JSON.stringify({
+      tenant_context: { id: "smoke", tenant_id: "smoke" },
+      account: {
+        id: "account-smoke",
+        name: "Example Logistics",
+        owner: "account-owner",
+        lifecycle_stage: "active_customer",
+        arr: 180000,
+        renewal_at: "2026-10-01T00:00:00Z"
+      },
+      health_signals: {
+        product_usage_percent: 78,
+        open_critical_tickets: 1,
+        stakeholder_engagement: "medium",
+        invoice_status: "current"
+      },
+      expansion_opportunities: [
+        {
+          id: "expansion-smoke",
+          name: "Add omnichannel operations team",
+          amount: 60000,
+          probability: 0.65
+        }
+      ],
+      success_plan: {
+        objective: "Expand CRM usage into operations",
+        next_review_at: "2026-07-15T12:00:00Z",
+        required_actions: ["schedule executive business review", "attach adoption report"]
+      }
+    }),
+    "--context",
+    JSON.stringify({ tenant: "smoke" }),
+    "--output",
+    "json"
+  ]);
+
+  if (accountManagement.promotion?.status !== "addon_executor_result_promoted") {
+    throw new Error(`expected account management promotion, got ${accountManagement.promotion?.status || "missing"}`);
+  }
+  if (accountManagement.executor_result.outputs.next_state !== "success_plan_active") {
+    throw new Error(`expected account management success_plan_active, got ${accountManagement.executor_result.outputs.next_state}`);
+  }
+
   const documentGenerator = runForge([
     "addons",
     "execute-executor",
@@ -608,6 +669,8 @@ try {
   const relationshipPromotedEventCount = relationshipTimeline.promotion?.event_count ?? 0;
   const commercialPromotedArtifactCount = commercialFollowupForecast.promotion?.artifact_count ?? 0;
   const commercialPromotedEventCount = commercialFollowupForecast.promotion?.event_count ?? 0;
+  const accountPromotedArtifactCount = accountManagement.promotion?.artifact_count ?? 0;
+  const accountPromotedEventCount = accountManagement.promotion?.event_count ?? 0;
   const documentPromotedArtifactCount = documentGenerator.promotion?.artifact_count ?? 0;
   const documentPromotedEventCount = documentGenerator.promotion?.event_count ?? 0;
   const marketingPromotedArtifactCount = marketingAutomation.promotion?.artifact_count ?? 0;
@@ -673,6 +736,21 @@ try {
     "crm.forecast.reviewed",
     "crm.goal.progress_reviewed",
     "crm.commission.accrued"
+  ]) {
+    if (!workflowEventKinds.includes(eventKind)) {
+      throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
+    }
+  }
+  if (accountPromotedArtifactCount < 4 || accountPromotedEventCount < 4) {
+    throw new Error(
+      `expected promoted account management artifacts/events, got artifacts=${accountPromotedArtifactCount} events=${accountPromotedEventCount}`
+    );
+  }
+  for (const eventKind of [
+    "crm.account.health_reviewed",
+    "crm.account.renewal_planned",
+    "crm.account.expansion_identified",
+    "crm.task.created"
   ]) {
     if (!workflowEventKinds.includes(eventKind)) {
       throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
@@ -863,6 +941,13 @@ try {
     commercial_followup_forecast_amount: commercialFollowupForecast.executor_result.outputs.forecast_amount,
     commercial_followup_promoted_artifacts: commercialPromotedArtifactCount,
     commercial_followup_promoted_events: commercialPromotedEventCount,
+    account_management_status: accountManagement.status,
+    account_management_promotion_status: accountManagement.promotion.status,
+    account_management_health_state: accountManagement.executor_result.outputs.health_state,
+    account_management_next_state: accountManagement.executor_result.outputs.next_state,
+    account_management_expansion_forecast_amount: accountManagement.executor_result.outputs.expansion_forecast_amount,
+    account_management_promoted_artifacts: accountPromotedArtifactCount,
+    account_management_promoted_events: accountPromotedEventCount,
     document_generator_status: documentGenerator.status,
     document_generator_promotion_status: documentGenerator.promotion.status,
     document_generator_document_id: documentGenerator.executor_result.outputs.document_id,

@@ -27,7 +27,7 @@ Forge CRM is a product proof for Forge as a factory/framework for agentic workfl
 
 No important CRM automation should bypass Forge. External tools may execute bounded work, but Forge owns the workflow, state transitions, approvals, memory scope, artifact attachment, event history and validation gates.
 
-The current CRM worker exposes fourteen Forge runtime entrypoints:
+The current CRM worker exposes fifteen Forge runtime entrypoints:
 
 - `forge_crm.plan_system` for CRM system planning;
 - `forge_crm.bootstrap_tenant` for a Forge-owned tenant workflow pack;
@@ -37,6 +37,7 @@ The current CRM worker exposes fourteen Forge runtime entrypoints:
 - `forge_crm.operating_copilot` for opportunity priority, risk analysis, executive summary and next-step recommendations;
 - `forge_crm.generate_proposal` for draft proposal artifacts;
 - `forge_crm.review_followup_forecast` for follow-up scheduling, forecast, goal progress and commission evidence;
+- `forge_crm.manage_account` for account health, renewal, expansion and success-plan task workflows;
 - `forge_crm.generate_document` for contract, campaign, email, landing page, report and presentation drafts;
 - `forge_crm.validate_document` for approval and lineage checks;
 - `forge_crm.automate_campaign` for segment-backed campaign scheduling and lead nurture workflow events;
@@ -48,7 +49,7 @@ The worker returns Forge Addon result schemas and does not persist CRM state dir
 
 ## Tenant Workflow Pack
 
-`scripts/crm-workflow-pack-lib.mjs` produces the first operational workflow model for a CRM tenant. It declares 11 Forge-owned workflows across relationship, commercial, support, marketing, operations and AI automation. Each workflow carries explicit states, transitions, object types, runtime contracts, artifact types, events, memory scopes, permissions, validation gates and mutation policy.
+`scripts/crm-workflow-pack-lib.mjs` produces the first operational workflow model for a CRM tenant. It declares 12 Forge-owned workflows across relationship, commercial, support, marketing, operations and AI automation. Each workflow carries explicit states, transitions, object types, runtime contracts, artifact types, events, memory scopes, permissions, validation gates and mutation policy.
 
 The pack uses `workflow_id`, `artifact_id` and `event_id` as durable identities. External primary keys and direct external persistence are explicitly disabled.
 

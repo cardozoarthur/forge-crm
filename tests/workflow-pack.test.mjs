@@ -136,6 +136,24 @@ test("commercial follow-up workflow routes forecast, goals and commission throug
   assert.ok(pack.indexes.runtime_contracts.includes("crm.commercial.followup_forecast.executor"));
 });
 
+test("commercial account workflow routes health, renewal and expansion through Forge", () => {
+  const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
+  const workflow = pack.workflows.find((candidate) => candidate.id === "crm.account.management");
+
+  assert.ok(workflow);
+  assert.ok(workflow.runtime_contracts.includes("crm.commercial.account_management.executor"));
+  assert.ok(workflow.object_types.includes("account_management"));
+  assert.ok(workflow.artifacts.includes("crm_account_plan"));
+  assert.ok(workflow.artifacts.includes("crm_health_report"));
+  assert.ok(workflow.artifacts.includes("crm_forecast_report"));
+  assert.ok(workflow.artifacts.includes("crm_task_plan"));
+  assert.ok(workflow.events.includes("crm.account.health_reviewed"));
+  assert.ok(workflow.events.includes("crm.account.renewal_planned"));
+  assert.ok(workflow.events.includes("crm.account.expansion_identified"));
+  assert.ok(workflow.events.includes("crm.task.created"));
+  assert.ok(pack.indexes.runtime_contracts.includes("crm.commercial.account_management.executor"));
+});
+
 test("support workflow routes ticket SLA triage through Forge", () => {
   const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
   const workflow = pack.workflows.find((candidate) => candidate.id === "crm.ticket.sla");

@@ -215,12 +215,14 @@
         "crm_proposal_generation",
         "crm_contract_lifecycle",
         "crm_followup_sequence",
-        "crm_forecast_review"
+        "crm_forecast_review",
+        "crm_account_management"
       ],
       "deliverables": [
         "Proposal workflow",
         "Contract workflow",
-        "Forecast report"
+        "Forecast report",
+        "Account plan"
       ],
       "artifact_types": [
         "crm_proposal",
@@ -228,6 +230,8 @@
         "crm_followup_plan",
         "crm_forecast_report",
         "crm_commission_record",
+        "crm_account_plan",
+        "crm_health_report",
         "crm_report"
       ],
       "view_ids": [
@@ -436,6 +440,11 @@
       "id": "crm_forecast_review",
       "kind": "report_workflow",
       "description": "Generate forecast, targets and commission evidence from workflow events."
+    },
+    {
+      "id": "crm_account_management",
+      "kind": "commercial_workflow",
+      "description": "Review account health, renewals, expansion and success-plan tasks through Forge workflow state."
     },
     {
       "id": "crm_ticket_sla",
@@ -689,6 +698,36 @@
         "follow-up forecast executor does not persist CRM state outside Forge",
         "scheduled follow-ups, forecast reviews, goals and commission accrual must be represented as Forge workflow events",
         "commission evidence is forecast-only until the contract or revenue workflow validates it"
+      ]
+    },
+    {
+      "id": "crm.commercial.account_management.executor",
+      "title": "CRM account management review",
+      "contract_type": "executor",
+      "capability_id": "crm_commercial_operations",
+      "workflow_extension_id": "crm_account_management",
+      "runtime": "external_api",
+      "entrypoint": "forge_crm.manage_account",
+      "inputs": [
+        "account",
+        "health_signals",
+        "expansion_opportunities",
+        "success_plan",
+        "tenant_context"
+      ],
+      "outputs": [
+        "crm_account_plan",
+        "crm_health_report",
+        "crm_forecast_report",
+        "crm_task_plan"
+      ],
+      "permissions": [
+        "crm.workflow.mutate"
+      ],
+      "constraints": [
+        "account management review does not persist CRM state outside Forge",
+        "renewal and expansion states must be represented as Forge workflow events",
+        "success-plan actions must be emitted as Forge-owned task plans"
       ]
     },
     {
@@ -1149,6 +1188,16 @@
       "generic_kind": "artifact"
     },
     {
+      "id": "crm_account_plan",
+      "title": "CRM account plan",
+      "generic_kind": "artifact"
+    },
+    {
+      "id": "crm_health_report",
+      "title": "CRM health report",
+      "generic_kind": "report"
+    },
+    {
       "id": "crm_project_plan",
       "title": "CRM project plan",
       "generic_kind": "artifact"
@@ -1228,6 +1277,11 @@
     {
       "id": "crm.opportunity",
       "title": "CRM opportunity event",
+      "transport": "crm"
+    },
+    {
+      "id": "crm.account",
+      "title": "CRM account event",
       "transport": "crm"
     },
     {
@@ -1313,6 +1367,7 @@
       "event_types": [
         "crm.lead",
         "crm.opportunity",
+        "crm.account",
         "crm.followup",
         "crm.forecast",
         "crm.goal",
@@ -1369,6 +1424,7 @@
       ],
       "event_types": [
         "crm.opportunity",
+        "crm.account",
         "crm.followup",
         "crm.forecast",
         "crm.goal",
@@ -1519,6 +1575,7 @@
       "event_types": [
         "crm.lead",
         "crm.opportunity",
+        "crm.account",
         "crm.followup",
         "crm.forecast",
         "crm.goal",

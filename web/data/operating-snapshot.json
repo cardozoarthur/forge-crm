@@ -23,11 +23,11 @@
     "external_delivery_requires_approval": true
   },
   "metrics": {
-    "workflow_count": 11,
+    "workflow_count": 12,
     "business_module_count": 6,
     "surface_count": 8,
-    "artifact_type_count": 20,
-    "event_type_count": 35,
+    "artifact_type_count": 22,
+    "event_type_count": 38,
     "complete_scope": true
   },
   "surfaces": [
@@ -115,6 +115,7 @@
       "workflow_ids": [
         "crm.opportunity.pipeline",
         "crm.followup.forecast",
+        "crm.account.management",
         "crm.project.handoff"
       ],
       "lanes": [
@@ -130,6 +131,12 @@
         "response_wait",
         "forecast_reviewed",
         "commission_accrued",
+        "account_review_requested",
+        "health_reviewed",
+        "success_plan_active",
+        "renewal_planned",
+        "expansion_identified",
+        "risk_mitigation",
         "handoff_requested",
         "owner_assigned",
         "project_planned",
@@ -138,17 +145,22 @@
         "accepted"
       ],
       "artifact_types": [
+        "crm_account_plan",
         "crm_commission_record",
         "crm_email",
         "crm_followup_plan",
         "crm_forecast_report",
         "crm_handoff_record",
+        "crm_health_report",
         "crm_project_plan",
         "crm_report",
         "crm_task_plan",
         "crm_timeline_snapshot"
       ],
       "event_types": [
+        "crm.account.expansion_identified",
+        "crm.account.health_reviewed",
+        "crm.account.renewal_planned",
         "crm.commission.accrued",
         "crm.followup.scheduled",
         "crm.forecast.reviewed",
@@ -355,10 +367,12 @@
         "crm.proposal.approval",
         "crm.contract.signature",
         "crm.followup.forecast",
+        "crm.account.management",
         "crm.lead.nurture",
         "crm.project.handoff"
       ],
       "artifact_types": [
+        "crm_account_plan",
         "crm_ai_recommendation",
         "crm_automation_plan",
         "crm_commission_record",
@@ -368,6 +382,7 @@
         "crm_followup_plan",
         "crm_forecast_report",
         "crm_handoff_record",
+        "crm_health_report",
         "crm_project_plan",
         "crm_proposal",
         "crm_report",
@@ -375,6 +390,9 @@
         "crm_timeline_snapshot"
       ],
       "event_types": [
+        "crm.account.expansion_identified",
+        "crm.account.health_reviewed",
+        "crm.account.renewal_planned",
         "crm.commission.accrued",
         "crm.contract.reviewed",
         "crm.contract.signed",
@@ -395,14 +413,17 @@
         "crm.task.created"
       ],
       "validation_gates": [
+        "account owner visible",
         "artifact lineage present",
         "blocked reason explicit",
         "contract approval lineage present",
+        "expansion forecast event-backed",
         "external delivery blocked until approval",
         "external message approval present",
         "forecast and commission evidence attached",
         "forecast impact recorded",
         "owner visible",
+        "renewal state explicit",
         "scheduled wait visible",
         "signature receipt attached",
         "stage movement is event-backed"
@@ -467,19 +488,26 @@
       "complete": true,
       "workflow_ids": [
         "crm.contract.signature",
+        "crm.account.management",
         "crm.project.handoff",
         "crm.document.approval"
       ],
       "artifact_types": [
+        "crm_account_plan",
         "crm_contract",
         "crm_document",
+        "crm_forecast_report",
         "crm_handoff_record",
+        "crm_health_report",
         "crm_presentation",
         "crm_project_plan",
         "crm_report",
         "crm_task_plan"
       ],
       "event_types": [
+        "crm.account.expansion_identified",
+        "crm.account.health_reviewed",
+        "crm.account.renewal_planned",
         "crm.contract.reviewed",
         "crm.contract.signed",
         "crm.document.approved",
@@ -492,11 +520,14 @@
         "crm.task.created"
       ],
       "validation_gates": [
+        "account owner visible",
         "approval actor recorded",
         "blocked reason explicit",
         "contract approval lineage present",
+        "expansion forecast event-backed",
         "lineage points to Forge artifact",
         "owner visible",
+        "renewal state explicit",
         "signature receipt attached"
       ]
     },
@@ -718,6 +749,44 @@
         "validation_gates": [
           "scheduled wait visible",
           "forecast and commission evidence attached"
+        ]
+      },
+      {
+        "id": "crm.account.management",
+        "title": "Account health, renewal and expansion management",
+        "domain": "commercial",
+        "state_count": 6,
+        "states": [
+          "account_review_requested",
+          "health_reviewed",
+          "success_plan_active",
+          "renewal_planned",
+          "expansion_identified",
+          "risk_mitigation"
+        ],
+        "wait_states": [],
+        "runtime_contracts": [
+          "crm.commercial.account_management.executor"
+        ],
+        "artifact_types": [
+          "crm_account_plan",
+          "crm_health_report",
+          "crm_forecast_report",
+          "crm_task_plan"
+        ],
+        "event_types": [
+          "crm.account.health_reviewed",
+          "crm.account.renewal_planned",
+          "crm.account.expansion_identified",
+          "crm.task.created"
+        ],
+        "surface_ids": [
+          "crm.commercial-command"
+        ],
+        "validation_gates": [
+          "account owner visible",
+          "renewal state explicit",
+          "expansion forecast event-backed"
         ]
       },
       {
@@ -1344,6 +1413,33 @@
         "forge.addon.crm",
         "--contract",
         "crm.commercial.followup_forecast.executor",
+        "--worker",
+        "<worker-id>",
+        "--task",
+        "<task-ref>",
+        "--input",
+        "<json>",
+        "--context",
+        "<json>",
+        "--output",
+        "json"
+      ]
+    },
+    {
+      "id": "crm.manage-account",
+      "label": "Manage account",
+      "surface_id": "crm.commercial-command",
+      "contract_id": "crm.commercial.account_management.executor",
+      "requires_permission": "crm.workflow.mutate",
+      "mutates_workflow": true,
+      "command_template": [
+        "forge",
+        "addons",
+        "execute-executor",
+        "--addon",
+        "forge.addon.crm",
+        "--contract",
+        "crm.commercial.account_management.executor",
         "--worker",
         "<worker-id>",
         "--task",

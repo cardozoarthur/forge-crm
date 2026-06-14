@@ -300,6 +300,69 @@ test("commercial follow-up forecast executor schedules follow-ups and commission
   assert.ok(result.events.some((event) => event.kind === "crm.commission.accrued"));
 });
 
+test("commercial account management executor produces account health and expansion workflows as Forge artifacts", () => {
+  assert.equal(typeof runtime.buildCommercialAccountManagementResult, "function");
+
+  const result = runtime.buildCommercialAccountManagementResult(
+    workerRequest(
+      "forge_crm.manage_account",
+      {
+        tenant_context: { tenant_id: "demo" },
+        account: {
+          id: "account-001",
+          name: "Acme Logistics",
+          owner: "account-owner",
+          lifecycle_stage: "active_customer",
+          arr: 180000,
+          renewal_at: "2026-10-01T00:00:00Z"
+        },
+        health_signals: {
+          product_usage_percent: 78,
+          open_critical_tickets: 1,
+          stakeholder_engagement: "medium",
+          invoice_status: "current"
+        },
+        expansion_opportunities: [
+          {
+            id: "expansion-001",
+            name: "Add omnichannel operations team",
+            amount: 60000,
+            probability: 0.65
+          }
+        ],
+        success_plan: {
+          objective: "Expand CRM usage into operations",
+          next_review_at: "2026-07-15T12:00:00Z",
+          required_actions: ["schedule executive business review", "attach adoption report"]
+        }
+      },
+      { contract_id: "crm.commercial.account_management.executor", task_ref: "account-management-test" }
+    )
+  );
+
+  assert.equal(result.schema_version, "forge.addon_executor_result.v1");
+  assert.equal(result.status, "completed");
+  assert.equal(result.outputs.tenant_id, "demo");
+  assert.equal(result.outputs.account_id, "account-001");
+  assert.equal(result.outputs.workflow_id, "crm.account.management");
+  assert.equal(result.outputs.owner, "account-owner");
+  assert.equal(result.outputs.health_state, "watch");
+  assert.equal(result.outputs.renewal_state, "renewal_planned");
+  assert.equal(result.outputs.expansion_forecast_amount, 39000);
+  assert.equal(result.outputs.next_state, "success_plan_active");
+  assert.equal(result.outputs.mutates_crm_state, false);
+  assert.equal(result.outputs.forge_event_sourced, true);
+
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_account_plan"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_health_report"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_forecast_report"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_task_plan"));
+  assert.ok(result.events.some((event) => event.kind === "crm.account.health_reviewed"));
+  assert.ok(result.events.some((event) => event.kind === "crm.account.renewal_planned"));
+  assert.ok(result.events.some((event) => event.kind === "crm.account.expansion_identified"));
+  assert.ok(result.events.some((event) => event.kind === "crm.task.created"));
+});
+
 test("document generator emits Forge-gated CRM document artifacts without state mutation", () => {
   const result = buildDocumentGeneratorResult(
     workerRequest(
