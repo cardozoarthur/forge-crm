@@ -113,6 +113,20 @@ test("manifest exposes CRM document generation as a Forge-gated executor", () =>
   assert.ok(artifactTypes.has("crm_presentation"));
 });
 
+test("manifest exposes CRM ticket SLA triage as a Forge-owned executor", () => {
+  const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.support.ticket_sla.executor");
+  assert.ok(contract);
+  assert.equal(contract.contract_type, "executor");
+  assert.equal(contract.capability_id, "crm_support_omnichannel");
+  assert.equal(contract.workflow_extension_id, "crm_ticket_sla");
+  assert.equal(contract.entrypoint, "forge_crm.triage_ticket_sla");
+  assert.deepEqual(contract.permissions, ["crm.omnichannel.ingest"]);
+  assert.ok(contract.outputs.includes("crm_support_summary"));
+  assert.ok(contract.outputs.includes("crm_handoff_record"));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("does not persist")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("SLA wait")));
+});
+
 test("manifest declares the CRM web application entrypoint as an Addon view asset", () => {
   const systemMap = manifest.views.find((view) => view.id === "crm.system-map");
   assert.ok(systemMap);

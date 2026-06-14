@@ -823,6 +823,159 @@ export function buildDocumentValidatorResult(request) {
   };
 }
 
+function ticketId(ticket, fallback = "crm-ticket") {
+  return String(ticket.id || ticket.ticket_id || fallback);
+}
+
+function ticketSeverity(ticket) {
+  const severity = String(ticket.severity || ticket.priority || "normal").toLowerCase();
+  if (["critical", "urgent", "high"].some((item) => severity.includes(item))) {
+    return severity.includes("critical") ? "critical" : "high";
+  }
+  if (severity.includes("low")) {
+    return "low";
+  }
+  return "normal";
+}
+
+export function buildTicketSlaResult(request) {
+  const input = dispatchPayload(request);
+  const context = providedContext(request);
+  const tenantId = input.tenant_id || input.tenant_context?.tenant_id || input.tenant_context?.id || context.tenant || "default";
+  const ticket = asObject(input.ticket_context ?? input.ticket);
+  const messages = asArray(input.messages ?? input.message_events);
+  const policy = asObject(input.sla_policy);
+  const routingPolicy = asObject(input.routing_policy);
+  const id = ticketId(ticket, dispatchEnvelope(request).task_ref || "ticket");
+  const channel = input.channel || ticket.channel || messages[0]?.channel || "unknown";
+  const severity = ticketSeverity(ticket);
+  const elapsedMinutes = numberFrom(policy.elapsed_minutes ?? ticket.elapsed_minutes ?? ticket.sla_elapsed_minutes, 0);
+  const firstResponseMinutes = numberFrom(policy.first_response_minutes ?? policy.first_response_sla_minutes, 60);
+  const resolutionMinutes = numberFrom(policy.resolution_minutes ?? policy.resolution_sla_minutes, 480);
+  const firstResponseRemaining = Math.max(0, firstResponseMinutes - elapsedMinutes);
+  const resolutionRemaining = Math.max(0, resolutionMinutes - elapsedMinutes);
+  const escalationRequired = severity === "critical" || severity === "high" || firstResponseRemaining === 0;
+  const slaState = escalationRequired ? "sla_escalation" : "owner_assigned";
+  const ownerQueue = escalationRequired
+    ? routingPolicy.escalation_queue || routingPolicy.default_queue || "support-escalation"
+    : routingPolicy.default_queue || "support";
+  const workflowId = String(input.workflow_id || "crm.ticket.sla");
+  const taskRef = dispatchEnvelope(request).task_ref || `triage-ticket-${slug(id, "ticket")}`;
+  const lineage = {
+    workflow_id: workflowId,
+    task_ref: taskRef,
+    source_contract: "crm.support.ticket_sla.executor",
+    tenant_id: tenantId,
+    ticket_id: id
+  };
+  const supportSummaryId = `support-summary-${slug(id, "ticket")}`;
+  const handoffRecordId = `support-routing-${slug(id, "ticket")}`;
+
+  return {
+    schema_version: "forge.addon_executor_result.v1",
+    status: "completed",
+    task_ref: taskRef,
+    summary: `Ticket ${id} triaged into ${ownerQueue} with SLA state ${slaState}`,
+    outputs: {
+      tenant_id: tenantId,
+      ticket_id: id,
+      channel,
+      severity,
+      sla_state: slaState,
+      owner_queue: ownerQueue,
+      escalation_required: escalationRequired,
+      first_response_minutes_remaining: firstResponseRemaining,
+      resolution_minutes_remaining: resolutionRemaining,
+      mutates_crm_state: false,
+      forge_event_sourced: true
+    },
+    artifacts: [
+      {
+        kind: "crm_support_summary",
+        id: supportSummaryId,
+        title: `Support summary for ${id}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          ticket,
+          ticket_id: id,
+          channel,
+          severity,
+          messages,
+          sla: {
+            policy,
+            state: slaState,
+            first_response_minutes_remaining: firstResponseRemaining,
+            resolution_minutes_remaining: resolutionRemaining,
+            escalation_required: escalationRequired
+          },
+          lineage,
+          state_owner: "forge_workflow_runtime",
+          external_database_required: false
+        }
+      },
+      {
+        kind: "crm_handoff_record",
+        id: handoffRecordId,
+        title: `Support routing record for ${id}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          ticket_id: id,
+          source_channel: channel,
+          owner_queue: ownerQueue,
+          next_state: slaState,
+          escalation_required: escalationRequired,
+          handoff_policy: "route_through_forge_ticket_sla_workflow_before_external_reply",
+          lineage
+        }
+      }
+    ],
+    events: [
+      {
+        kind: "crm.message.received",
+        tenant_id: tenantId,
+        ticket_id: id,
+        channel,
+        message_count: messages.length,
+        workflow_id: workflowId
+      },
+      {
+        kind: "crm.ticket.created",
+        tenant_id: tenantId,
+        ticket_id: id,
+        channel,
+        severity,
+        owner_queue: ownerQueue,
+        workflow_id: workflowId
+      },
+      ...(escalationRequired
+        ? [
+            {
+              kind: "crm.sla.escalated",
+              tenant_id: tenantId,
+              ticket_id: id,
+              channel,
+              owner_queue: ownerQueue,
+              first_response_minutes_remaining: firstResponseRemaining,
+              workflow_id: workflowId
+            }
+          ]
+        : [
+            {
+              kind: "crm.ticket.triaged",
+              tenant_id: tenantId,
+              ticket_id: id,
+              channel,
+              owner_queue: ownerQueue,
+              workflow_id: workflowId
+            }
+          ])
+    ],
+    context_tenant: context.tenant || tenantId
+  };
+}
+
 export function buildOmnichannelHandoffResult(request) {
   const input = dispatchPayload(request);
   const handoffRef = dispatchEnvelope(request).handoff_ref || input.handoff_ref || "crm-handoff";
@@ -925,6 +1078,8 @@ export function executeCrmRuntimeRequest(request) {
       return buildDocumentGeneratorResult(request);
     case "forge_crm.validate_document":
       return buildDocumentValidatorResult(request);
+    case "forge_crm.triage_ticket_sla":
+      return buildTicketSlaResult(request);
     case "forge_crm.deliver_handoff":
       return buildOmnichannelHandoffResult(request);
     default:

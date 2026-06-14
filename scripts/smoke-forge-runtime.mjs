@@ -83,6 +83,7 @@ try {
       "forge_crm.generate_proposal",
       "forge_crm.generate_document",
       "forge_crm.validate_document",
+      "forge_crm.triage_ticket_sla",
       "forge_crm.deliver_handoff"
     ],
     allowed_contracts: [
@@ -95,6 +96,7 @@ try {
       "crm.proposal.generator.executor",
       "crm.document.generator.executor",
       "crm.document.validator",
+      "crm.support.ticket_sla.executor",
       "crm.omnichannel.handoff"
     ],
     timeout_seconds: 5,
@@ -364,6 +366,49 @@ try {
     throw new Error("expected generated documents to block external delivery before approval");
   }
 
+  const ticketSla = runForge([
+    "addons",
+    "execute-executor",
+    "--addon-dir",
+    "addons",
+    "--addon",
+    "forge.addon.crm",
+    "--contract",
+    "crm.support.ticket_sla.executor",
+    "--worker",
+    workerId,
+    "--task",
+    "crm-smoke-ticket-sla",
+    "--workflow",
+    workflowId,
+    "--input",
+    JSON.stringify({
+      tenant_context: { id: "smoke", tenant_id: "smoke" },
+      ticket: {
+        id: "ticket-smoke-001",
+        account: "Example Logistics",
+        channel: "email",
+        severity: "critical",
+        subject: "Operations blocked",
+        status: "received"
+      },
+      messages: [{ id: "msg-smoke-001", channel: "email", from: "ops@example.test", text: "Operations are blocked." }],
+      sla_policy: { first_response_minutes: 30, resolution_minutes: 240, elapsed_minutes: 45 },
+      routing_policy: { default_queue: "support", escalation_queue: "support-escalation" }
+    }),
+    "--context",
+    JSON.stringify({ tenant: "smoke" }),
+    "--output",
+    "json"
+  ]);
+
+  if (ticketSla.promotion?.status !== "addon_executor_result_promoted") {
+    throw new Error(`expected ticket SLA promotion, got ${ticketSla.promotion?.status || "missing"}`);
+  }
+  if (ticketSla.executor_result.outputs.sla_state !== "sla_escalation") {
+    throw new Error(`expected ticket SLA escalation, got ${ticketSla.executor_result.outputs.sla_state}`);
+  }
+
   const workflowArtifacts = runForge([
     "artifacts",
     "--workflow",
@@ -389,6 +434,8 @@ try {
   const relationshipPromotedEventCount = relationshipTimeline.promotion?.event_count ?? 0;
   const documentPromotedArtifactCount = documentGenerator.promotion?.artifact_count ?? 0;
   const documentPromotedEventCount = documentGenerator.promotion?.event_count ?? 0;
+  const ticketSlaPromotedArtifactCount = ticketSla.promotion?.artifact_count ?? 0;
+  const ticketSlaPromotedEventCount = ticketSla.promotion?.event_count ?? 0;
   const workflowArtifactCount = workflowArtifacts.artifacts?.length ?? 0;
   const workflowEventKinds = (workflowEvents.events || []).map((event) => event.kind);
 
@@ -443,6 +490,16 @@ try {
   }
   if (!workflowEventKinds.includes("crm.document.generated")) {
     throw new Error(`expected document generation event in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
+  }
+  if (ticketSlaPromotedArtifactCount < 2 || ticketSlaPromotedEventCount < 3) {
+    throw new Error(
+      `expected promoted ticket SLA artifacts/events, got artifacts=${ticketSlaPromotedArtifactCount} events=${ticketSlaPromotedEventCount}`
+    );
+  }
+  for (const eventKind of ["crm.message.received", "crm.ticket.created", "crm.sla.escalated"]) {
+    if (!workflowEventKinds.includes(eventKind)) {
+      throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
+    }
   }
 
   const classifier = runForge([
@@ -585,6 +642,11 @@ try {
     document_generator_document_id: documentGenerator.executor_result.outputs.document_id,
     document_generator_promoted_artifacts: documentPromotedArtifactCount,
     document_generator_promoted_events: documentPromotedEventCount,
+    ticket_sla_status: ticketSla.status,
+    ticket_sla_promotion_status: ticketSla.promotion.status,
+    ticket_sla_state: ticketSla.executor_result.outputs.sla_state,
+    ticket_sla_promoted_artifacts: ticketSlaPromotedArtifactCount,
+    ticket_sla_promoted_events: ticketSlaPromotedEventCount,
     workflow_artifact_count: workflowArtifactCount,
     workflow_event_kinds: workflowEventKinds,
     bootstrap_workflow_count: bootstrap.executor_result.outputs.workflow_count,

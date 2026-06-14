@@ -10,7 +10,8 @@ import {
   buildRelationshipTimelineResult,
   buildOmnichannelHandoffResult,
   buildOperatingSnapshotResult,
-  buildProposalGeneratorResult
+  buildProposalGeneratorResult,
+  buildTicketSlaResult
 } from "../scripts/crm-runtime-lib.mjs";
 import { createCrmWorkerServer } from "../runtime/crm-worker.mjs";
 
@@ -315,6 +316,59 @@ test("document validator fails missing lineage and passes approved Forge artifac
     )
   );
   assert.equal(passed.decision, "passed");
+});
+
+test("ticket SLA executor triages omnichannel tickets as Forge workflow artifacts", () => {
+  const result = buildTicketSlaResult(
+    workerRequest(
+      "forge_crm.triage_ticket_sla",
+      {
+        tenant_context: { tenant_id: "demo" },
+        ticket: {
+          id: "ticket-001",
+          account: "Acme Logistics",
+          channel: "whatsapp",
+          severity: "critical",
+          subject: "Warehouse operations blocked",
+          status: "received"
+        },
+        messages: [
+          {
+            id: "msg-001",
+            channel: "whatsapp",
+            from: "+5511999990000",
+            text: "Expedição parada. Precisamos de retorno agora."
+          }
+        ],
+        sla_policy: {
+          first_response_minutes: 30,
+          resolution_minutes: 240,
+          elapsed_minutes: 45
+        },
+        routing_policy: {
+          default_queue: "support",
+          escalation_queue: "support-escalation"
+        }
+      },
+      { contract_id: "crm.support.ticket_sla.executor", task_ref: "ticket-sla-test" }
+    )
+  );
+
+  assert.equal(result.schema_version, "forge.addon_executor_result.v1");
+  assert.equal(result.status, "completed");
+  assert.equal(result.outputs.tenant_id, "demo");
+  assert.equal(result.outputs.ticket_id, "ticket-001");
+  assert.equal(result.outputs.channel, "whatsapp");
+  assert.equal(result.outputs.sla_state, "sla_escalation");
+  assert.equal(result.outputs.owner_queue, "support-escalation");
+  assert.equal(result.outputs.escalation_required, true);
+  assert.equal(result.outputs.mutates_crm_state, false);
+  assert.equal(result.outputs.forge_event_sourced, true);
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_support_summary"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_handoff_record"));
+  assert.ok(result.events.some((event) => event.kind === "crm.message.received"));
+  assert.ok(result.events.some((event) => event.kind === "crm.ticket.created"));
+  assert.ok(result.events.some((event) => event.kind === "crm.sla.escalated"));
 });
 
 test("omnichannel handoff requires approval before delivery", () => {

@@ -121,3 +121,15 @@ test("document workflows route draft generation through a Forge runtime contract
 
   assert.ok(pack.indexes.runtime_contracts.includes("crm.document.generator.executor"));
 });
+
+test("support workflow routes ticket SLA triage through Forge", () => {
+  const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
+  const workflow = pack.workflows.find((candidate) => candidate.id === "crm.ticket.sla");
+
+  assert.ok(workflow);
+  assert.ok(workflow.runtime_contracts.includes("crm.support.ticket_sla.executor"));
+  assert.ok(workflow.runtime_contracts.includes("crm.omnichannel.handoff"));
+  assert.ok(workflow.artifacts.includes("crm_support_summary"));
+  assert.ok(workflow.events.includes("crm.sla.escalated"));
+  assert.ok(pack.indexes.runtime_contracts.includes("crm.support.ticket_sla.executor"));
+});

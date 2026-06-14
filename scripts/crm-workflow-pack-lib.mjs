@@ -145,9 +145,9 @@ const WORKFLOWS = [
       ["customer_wait", "sla_escalation", "SLA wait expired"],
       ["owner_assigned", "resolved", "resolution artifact attached"]
     ],
-    runtime_contracts: ["crm.omnichannel.handoff"],
+    runtime_contracts: ["crm.support.ticket_sla.executor", "crm.omnichannel.handoff"],
     artifacts: ["crm_support_summary", "crm_handoff_record"],
-    events: ["crm.message.received", "crm.ticket.created", "crm.handoff.delivered"],
+    events: ["crm.message.received", "crm.ticket.created", "crm.sla.escalated", "crm.handoff.delivered"],
     memory_scopes: ["organization", "project"],
     permissions: ["crm.omnichannel.ingest"],
     views: ["crm.support-queue"],

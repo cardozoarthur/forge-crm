@@ -223,6 +223,15 @@ function actions() {
       command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.ai.operating_copilot.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
     },
     {
+      id: "crm.triage-ticket-sla",
+      label: "Triage ticket SLA",
+      surface_id: "crm.support-queue",
+      contract_id: "crm.support.ticket_sla.executor",
+      requires_permission: "crm.omnichannel.ingest",
+      mutates_workflow: true,
+      command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.support.ticket_sla.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
+    },
+    {
       id: "crm.deliver-handoff",
       label: "Deliver omnichannel handoff",
       surface_id: "crm.support-queue",

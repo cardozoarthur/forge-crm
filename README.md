@@ -15,7 +15,7 @@ This repository starts the CRM as a verifiable Forge Addon:
 - `scripts/generate-crm-operating-model.mjs` emits the Forge-owned operating model for pipeline, support, marketing, documents, commercial command and AI workbench surfaces.
 - `scripts/generate-crm-web-snapshot.mjs` emits the static web app snapshot derived from the operating model.
 - `web/` contains a no-build business CRM web surface that renders workflows, knowledge relationships, document queues and Forge actions from `web/data/operating-snapshot.json`.
-- `scripts/smoke-forge-runtime.mjs` registers the worker in Forge and executes planner, tenant bootstrap, operating snapshot, relationship timeline, operating copilot, lead classification, proposal generation, document generation, document validation and omnichannel handoff contracts.
+- `scripts/smoke-forge-runtime.mjs` registers the worker in Forge and executes planner, tenant bootstrap, operating snapshot, relationship timeline, operating copilot, lead classification, proposal generation, document generation, document validation, ticket SLA triage and omnichannel handoff contracts.
 - `workflows/crm-system-template.json` maps the enterprise CRM domains into workflow-backed modules.
 - `docs/` records the architecture boundary between `forge-core` and this Addon.
 
@@ -85,7 +85,7 @@ The first business user surface is a static Addon asset:
 - workflow graph view for CRM process topology;
 - relationship graph view for company, contact, lead, opportunity, ticket and artifact relationships;
 - document queue view for proposals, contracts, approval waits and rework;
-- Forge action list for runtime contracts such as operating snapshot refresh, tenant bootstrap, relationship timeline recording, operating copilot, proposal generation, document generation, document validation and omnichannel handoff.
+- Forge action list for runtime contracts such as operating snapshot refresh, tenant bootstrap, relationship timeline recording, operating copilot, proposal generation, document generation, document validation, ticket SLA triage and omnichannel handoff.
 
 The manifest declares this through `crm.system-map.props.web_app`, with `web/index.html` as the entrypoint and `web/data/operating-snapshot.json` as the generated data source.
 

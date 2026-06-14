@@ -27,7 +27,7 @@
     "business_module_count": 6,
     "surface_count": 8,
     "artifact_type_count": 13,
-    "event_type_count": 32,
+    "event_type_count": 33,
     "complete_scope": true
   },
   "surfaces": [
@@ -181,6 +181,7 @@
       "event_types": [
         "crm.handoff.delivered",
         "crm.message.received",
+        "crm.sla.escalated",
         "crm.ticket.created"
       ],
       "mutation_requires_forge": true
@@ -403,6 +404,7 @@
       "event_types": [
         "crm.handoff.delivered",
         "crm.message.received",
+        "crm.sla.escalated",
         "crm.ticket.created"
       ],
       "validation_gates": [
@@ -707,6 +709,7 @@
           "customer_wait"
         ],
         "runtime_contracts": [
+          "crm.support.ticket_sla.executor",
           "crm.omnichannel.handoff"
         ],
         "artifact_types": [
@@ -716,6 +719,7 @@
         "event_types": [
           "crm.message.received",
           "crm.ticket.created",
+          "crm.sla.escalated",
           "crm.handoff.delivered"
         ],
         "surface_ids": [
@@ -1356,6 +1360,33 @@
         "forge.addon.crm",
         "--contract",
         "crm.ai.operating_copilot.executor",
+        "--worker",
+        "<worker-id>",
+        "--task",
+        "<task-ref>",
+        "--input",
+        "<json>",
+        "--context",
+        "<json>",
+        "--output",
+        "json"
+      ]
+    },
+    {
+      "id": "crm.triage-ticket-sla",
+      "label": "Triage ticket SLA",
+      "surface_id": "crm.support-queue",
+      "contract_id": "crm.support.ticket_sla.executor",
+      "requires_permission": "crm.omnichannel.ingest",
+      "mutates_workflow": true,
+      "command_template": [
+        "forge",
+        "addons",
+        "execute-executor",
+        "--addon",
+        "forge.addon.crm",
+        "--contract",
+        "crm.support.ticket_sla.executor",
         "--worker",
         "<worker-id>",
         "--task",

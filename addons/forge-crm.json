@@ -712,6 +712,34 @@
       ]
     },
     {
+      "id": "crm.support.ticket_sla.executor",
+      "title": "CRM ticket SLA triage",
+      "contract_type": "executor",
+      "capability_id": "crm_support_omnichannel",
+      "workflow_extension_id": "crm_ticket_sla",
+      "runtime": "external_api",
+      "entrypoint": "forge_crm.triage_ticket_sla",
+      "inputs": [
+        "ticket",
+        "messages",
+        "sla_policy",
+        "routing_policy",
+        "tenant_context"
+      ],
+      "outputs": [
+        "crm_support_summary",
+        "crm_handoff_record"
+      ],
+      "permissions": [
+        "crm.omnichannel.ingest"
+      ],
+      "constraints": [
+        "ticket SLA triage does not persist CRM state outside Forge",
+        "SLA wait and escalation state must be represented as Forge workflow events",
+        "external replies still require approved omnichannel handoff"
+      ]
+    },
+    {
       "id": "crm.omnichannel.handoff",
       "title": "CRM omnichannel handoff",
       "contract_type": "handoff",
@@ -1084,6 +1112,11 @@
       "transport": "crm"
     },
     {
+      "id": "crm.sla",
+      "title": "CRM SLA event",
+      "transport": "crm"
+    },
+    {
       "id": "crm.document",
       "title": "CRM document event",
       "transport": "crm"
@@ -1138,7 +1171,8 @@
       ],
       "event_types": [
         "crm.message",
-        "crm.ticket"
+        "crm.ticket",
+        "crm.sla"
       ],
       "schema": "forge.crm.omnichannel.v1",
       "auth": "forge_policy",
@@ -1329,7 +1363,8 @@
       ],
       "event_types": [
         "crm.message",
-        "crm.ticket"
+        "crm.ticket",
+        "crm.sla"
       ],
       "schema": "forge.crm.omnichannel.v1",
       "auth": "forge_policy",
