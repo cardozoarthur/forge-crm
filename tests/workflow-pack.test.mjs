@@ -109,6 +109,20 @@ test("relationship and pipeline workflows route timeline updates through Forge",
   assert.ok(pack.indexes.runtime_contracts.includes("crm.relationship.timeline.executor"));
 });
 
+test("pipeline workflow moves opportunities across multiple funnels through Forge", () => {
+  const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
+  const workflow = pack.workflows.find((candidate) => candidate.id === "crm.opportunity.pipeline");
+
+  assert.ok(workflow);
+  assert.ok(workflow.runtime_contracts.includes("crm.pipeline.stage_move.executor"));
+  assert.ok(workflow.artifacts.includes("crm_pipeline_board"));
+  assert.ok(workflow.artifacts.includes("crm_stage_change"));
+  assert.ok(workflow.artifacts.includes("crm_forecast_report"));
+  assert.ok(workflow.events.includes("crm.opportunity.stage_changed"));
+  assert.ok(workflow.events.includes("crm.forecast.updated"));
+  assert.ok(pack.indexes.runtime_contracts.includes("crm.pipeline.stage_move.executor"));
+});
+
 test("document workflows route draft generation through a Forge runtime contract", () => {
   const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
 

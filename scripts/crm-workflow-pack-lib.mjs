@@ -55,11 +55,12 @@ const WORKFLOWS = [
     ],
     runtime_contracts: [
       "crm.relationship.timeline.executor",
+      "crm.pipeline.stage_move.executor",
       "crm.lead.classifier.executor",
       "crm.ai.operating_copilot.executor",
       "crm.proposal.generator.executor"
     ],
-    artifacts: ["crm_timeline_snapshot", "crm_report"],
+    artifacts: ["crm_pipeline_board", "crm_stage_change", "crm_timeline_snapshot", "crm_forecast_report", "crm_report"],
     events: ["crm.opportunity.stage_changed", "crm.forecast.updated"],
     memory_scopes: ["organization", "project"],
     permissions: ["crm.workflow.mutate"],

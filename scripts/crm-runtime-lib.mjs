@@ -355,6 +355,148 @@ export function buildRelationshipTimelineResult(request) {
   };
 }
 
+export function buildOpportunityPipelineMoveResult(request) {
+  const input = dispatchPayload(request);
+  const context = providedContext(request);
+  const tenantId = input.tenant_id || input.tenant_context?.tenant_id || input.tenant_context?.id || context.tenant || "default";
+  const opportunity = asObject(input.opportunity);
+  const pipelineMove = asObject(input.pipeline_move ?? input.move);
+  const boardContext = asObject(input.board_context ?? input.pipeline_board);
+  const forecastPolicy = asObject(input.forecast_policy);
+  const opportunityIdValue = opportunityId(opportunity);
+  const account = opportunityAccount(opportunity);
+  const workflowId = String(input.workflow_id || pipelineMove.workflow_id || "crm.opportunity.pipeline");
+  const taskRef = dispatchEnvelope(request).task_ref || `move-opportunity-${slug(opportunityIdValue, "opportunity")}`;
+  const funnelId = String(pipelineMove.funnel_id || opportunity.funnel_id || boardContext.funnel_id || "default");
+  const fromStage = String(pipelineMove.from_stage || opportunity.stage || "research");
+  const toStage = String(pipelineMove.to_stage || opportunity.next_stage || "discovery");
+  const owner = pipelineMove.owner || opportunity.owner || input.owner || "sales-operations";
+  const reason = pipelineMove.reason || input.reason || "Forge pipeline movement requested";
+  const amount = numberFrom(forecastPolicy.amount ?? opportunity.amount ?? opportunity.value, 0);
+  const probability = probabilityFrom(
+    forecastPolicy.probability ?? forecastPolicy.close_probability ?? opportunity.close_probability ?? opportunity.probability
+  );
+  const forecastAmount = Math.round(amount * probability);
+  const lanes = asArray(boardContext.lanes).length > 0
+    ? asArray(boardContext.lanes).map((lane) => String(lane))
+    : ["research", "discovery", "proposal", "negotiation", "won", "lost"];
+  const wipLimits = asObject(boardContext.wip_limits);
+  const lineage = {
+    workflow_id: workflowId,
+    task_ref: taskRef,
+    source_contract: "crm.pipeline.stage_move.executor",
+    tenant_id: tenantId,
+    opportunity_id: opportunityIdValue,
+    funnel_id: funnelId
+  };
+
+  return {
+    schema_version: "forge.addon_executor_result.v1",
+    status: "completed",
+    task_ref: taskRef,
+    summary: `Opportunity ${opportunityIdValue} moved from ${fromStage} to ${toStage} in ${funnelId}`,
+    outputs: {
+      tenant_id: tenantId,
+      opportunity_id: opportunityIdValue,
+      account,
+      workflow_id: workflowId,
+      funnel_id: funnelId,
+      from_stage: fromStage,
+      to_stage: toStage,
+      stage_move_state: "moved",
+      owner,
+      forecast_amount: forecastAmount,
+      mutates_crm_state: false,
+      forge_event_sourced: true
+    },
+    artifacts: [
+      {
+        kind: "crm_pipeline_board",
+        id: `pipeline-board-${slug(funnelId, "funnel")}`,
+        title: `Pipeline board for ${funnelId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          workflow_id: workflowId,
+          funnel_id: funnelId,
+          lanes,
+          wip_limits: wipLimits,
+          moved_card: {
+            opportunity_id: opportunityIdValue,
+            account,
+            from_stage: fromStage,
+            to_stage: toStage,
+            owner,
+            reason
+          },
+          lineage,
+          state_owner: "forge_workflow_runtime",
+          external_database_required: false
+        }
+      },
+      {
+        kind: "crm_stage_change",
+        id: `stage-change-${slug(opportunityIdValue, "opportunity")}-${slug(toStage, "stage")}`,
+        title: `Stage change for ${account}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          opportunity_id: opportunityIdValue,
+          account,
+          funnel_id: funnelId,
+          from_stage: fromStage,
+          to_stage: toStage,
+          owner,
+          reason,
+          lineage,
+          mutation_policy: "stage changes are promoted as Forge workflow events"
+        }
+      },
+      {
+        kind: "crm_forecast_report",
+        id: `pipeline-forecast-${slug(opportunityIdValue, "opportunity")}`,
+        title: `Pipeline forecast for ${account}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          opportunity_id: opportunityIdValue,
+          funnel_id: funnelId,
+          amount,
+          probability,
+          forecast_amount: forecastAmount,
+          period: forecastPolicy.period || null,
+          lineage,
+          state_owner: "forge_workflow_runtime"
+        }
+      }
+    ],
+    events: [
+      {
+        kind: "crm.opportunity.stage_changed",
+        tenant_id: tenantId,
+        opportunity_id: opportunityIdValue,
+        workflow_id: workflowId,
+        funnel_id: funnelId,
+        from_stage: fromStage,
+        to_stage: toStage,
+        owner,
+        reason
+      },
+      {
+        kind: "crm.forecast.updated",
+        tenant_id: tenantId,
+        opportunity_id: opportunityIdValue,
+        workflow_id: workflowId,
+        funnel_id: funnelId,
+        amount,
+        probability,
+        forecast_amount: forecastAmount
+      }
+    ],
+    context_tenant: context.tenant || tenantId
+  };
+}
+
 function opportunityId(opportunity) {
   return String(opportunity.id || opportunity.opportunity_id || opportunity.account || opportunity.company || "opportunity-unknown");
 }
@@ -2265,6 +2407,8 @@ export function executeCrmRuntimeRequest(request) {
       return buildLeadClassifierResult(request);
     case "forge_crm.record_relationship_event":
       return buildRelationshipTimelineResult(request);
+    case "forge_crm.move_opportunity_stage":
+      return buildOpportunityPipelineMoveResult(request);
     case "forge_crm.operating_copilot":
       return buildOperatingCopilotResult(request);
     case "forge_crm.generate_proposal":

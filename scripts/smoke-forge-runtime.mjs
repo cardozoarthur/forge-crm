@@ -79,6 +79,7 @@ try {
       "forge_crm.operating_snapshot",
       "forge_crm.classify_lead",
       "forge_crm.record_relationship_event",
+      "forge_crm.move_opportunity_stage",
       "forge_crm.operating_copilot",
       "forge_crm.generate_proposal",
       "forge_crm.review_followup_forecast",
@@ -99,6 +100,7 @@ try {
       "crm.operating.snapshot.executor",
       "crm.lead.classifier.executor",
       "crm.relationship.timeline.executor",
+      "crm.pipeline.stage_move.executor",
       "crm.ai.operating_copilot.executor",
       "crm.proposal.generator.executor",
       "crm.commercial.followup_forecast.executor",
@@ -338,6 +340,59 @@ try {
   }
   if (relationshipTimeline.executor_result.outputs.pipeline_stage !== "proposal") {
     throw new Error(`expected relationship timeline pipeline stage proposal, got ${relationshipTimeline.executor_result.outputs.pipeline_stage}`);
+  }
+
+  const pipelineStageMove = runForge([
+    "addons",
+    "execute-executor",
+    "--addon-dir",
+    "addons",
+    "--addon",
+    "forge.addon.crm",
+    "--contract",
+    "crm.pipeline.stage_move.executor",
+    "--worker",
+    workerId,
+    "--task",
+    "crm-smoke-pipeline-stage-move",
+    "--workflow",
+    workflowId,
+    "--input",
+    JSON.stringify({
+      tenant_context: { id: "smoke", tenant_id: "smoke" },
+      opportunity: {
+        id: "opp-smoke-priority",
+        account: "Example Logistics",
+        amount: 180000,
+        owner: "forge-crm-smoke"
+      },
+      pipeline_move: {
+        funnel_id: "enterprise",
+        from_stage: "proposal",
+        to_stage: "negotiation",
+        reason: "proposal artifact approved",
+        owner: "forge-crm-smoke"
+      },
+      board_context: {
+        lanes: ["research", "discovery", "proposal", "negotiation", "won", "lost"],
+        wip_limits: { negotiation: 10 }
+      },
+      forecast_policy: {
+        probability: 0.74,
+        period: "2026-Q3"
+      }
+    }),
+    "--context",
+    JSON.stringify({ tenant: "smoke" }),
+    "--output",
+    "json"
+  ]);
+
+  if (pipelineStageMove.promotion?.status !== "addon_executor_result_promoted") {
+    throw new Error(`expected pipeline stage move promotion, got ${pipelineStageMove.promotion?.status || "missing"}`);
+  }
+  if (pipelineStageMove.executor_result.outputs.to_stage !== "negotiation") {
+    throw new Error(`expected pipeline stage negotiation, got ${pipelineStageMove.executor_result.outputs.to_stage}`);
   }
 
   const commercialFollowupForecast = runForge([
@@ -845,6 +900,8 @@ try {
   const copilotPromotedEventCount = copilot.promotion?.event_count ?? 0;
   const relationshipPromotedArtifactCount = relationshipTimeline.promotion?.artifact_count ?? 0;
   const relationshipPromotedEventCount = relationshipTimeline.promotion?.event_count ?? 0;
+  const pipelinePromotedArtifactCount = pipelineStageMove.promotion?.artifact_count ?? 0;
+  const pipelinePromotedEventCount = pipelineStageMove.promotion?.event_count ?? 0;
   const commercialPromotedArtifactCount = commercialFollowupForecast.promotion?.artifact_count ?? 0;
   const commercialPromotedEventCount = commercialFollowupForecast.promotion?.event_count ?? 0;
   const accountPromotedArtifactCount = accountManagement.promotion?.artifact_count ?? 0;
@@ -906,6 +963,16 @@ try {
     );
   }
   for (const eventKind of ["crm.relationship.recorded", "crm.opportunity.stage_changed", "crm.forecast.updated"]) {
+    if (!workflowEventKinds.includes(eventKind)) {
+      throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
+    }
+  }
+  if (pipelinePromotedArtifactCount < 3 || pipelinePromotedEventCount < 2) {
+    throw new Error(
+      `expected promoted pipeline stage move artifacts/events, got artifacts=${pipelinePromotedArtifactCount} events=${pipelinePromotedEventCount}`
+    );
+  }
+  for (const eventKind of ["crm.opportunity.stage_changed", "crm.forecast.updated"]) {
     if (!workflowEventKinds.includes(eventKind)) {
       throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
     }
@@ -1149,6 +1216,11 @@ try {
     relationship_timeline_pipeline_stage: relationshipTimeline.executor_result.outputs.pipeline_stage,
     relationship_timeline_promoted_artifacts: relationshipPromotedArtifactCount,
     relationship_timeline_promoted_events: relationshipPromotedEventCount,
+    pipeline_stage_move_status: pipelineStageMove.status,
+    pipeline_stage_move_promotion_status: pipelineStageMove.promotion.status,
+    pipeline_stage_move_to_stage: pipelineStageMove.executor_result.outputs.to_stage,
+    pipeline_stage_move_promoted_artifacts: pipelinePromotedArtifactCount,
+    pipeline_stage_move_promoted_events: pipelinePromotedEventCount,
     commercial_followup_status: commercialFollowupForecast.status,
     commercial_followup_promotion_status: commercialFollowupForecast.promotion.status,
     commercial_followup_state: commercialFollowupForecast.executor_result.outputs.followup_state,

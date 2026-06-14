@@ -26,7 +26,7 @@
     "workflow_count": 12,
     "business_module_count": 6,
     "surface_count": 8,
-    "artifact_type_count": 29,
+    "artifact_type_count": 31,
     "event_type_count": 40,
     "complete_scope": true
   },
@@ -96,7 +96,10 @@
         "lost"
       ],
       "artifact_types": [
+        "crm_forecast_report",
+        "crm_pipeline_board",
         "crm_report",
+        "crm_stage_change",
         "crm_timeline_snapshot"
       ],
       "event_types": [
@@ -153,8 +156,10 @@
         "crm_forecast_report",
         "crm_handoff_record",
         "crm_health_report",
+        "crm_pipeline_board",
         "crm_project_plan",
         "crm_report",
+        "crm_stage_change",
         "crm_task_plan",
         "crm_timeline_snapshot"
       ],
@@ -351,8 +356,11 @@
       ],
       "artifact_types": [
         "crm_ai_recommendation",
+        "crm_forecast_report",
         "crm_lead_capture",
+        "crm_pipeline_board",
         "crm_report",
+        "crm_stage_change",
         "crm_timeline_snapshot"
       ],
       "event_types": [
@@ -394,11 +402,13 @@
         "crm_forecast_report",
         "crm_handoff_record",
         "crm_health_report",
+        "crm_pipeline_board",
         "crm_project_plan",
         "crm_proposal",
         "crm_renewal_plan",
         "crm_report",
         "crm_signature_receipt",
+        "crm_stage_change",
         "crm_task_plan",
         "crm_timeline_snapshot"
       ],
@@ -642,12 +652,16 @@
         "wait_states": [],
         "runtime_contracts": [
           "crm.relationship.timeline.executor",
+          "crm.pipeline.stage_move.executor",
           "crm.lead.classifier.executor",
           "crm.ai.operating_copilot.executor",
           "crm.proposal.generator.executor"
         ],
         "artifact_types": [
+          "crm_pipeline_board",
+          "crm_stage_change",
           "crm_timeline_snapshot",
+          "crm_forecast_report",
           "crm_report"
         ],
         "event_types": [
@@ -1400,6 +1414,33 @@
         "forge.addon.crm",
         "--contract",
         "crm.relationship.timeline.executor",
+        "--worker",
+        "<worker-id>",
+        "--task",
+        "<task-ref>",
+        "--input",
+        "<json>",
+        "--context",
+        "<json>",
+        "--output",
+        "json"
+      ]
+    },
+    {
+      "id": "crm.move-pipeline-stage",
+      "label": "Move pipeline stage",
+      "surface_id": "crm.pipeline-kanban",
+      "contract_id": "crm.pipeline.stage_move.executor",
+      "requires_permission": "crm.workflow.mutate",
+      "mutates_workflow": true,
+      "command_template": [
+        "forge",
+        "addons",
+        "execute-executor",
+        "--addon",
+        "forge.addon.crm",
+        "--contract",
+        "crm.pipeline.stage_move.executor",
         "--worker",
         "<worker-id>",
         "--task",

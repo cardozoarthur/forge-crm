@@ -182,7 +182,10 @@
         "Pipeline workflow state"
       ],
       "artifact_types": [
-        "crm_timeline_snapshot"
+        "crm_timeline_snapshot",
+        "crm_pipeline_board",
+        "crm_stage_change",
+        "crm_forecast_report"
       ],
       "view_ids": [
         "crm.pipeline-kanban",
@@ -568,6 +571,35 @@
         "relationship timeline executor does not persist CRM state outside Forge",
         "entity, relationship, pipeline and forecast changes must be promoted from Forge workflow artifacts and events",
         "pipeline stage movement must include owner, reason and workflow lineage"
+      ]
+    },
+    {
+      "id": "crm.pipeline.stage_move.executor",
+      "title": "CRM pipeline stage movement",
+      "contract_type": "executor",
+      "capability_id": "crm_relationship_management",
+      "workflow_extension_id": "crm_pipeline_kanban",
+      "runtime": "external_api",
+      "entrypoint": "forge_crm.move_opportunity_stage",
+      "inputs": [
+        "opportunity",
+        "pipeline_move",
+        "board_context",
+        "forecast_policy",
+        "tenant_context"
+      ],
+      "outputs": [
+        "crm_pipeline_board",
+        "crm_stage_change",
+        "crm_forecast_report"
+      ],
+      "permissions": [
+        "crm.workflow.mutate"
+      ],
+      "constraints": [
+        "pipeline stage movement does not persist CRM state outside Forge",
+        "multiple funnels and Kanban lanes must be represented as Forge artifacts",
+        "stage movement and forecast changes must be promoted as Forge workflow events"
       ]
     },
     {
@@ -1259,6 +1291,16 @@
     {
       "id": "crm_timeline_snapshot",
       "title": "CRM timeline snapshot",
+      "generic_kind": "artifact"
+    },
+    {
+      "id": "crm_pipeline_board",
+      "title": "CRM pipeline board",
+      "generic_kind": "artifact"
+    },
+    {
+      "id": "crm_stage_change",
+      "title": "CRM stage change",
       "generic_kind": "artifact"
     },
     {

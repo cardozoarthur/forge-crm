@@ -86,6 +86,27 @@ test("manifest exposes CRM operating copilot as a recommendation-only executor",
   assert.ok(contract.constraints.some((constraint) => constraint.includes("does not mutate")));
 });
 
+test("manifest exposes CRM pipeline stage movement as a Forge-owned executor", () => {
+  const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.pipeline.stage_move.executor");
+  assert.ok(contract);
+  assert.equal(contract.contract_type, "executor");
+  assert.equal(contract.capability_id, "crm_relationship_management");
+  assert.equal(contract.workflow_extension_id, "crm_pipeline_kanban");
+  assert.equal(contract.entrypoint, "forge_crm.move_opportunity_stage");
+  assert.deepEqual(contract.permissions, ["crm.workflow.mutate"]);
+  assert.ok(contract.inputs.includes("opportunity"));
+  assert.ok(contract.inputs.includes("pipeline_move"));
+  assert.ok(contract.outputs.includes("crm_pipeline_board"));
+  assert.ok(contract.outputs.includes("crm_stage_change"));
+  assert.ok(contract.outputs.includes("crm_forecast_report"));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("does not persist")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("multiple funnels")));
+
+  const artifactTypes = new Set(manifest.artifact_types.map((artifact) => artifact.id));
+  assert.ok(artifactTypes.has("crm_pipeline_board"));
+  assert.ok(artifactTypes.has("crm_stage_change"));
+});
+
 test("manifest exposes CRM document generation as a Forge-gated executor", () => {
   const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.document.generator.executor");
   assert.ok(contract);

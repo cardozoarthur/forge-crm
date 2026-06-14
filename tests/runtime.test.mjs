@@ -149,6 +149,60 @@ test("relationship timeline records entity and pipeline events as Forge artifact
   assert.ok(result.events.some((event) => event.kind === "crm.forecast.updated"));
 });
 
+test("opportunity pipeline executor moves cards across funnels as Forge events", () => {
+  assert.equal(typeof runtime.buildOpportunityPipelineMoveResult, "function");
+
+  const result = runtime.buildOpportunityPipelineMoveResult(
+    workerRequest(
+      "forge_crm.move_opportunity_stage",
+      {
+        tenant_context: { tenant_id: "demo" },
+        opportunity: {
+          id: "opp-001",
+          account: "Acme Logistics",
+          amount: 180000,
+          owner: "sales-owner"
+        },
+        pipeline_move: {
+          funnel_id: "enterprise",
+          from_stage: "discovery",
+          to_stage: "proposal",
+          reason: "approved offer terms attached",
+          owner: "sales-owner"
+        },
+        board_context: {
+          lanes: ["research", "discovery", "proposal", "negotiation", "won", "lost"],
+          wip_limits: { proposal: 12 }
+        },
+        forecast_policy: {
+          probability: 0.64,
+          period: "2026-Q3"
+        }
+      },
+      { contract_id: "crm.pipeline.stage_move.executor", task_ref: "pipeline-stage-move-test" }
+    )
+  );
+
+  assert.equal(result.schema_version, "forge.addon_executor_result.v1");
+  assert.equal(result.status, "completed");
+  assert.equal(result.outputs.tenant_id, "demo");
+  assert.equal(result.outputs.opportunity_id, "opp-001");
+  assert.equal(result.outputs.workflow_id, "crm.opportunity.pipeline");
+  assert.equal(result.outputs.funnel_id, "enterprise");
+  assert.equal(result.outputs.from_stage, "discovery");
+  assert.equal(result.outputs.to_stage, "proposal");
+  assert.equal(result.outputs.stage_move_state, "moved");
+  assert.equal(result.outputs.forecast_amount, 115200);
+  assert.equal(result.outputs.mutates_crm_state, false);
+  assert.equal(result.outputs.forge_event_sourced, true);
+
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_pipeline_board"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_stage_change"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_forecast_report"));
+  assert.ok(result.events.some((event) => event.kind === "crm.opportunity.stage_changed"));
+  assert.ok(result.events.some((event) => event.kind === "crm.forecast.updated"));
+});
+
 test("tenant bootstrap runtime returns a workflow-backed CRM pack", () => {
   const result = buildTenantBootstrapResult(
     workerRequest("forge_crm.bootstrap_tenant", {
