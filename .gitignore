@@ -4,4 +4,4 @@ dist/
 .forge/
 *.log
 *.package.json
-
+!forge-crm-*.package.json

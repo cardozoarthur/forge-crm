@@ -1,14 +1,36 @@
 import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { promisify } from "node:util";
 
 const manifest = JSON.parse(await readFile(new URL("../addons/forge-crm.json", import.meta.url), "utf8"));
+const packageJson = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
+const execFileAsync = promisify(execFile);
 
 test("manifest declares Forge CRM as an enabled Addon", () => {
   assert.equal(manifest.schema_version, "forge.addon_manifest.v1");
   assert.equal(manifest.id, "forge.addon.crm");
   assert.equal(manifest.lifecycle, "enabled");
   assert.equal(manifest.dependencies[0].id, "forge.core.kernel");
+});
+
+test("public Addon package is versioned and not ignored by the repository", async () => {
+  const packagePath = `forge-crm-${packageJson.version}.package.json`;
+  const addonPackage = JSON.parse(await readFile(new URL(`../${packagePath}`, import.meta.url), "utf8"));
+
+  assert.equal(addonPackage.schema_version, "forge.addon_package.v1");
+  assert.equal(addonPackage.status, "addon_package_ready");
+  assert.equal(addonPackage.package_id, `${manifest.id}@${manifest.version}`);
+  assert.equal(addonPackage.distribution.repository, "https://github.com/cardozoarthur/forge-crm");
+  assert.equal(addonPackage.distribution.channel, "stable");
+  assert.equal(addonPackage.validation.status, "valid");
+  assert.deepEqual(addonPackage.summary.dependencies, ["forge.core.kernel >=0.1.0"]);
+
+  await assert.rejects(
+    () => execFileAsync("git", ["check-ignore", "-q", packagePath], { cwd: new URL("..", import.meta.url) }),
+    (error) => error.code === 1
+  );
 });
 
 test("manifest keeps CRM automation behind Forge capabilities and permissions", () => {

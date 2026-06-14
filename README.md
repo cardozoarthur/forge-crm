@@ -52,9 +52,11 @@ forge addons package \
   --manifest addons/forge-crm.json \
   --repository https://github.com/cardozoarthur/forge-crm \
   --channel stable \
-  --package-path /tmp/forge-crm.package.json \
+  --package-path forge-crm-0.1.0.package.json \
   --output json
 ```
+
+The versioned package `forge-crm-0.1.0.package.json` is committed to this public repository so Forge operators can inspect the Addon manifest, validation receipt, runtime contracts, dependency list and distribution metadata without relying on a local build artifact.
 
 Run the local CRM runtime worker:
 

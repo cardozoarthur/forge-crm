@@ -1,0 +1,2420 @@
+{
+  "schema_version": "forge.addon_package.v1",
+  "status": "addon_package_ready",
+  "package_id": "forge.addon.crm@0.1.0",
+  "addon_id": "forge.addon.crm",
+  "addon_name": "Forge CRM",
+  "addon_version": "0.1.0",
+  "manifest_path": "addons/forge-crm.json",
+  "manifest_sha256": "0e343ac5210ff5249a18eea5ba7979a167774a31be3a650241952d98aae7df83",
+  "manifest_canonical_sha256": "352a5d74cea5614b340ebb611c5a77992178fc1a00d7fcc0ec57072976e2d740",
+  "manifest_bytes": 60607,
+  "distribution": {
+    "repository": "https://github.com/cardozoarthur/forge-crm",
+    "channel": "stable",
+    "source": "file:addons/forge-crm.json",
+    "update_strategy": "manual_install_upgrade_downgrade",
+    "install_command": "forge addons install --manifest addons/forge-crm.json --output json",
+    "upgrade_command": "forge addons upgrade --manifest addons/forge-crm.json --output json",
+    "downgrade_command": "forge addons downgrade --manifest addons/forge-crm.json --output json"
+  },
+  "signature": {
+    "status": "unsigned",
+    "scheme": "ed25519_detached",
+    "signature": "",
+    "public_key": "",
+    "payload_sha256": "ebad1aaaf88a0bf4152eb9834b3595aa45482a026e3363030dcb7c2bba92c3ca",
+    "verification_note": "package records detached signature metadata; trust verification is a marketplace policy gate"
+  },
+  "summary": {
+    "capability_count": 8,
+    "dependency_count": 1,
+    "permission_count": 5,
+    "workflow_extension_count": 17,
+    "runtime_contract_count": 23,
+    "view_count": 8,
+    "event_adapter_count": 2,
+    "integration_count": 4,
+    "capabilities": [
+      "crm_workflow_factory",
+      "crm_relationship_management",
+      "crm_commercial_operations",
+      "crm_support_omnichannel",
+      "crm_marketing_automation",
+      "crm_internal_operations",
+      "crm_ai_automation",
+      "crm_observability"
+    ],
+    "dependencies": [
+      "forge.core.kernel >=0.1.0"
+    ],
+    "permissions": [
+      "crm.workflow.mutate",
+      "crm.omnichannel.ingest",
+      "crm.document.generate",
+      "crm.ai.recommend",
+      "crm.observability.inspect"
+    ],
+    "runtime_contracts": [
+      "crm.factory.planning",
+      "crm.lead.classifier.executor",
+      "crm.relationship.timeline.executor",
+      "crm.pipeline.stage_move.executor",
+      "crm.ai.operating_copilot.executor",
+      "crm.memory.promotion.executor",
+      "crm.observability.inspector.executor",
+      "crm.operating.readiness.executor",
+      "crm.tenant.bootstrap.executor",
+      "crm.operating.snapshot.executor",
+      "crm.proposal.generator.executor",
+      "crm.commercial.followup_forecast.executor",
+      "crm.commercial.account_management.executor",
+      "crm.commercial.contract_signature.executor",
+      "crm.document.generator.executor",
+      "crm.document.validator",
+      "crm.document.approval.executor",
+      "crm.operations.project_handoff.executor",
+      "crm.marketing.campaign_automation.executor",
+      "crm.marketing.form_capture.executor",
+      "crm.support.omnichannel_message.executor",
+      "crm.support.ticket_sla.executor",
+      "crm.omnichannel.handoff"
+    ],
+    "views": [
+      "crm.system-map",
+      "crm.pipeline-kanban",
+      "crm.relationship-graph",
+      "crm.commercial-command",
+      "crm.support-queue",
+      "crm.marketing-calendar",
+      "crm.document-queue",
+      "crm.ai-workbench"
+    ],
+    "compatibility": {
+      "forge_version_req": "",
+      "api_versions": [
+        "forge.addon_manifest.v1",
+        "forge.addon_runtime_contracts.v1",
+        "forge.addon_views.v1",
+        "forge.addon_event_adapters.v1"
+      ],
+      "runtimes": [
+        "external_api"
+      ],
+      "features": [
+        "addon_catalog",
+        "addon_permissions",
+        "addon_runtime_contracts",
+        "addon_runtime_workers",
+        "addon_views",
+        "event_adapters",
+        "memory_providers",
+        "context_providers"
+      ],
+      "platforms": [],
+      "migration_count": 0,
+      "migrations": []
+    }
+  },
+  "validation": {
+    "schema_version": "forge.addon_validation.v1",
+    "status": "valid",
+    "addon_count": 10,
+    "capability_count": 26,
+    "issue_count": 0,
+    "issues": []
+  },
+  "manifest": {
+    "schema_version": "forge.addon_manifest.v1",
+    "id": "forge.addon.crm",
+    "name": "Forge CRM",
+    "version": "0.1.0",
+    "description": "Workflow-first enterprise CRM reference product proving Forge as a factory/framework for agentic workflow systems.",
+    "lifecycle": "enabled",
+    "source": "file:addons/forge-crm.json",
+    "dependencies": [
+      {
+        "id": "forge.core.kernel",
+        "version_req": ">=0.1.0",
+        "required": true
+      }
+    ],
+    "permissions": [
+      {
+        "id": "crm.workflow.mutate",
+        "description": "Create, update and resume CRM workflows through Forge.",
+        "risk": "high",
+        "requires_human_approval": true,
+        "tools": [],
+        "resources": [
+          "crm.lead",
+          "crm.opportunity",
+          "crm.ticket",
+          "crm.document",
+          "crm.campaign"
+        ],
+        "integrations": [],
+        "actions": [
+          "start_workflow",
+          "continue_workflow",
+          "modify_workflow",
+          "pause_workflow",
+          "resume_workflow",
+          "complete_workflow"
+        ],
+        "tenant_scopes": [
+          "organization",
+          "project"
+        ]
+      },
+      {
+        "id": "crm.omnichannel.ingest",
+        "description": "Ingest CRM messages from approved omnichannel adapters into Forge event inbox.",
+        "risk": "medium",
+        "requires_human_approval": true,
+        "tools": [],
+        "resources": [],
+        "integrations": [
+          "email",
+          "whatsapp",
+          "telegram",
+          "chat"
+        ],
+        "actions": [
+          "start_workflow",
+          "continue_workflow"
+        ],
+        "tenant_scopes": [
+          "organization"
+        ]
+      },
+      {
+        "id": "crm.document.generate",
+        "description": "Generate proposals, contracts, emails, campaigns, reports and presentations as Forge artifacts.",
+        "risk": "medium",
+        "requires_human_approval": true,
+        "tools": [],
+        "resources": [
+          "crm.proposal",
+          "crm.contract",
+          "crm.report",
+          "crm.email",
+          "crm.presentation"
+        ],
+        "integrations": [],
+        "actions": [
+          "attach_artifact",
+          "request_approval",
+          "complete_workflow"
+        ],
+        "tenant_scopes": [
+          "organization",
+          "project"
+        ]
+      },
+      {
+        "id": "crm.ai.recommend",
+        "description": "Run bounded CRM copilots for lead classification, risk analysis and next-best-action recommendations.",
+        "risk": "medium",
+        "requires_human_approval": false,
+        "tools": [],
+        "resources": [],
+        "integrations": [],
+        "actions": [
+          "read_context",
+          "write_recommendation",
+          "attach_artifact"
+        ],
+        "tenant_scopes": [
+          "organization",
+          "project",
+          "processing"
+        ]
+      },
+      {
+        "id": "crm.observability.inspect",
+        "description": "Inspect CRM audit, lineage, costs, events, logs, metrics and workflow state through Forge observability.",
+        "risk": "medium",
+        "requires_human_approval": false,
+        "tools": [],
+        "resources": [],
+        "integrations": [],
+        "actions": [
+          "read_events",
+          "read_artifacts",
+          "read_costs",
+          "read_metrics",
+          "attach_artifact"
+        ],
+        "tenant_scopes": [
+          "organization",
+          "project"
+        ]
+      }
+    ],
+    "capabilities": [
+      {
+        "id": "crm_workflow_factory",
+        "title": "CRM workflow system factory",
+        "description": "Create CRM systems as Forge-native workflow applications rather than separate SaaS silos.",
+        "domains": [
+          "crm",
+          "workflow_factory",
+          "agentic_systems"
+        ],
+        "keywords": [
+          "crm",
+          "forge-crm",
+          "workflow-first",
+          "agentic crm",
+          "factory"
+        ],
+        "requires_capabilities": [
+          "workflow_runtime",
+          "dynamic_workflow",
+          "event_engine",
+          "context_routing",
+          "memory_governance",
+          "observability",
+          "addon_registry"
+        ],
+        "workflow_extensions": [
+          "crm_workflow_factory_system_bootstrap",
+          "crm_enterprise_readiness"
+        ],
+        "deliverables": [
+          "CRM system blueprint",
+          "workflow-backed entity model",
+          "CRM operating readiness package",
+          "Forge Core gap report"
+        ],
+        "constraints": [
+          "CRM automation must be routed through Forge runtime contracts",
+          "Core limitations must become forge-core backlog before parallel CRM shortcuts"
+        ],
+        "risks": [
+          "Domain implementation may mask Core gaps if not explicitly reported",
+          "External channel integrations require approval-gated adapters"
+        ],
+        "unknowns": [],
+        "event_triggers": [],
+        "artifact_types": [
+          "crm_system_blueprint",
+          "crm_core_gap_report",
+          "crm_workflow_pack",
+          "crm_operating_model",
+          "crm_operating_snapshot",
+          "crm_operating_readiness_report",
+          "crm_user_outcome_manifest",
+          "crm_domain_coverage_matrix",
+          "crm_business_runbook"
+        ],
+        "view_ids": [
+          "crm.system-map"
+        ]
+      },
+      {
+        "id": "crm_relationship_management",
+        "title": "CRM relationship management",
+        "description": "Leads, contacts, companies, opportunities, pipeline Kanban, multiple funnels, history and unified timeline.",
+        "domains": [
+          "crm",
+          "sales"
+        ],
+        "keywords": [
+          "lead",
+          "contact",
+          "company",
+          "opportunity",
+          "pipeline",
+          "kanban",
+          "timeline"
+        ],
+        "requires_capabilities": [
+          "workflow_runtime",
+          "memory_governance",
+          "observability"
+        ],
+        "workflow_extensions": [
+          "crm_entity_lifecycle",
+          "crm_pipeline_kanban"
+        ],
+        "deliverables": [
+          "Relationship graph",
+          "Unified CRM timeline",
+          "Pipeline workflow state"
+        ],
+        "constraints": [],
+        "risks": [],
+        "unknowns": [],
+        "event_triggers": [],
+        "artifact_types": [
+          "crm_timeline_snapshot",
+          "crm_pipeline_board",
+          "crm_stage_change",
+          "crm_forecast_report"
+        ],
+        "view_ids": [
+          "crm.pipeline-kanban",
+          "crm.relationship-graph"
+        ]
+      },
+      {
+        "id": "crm_commercial_operations",
+        "title": "CRM commercial operations",
+        "description": "Proposals, contracts, signatures, follow-ups, forecast, goals, commissions and account management.",
+        "domains": [
+          "crm",
+          "sales",
+          "finance"
+        ],
+        "keywords": [
+          "proposal",
+          "contract",
+          "signature",
+          "forecast",
+          "commission",
+          "account"
+        ],
+        "requires_capabilities": [
+          "workflow_runtime",
+          "dynamic_workflow",
+          "observability"
+        ],
+        "workflow_extensions": [
+          "crm_proposal_generation",
+          "crm_contract_lifecycle",
+          "crm_followup_sequence",
+          "crm_forecast_review",
+          "crm_account_management"
+        ],
+        "deliverables": [
+          "Proposal workflow",
+          "Contract workflow",
+          "Forecast report",
+          "Account plan"
+        ],
+        "constraints": [],
+        "risks": [],
+        "unknowns": [],
+        "event_triggers": [],
+        "artifact_types": [
+          "crm_proposal",
+          "crm_contract",
+          "crm_followup_plan",
+          "crm_forecast_report",
+          "crm_commission_record",
+          "crm_signature_receipt",
+          "crm_renewal_plan",
+          "crm_account_plan",
+          "crm_health_report",
+          "crm_report"
+        ],
+        "view_ids": [
+          "crm.commercial-command"
+        ]
+      },
+      {
+        "id": "crm_support_omnichannel",
+        "title": "CRM omnichannel support",
+        "description": "Tickets, SLA, chat, WhatsApp, Telegram, email and central omnichannel queues.",
+        "domains": [
+          "crm",
+          "support",
+          "omnichannel"
+        ],
+        "keywords": [
+          "ticket",
+          "sla",
+          "chat",
+          "whatsapp",
+          "telegram",
+          "email",
+          "omnichannel"
+        ],
+        "requires_capabilities": [
+          "workflow_runtime",
+          "event_engine",
+          "observability"
+        ],
+        "workflow_extensions": [
+          "crm_ticket_sla",
+          "crm_omnichannel_message"
+        ],
+        "deliverables": [
+          "Support queue",
+          "SLA workflow",
+          "Channel handoff history",
+          "Channel intake receipts"
+        ],
+        "constraints": [],
+        "risks": [],
+        "unknowns": [],
+        "event_triggers": [
+          "crm.message.received",
+          "crm.ticket.created"
+        ],
+        "artifact_types": [
+          "crm_support_summary",
+          "crm_message_thread",
+          "crm_channel_receipt"
+        ],
+        "view_ids": [
+          "crm.support-queue"
+        ]
+      },
+      {
+        "id": "crm_marketing_automation",
+        "title": "CRM marketing automation",
+        "description": "Campaigns, segmentation, automations, landing pages, forms and lead nurturing as workflows.",
+        "domains": [
+          "crm",
+          "marketing"
+        ],
+        "keywords": [
+          "campaign",
+          "segmentation",
+          "landing page",
+          "form",
+          "nurturing",
+          "automation"
+        ],
+        "requires_capabilities": [
+          "workflow_runtime",
+          "event_engine",
+          "dynamic_workflow"
+        ],
+        "workflow_extensions": [
+          "crm_campaign_lifecycle",
+          "crm_lead_nurture"
+        ],
+        "deliverables": [
+          "Campaign workflow",
+          "Segment definition",
+          "Lead nurture sequence"
+        ],
+        "constraints": [],
+        "risks": [],
+        "unknowns": [],
+        "event_triggers": [],
+        "artifact_types": [
+          "crm_campaign",
+          "crm_segment",
+          "crm_automation_plan",
+          "crm_form_submission",
+          "crm_lead_capture",
+          "crm_consent_record",
+          "crm_email",
+          "crm_landing_page",
+          "crm_presentation"
+        ],
+        "view_ids": [
+          "crm.marketing-calendar"
+        ]
+      },
+      {
+        "id": "crm_internal_operations",
+        "title": "CRM internal operations",
+        "description": "Projects, tasks, approvals, documents, internal flows and team handoffs.",
+        "domains": [
+          "crm",
+          "operations"
+        ],
+        "keywords": [
+          "project",
+          "task",
+          "approval",
+          "document",
+          "handoff"
+        ],
+        "requires_capabilities": [
+          "workflow_runtime",
+          "human_collaboration",
+          "observability"
+        ],
+        "workflow_extensions": [
+          "crm_project_handoff",
+          "crm_document_approval"
+        ],
+        "deliverables": [
+          "Handoff workflow",
+          "Approval queue",
+          "Document audit trail"
+        ],
+        "constraints": [],
+        "risks": [],
+        "unknowns": [],
+        "event_triggers": [],
+        "artifact_types": [
+          "crm_project_plan",
+          "crm_task_plan",
+          "crm_document",
+          "crm_presentation",
+          "crm_handoff_record"
+        ],
+        "view_ids": [
+          "crm.document-queue"
+        ]
+      },
+      {
+        "id": "crm_ai_automation",
+        "title": "CRM AI and automation",
+        "description": "Lead classification, opportunity prioritization, proposal/document generation, executive summaries, risk analysis and next-step recommendations.",
+        "domains": [
+          "crm",
+          "ai",
+          "automation"
+        ],
+        "keywords": [
+          "lead classification",
+          "opportunity priority",
+          "proposal generation",
+          "risk analysis",
+          "next best action",
+          "copilot"
+        ],
+        "requires_capabilities": [
+          "workflow_runtime",
+          "context_routing",
+          "memory_governance",
+          "observability"
+        ],
+        "workflow_extensions": [
+          "crm_ai_copilot_recommendation"
+        ],
+        "deliverables": [
+          "Copilot recommendation artifact",
+          "Lead score evidence",
+          "Risk analysis artifact",
+          "Executive operating summary"
+        ],
+        "constraints": [],
+        "risks": [],
+        "unknowns": [],
+        "event_triggers": [],
+        "artifact_types": [
+          "crm_ai_recommendation",
+          "crm_risk_analysis",
+          "crm_report"
+        ],
+        "view_ids": [
+          "crm.ai-workbench"
+        ]
+      },
+      {
+        "id": "crm_observability",
+        "title": "CRM operational observability",
+        "description": "Audit, lineage, costs, events, logs, metrics and state inspection as Forge-owned CRM workflow artifacts.",
+        "domains": [
+          "crm",
+          "operations",
+          "observability"
+        ],
+        "keywords": [
+          "audit",
+          "lineage",
+          "cost",
+          "events",
+          "logs",
+          "metrics",
+          "state inspection"
+        ],
+        "requires_capabilities": [
+          "workflow_runtime",
+          "event_engine",
+          "observability"
+        ],
+        "workflow_extensions": [
+          "crm_operational_observability"
+        ],
+        "deliverables": [
+          "CRM audit report",
+          "CRM lineage map",
+          "CRM cost report",
+          "CRM metric snapshot"
+        ],
+        "constraints": [],
+        "risks": [],
+        "unknowns": [],
+        "event_triggers": [],
+        "artifact_types": [
+          "crm_audit_report",
+          "crm_lineage_map",
+          "crm_cost_report",
+          "crm_metric_snapshot"
+        ],
+        "view_ids": [
+          "crm.system-map"
+        ]
+      }
+    ],
+    "workflows": [
+      {
+        "id": "crm_workflow_factory_system_bootstrap",
+        "kind": "planning",
+        "description": "Create a CRM system blueprint and implementation plan using Forge as the workflow application factory."
+      },
+      {
+        "id": "crm_entity_lifecycle",
+        "kind": "entity_workflow",
+        "description": "Manage leads, contacts, companies and opportunities as audited workflow-backed entities."
+      },
+      {
+        "id": "crm_pipeline_kanban",
+        "kind": "visual_workflow",
+        "description": "Render opportunity stages and movement as Forge workflow state transitions."
+      },
+      {
+        "id": "crm_proposal_generation",
+        "kind": "document_workflow",
+        "description": "Generate, approve and attach sales proposals as Forge artifacts."
+      },
+      {
+        "id": "crm_contract_lifecycle",
+        "kind": "document_workflow",
+        "description": "Draft, review, approve, sign and renew contracts with lineage."
+      },
+      {
+        "id": "crm_followup_sequence",
+        "kind": "schedule_workflow",
+        "description": "Schedule follow-ups through Forge wait states and triggers."
+      },
+      {
+        "id": "crm_forecast_review",
+        "kind": "report_workflow",
+        "description": "Generate forecast, targets and commission evidence from workflow events."
+      },
+      {
+        "id": "crm_account_management",
+        "kind": "commercial_workflow",
+        "description": "Review account health, renewals, expansion and success-plan tasks through Forge workflow state."
+      },
+      {
+        "id": "crm_ticket_sla",
+        "kind": "support_workflow",
+        "description": "Run ticket and SLA workflows with ownership, waiting states and escalation."
+      },
+      {
+        "id": "crm_omnichannel_message",
+        "kind": "event_workflow",
+        "description": "Route chat, WhatsApp, Telegram and email events into CRM workflows."
+      },
+      {
+        "id": "crm_campaign_lifecycle",
+        "kind": "marketing_workflow",
+        "description": "Plan, approve, run and report campaigns as workflow artifacts."
+      },
+      {
+        "id": "crm_lead_nurture",
+        "kind": "schedule_workflow",
+        "description": "Run lead nurturing automations through Forge schedules and triggers."
+      },
+      {
+        "id": "crm_project_handoff",
+        "kind": "operations_workflow",
+        "description": "Coordinate post-sale projects, tasks and team handoffs."
+      },
+      {
+        "id": "crm_document_approval",
+        "kind": "approval_workflow",
+        "description": "Manage CRM document queues, approvals and audit trail."
+      },
+      {
+        "id": "crm_operational_observability",
+        "kind": "observability_workflow",
+        "description": "Inspect CRM audit, lineage, costs, events, logs, metrics and state from Forge-owned runtime evidence."
+      },
+      {
+        "id": "crm_enterprise_readiness",
+        "kind": "operations_workflow",
+        "description": "Map enterprise CRM success criteria to user-facing deliverables backed by Forge workflows, artifacts, events and validation evidence."
+      },
+      {
+        "id": "crm_ai_copilot_recommendation",
+        "kind": "agentic_workflow",
+        "description": "Run bounded copilots for classification, prioritization and recommendations."
+      }
+    ],
+    "runtime_contracts": [
+      {
+        "id": "crm.factory.planning",
+        "title": "CRM system factory planner",
+        "contract_type": "planning_strategy",
+        "capability_id": "crm_workflow_factory",
+        "workflow_extension_id": "crm_workflow_factory_system_bootstrap",
+        "runtime": "external_api",
+        "entrypoint": "forge_crm.plan_system",
+        "inputs": [
+          "goal",
+          "tenant_context",
+          "crm_scope",
+          "forge_runtime_contracts"
+        ],
+        "outputs": [
+          "forge.workflow_plan",
+          "forge.crm_system_blueprint"
+        ],
+        "permissions": [
+          "crm.workflow.mutate"
+        ],
+        "constraints": [
+          "planner output is advisory until Forge validates and promotes it",
+          "Core gaps must be reported as forge-core backlog"
+        ]
+      },
+      {
+        "id": "crm.lead.classifier.executor",
+        "title": "CRM lead classifier",
+        "contract_type": "executor",
+        "capability_id": "crm_ai_automation",
+        "workflow_extension_id": "crm_ai_copilot_recommendation",
+        "runtime": "external_api",
+        "entrypoint": "forge_crm.classify_lead",
+        "inputs": [
+          "lead_profile",
+          "organization_memory",
+          "pipeline_context"
+        ],
+        "outputs": [
+          "crm_ai_recommendation",
+          "crm_timeline_snapshot"
+        ],
+        "permissions": [
+          "crm.ai.recommend"
+        ],
+        "constraints": [
+          "classification must include evidence and confidence",
+          "recommendations do not mutate customer state without workflow approval"
+        ]
+      },
+      {
+        "id": "crm.relationship.timeline.executor",
+        "title": "CRM relationship timeline recorder",
+        "contract_type": "executor",
+        "capability_id": "crm_relationship_management",
+        "workflow_extension_id": "crm_entity_lifecycle",
+        "runtime": "external_api",
+        "entrypoint": "forge_crm.record_relationship_event",
+        "inputs": [
+          "entity",
+          "relationships",
+          "timeline_event",
+          "pipeline",
+          "tenant_context"
+        ],
+        "outputs": [
+          "crm_timeline_snapshot",
+          "crm_entity_model"
+        ],
+        "permissions": [
+          "crm.workflow.mutate"
+        ],
+        "constraints": [
+          "relationship timeline executor does not persist CRM state outside Forge",
+          "entity, relationship, pipeline and forecast changes must be promoted from Forge workflow artifacts and events",
+          "pipeline stage movement must include owner, reason and workflow lineage"
+        ]
+      },
+      {
+        "id": "crm.pipeline.stage_move.executor",
+        "title": "CRM pipeline stage movement",
+        "contract_type": "executor",
+        "capability_id": "crm_relationship_management",
+        "workflow_extension_id": "crm_pipeline_kanban",
+        "runtime": "external_api",
+        "entrypoint": "forge_crm.move_opportunity_stage",
+        "inputs": [
+          "opportunity",
+          "pipeline_move",
+          "board_context",
+          "forecast_policy",
+          "tenant_context"
+        ],
+        "outputs": [
+          "crm_pipeline_board",
+          "crm_stage_change",
+          "crm_forecast_report"
+        ],
+        "permissions": [
+          "crm.workflow.mutate"
+        ],
+        "constraints": [
+          "pipeline stage movement does not persist CRM state outside Forge",
+          "multiple funnels and Kanban lanes must be represented as Forge artifacts",
+          "stage movement and forecast changes must be promoted as Forge workflow events"
+        ]
+      },
+      {
+        "id": "crm.ai.operating_copilot.executor",
+        "title": "CRM operating copilot",
+        "contract_type": "executor",
+        "capability_id": "crm_ai_automation",
+        "workflow_extension_id": "crm_ai_copilot_recommendation",
+        "runtime": "external_api",
+        "entrypoint": "forge_crm.operating_copilot",
+        "inputs": [
+          "operating_snapshot",
+          "opportunities",
+          "tickets",
+          "documents",
+          "campaigns",
+          "organization_memory"
+        ],
+        "outputs": [
+          "crm_ai_recommendation",
+          "crm_risk_analysis",
+          "crm_report"
+        ],
+        "permissions": [
+          "crm.ai.recommend"
+        ],
+        "constraints": [
+          "operating copilot does not mutate CRM state directly",
+          "priority, risk and next-step recommendations require Forge workflow approval before state mutation",
+          "executive summaries must cite Forge workflow artifacts, events or memory context"
+        ]
+      },
+      {
+        "id": "crm.memory.promotion.executor",
+        "title": "CRM governed memory promotion preparation",
+        "contract_type": "executor",
+        "capability_id": "crm_ai_automation",
+        "workflow_extension_id": "crm_ai_copilot_recommendation",
+        "runtime": "external_api",
+        "entrypoint": "forge_crm.prepare_memory_promotion",
+        "inputs": [
+          "source_memory",
+          "curated_knowledge",
+          "promotion_policy",
+          "tenant_context"
+        ],
+        "outputs": [
+          "crm_knowledge_summary",
+          "crm_memory_promotion_request"
+        ],
+        "permissions": [
+          "crm.ai.recommend"
+        ],
+        "constraints": [
+          "memory promotion preparation does not write memory directly",
+          "actual promotion must be executed by forge memory promote with approval and lineage",
+          "raw private processing memory must be summarized before organization or global sharing"
+        ]
+      },
+      {
+        "id": "crm.observability.inspector.executor",
+        "title": "CRM observability inspector",
+        "contract_type": "executor",
+        "capability_id": "crm_observability",
+        "workflow_extension_id": "crm_operational_observability",
+        "runtime": "external_api",
+        "entrypoint": "forge_crm.inspect_observability",
+        "inputs": [
+          "workflow_state",
+          "event_timeline",
+          "artifact_lineage",
+          "cost_entries",
+          "metric_samples",
+          "log_entries",
+          "tenant_context"
+        ],
+        "outputs": [
+          "crm_audit_report",
+          "crm_lineage_map",
+          "crm_cost_report",
+          "crm_metric_snapshot"
+        ],
+        "permissions": [
+          "crm.observability.inspect"
+        ],
+        "constraints": [
+          "observability inspection is derived from Forge workflow artifacts, events, costs, metrics and logs",
+          "observability inspection does not create CRM-local observability state",
+          "remediation from observations must be promoted through Forge workflow mutation or approval"
+        ]
+      },
+      {
+        "id": "crm.operating.readiness.executor",
+        "title": "CRM operating readiness package",
+        "contract_type": "executor",
+        "capability_id": "crm_workflow_factory",
+        "workflow_extension_id": "crm_enterprise_readiness",
+        "runtime": "external_api",
+        "entrypoint": "forge_crm.generate_operating_readiness",
+        "inputs": [
+          "workflow_pack",
+          "operating_snapshot",
+          "validation_evidence",
+          "success_criteria",
+          "tenant_context"
+        ],
+        "outputs": [
+          "crm_operating_readiness_report",
+          "crm_user_outcome_manifest",
+          "crm_domain_coverage_matrix",
+          "crm_business_runbook"
+        ],
+        "permissions": [
+          "crm.observability.inspect"
+        ],
+        "constraints": [
+          "readiness must map success criteria to user-facing deliverables",
+          "readiness evidence must come from Forge workflows, artifacts, events and validation gates",
+          "readiness inspection does not create CRM-local state"
+        ]
+      },
+      {
+        "id": "crm.tenant.bootstrap.executor",
+        "title": "CRM tenant workflow bootstrap",
+        "contract_type": "executor",
+        "capability_id": "crm_workflow_factory",
+        "workflow_extension_id": "crm_workflow_factory_system_bootstrap",
+        "runtime": "external_api",
+        "entrypoint": "forge_crm.bootstrap_tenant",
+        "inputs": [
+          "tenant_context",
+          "crm_scope",
+          "operator_policy"
+        ],
+        "outputs": [
+          "crm_system_blueprint",
+          "crm_workflow_pack",
+          "crm_operating_model",
+          "crm_core_gap_report"
+        ],
+        "permissions": [
+          "crm.workflow.mutate"
+        ],
+        "constraints": [
+          "bootstrap produces Forge-owned workflow artifacts, not a CRM-local database",
+          "worker output remains advisory until Forge attaches artifacts and validates workflow mutations"
+        ]
+      },
+      {
+        "id": "crm.operating.snapshot.executor",
+        "title": "CRM operating snapshot",
+        "contract_type": "executor",
+        "capability_id": "crm_workflow_factory",
+        "workflow_extension_id": "crm_workflow_factory_system_bootstrap",
+        "runtime": "external_api",
+        "entrypoint": "forge_crm.operating_snapshot",
+        "inputs": [
+          "tenant_context",
+          "workflow_pack",
+          "operator_surface_policy"
+        ],
+        "outputs": [
+          "crm_operating_snapshot",
+          "crm_operating_model"
+        ],
+        "permissions": [
+          "crm.workflow.mutate"
+        ],
+        "constraints": [
+          "operating state is derived from Forge workflow artifacts and events",
+          "snapshot must not create a CRM-local database or parallel automation state"
+        ]
+      },
+      {
+        "id": "crm.proposal.generator.executor",
+        "title": "CRM proposal generator",
+        "contract_type": "executor",
+        "capability_id": "crm_commercial_operations",
+        "workflow_extension_id": "crm_proposal_generation",
+        "runtime": "external_api",
+        "entrypoint": "forge_crm.generate_proposal",
+        "inputs": [
+          "opportunity",
+          "account_context",
+          "approved_offer_terms"
+        ],
+        "outputs": [
+          "crm_proposal",
+          "crm_document"
+        ],
+        "permissions": [
+          "crm.document.generate"
+        ],
+        "constraints": [
+          "proposal artifact must be attached to a workflow",
+          "approval is required before external delivery"
+        ]
+      },
+      {
+        "id": "crm.commercial.followup_forecast.executor",
+        "title": "CRM follow-up forecast and commission review",
+        "contract_type": "executor",
+        "capability_id": "crm_commercial_operations",
+        "workflow_extension_id": "crm_followup_sequence",
+        "runtime": "external_api",
+        "entrypoint": "forge_crm.review_followup_forecast",
+        "inputs": [
+          "opportunity",
+          "followup_policy",
+          "forecast_policy",
+          "commission_policy",
+          "tenant_context"
+        ],
+        "outputs": [
+          "crm_followup_plan",
+          "crm_email",
+          "crm_forecast_report",
+          "crm_commission_record"
+        ],
+        "permissions": [
+          "crm.workflow.mutate",
+          "crm.document.generate"
+        ],
+        "constraints": [
+          "follow-up forecast executor does not persist CRM state outside Forge",
+          "scheduled follow-ups, forecast reviews, goals and commission accrual must be represented as Forge workflow events",
+          "commission evidence is forecast-only until the contract or revenue workflow validates it"
+        ]
+      },
+      {
+        "id": "crm.commercial.account_management.executor",
+        "title": "CRM account management review",
+        "contract_type": "executor",
+        "capability_id": "crm_commercial_operations",
+        "workflow_extension_id": "crm_account_management",
+        "runtime": "external_api",
+        "entrypoint": "forge_crm.manage_account",
+        "inputs": [
+          "account",
+          "health_signals",
+          "expansion_opportunities",
+          "success_plan",
+          "tenant_context"
+        ],
+        "outputs": [
+          "crm_account_plan",
+          "crm_health_report",
+          "crm_forecast_report",
+          "crm_task_plan"
+        ],
+        "permissions": [
+          "crm.workflow.mutate"
+        ],
+        "constraints": [
+          "account management review does not persist CRM state outside Forge",
+          "renewal and expansion states must be represented as Forge workflow events",
+          "success-plan actions must be emitted as Forge-owned task plans"
+        ]
+      },
+      {
+        "id": "crm.commercial.contract_signature.executor",
+        "title": "CRM contract signature lifecycle",
+        "contract_type": "executor",
+        "capability_id": "crm_commercial_operations",
+        "workflow_extension_id": "crm_contract_lifecycle",
+        "runtime": "external_api",
+        "entrypoint": "forge_crm.manage_contract_signature",
+        "inputs": [
+          "contract",
+          "approval_policy",
+          "signature",
+          "renewal_policy",
+          "tenant_context"
+        ],
+        "outputs": [
+          "crm_contract",
+          "crm_signature_receipt",
+          "crm_renewal_plan",
+          "crm_report"
+        ],
+        "permissions": [
+          "crm.workflow.mutate",
+          "crm.document.generate"
+        ],
+        "constraints": [
+          "contract signature lifecycle does not persist CRM state outside Forge",
+          "signature receipt must be attached as a Forge artifact before signed state",
+          "renewal schedule must be represented as Forge workflow events"
+        ]
+      },
+      {
+        "id": "crm.document.generator.executor",
+        "title": "CRM document generator",
+        "contract_type": "executor",
+        "capability_id": "crm_internal_operations",
+        "workflow_extension_id": "crm_document_approval",
+        "runtime": "external_api",
+        "entrypoint": "forge_crm.generate_document",
+        "inputs": [
+          "document_kind",
+          "subject",
+          "brief",
+          "requested_artifacts",
+          "workflow_id",
+          "tenant_context"
+        ],
+        "outputs": [
+          "crm_document",
+          "crm_contract",
+          "crm_report",
+          "crm_email",
+          "crm_campaign",
+          "crm_landing_page",
+          "crm_presentation"
+        ],
+        "permissions": [
+          "crm.document.generate"
+        ],
+        "constraints": [
+          "generated artifacts must be attached to a Forge workflow",
+          "approval is required before external delivery or signature",
+          "document generator must not deliver externally or mutate CRM state directly"
+        ]
+      },
+      {
+        "id": "crm.document.validator",
+        "title": "CRM document validator",
+        "contract_type": "validator",
+        "capability_id": "crm_internal_operations",
+        "workflow_extension_id": "crm_document_approval",
+        "runtime": "external_api",
+        "entrypoint": "forge_crm.validate_document",
+        "inputs": [
+          "artifact_ref",
+          "approval_policy",
+          "lineage"
+        ],
+        "outputs": [
+          "validation_decision",
+          "rework_reason"
+        ],
+        "permissions": [
+          "crm.document.generate"
+        ],
+        "constraints": [
+          "failed validation returns the workflow to work with a reason"
+        ]
+      },
+      {
+        "id": "crm.document.approval.executor",
+        "title": "CRM document approval decision",
+        "contract_type": "executor",
+        "capability_id": "crm_internal_operations",
+        "workflow_extension_id": "crm_document_approval",
+        "runtime": "external_api",
+        "entrypoint": "forge_crm.record_document_approval",
+        "inputs": [
+          "document",
+          "approval_decision",
+          "validation_report",
+          "delivery_policy",
+          "tenant_context"
+        ],
+        "outputs": [
+          "crm_approval_record",
+          "crm_handoff_record"
+        ],
+        "permissions": [
+          "crm.workflow.mutate",
+          "crm.document.generate"
+        ],
+        "constraints": [
+          "approval decisions do not persist CRM state outside Forge",
+          "approved and rework states must be represented as Forge workflow events",
+          "external delivery is only unblocked after a recorded approval decision"
+        ]
+      },
+      {
+        "id": "crm.operations.project_handoff.executor",
+        "title": "CRM project handoff planner",
+        "contract_type": "executor",
+        "capability_id": "crm_internal_operations",
+        "workflow_extension_id": "crm_project_handoff",
+        "runtime": "external_api",
+        "entrypoint": "forge_crm.plan_project_handoff",
+        "inputs": [
+          "handoff_context",
+          "project",
+          "tasks",
+          "acceptance_policy",
+          "tenant_context"
+        ],
+        "outputs": [
+          "crm_project_plan",
+          "crm_task_plan",
+          "crm_handoff_record",
+          "crm_report"
+        ],
+        "permissions": [
+          "crm.workflow.mutate"
+        ],
+        "constraints": [
+          "project handoff planning does not persist CRM state outside Forge",
+          "tasks must include owner, workflow lineage and blocked reason when blocked",
+          "handoff acceptance must be represented as Forge workflow events"
+        ]
+      },
+      {
+        "id": "crm.marketing.campaign_automation.executor",
+        "title": "CRM campaign automation",
+        "contract_type": "executor",
+        "capability_id": "crm_marketing_automation",
+        "workflow_extension_id": "crm_campaign_lifecycle",
+        "runtime": "external_api",
+        "entrypoint": "forge_crm.automate_campaign",
+        "inputs": [
+          "campaign",
+          "segment",
+          "assets",
+          "nurture_policy",
+          "tenant_context"
+        ],
+        "outputs": [
+          "crm_campaign",
+          "crm_segment",
+          "crm_automation_plan",
+          "crm_landing_page"
+        ],
+        "permissions": [
+          "crm.workflow.mutate",
+          "crm.document.generate"
+        ],
+        "constraints": [
+          "campaign automation does not persist CRM state outside Forge",
+          "campaign scheduling and nurture steps must be represented as Forge workflow events",
+          "external sends require approved handoff or document delivery workflow"
+        ]
+      },
+      {
+        "id": "crm.marketing.form_capture.executor",
+        "title": "CRM marketing form capture",
+        "contract_type": "executor",
+        "capability_id": "crm_marketing_automation",
+        "workflow_extension_id": "crm_campaign_lifecycle",
+        "runtime": "external_api",
+        "entrypoint": "forge_crm.capture_form_submission",
+        "inputs": [
+          "form_submission",
+          "campaign",
+          "landing_page",
+          "consent_policy",
+          "routing_policy",
+          "tenant_context"
+        ],
+        "outputs": [
+          "crm_form_submission",
+          "crm_lead_capture",
+          "crm_consent_record",
+          "crm_automation_plan"
+        ],
+        "permissions": [
+          "crm.workflow.mutate"
+        ],
+        "constraints": [
+          "form capture does not persist CRM state outside Forge",
+          "captured submissions must route into the Forge lead lifecycle",
+          "consent must be represented as a Forge artifact before nurture events"
+        ]
+      },
+      {
+        "id": "crm.support.omnichannel_message.executor",
+        "title": "CRM omnichannel message ingestion",
+        "contract_type": "executor",
+        "capability_id": "crm_support_omnichannel",
+        "workflow_extension_id": "crm_omnichannel_message",
+        "runtime": "external_api",
+        "entrypoint": "forge_crm.ingest_omnichannel_message",
+        "inputs": [
+          "adapter_event",
+          "message",
+          "customer",
+          "routing_policy",
+          "tenant_context"
+        ],
+        "outputs": [
+          "crm_message_thread",
+          "crm_channel_receipt",
+          "crm_support_summary"
+        ],
+        "permissions": [
+          "crm.omnichannel.ingest"
+        ],
+        "constraints": [
+          "omnichannel message ingestion does not persist CRM state outside Forge",
+          "channel receipt and thread artifacts must exist before SLA triage",
+          "ticket creation must be represented as Forge workflow events before SLA or handoff"
+        ]
+      },
+      {
+        "id": "crm.support.ticket_sla.executor",
+        "title": "CRM ticket SLA triage",
+        "contract_type": "executor",
+        "capability_id": "crm_support_omnichannel",
+        "workflow_extension_id": "crm_ticket_sla",
+        "runtime": "external_api",
+        "entrypoint": "forge_crm.triage_ticket_sla",
+        "inputs": [
+          "ticket",
+          "messages",
+          "sla_policy",
+          "routing_policy",
+          "tenant_context"
+        ],
+        "outputs": [
+          "crm_support_summary",
+          "crm_handoff_record"
+        ],
+        "permissions": [
+          "crm.omnichannel.ingest"
+        ],
+        "constraints": [
+          "ticket SLA triage does not persist CRM state outside Forge",
+          "SLA wait and escalation state must be represented as Forge workflow events",
+          "external replies still require approved omnichannel handoff"
+        ]
+      },
+      {
+        "id": "crm.omnichannel.handoff",
+        "title": "CRM omnichannel handoff",
+        "contract_type": "handoff",
+        "capability_id": "crm_support_omnichannel",
+        "workflow_extension_id": "crm_omnichannel_message",
+        "runtime": "external_api",
+        "entrypoint": "forge_crm.deliver_handoff",
+        "inputs": [
+          "ticket_context",
+          "channel",
+          "approved_message"
+        ],
+        "outputs": [
+          "handoff_receipt",
+          "crm_support_summary"
+        ],
+        "permissions": [
+          "crm.omnichannel.ingest"
+        ],
+        "constraints": [
+          "external message delivery requires approved integration policy"
+        ]
+      }
+    ],
+    "views": [
+      {
+        "id": "crm.system-map",
+        "title": "CRM system map",
+        "surface": "web",
+        "type": "graph",
+        "component": "ForgeCrmSystemMap",
+        "route": "/crm/system",
+        "layout": {
+          "zone": "main",
+          "order": 10,
+          "width": "full",
+          "height": "full",
+          "density": "compact"
+        },
+        "data_bindings": [
+          {
+            "id": "crm-workflows",
+            "source": "forge.ops.snapshot",
+            "query": "workflow.crm.*",
+            "scope": "organization",
+            "refresh_seconds": 30,
+            "required_capability": "crm_workflow_factory"
+          }
+        ],
+        "actions": [
+          {
+            "id": "crm.factory.bootstrap",
+            "label": "Bootstrap CRM",
+            "description": "Create a CRM system blueprint through Forge workflow planning.",
+            "palette_group": "CRM",
+            "source_panel": "crm.system-map",
+            "type": "command",
+            "target": "forge.addons.dispatch_planner",
+            "method": "POST",
+            "permission": "crm.workflow.mutate",
+            "requires_confirmation": true,
+            "risk_level": "high",
+            "mutates_workflow": true,
+            "command_template": [
+              "forge",
+              "addons",
+              "dispatch-planner",
+              "--addon",
+              "forge.addon.crm",
+              "--contract",
+              "crm.factory.planning",
+              "--goal",
+              "<goal>",
+              "--output",
+              "json"
+            ],
+            "keywords": [
+              "crm",
+              "bootstrap",
+              "factory"
+            ],
+            "payload_schema": [
+              "goal",
+              "tenant_context"
+            ]
+          }
+        ],
+        "permissions": [
+          "crm.workflow.mutate"
+        ],
+        "props": {
+          "web_app": {
+            "asset_root": "web",
+            "direct_browser_persistence": false,
+            "entrypoint": "web/index.html",
+            "external_database_required": false,
+            "snapshot_path": "web/data/operating-snapshot.json",
+            "snapshot_script": "npm run web:snapshot",
+            "state_source": "crm.operating.snapshot.executor"
+          }
+        }
+      },
+      {
+        "id": "crm.pipeline-kanban",
+        "title": "CRM pipeline Kanban",
+        "surface": "web",
+        "type": "board",
+        "component": "ForgeCrmPipelineBoard",
+        "route": "/crm/pipeline",
+        "layout": {
+          "zone": "main",
+          "order": 20,
+          "width": "full",
+          "height": "full",
+          "density": "compact"
+        },
+        "data_bindings": [
+          {
+            "id": "crm-opportunities",
+            "source": "forge.events.timeline",
+            "query": "crm.opportunity.stage",
+            "scope": "organization",
+            "refresh_seconds": 15,
+            "required_capability": "crm_relationship_management"
+          }
+        ],
+        "actions": [],
+        "permissions": [
+          "crm.workflow.mutate"
+        ],
+        "props": {}
+      },
+      {
+        "id": "crm.relationship-graph",
+        "title": "CRM relationship graph",
+        "surface": "web",
+        "type": "graph",
+        "component": "ForgeCrmRelationshipGraph",
+        "route": "/crm/relationships",
+        "layout": {
+          "zone": "main",
+          "order": 30,
+          "width": "full",
+          "height": "full",
+          "density": "compact"
+        },
+        "data_bindings": [
+          {
+            "id": "crm-relationship-memory",
+            "source": "forge.memory.search",
+            "query": "crm relationship account opportunity timeline",
+            "scope": "organization",
+            "refresh_seconds": 60,
+            "required_capability": "crm_relationship_management"
+          }
+        ],
+        "actions": [],
+        "permissions": [
+          "crm.ai.recommend"
+        ],
+        "props": {}
+      },
+      {
+        "id": "crm.commercial-command",
+        "title": "CRM commercial command",
+        "surface": "tui",
+        "type": "panel",
+        "component": "ForgeCrmCommercialCommand",
+        "route": "",
+        "layout": {
+          "zone": "right",
+          "order": 40,
+          "width": "wide",
+          "height": "full",
+          "density": "compact"
+        },
+        "data_bindings": [],
+        "actions": [],
+        "permissions": [
+          "crm.document.generate"
+        ],
+        "props": {}
+      },
+      {
+        "id": "crm.support-queue",
+        "title": "CRM support queue",
+        "surface": "web",
+        "type": "queue",
+        "component": "ForgeCrmSupportQueue",
+        "route": "/crm/support",
+        "layout": {
+          "zone": "main",
+          "order": 50,
+          "width": "full",
+          "height": "full",
+          "density": "compact"
+        },
+        "data_bindings": [],
+        "actions": [],
+        "permissions": [
+          "crm.omnichannel.ingest"
+        ],
+        "props": {}
+      },
+      {
+        "id": "crm.marketing-calendar",
+        "title": "CRM marketing calendar",
+        "surface": "web",
+        "type": "calendar",
+        "component": "ForgeCrmMarketingCalendar",
+        "route": "/crm/marketing",
+        "layout": {
+          "zone": "main",
+          "order": 60,
+          "width": "full",
+          "height": "full",
+          "density": "compact"
+        },
+        "data_bindings": [],
+        "actions": [],
+        "permissions": [
+          "crm.workflow.mutate"
+        ],
+        "props": {}
+      },
+      {
+        "id": "crm.document-queue",
+        "title": "CRM document queue",
+        "surface": "web",
+        "type": "queue",
+        "component": "ForgeCrmDocumentQueue",
+        "route": "/crm/documents",
+        "layout": {
+          "zone": "main",
+          "order": 70,
+          "width": "full",
+          "height": "full",
+          "density": "compact"
+        },
+        "data_bindings": [],
+        "actions": [],
+        "permissions": [
+          "crm.document.generate"
+        ],
+        "props": {}
+      },
+      {
+        "id": "crm.ai-workbench",
+        "title": "CRM AI workbench",
+        "surface": "web",
+        "type": "workbench",
+        "component": "ForgeCrmAiWorkbench",
+        "route": "/crm/ai",
+        "layout": {
+          "zone": "main",
+          "order": 80,
+          "width": "full",
+          "height": "full",
+          "density": "compact"
+        },
+        "data_bindings": [],
+        "actions": [],
+        "permissions": [
+          "crm.ai.recommend"
+        ],
+        "props": {}
+      }
+    ],
+    "artifact_types": [
+      {
+        "id": "crm_system_blueprint",
+        "title": "CRM system blueprint",
+        "generic_kind": "document"
+      },
+      {
+        "id": "crm_core_gap_report",
+        "title": "Forge Core gap report",
+        "generic_kind": "report"
+      },
+      {
+        "id": "crm_workflow_pack",
+        "title": "CRM workflow pack",
+        "generic_kind": "artifact"
+      },
+      {
+        "id": "crm_operating_model",
+        "title": "CRM Forge operating model",
+        "generic_kind": "artifact"
+      },
+      {
+        "id": "crm_operating_snapshot",
+        "title": "CRM operating snapshot",
+        "generic_kind": "report"
+      },
+      {
+        "id": "crm_entity_model",
+        "title": "CRM workflow-backed entity model",
+        "generic_kind": "artifact"
+      },
+      {
+        "id": "crm_timeline_snapshot",
+        "title": "CRM timeline snapshot",
+        "generic_kind": "artifact"
+      },
+      {
+        "id": "crm_pipeline_board",
+        "title": "CRM pipeline board",
+        "generic_kind": "artifact"
+      },
+      {
+        "id": "crm_stage_change",
+        "title": "CRM stage change",
+        "generic_kind": "artifact"
+      },
+      {
+        "id": "crm_proposal",
+        "title": "CRM proposal",
+        "generic_kind": "document"
+      },
+      {
+        "id": "crm_contract",
+        "title": "CRM contract",
+        "generic_kind": "document"
+      },
+      {
+        "id": "crm_signature_receipt",
+        "title": "CRM signature receipt",
+        "generic_kind": "artifact"
+      },
+      {
+        "id": "crm_renewal_plan",
+        "title": "CRM renewal plan",
+        "generic_kind": "artifact"
+      },
+      {
+        "id": "crm_followup_plan",
+        "title": "CRM follow-up plan",
+        "generic_kind": "artifact"
+      },
+      {
+        "id": "crm_forecast_report",
+        "title": "CRM forecast report",
+        "generic_kind": "report"
+      },
+      {
+        "id": "crm_commission_record",
+        "title": "CRM commission record",
+        "generic_kind": "artifact"
+      },
+      {
+        "id": "crm_account_plan",
+        "title": "CRM account plan",
+        "generic_kind": "artifact"
+      },
+      {
+        "id": "crm_health_report",
+        "title": "CRM health report",
+        "generic_kind": "report"
+      },
+      {
+        "id": "crm_project_plan",
+        "title": "CRM project plan",
+        "generic_kind": "artifact"
+      },
+      {
+        "id": "crm_task_plan",
+        "title": "CRM task plan",
+        "generic_kind": "artifact"
+      },
+      {
+        "id": "crm_report",
+        "title": "CRM report",
+        "generic_kind": "report"
+      },
+      {
+        "id": "crm_support_summary",
+        "title": "CRM support summary",
+        "generic_kind": "report"
+      },
+      {
+        "id": "crm_campaign",
+        "title": "CRM campaign",
+        "generic_kind": "campaign"
+      },
+      {
+        "id": "crm_segment",
+        "title": "CRM segment",
+        "generic_kind": "artifact"
+      },
+      {
+        "id": "crm_automation_plan",
+        "title": "CRM automation plan",
+        "generic_kind": "artifact"
+      },
+      {
+        "id": "crm_form_submission",
+        "title": "CRM form submission",
+        "generic_kind": "artifact"
+      },
+      {
+        "id": "crm_lead_capture",
+        "title": "CRM lead capture",
+        "generic_kind": "artifact"
+      },
+      {
+        "id": "crm_consent_record",
+        "title": "CRM consent record",
+        "generic_kind": "artifact"
+      },
+      {
+        "id": "crm_message_thread",
+        "title": "CRM message thread",
+        "generic_kind": "message"
+      },
+      {
+        "id": "crm_channel_receipt",
+        "title": "CRM channel receipt",
+        "generic_kind": "artifact"
+      },
+      {
+        "id": "crm_email",
+        "title": "CRM email",
+        "generic_kind": "message"
+      },
+      {
+        "id": "crm_landing_page",
+        "title": "CRM landing page",
+        "generic_kind": "document"
+      },
+      {
+        "id": "crm_presentation",
+        "title": "CRM presentation",
+        "generic_kind": "presentation"
+      },
+      {
+        "id": "crm_document",
+        "title": "CRM document",
+        "generic_kind": "document"
+      },
+      {
+        "id": "crm_approval_record",
+        "title": "CRM approval record",
+        "generic_kind": "artifact"
+      },
+      {
+        "id": "crm_handoff_record",
+        "title": "CRM handoff record",
+        "generic_kind": "artifact"
+      },
+      {
+        "id": "crm_knowledge_summary",
+        "title": "CRM knowledge summary",
+        "generic_kind": "artifact"
+      },
+      {
+        "id": "crm_memory_promotion_request",
+        "title": "CRM memory promotion request",
+        "generic_kind": "artifact"
+      },
+      {
+        "id": "crm_audit_report",
+        "title": "CRM audit report",
+        "generic_kind": "report"
+      },
+      {
+        "id": "crm_lineage_map",
+        "title": "CRM lineage map",
+        "generic_kind": "artifact"
+      },
+      {
+        "id": "crm_cost_report",
+        "title": "CRM cost report",
+        "generic_kind": "report"
+      },
+      {
+        "id": "crm_metric_snapshot",
+        "title": "CRM metric snapshot",
+        "generic_kind": "report"
+      },
+      {
+        "id": "crm_operating_readiness_report",
+        "title": "CRM operating readiness report",
+        "generic_kind": "report"
+      },
+      {
+        "id": "crm_user_outcome_manifest",
+        "title": "CRM user outcome manifest",
+        "generic_kind": "artifact"
+      },
+      {
+        "id": "crm_domain_coverage_matrix",
+        "title": "CRM domain coverage matrix",
+        "generic_kind": "report"
+      },
+      {
+        "id": "crm_business_runbook",
+        "title": "CRM business runbook",
+        "generic_kind": "document"
+      },
+      {
+        "id": "crm_ai_recommendation",
+        "title": "CRM AI recommendation",
+        "generic_kind": "artifact"
+      },
+      {
+        "id": "crm_risk_analysis",
+        "title": "CRM risk analysis",
+        "generic_kind": "report"
+      }
+    ],
+    "event_types": [
+      {
+        "id": "crm.lead",
+        "title": "CRM lead event",
+        "transport": "crm"
+      },
+      {
+        "id": "crm.opportunity",
+        "title": "CRM opportunity event",
+        "transport": "crm"
+      },
+      {
+        "id": "crm.account",
+        "title": "CRM account event",
+        "transport": "crm"
+      },
+      {
+        "id": "crm.followup",
+        "title": "CRM follow-up event",
+        "transport": "crm"
+      },
+      {
+        "id": "crm.forecast",
+        "title": "CRM forecast event",
+        "transport": "crm"
+      },
+      {
+        "id": "crm.goal",
+        "title": "CRM goal event",
+        "transport": "crm"
+      },
+      {
+        "id": "crm.commission",
+        "title": "CRM commission event",
+        "transport": "crm"
+      },
+      {
+        "id": "crm.contract",
+        "title": "CRM contract event",
+        "transport": "crm"
+      },
+      {
+        "id": "crm.relationship",
+        "title": "CRM relationship event",
+        "transport": "crm"
+      },
+      {
+        "id": "crm.project",
+        "title": "CRM project event",
+        "transport": "crm"
+      },
+      {
+        "id": "crm.task",
+        "title": "CRM task event",
+        "transport": "crm"
+      },
+      {
+        "id": "crm.message",
+        "title": "CRM omnichannel message",
+        "transport": "crm"
+      },
+      {
+        "id": "crm.ticket",
+        "title": "CRM ticket event",
+        "transport": "crm"
+      },
+      {
+        "id": "crm.sla",
+        "title": "CRM SLA event",
+        "transport": "crm"
+      },
+      {
+        "id": "crm.document",
+        "title": "CRM document event",
+        "transport": "crm"
+      },
+      {
+        "id": "crm.memory",
+        "title": "CRM memory event",
+        "transport": "crm"
+      },
+      {
+        "id": "crm.observability",
+        "title": "CRM observability event",
+        "transport": "crm"
+      },
+      {
+        "id": "crm.readiness",
+        "title": "CRM readiness event",
+        "transport": "crm"
+      },
+      {
+        "id": "crm.outcome",
+        "title": "CRM outcome event",
+        "transport": "crm"
+      },
+      {
+        "id": "crm.audit",
+        "title": "CRM audit event",
+        "transport": "crm"
+      },
+      {
+        "id": "crm.cost",
+        "title": "CRM cost event",
+        "transport": "crm"
+      },
+      {
+        "id": "crm.metric",
+        "title": "CRM metric event",
+        "transport": "crm"
+      },
+      {
+        "id": "crm.campaign",
+        "title": "CRM campaign event",
+        "transport": "crm"
+      },
+      {
+        "id": "crm.form",
+        "title": "CRM form event",
+        "transport": "crm"
+      },
+      {
+        "id": "crm.nurture",
+        "title": "CRM nurture event",
+        "transport": "crm"
+      }
+    ],
+    "event_channels": [
+      {
+        "id": "crm.webhook",
+        "title": "CRM webhook ingress",
+        "transport": "webhook",
+        "direction": "ingress",
+        "origins": [
+          "web",
+          "api"
+        ],
+        "actions": [
+          "start_workflow",
+          "continue_workflow"
+        ],
+        "event_types": [
+          "crm.lead",
+          "crm.opportunity",
+          "crm.account",
+          "crm.followup",
+          "crm.forecast",
+          "crm.goal",
+          "crm.commission",
+          "crm.contract",
+          "crm.relationship",
+          "crm.project",
+          "crm.task",
+          "crm.document",
+          "crm.campaign",
+          "crm.form",
+          "crm.nurture"
+        ],
+        "schema": "forge.crm.webhook.v1",
+        "auth": "forge_policy",
+        "permissions": [
+          "crm.workflow.mutate"
+        ]
+      },
+      {
+        "id": "crm.omnichannel.inbox",
+        "title": "CRM omnichannel inbox",
+        "transport": "messaging",
+        "direction": "ingress",
+        "origins": [
+          "email",
+          "whatsapp",
+          "telegram",
+          "chat"
+        ],
+        "actions": [
+          "start_workflow",
+          "continue_workflow"
+        ],
+        "event_types": [
+          "crm.message",
+          "crm.ticket",
+          "crm.sla"
+        ],
+        "schema": "forge.crm.omnichannel.v1",
+        "auth": "forge_policy",
+        "permissions": [
+          "crm.omnichannel.ingest"
+        ]
+      },
+      {
+        "id": "crm.schedule",
+        "title": "CRM schedule channel",
+        "transport": "cron",
+        "direction": "ingress",
+        "origins": [
+          "cron"
+        ],
+        "actions": [
+          "continue_workflow"
+        ],
+        "event_types": [
+          "crm.opportunity",
+          "crm.account",
+          "crm.followup",
+          "crm.forecast",
+          "crm.goal",
+          "crm.commission",
+          "crm.contract",
+          "crm.campaign",
+          "crm.nurture",
+          "crm.ticket",
+          "crm.project",
+          "crm.task"
+        ],
+        "schema": "forge.crm.schedule.v1",
+        "auth": "forge_policy",
+        "permissions": [
+          "crm.workflow.mutate"
+        ]
+      }
+    ],
+    "event_triggers": [
+      {
+        "id": "crm.lead.created",
+        "title": "CRM lead created",
+        "event_type": "crm.lead",
+        "channel": "crm.webhook",
+        "adapter_id": "crm.webhook.start",
+        "workflow_extension_id": "crm_entity_lifecycle",
+        "capability_id": "crm_relationship_management",
+        "actions": [
+          "start_workflow"
+        ],
+        "conditions": [
+          "payload.lead present",
+          "tenant policy allows lead intake"
+        ],
+        "permissions": [
+          "crm.workflow.mutate"
+        ]
+      },
+      {
+        "id": "crm.message.received",
+        "title": "CRM message received",
+        "event_type": "crm.message",
+        "channel": "crm.omnichannel.inbox",
+        "adapter_id": "crm.omnichannel.route",
+        "workflow_extension_id": "crm_omnichannel_message",
+        "capability_id": "crm_support_omnichannel",
+        "actions": [
+          "start_workflow",
+          "continue_workflow"
+        ],
+        "conditions": [
+          "payload.channel present",
+          "payload.message present"
+        ],
+        "permissions": [
+          "crm.omnichannel.ingest"
+        ]
+      },
+      {
+        "id": "crm.ticket.created",
+        "title": "CRM ticket created",
+        "event_type": "crm.ticket",
+        "channel": "crm.omnichannel.inbox",
+        "adapter_id": "crm.omnichannel.route",
+        "workflow_extension_id": "crm_ticket_sla",
+        "capability_id": "crm_support_omnichannel",
+        "actions": [
+          "start_workflow"
+        ],
+        "conditions": [
+          "payload.ticket present",
+          "sla policy selected"
+        ],
+        "permissions": [
+          "crm.omnichannel.ingest"
+        ]
+      },
+      {
+        "id": "crm.document.approval_requested",
+        "title": "CRM document approval requested",
+        "event_type": "crm.document",
+        "channel": "crm.webhook",
+        "adapter_id": "crm.webhook.start",
+        "workflow_extension_id": "crm_document_approval",
+        "capability_id": "crm_internal_operations",
+        "actions": [
+          "start_workflow"
+        ],
+        "conditions": [
+          "artifact_ref present",
+          "approval policy present"
+        ],
+        "permissions": [
+          "crm.document.generate"
+        ]
+      }
+    ],
+    "event_listeners": [
+      {
+        "id": "crm.lead.listener",
+        "title": "CRM lead listener",
+        "event_type": "crm.lead",
+        "channel": "crm.webhook",
+        "adapter_id": "crm.webhook.start",
+        "workflow_extension_id": "crm_entity_lifecycle",
+        "capability_id": "crm_relationship_management",
+        "handler": "forge.event_inbox.route",
+        "runtime_contract_id": "crm.factory.planning",
+        "actions": [
+          "start_workflow"
+        ],
+        "permissions": [
+          "crm.workflow.mutate"
+        ]
+      },
+      {
+        "id": "crm.message.listener",
+        "title": "CRM message listener",
+        "event_type": "crm.message",
+        "channel": "crm.omnichannel.inbox",
+        "adapter_id": "crm.omnichannel.route",
+        "workflow_extension_id": "crm_omnichannel_message",
+        "capability_id": "crm_support_omnichannel",
+        "handler": "forge.event_inbox.route",
+        "runtime_contract_id": "crm.support.omnichannel_message.executor",
+        "actions": [
+          "start_workflow",
+          "continue_workflow"
+        ],
+        "permissions": [
+          "crm.omnichannel.ingest"
+        ]
+      }
+    ],
+    "event_adapters": [
+      {
+        "id": "crm.webhook.start",
+        "title": "CRM webhook workflow starter",
+        "transport": "webhook",
+        "direction": "ingress",
+        "origins": [
+          "web",
+          "api"
+        ],
+        "actions": [
+          "start_workflow",
+          "continue_workflow"
+        ],
+        "event_types": [
+          "crm.lead",
+          "crm.opportunity",
+          "crm.account",
+          "crm.followup",
+          "crm.forecast",
+          "crm.goal",
+          "crm.commission",
+          "crm.contract",
+          "crm.relationship",
+          "crm.document",
+          "crm.campaign",
+          "crm.form",
+          "crm.nurture",
+          "crm.project",
+          "crm.task"
+        ],
+        "schema": "forge.crm.webhook.v1",
+        "auth": "forge_policy",
+        "permissions": [
+          "crm.workflow.mutate"
+        ]
+      },
+      {
+        "id": "crm.omnichannel.route",
+        "title": "CRM omnichannel router",
+        "transport": "messaging",
+        "direction": "ingress",
+        "origins": [
+          "email",
+          "whatsapp",
+          "telegram",
+          "chat"
+        ],
+        "actions": [
+          "start_workflow",
+          "continue_workflow"
+        ],
+        "event_types": [
+          "crm.message",
+          "crm.ticket",
+          "crm.sla"
+        ],
+        "schema": "forge.crm.omnichannel.v1",
+        "auth": "forge_policy",
+        "permissions": [
+          "crm.omnichannel.ingest"
+        ]
+      }
+    ],
+    "context_providers": [
+      {
+        "id": "crm.account_context",
+        "title": "CRM account context",
+        "source": "forge.memory.search",
+        "scopes": [
+          "organization",
+          "project"
+        ],
+        "provides_sections": [
+          "account_summary",
+          "relationship_history",
+          "open_workflows",
+          "risk_flags"
+        ]
+      },
+      {
+        "id": "crm.pipeline_context",
+        "title": "CRM pipeline context",
+        "source": "forge.events.timeline",
+        "scopes": [
+          "organization",
+          "project"
+        ],
+        "provides_sections": [
+          "pipeline_stage",
+          "forecast",
+          "next_actions",
+          "ownership"
+        ]
+      }
+    ],
+    "memory_providers": [
+      {
+        "id": "crm.global_memory",
+        "title": "CRM global memory",
+        "provider_type": "forge_memory",
+        "scopes": [
+          "global"
+        ],
+        "memory_levels": [
+          "standard",
+          "full"
+        ]
+      },
+      {
+        "id": "crm.organization_memory",
+        "title": "CRM organization memory",
+        "provider_type": "forge_memory",
+        "scopes": [
+          "organization"
+        ],
+        "memory_levels": [
+          "standard",
+          "full"
+        ]
+      },
+      {
+        "id": "crm.project_memory",
+        "title": "CRM project memory",
+        "provider_type": "forge_memory",
+        "scopes": [
+          "project"
+        ],
+        "memory_levels": [
+          "short_term",
+          "standard"
+        ]
+      },
+      {
+        "id": "crm.processing_memory",
+        "title": "CRM processing memory",
+        "provider_type": "forge_memory",
+        "scopes": [
+          "processing"
+        ],
+        "memory_levels": [
+          "short_term"
+        ]
+      }
+    ],
+    "integrations": [
+      {
+        "id": "crm.email",
+        "title": "CRM email channel",
+        "integration_type": "messaging"
+      },
+      {
+        "id": "crm.whatsapp",
+        "title": "CRM WhatsApp channel",
+        "integration_type": "messaging"
+      },
+      {
+        "id": "crm.telegram",
+        "title": "CRM Telegram channel",
+        "integration_type": "messaging"
+      },
+      {
+        "id": "crm.web",
+        "title": "CRM web application",
+        "integration_type": "ui"
+      }
+    ],
+    "compatibility": {
+      "forge_version_req": "",
+      "api_versions": [
+        "forge.addon_manifest.v1",
+        "forge.addon_runtime_contracts.v1",
+        "forge.addon_views.v1",
+        "forge.addon_event_adapters.v1"
+      ],
+      "runtimes": [
+        "external_api"
+      ],
+      "features": [
+        "addon_catalog",
+        "addon_permissions",
+        "addon_runtime_contracts",
+        "addon_runtime_workers",
+        "addon_views",
+        "event_adapters",
+        "memory_providers",
+        "context_providers"
+      ],
+      "platforms": [],
+      "migrations": []
+    },
+    "metadata": {
+      "core_repository": "https://github.com/cardozoarthur/forge-core",
+      "crm_repository": "https://github.com/cardozoarthur/forge-crm",
+      "dogfooding_target": "Forge v0.5, v0.6 and v0.7",
+      "principle": "Forge is a factory/framework for agentic workflow systems",
+      "product": "forge-crm",
+      "reference_product": "true"
+    }
+  }
+}
