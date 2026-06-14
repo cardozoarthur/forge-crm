@@ -6,10 +6,10 @@ Repository: https://github.com/cardozoarthur/forge-crm.git
 
 ## Summary
 
-- Workflows: 38
-- Runtime contracts: 50
-- Artifact types: 116
-- Event types: 47
+- Workflows: 39
+- Runtime contracts: 51
+- Artifact types: 119
+- Event types: 49
 - Views: 12
 - User-facing deliverables ready: 17/17
 - Missing objective items: 0
@@ -20,9 +20,9 @@ Repository: https://github.com/cardozoarthur/forge-crm.git
 - Addon: forge.addon.crm (enabled)
 - Core dependency: forge.core.kernel
 - Capabilities: 9
-- Runtime contracts: 50
-- Artifact types: 116
-- Event types: 47
+- Runtime contracts: 51
+- Artifact types: 119
+- Event types: 49
 - Views: 12
 - Public repository declared: true
 

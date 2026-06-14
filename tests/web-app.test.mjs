@@ -211,6 +211,37 @@ test("web app snapshot exposes auditable Forge action invocation plans", () => {
   }
 });
 
+test("web app snapshot exposes CRM installation authorization workbench", () => {
+  const snapshot = buildCrmWebAppSnapshot({ tenant_id: "demo" });
+  const workbench = snapshot.installation_authorization_workbench;
+
+  assert.ok(workbench);
+  assert.equal(workbench.schema_version, "forge.crm_installation_authorization_workbench.v1");
+  assert.equal(workbench.state_owner, "forge_workflow_runtime");
+  assert.equal(workbench.workflow_id, "crm.installation.authorization");
+  assert.equal(workbench.contract_id, "crm.installation.authorization.executor");
+  assert.equal(workbench.action_id, "crm.prepare-installation-authorization");
+  assert.equal(workbench.core_authorization_owner, "forge.addons.authorize_permission");
+  assert.equal(workbench.mutates_permission_state, false);
+  assert.equal(workbench.local_permission_store_allowed, false);
+  assert.equal(workbench.permission_matrix.length, 5);
+  assert.ok(
+    workbench.permission_matrix.every((permission) =>
+      permission.authorization_command.includes("forge addons authorize-permission")
+    )
+  );
+  assert.ok(workbench.permission_matrix.every((permission) => permission.authorization_command.includes("--addon forge.addon.crm")));
+  assert.ok(workbench.permission_matrix.some((permission) => permission.permission_id === "crm.workflow.mutate" && permission.risk === "high"));
+  assert.ok(workbench.unblocked_surfaces.includes("crm.system-map"));
+  assert.ok(workbench.unblocked_runtime_contracts.includes("crm.tenant.bootstrap.executor"));
+
+  const action = snapshot.actions.find((candidate) => candidate.id === "crm.prepare-installation-authorization");
+  assert.ok(action);
+  assert.equal(action.contract_id, "crm.installation.authorization.executor");
+  assert.equal(action.requires_permission, "crm.observability.inspect");
+  assert.ok(action.command_template.includes("crm.installation.authorization.executor"));
+});
+
 test("web app snapshot exposes Forge-owned operational workflow cadences", () => {
   const snapshot = buildCrmWebAppSnapshot({ tenant_id: "demo" });
   const cadences = snapshot.workflow_cadences;
@@ -925,6 +956,7 @@ test("web assets mount the generated CRM snapshot without a build step", async (
   assert.match(app, /renderWorkflowEvolutionWorkbench/);
   assert.match(app, /renderBenchmarkEvidenceMatrix/);
   assert.match(app, /renderEnterpriseJourneyWorkbench/);
+  assert.match(app, /renderInstallationAuthorizationWorkbench/);
   assert.match(app, /renderOperatingReadinessWorkbench/);
   assert.match(app, /renderApprovalGovernanceWorkbench/);
   assert.match(app, /renderWorkflowFactoryBlueprintWorkbench/);
@@ -948,6 +980,7 @@ test("web assets mount the generated CRM snapshot without a build step", async (
   assert.match(styles, /\.evolution-workbench/);
   assert.match(styles, /\.benchmark-evidence/);
   assert.match(styles, /\.journey-workbench/);
+  assert.match(styles, /\.installation-authorization/);
   assert.match(styles, /\.readiness-workbench/);
   assert.match(styles, /\.approval-governance/);
   assert.match(styles, /\.factory-blueprint/);

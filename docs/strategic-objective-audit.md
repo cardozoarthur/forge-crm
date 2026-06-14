@@ -8,10 +8,10 @@ Status: covered_by_current_addon_evidence
 - Sections: 9
 - Requirements: 52
 - Missing requirements: 0
-- Workflows: 38
-- Runtime contracts: 50
-- Artifact types: 116
-- Event types: 47
+- Workflows: 39
+- Runtime contracts: 51
+- Artifact types: 119
+- Event types: 49
 - Views: 12
 
 ## Sections

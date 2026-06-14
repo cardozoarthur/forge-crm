@@ -88,6 +88,7 @@ try {
     endpoint,
     allowed_entrypoints: [
       "forge_crm.plan_system",
+      "forge_crm.prepare_installation_authorization",
       "forge_crm.bootstrap_tenant",
       "forge_crm.operating_snapshot",
       "forge_crm.classify_lead",
@@ -140,6 +141,7 @@ try {
     ],
     allowed_contracts: [
       "crm.factory.planning",
+      "crm.installation.authorization.executor",
       "crm.tenant.bootstrap.executor",
       "crm.operating.snapshot.executor",
       "crm.lead.classifier.executor",
@@ -258,6 +260,37 @@ try {
     workerId,
     "--goal",
     "Create a workflow-first CRM tenant",
+    "--context",
+    JSON.stringify({ tenant: "smoke" }),
+    "--output",
+    "json"
+  ]);
+
+  const installationAuthorization = runForge([
+    "addons",
+    "execute-executor",
+    "--addon-dir",
+    "addons",
+    "--addon",
+    "forge.addon.crm",
+    "--contract",
+    "crm.installation.authorization.executor",
+    "--worker",
+    workerId,
+    "--task",
+    "crm-smoke-installation-authorization",
+    "--workflow",
+    workflowId,
+    "--input",
+    JSON.stringify({
+      tenant_context: { id: "smoke", tenant_id: "smoke" },
+      operator_context: { operator_id: "forge-crm-smoke", approved_by: "forge-crm-smoke" },
+      install_policy: {
+        addon_id: "forge.addon.crm",
+        authorization_owner: "forge.addons.authorize_permission",
+        allow_local_permission_store: false
+      }
+    }),
     "--context",
     JSON.stringify({ tenant: "smoke" }),
     "--output",
@@ -3137,6 +3170,8 @@ try {
   ]);
   const promotedArtifactCount = bootstrap.promotion?.artifact_count ?? 0;
   const promotedEventCount = bootstrap.promotion?.event_count ?? 0;
+  const installationAuthorizationPromotedArtifactCount = installationAuthorization.promotion?.artifact_count ?? 0;
+  const installationAuthorizationPromotedEventCount = installationAuthorization.promotion?.event_count ?? 0;
   const snapshotPromotedArtifactCount = operatingSnapshot.promotion?.artifact_count ?? 0;
   const snapshotPromotedEventCount = operatingSnapshot.promotion?.event_count ?? 0;
   const copilotPromotedArtifactCount = copilot.promotion?.artifact_count ?? 0;
@@ -3228,6 +3263,36 @@ try {
   const workflowArtifactCount = workflowArtifacts.artifacts?.length ?? 0;
   const workflowEventKinds = (workflowEvents.events || []).map((event) => event.kind);
 
+  if (installationAuthorization.promotion?.status !== "addon_executor_result_promoted") {
+    throw new Error(
+      `expected installation authorization promotion, got ${installationAuthorization.promotion?.status || "missing"}`
+    );
+  }
+  if (installationAuthorization.executor_result.outputs.required_permission_count !== 5) {
+    throw new Error(
+      `expected 5 installation authorization permissions, got ${installationAuthorization.executor_result.outputs.required_permission_count}`
+    );
+  }
+  if (installationAuthorization.executor_result.outputs.mutates_permission_state !== false) {
+    throw new Error("installation authorization executor must not mutate Forge permission state");
+  }
+  if (
+    !installationAuthorization.executor_result.outputs.authorization_commands.every(
+      (command) => command.includes("forge addons authorize-permission") && command.includes("--addon forge.addon.crm")
+    )
+  ) {
+    throw new Error("installation authorization executor did not return Forge authorization commands");
+  }
+  if (installationAuthorizationPromotedArtifactCount < 3 || installationAuthorizationPromotedEventCount < 2) {
+    throw new Error(
+      `expected promoted installation artifacts/events, got artifacts=${installationAuthorizationPromotedArtifactCount} events=${installationAuthorizationPromotedEventCount}`
+    );
+  }
+  for (const eventKind of ["crm.installation.authorization_planned", "crm.permission.authorization_required"]) {
+    if (!workflowEventKinds.includes(eventKind)) {
+      throw new Error(`expected installation authorization event ${eventKind} in workflow timeline`);
+    }
+  }
   if (bootstrap.promotion?.status !== "addon_executor_result_promoted") {
     throw new Error(`expected bootstrap promotion, got ${bootstrap.promotion?.status || "missing"}`);
   }
@@ -4139,6 +4204,15 @@ try {
     enterprise_journey_promoted_events: enterpriseJourneyPromotedEventCount,
     workflow_artifact_count: workflowArtifactCount,
     workflow_event_kinds: workflowEventKinds,
+    installation_authorization_status: installationAuthorization.status,
+    installation_authorization_promotion_status: installationAuthorization.promotion.status,
+    installation_authorization_state: installationAuthorization.executor_result.outputs.authorization_state,
+    installation_authorization_required_permission_count:
+      installationAuthorization.executor_result.outputs.required_permission_count,
+    installation_authorization_mutates_permission_state:
+      installationAuthorization.executor_result.outputs.mutates_permission_state,
+    installation_authorization_promoted_artifacts: installationAuthorizationPromotedArtifactCount,
+    installation_authorization_promoted_events: installationAuthorizationPromotedEventCount,
     bootstrap_workflow_count: bootstrap.executor_result.outputs.workflow_count,
     bootstrap_complete_scope: bootstrap.executor_result.outputs.complete_scope,
     classifier_status: classifier.status,

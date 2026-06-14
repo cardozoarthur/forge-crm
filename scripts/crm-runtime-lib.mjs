@@ -6,6 +6,33 @@ import { buildCrmOperatingModel, buildCrmWorkflowPack, buildTenantBootstrapResul
 export { buildTenantBootstrapResult };
 
 const ADDON_ID = "forge.addon.crm";
+const DEFAULT_CRM_PERMISSION_REQUIREMENTS = [
+  {
+    id: "crm.workflow.mutate",
+    risk: "high",
+    reason: "create, mutate and resume CRM workflows through Forge"
+  },
+  {
+    id: "crm.omnichannel.ingest",
+    risk: "medium",
+    reason: "ingest approved channel events into Forge workflows"
+  },
+  {
+    id: "crm.document.generate",
+    risk: "medium",
+    reason: "generate CRM customer documents as Forge artifacts"
+  },
+  {
+    id: "crm.ai.recommend",
+    risk: "medium",
+    reason: "run bounded CRM copilots and recommendations"
+  },
+  {
+    id: "crm.observability.inspect",
+    risk: "medium",
+    reason: "inspect Forge CRM audit, lineage, metrics and readiness evidence"
+  }
+];
 
 function asObject(value) {
   return value && typeof value === "object" && !Array.isArray(value) ? value : {};
@@ -76,6 +103,164 @@ function probabilityFrom(value) {
 
 function leadId(lead) {
   return String(lead.id || lead.lead_id || lead.email || lead.company || "lead-unknown");
+}
+
+function crmPermissionRequirement(value) {
+  if (typeof value === "string") {
+    const known = DEFAULT_CRM_PERMISSION_REQUIREMENTS.find((permission) => permission.id === value);
+    return known || { id: value, risk: "medium", reason: "operator requested CRM Addon permission" };
+  }
+  const candidate = asObject(value);
+  const known = DEFAULT_CRM_PERMISSION_REQUIREMENTS.find((permission) => permission.id === candidate.id);
+  return {
+    id: String(candidate.id || known?.id || "crm.workflow.mutate"),
+    risk: String(candidate.risk || known?.risk || "medium"),
+    reason: String(candidate.reason || known?.reason || "operator requested CRM Addon permission")
+  };
+}
+
+function defaultCrmPermissionRequirements(input) {
+  const provided = asArray(input.required_permissions).map(crmPermissionRequirement);
+  const requirements = provided.length ? provided : DEFAULT_CRM_PERMISSION_REQUIREMENTS;
+  const byId = new Map(requirements.map((permission) => [permission.id, permission]));
+  return [...byId.values()];
+}
+
+export function buildInstallationAuthorizationResult(request) {
+  const input = dispatchPayload(request);
+  const context = providedContext(request);
+  const tenantContext = asObject(input.tenant_context);
+  const operatorContext = asObject(input.operator_context);
+  const installPolicy = asObject(input.install_policy);
+  const tenantId = input.tenant_id || tenantContext.tenant_id || tenantContext.id || context.tenant || "default";
+  const taskRef = dispatchEnvelope(request).task_ref || `crm-install-authorization-${slug(tenantId, "tenant")}`;
+  const addonId = String(installPolicy.addon_id || ADDON_ID);
+  const approvedBy = String(operatorContext.approved_by || operatorContext.operator_id || installPolicy.approved_by || "human-operator");
+  const authorizationOwner = String(installPolicy.authorization_owner || "forge.addons.authorize_permission");
+  const permissionRequirements = defaultCrmPermissionRequirements(input);
+  const permissionMatrix = permissionRequirements.map((permission) => ({
+    permission_id: permission.id,
+    risk: permission.risk,
+    reason: permission.reason,
+    requires_human_authorization: true,
+    authorization_owner: authorizationOwner,
+    authorization_command: [
+      "forge",
+      "addons",
+      "authorize-permission",
+      "--addon",
+      addonId,
+      "--permission",
+      permission.id,
+      "--risk",
+      permission.risk,
+      "--approved-by",
+      approvedBy,
+      "--output",
+      "json"
+    ].join(" ")
+  }));
+  const authorizationCommands = permissionMatrix.map((permission) => permission.authorization_command);
+  const lineage = {
+    workflow_id: input.workflow_id || "crm.installation.authorization",
+    task_ref: taskRef,
+    source_contract: "crm.installation.authorization.executor",
+    tenant_id: tenantId
+  };
+
+  return {
+    schema_version: "forge.addon_executor_result.v1",
+    status: "completed",
+    task_ref: taskRef,
+    summary: `CRM installation authorization plan for ${tenantId} prepared ${permissionMatrix.length} Forge permission commands`,
+    outputs: {
+      tenant_id: tenantId,
+      workflow_id: lineage.workflow_id,
+      addon_id: addonId,
+      authorization_state: "requires_human_authorization",
+      required_permission_count: permissionMatrix.length,
+      core_authorization_owner: authorizationOwner,
+      authorization_commands: authorizationCommands,
+      mutates_permission_state: false,
+      mutates_crm_state: false,
+      forge_event_sourced: true
+    },
+    artifacts: [
+      {
+        kind: "crm_installation_authorization_plan",
+        id: `crm-installation-authorization-${slug(tenantId, "tenant")}`,
+        title: `CRM installation authorization plan for ${tenantId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          addon_id: addonId,
+          authorization_state: "requires_human_authorization",
+          core_authorization_owner: authorizationOwner,
+          command_count: authorizationCommands.length,
+          authorization_commands: authorizationCommands,
+          validation_gates: [
+            "installation remains blocked until Forge permission authorization is recorded",
+            "CRM Addon does not write local permission policy",
+            "CRM tenant bootstrap remains disabled until permission policy is authorized"
+          ],
+          lineage,
+          state_owner: "forge_workflow_runtime"
+        }
+      },
+      {
+        kind: "crm_permission_authorization_matrix",
+        id: `crm-permission-matrix-${slug(tenantId, "tenant")}`,
+        title: `CRM permission authorization matrix for ${tenantId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          addon_id: addonId,
+          permissions: permissionMatrix,
+          local_permission_store_allowed: installPolicy.allow_local_permission_store === true,
+          mutates_permission_state: false,
+          lineage
+        }
+      },
+      {
+        kind: "crm_install_readiness_report",
+        id: `crm-install-readiness-${slug(tenantId, "tenant")}`,
+        title: `CRM install readiness report for ${tenantId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          addon_id: addonId,
+          authorization_state: "requires_human_authorization",
+          required_permission_count: permissionMatrix.length,
+          operable_after_authorization: true,
+          blocked_until_authorized: true,
+          local_permission_store_used: false,
+          local_permission_store_allowed: installPolicy.allow_local_permission_store === true,
+          unblocked_runtime_contracts: [
+            "crm.tenant.bootstrap.executor",
+            "crm.operating.snapshot.executor",
+            "crm.operating.readiness.executor"
+          ],
+          lineage
+        }
+      }
+    ],
+    events: [
+      {
+        kind: "crm.installation.authorization_planned",
+        tenant_id: tenantId,
+        workflow_id: lineage.workflow_id,
+        command_count: authorizationCommands.length
+      },
+      {
+        kind: "crm.permission.authorization_required",
+        tenant_id: tenantId,
+        workflow_id: lineage.workflow_id,
+        permission_count: permissionMatrix.length,
+        core_authorization_owner: authorizationOwner
+      }
+    ],
+    context_tenant: context.tenant || tenantId
+  };
 }
 
 function scoreLead(lead) {
@@ -8267,6 +8452,8 @@ export function executeCrmRuntimeRequest(request) {
       const goal = envelope.goal || request?.goal || "Create a workflow-first enterprise CRM on Forge";
       return buildCrmPlan(goal);
     }
+    case "forge_crm.prepare_installation_authorization":
+      return buildInstallationAuthorizationResult(request);
     case "forge_crm.bootstrap_tenant":
       return buildTenantBootstrapResult(request);
     case "forge_crm.operating_snapshot":

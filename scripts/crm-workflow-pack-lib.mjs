@@ -56,6 +56,36 @@ const REQUIRED_SCOPE = {
 
 const WORKFLOWS = [
   {
+    id: "crm.installation.authorization",
+    title: "CRM installation authorization",
+    domain: "operations",
+    workflow_extension_id: "crm_installation_authorization",
+    object_types: ["installation_authorization", "permission_gate", "tenant_onboarding"],
+    states: ["install_detected", "permission_review", "authorization_wait", "authorized", "rework_required"],
+    transitions: [
+      ["install_detected", "permission_review", "CRM Addon permission requirements detected"],
+      ["permission_review", "authorization_wait", "Forge authorization commands prepared"],
+      ["authorization_wait", "authorized", "Forge permission policy records authorization"],
+      ["authorization_wait", "rework_required", "human authorization missing or rejected"],
+      ["rework_required", "permission_review", "operator updates installation authorization plan"]
+    ],
+    runtime_contracts: ["crm.installation.authorization.executor"],
+    artifacts: [
+      "crm_installation_authorization_plan",
+      "crm_permission_authorization_matrix",
+      "crm_install_readiness_report"
+    ],
+    events: ["crm.installation.authorization_planned", "crm.permission.authorization_required"],
+    memory_scopes: ["organization", "processing"],
+    permissions: ["crm.observability.inspect"],
+    views: ["crm.system-map"],
+    validation_gates: [
+      "installation remains blocked until Forge permission authorization is recorded",
+      "CRM Addon cannot authorize permissions automatically",
+      "permission policy mutation must go through forge addons authorize-permission"
+    ]
+  },
+  {
     id: "crm.lead.lifecycle",
     title: "Lead, contact and company lifecycle",
     domain: "relationship",

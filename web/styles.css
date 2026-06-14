@@ -885,6 +885,11 @@ h3 {
   border-left: 4px solid #126c55;
 }
 
+.installation-authorization {
+  grid-column: 1 / -1;
+  border-left: 4px solid #9b4d19;
+}
+
 .readiness-workbench {
   grid-column: 1 / -1;
   border-left: 4px solid #2d7668;
@@ -927,6 +932,9 @@ h3 {
 
 .journey-lanes,
 .journey-gates,
+.installation-summary,
+.installation-permission-grid,
+.installation-plan,
 .readiness-summary,
 .readiness-domain-grid,
 .readiness-operation-list,
@@ -957,6 +965,8 @@ h3 {
 
 .journey-lane,
 .journey-gate,
+.installation-permission,
+.installation-step,
 .readiness-domain,
 .readiness-operation,
 .readiness-gate,

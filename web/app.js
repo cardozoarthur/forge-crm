@@ -779,6 +779,47 @@ export function renderEnterpriseJourneyWorkbench(snapshot) {
   return section;
 }
 
+export function renderInstallationAuthorizationWorkbench(snapshot) {
+  const workbench = snapshot.installation_authorization_workbench;
+  const section = nodeElement("section", "panel installation-authorization");
+  section.dataset.surfacePanel = "crm.system-map";
+  section.append(nodeElement("h2", "", "Installation Authorization"));
+  if (!workbench) {
+    section.append(nodeElement("p", "muted-copy", "Installation authorization workbench unavailable in this snapshot."));
+    return section;
+  }
+
+  section.append(nodeElement("p", "panel-source", `${workbench.workflow_id} · ${workbench.contract_id}`));
+  section.append(nodeElement("code", "", actionLabel(snapshot, workbench.action_id)));
+
+  const summary = nodeElement("div", "installation-summary");
+  summary.append(metric("State", compactTitle(workbench.authorization_state)));
+  summary.append(metric("Permissions", workbench.permission_matrix.length));
+  summary.append(metric("Mutates policy", workbench.mutates_permission_state ? "Yes" : "No"));
+  summary.append(metric("Core owner", workbench.core_authorization_owner));
+
+  const permissions = nodeElement("div", "installation-permission-grid");
+  for (const permission of workbench.permission_matrix || []) {
+    const item = nodeElement("article", `installation-permission risk-${permission.risk}`);
+    item.append(nodeElement("strong", "", permission.permission_id));
+    item.append(nodeElement("span", "", compactTitle(permission.risk)));
+    item.append(nodeElement("code", "", permission.authorization_command));
+    item.title = permission.reason;
+    permissions.append(item);
+  }
+
+  const plan = nodeElement("div", "installation-plan");
+  for (const step of workbench.operation_plan || []) {
+    const item = nodeElement("article", "installation-step");
+    item.append(nodeElement("strong", "", step.title));
+    item.append(nodeElement("span", "", step.owner));
+    plan.append(item);
+  }
+
+  section.append(summary, permissions, plan);
+  return section;
+}
+
 export function renderOperatingReadinessWorkbench(snapshot) {
   const workbench = snapshot.operating_readiness_workbench;
   const section = nodeElement("section", "panel readiness-workbench");
@@ -1272,6 +1313,7 @@ function render(snapshot) {
   workspace.append(renderWorkflowEvolutionWorkbench(snapshot));
   workspace.append(renderBenchmarkEvidenceMatrix(snapshot));
   workspace.append(renderEnterpriseJourneyWorkbench(snapshot));
+  workspace.append(renderInstallationAuthorizationWorkbench(snapshot));
   workspace.append(renderOperatingReadinessWorkbench(snapshot));
   workspace.append(renderApprovalGovernanceWorkbench(snapshot));
   workspace.append(renderWorkflowFactoryBlueprintWorkbench(snapshot));

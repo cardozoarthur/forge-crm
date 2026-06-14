@@ -38,6 +38,7 @@ export function createCrmWorkerServer() {
           worker_id: "forge-crm-runtime-worker",
           supported_entrypoints: [
             "forge_crm.plan_system",
+            "forge_crm.prepare_installation_authorization",
             "forge_crm.bootstrap_tenant",
             "forge_crm.operating_snapshot",
             "forge_crm.classify_lead",

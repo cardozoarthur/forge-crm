@@ -487,6 +487,60 @@ test("operating readiness maps Forge evidence into user-facing CRM deliverables"
   assert.ok(result.events.some((event) => event.kind === "crm.outcome.deliverables_mapped"));
 });
 
+test("installation authorization executor prepares Forge permission commands without granting them", () => {
+  assert.equal(typeof runtime.buildInstallationAuthorizationResult, "function");
+
+  const result = runtime.buildInstallationAuthorizationResult(
+    workerRequest(
+      "forge_crm.prepare_installation_authorization",
+      {
+        tenant_context: { tenant_id: "demo" },
+        operator_context: {
+          operator_id: "ops-lead",
+          approved_by: "arthur"
+        },
+        required_permissions: [
+          { id: "crm.workflow.mutate", risk: "high", reason: "bootstrap workflow-owned CRM state" },
+          { id: "crm.omnichannel.ingest", risk: "medium", reason: "ingest support conversations" },
+          { id: "crm.document.generate", risk: "medium", reason: "generate customer documents" }
+        ],
+        install_policy: {
+          addon_id: "forge.addon.crm",
+          authorization_owner: "forge.addons.authorize_permission",
+          allow_local_permission_store: false
+        }
+      },
+      { contract_id: "crm.installation.authorization.executor", task_ref: "install-auth-test" }
+    )
+  );
+
+  assert.equal(result.schema_version, "forge.addon_executor_result.v1");
+  assert.equal(result.status, "completed");
+  assert.equal(result.outputs.tenant_id, "demo");
+  assert.equal(result.outputs.authorization_state, "requires_human_authorization");
+  assert.equal(result.outputs.required_permission_count, 3);
+  assert.equal(result.outputs.core_authorization_owner, "forge.addons.authorize_permission");
+  assert.equal(result.outputs.mutates_permission_state, false);
+  assert.equal(result.outputs.mutates_crm_state, false);
+  assert.equal(result.outputs.forge_event_sourced, true);
+  assert.ok(result.outputs.authorization_commands.every((command) => command.includes("forge addons authorize-permission")));
+  assert.ok(result.outputs.authorization_commands.every((command) => command.includes("--addon forge.addon.crm")));
+
+  for (const artifactKind of [
+    "crm_installation_authorization_plan",
+    "crm_permission_authorization_matrix",
+    "crm_install_readiness_report"
+  ]) {
+    assert.ok(result.artifacts.some((artifact) => artifact.kind === artifactKind), `missing installation artifact ${artifactKind}`);
+  }
+
+  const readiness = result.artifacts.find((artifact) => artifact.kind === "crm_install_readiness_report");
+  assert.equal(readiness.data.operable_after_authorization, true);
+  assert.equal(readiness.data.local_permission_store_used, false);
+  assert.ok(result.events.some((event) => event.kind === "crm.installation.authorization_planned"));
+  assert.ok(result.events.some((event) => event.kind === "crm.permission.authorization_required"));
+});
+
 test("strategic objective audit executor promotes requirement coverage through Forge artifacts", () => {
   assert.equal(typeof runtime.buildStrategicObjectiveAuditResult, "function");
 

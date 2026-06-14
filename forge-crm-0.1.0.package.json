@@ -6,9 +6,9 @@
   "addon_name": "Forge CRM",
   "addon_version": "0.1.0",
   "manifest_path": "addons/forge-crm.json",
-  "manifest_sha256": "42663931a72d283887fb910aed4ec1d5a3ecb90571dfd9291b420877ef1e56c0",
-  "manifest_canonical_sha256": "f28f2c0fc5176a2725abb041ca433dbcbbfe5b14896b3dc1cdf9d8fcc9488284",
-  "manifest_bytes": 198700,
+  "manifest_sha256": "11514461d8e81835aaea1dcfb747fe8c43788c6f1edcf82d9ed9551b091bf444",
+  "manifest_canonical_sha256": "a491e69f79ab17690a46db260dc692d3dc2f840ef5097e7ac19c38f2764f4a0f",
+  "manifest_bytes": 202211,
   "distribution": {
     "repository": "https://github.com/cardozoarthur/forge-crm",
     "channel": "stable",
@@ -23,15 +23,15 @@
     "scheme": "ed25519_detached",
     "signature": "",
     "public_key": "",
-    "payload_sha256": "e7575e81a9e12bdf887cdffd447ce0fe6c68f6c892d77678e15e6f0932504ef8",
+    "payload_sha256": "c8f116519c42b094c9731fc072553dc6c8775f7f75db016f132aecaa24a81a1f",
     "verification_note": "package records detached signature metadata; trust verification is a marketplace policy gate"
   },
   "summary": {
     "capability_count": 9,
     "dependency_count": 1,
     "permission_count": 5,
-    "workflow_extension_count": 39,
-    "runtime_contract_count": 50,
+    "workflow_extension_count": 40,
+    "runtime_contract_count": 51,
     "view_count": 12,
     "event_adapter_count": 3,
     "integration_count": 5,
@@ -58,6 +58,7 @@
     ],
     "runtime_contracts": [
       "crm.factory.planning",
+      "crm.installation.authorization.executor",
       "crm.lead.classifier.executor",
       "crm.relationship.lifecycle.executor",
       "crm.relationship.timeline.executor",
@@ -312,6 +313,7 @@
         ],
         "workflow_extensions": [
           "crm_workflow_factory_system_bootstrap",
+          "crm_installation_authorization",
           "crm_enterprise_readiness",
           "crm_enterprise_customer_journey",
           "crm_subworkflow_orchestration",
@@ -323,6 +325,7 @@
           "crm_workflow_evolution"
         ],
         "deliverables": [
+          "CRM installation authorization plan",
           "CRM system blueprint",
           "workflow-backed entity model",
           "CRM subworkflow orchestration plan",
@@ -347,6 +350,9 @@
         "artifact_types": [
           "crm_system_blueprint",
           "crm_core_gap_report",
+          "crm_installation_authorization_plan",
+          "crm_permission_authorization_matrix",
+          "crm_install_readiness_report",
           "crm_workflow_pack",
           "crm_operating_model",
           "crm_operating_snapshot",
@@ -873,6 +879,11 @@
         "description": "Create a CRM system blueprint and implementation plan using Forge as the workflow application factory."
       },
       {
+        "id": "crm_installation_authorization",
+        "kind": "operations_workflow",
+        "description": "Prepare Forge permission authorization commands and install-readiness evidence before CRM tenant operation."
+      },
+      {
         "id": "crm_entity_lifecycle",
         "kind": "entity_workflow",
         "description": "Manage leads, contacts, companies and opportunities as audited workflow-backed entities."
@@ -1088,6 +1099,34 @@
         "constraints": [
           "planner output is advisory until Forge validates and promotes it",
           "Core gaps must be reported as forge-core backlog"
+        ]
+      },
+      {
+        "id": "crm.installation.authorization.executor",
+        "title": "CRM installation authorization planner",
+        "contract_type": "executor",
+        "capability_id": "crm_workflow_factory",
+        "workflow_extension_id": "crm_installation_authorization",
+        "runtime": "external_api",
+        "entrypoint": "forge_crm.prepare_installation_authorization",
+        "inputs": [
+          "tenant_context",
+          "operator_context",
+          "required_permissions",
+          "install_policy"
+        ],
+        "outputs": [
+          "crm_installation_authorization_plan",
+          "crm_permission_authorization_matrix",
+          "crm_install_readiness_report"
+        ],
+        "permissions": [
+          "crm.observability.inspect"
+        ],
+        "constraints": [
+          "installation onboarding prepares authorization evidence but does not authorize permissions automatically",
+          "human authorization must be executed through forge addons authorize-permission",
+          "CRM tenant bootstrap remains blocked until Forge permission policy records authorization"
         ]
       },
       {
@@ -2784,6 +2823,49 @@
             "payload_schema": [
               "tenant_context",
               "workflow_scope"
+            ]
+          },
+          {
+            "id": "crm.tui.prepare-installation-authorization",
+            "label": "Prepare CRM authorization",
+            "description": "Prepare Forge permission authorization commands before CRM tenant bootstrap.",
+            "palette_group": "CRM",
+            "source_panel": "crm.operational-cockpit",
+            "type": "command",
+            "target": "forge addons execute-executor",
+            "method": "CLI",
+            "permission": "crm.observability.inspect",
+            "requires_confirmation": true,
+            "risk_level": "medium",
+            "mutates_workflow": true,
+            "command_template": [
+              "addons",
+              "execute-executor",
+              "--addon",
+              "forge.addon.crm",
+              "--contract",
+              "crm.installation.authorization.executor",
+              "--worker",
+              "<worker-id>",
+              "--task",
+              "<task-ref>",
+              "--input",
+              "<json>",
+              "--context",
+              "<json>",
+              "--output",
+              "json"
+            ],
+            "keywords": [
+              "crm",
+              "authorization",
+              "permission",
+              "install"
+            ],
+            "payload_schema": [
+              "tenant_context",
+              "operator_context",
+              "install_policy"
             ]
           },
           {
@@ -5366,6 +5448,21 @@
         "generic_kind": "report"
       },
       {
+        "id": "crm_installation_authorization_plan",
+        "title": "CRM installation authorization plan",
+        "generic_kind": "artifact"
+      },
+      {
+        "id": "crm_permission_authorization_matrix",
+        "title": "CRM permission authorization matrix",
+        "generic_kind": "artifact"
+      },
+      {
+        "id": "crm_install_readiness_report",
+        "title": "CRM install readiness report",
+        "generic_kind": "report"
+      },
+      {
         "id": "crm_workflow_factory_blueprint",
         "title": "CRM workflow factory blueprint",
         "generic_kind": "artifact"
@@ -5970,6 +6067,16 @@
       {
         "id": "crm.factory",
         "title": "CRM factory event",
+        "transport": "crm"
+      },
+      {
+        "id": "crm.installation",
+        "title": "CRM installation event",
+        "transport": "crm"
+      },
+      {
+        "id": "crm.permission",
+        "title": "CRM permission event",
         "transport": "crm"
       },
       {

@@ -1,4 +1,4 @@
-import { buildOperatingReadinessResult } from "./crm-runtime-lib.mjs";
+import { buildInstallationAuthorizationResult, buildOperatingReadinessResult } from "./crm-runtime-lib.mjs";
 import { buildCrmStrategicObjectiveAudit } from "./crm-strategic-objective-audit-lib.mjs";
 import { buildCrmOperatingModel, buildCrmWorkflowPack } from "./crm-workflow-pack-lib.mjs";
 
@@ -29,6 +29,8 @@ const SURFACE_PERMISSIONS = {
 };
 
 const WORKFLOW_EDGES = [
+  ["crm.installation.authorization", "crm.enterprise.readiness", "installation authorization evidence updates readiness"],
+  ["crm.installation.authorization", "crm.lead.lifecycle", "authorized CRM permissions unblock tenant operation"],
   ["crm.lead.lifecycle", "crm.opportunity.pipeline", "converted lead starts opportunity workflow"],
   ["crm.lead.lifecycle", "crm.relationship.profile_enrichment", "captured contact or company enters enrichment workflow"],
   ["crm.relationship.profile_enrichment", "crm.opportunity.pipeline", "approved profile enrichment improves opportunity context"],
@@ -1585,6 +1587,98 @@ function artifactData(result, kind, fallback) {
   return result.artifacts.find((artifact) => artifact.kind === kind)?.data || fallback;
 }
 
+function installationAuthorizationDispatchRequest({ tenantId }) {
+  return {
+    entrypoint: "forge_crm.prepare_installation_authorization",
+    input: {
+      task_ref: `crm-web-install-authorization-${tenantId}`,
+      input: {
+        tenant_context: {
+          tenant_id: tenantId
+        },
+        operator_context: {
+          operator_id: "crm-operator"
+        },
+        install_policy: {
+          addon_id: "forge.addon.crm",
+          authorization_owner: "forge.addons.authorize_permission",
+          allow_local_permission_store: false
+        }
+      },
+      context: {
+        provided_context: {
+          tenant: tenantId
+        }
+      }
+    }
+  };
+}
+
+function installationAuthorizationWorkbench({ tenantId, actionList }) {
+  const actionById = new Map(actionList.map((action) => [action.id, action]));
+  const action = actionById.get("crm.prepare-installation-authorization");
+  const result = buildInstallationAuthorizationResult(installationAuthorizationDispatchRequest({ tenantId }));
+  const plan = artifactData(result, "crm_installation_authorization_plan", {});
+  const matrix = artifactData(result, "crm_permission_authorization_matrix", { permissions: [] });
+  const readiness = artifactData(result, "crm_install_readiness_report", {});
+
+  return {
+    schema_version: "forge.crm_installation_authorization_workbench.v1",
+    workflow_id: result.outputs.workflow_id,
+    workflow_extension_id: "crm_installation_authorization",
+    state_owner: "forge_workflow_runtime",
+    action_id: action?.id || "crm.prepare-installation-authorization",
+    contract_id: action?.contract_id || "crm.installation.authorization.executor",
+    core_authorization_owner: result.outputs.core_authorization_owner,
+    authorization_state: result.outputs.authorization_state,
+    mutates_permission_state: result.outputs.mutates_permission_state,
+    mutates_crm_state: result.outputs.mutates_crm_state,
+    local_permission_store_allowed: matrix.local_permission_store_allowed === true,
+    permission_matrix: matrix.permissions,
+    authorization_commands: result.outputs.authorization_commands,
+    generated_artifact_types: result.artifacts.map((artifact) => artifact.kind),
+    unblocked_surfaces: ["crm.system-map", "crm.relationship-graph", "crm.pipeline-kanban", "crm.support-queue"],
+    unblocked_runtime_contracts: readiness.unblocked_runtime_contracts || [
+      "crm.tenant.bootstrap.executor",
+      "crm.operating.snapshot.executor",
+      "crm.operating.readiness.executor"
+    ],
+    readiness_report: {
+      artifact_id: result.artifacts.find((artifact) => artifact.kind === "crm_install_readiness_report")?.id,
+      operable_after_authorization: readiness.operable_after_authorization,
+      blocked_until_authorized: readiness.blocked_until_authorized,
+      local_permission_store_used: readiness.local_permission_store_used
+    },
+    authorization_plan: {
+      artifact_id: result.artifacts.find((artifact) => artifact.kind === "crm_installation_authorization_plan")?.id,
+      validation_gates: plan.validation_gates || [],
+      command_count: plan.command_count || result.outputs.required_permission_count
+    },
+    operation_plan: [
+      {
+        id: "inspect_permission_requirements",
+        title: "Inspect CRM Addon permission requirements",
+        owner: "forge.addon.crm"
+      },
+      {
+        id: "prepare_forge_authorization_commands",
+        title: "Prepare Forge permission authorization commands",
+        owner: "crm.installation.authorization.executor"
+      },
+      {
+        id: "await_human_authorization",
+        title: "Wait for human authorization through Forge Core permission policy",
+        owner: "forge.addons.authorize_permission"
+      },
+      {
+        id: "resume_tenant_bootstrap",
+        title: "Resume CRM tenant bootstrap after authorization evidence exists",
+        owner: "forge.workflow.runtime"
+      }
+    ]
+  };
+}
+
 function operatingReadinessWorkbench({ tenantId, pack, model, actionList }) {
   const actionById = new Map(actionList.map((action) => [action.id, action]));
   const action = actionById.get("crm.generate-readiness-package");
@@ -2284,6 +2378,15 @@ function goalCommissionWorkbench(workflows, actionList) {
 
 function actions() {
   return [
+    {
+      id: "crm.prepare-installation-authorization",
+      label: "Prepare installation authorization",
+      surface_id: "crm.system-map",
+      contract_id: "crm.installation.authorization.executor",
+      requires_permission: "crm.observability.inspect",
+      mutates_workflow: true,
+      command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.installation.authorization.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
+    },
     {
       id: "crm.refresh-operating-snapshot",
       label: "Refresh operating snapshot",
@@ -3153,6 +3256,7 @@ export function buildCrmWebAppSnapshot(options = {}) {
     knowledge_graph: knowledgeGraph(),
     document_queue: documentQueueSnapshot,
     operational_workbench: operationalWorkbench,
+    installation_authorization_workbench: installationAuthorizationWorkbench({ tenantId, actionList }),
     daily_operating_cycle_workbench: dailyOperatingCycleWorkbench(operationalWorkbench, actionList),
     workflow_evolution_workbench: workflowEvolutionWorkbench(workflows, actionList),
     benchmark_evidence_matrix: benchmarkEvidenceMatrix(workflows, actionList, documentQueueSnapshot),

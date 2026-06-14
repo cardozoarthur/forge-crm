@@ -58,6 +58,35 @@ test("tenant bootstrap result returns Forge executor artifacts and events", () =
   assert.equal(result.events[0].kind, "crm.tenant.bootstrap_generated");
 });
 
+test("workflow pack includes CRM installation authorization before tenant operation", () => {
+  const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
+  const workflow = pack.workflows.find((candidate) => candidate.id === "crm.installation.authorization");
+
+  assert.ok(workflow);
+  assert.equal(workflow.domain, "operations");
+  assert.equal(workflow.workflow_extension_id, "crm_installation_authorization");
+  assert.ok(workflow.runtime_contracts.includes("crm.installation.authorization.executor"));
+  assert.ok(workflow.permissions.includes("crm.observability.inspect"));
+
+  for (const artifact of [
+    "crm_installation_authorization_plan",
+    "crm_permission_authorization_matrix",
+    "crm_install_readiness_report"
+  ]) {
+    assert.ok(workflow.artifacts.includes(artifact), `missing installation artifact ${artifact}`);
+    assert.ok(pack.indexes.artifact_types.includes(artifact), `missing indexed installation artifact ${artifact}`);
+  }
+
+  for (const event of ["crm.installation.authorization_planned", "crm.permission.authorization_required"]) {
+    assert.ok(workflow.events.includes(event), `missing installation event ${event}`);
+  }
+
+  assert.ok(
+    workflow.validation_gates.includes("installation remains blocked until Forge permission authorization is recorded")
+  );
+  assert.ok(pack.indexes.runtime_contracts.includes("crm.installation.authorization.executor"));
+});
+
 test("workflow pack includes an explicit relationship lifecycle executor", () => {
   const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
   const workflow = pack.workflows.find((candidate) => candidate.id === "crm.lead.lifecycle");

@@ -73,6 +73,42 @@ test("manifest exposes tenant bootstrap as a Forge runtime contract", () => {
   assert.ok(artifactTypes.has("crm_system_blueprint"));
 });
 
+test("manifest exposes CRM installation authorization as Forge-owned onboarding", () => {
+  const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.installation.authorization.executor");
+  assert.ok(contract);
+  assert.equal(contract.contract_type, "executor");
+  assert.equal(contract.capability_id, "crm_workflow_factory");
+  assert.equal(contract.workflow_extension_id, "crm_installation_authorization");
+  assert.equal(contract.entrypoint, "forge_crm.prepare_installation_authorization");
+  assert.deepEqual(contract.permissions, ["crm.observability.inspect"]);
+
+  for (const input of ["tenant_context", "operator_context", "required_permissions", "install_policy"]) {
+    assert.ok(contract.inputs.includes(input), `missing installation authorization input ${input}`);
+  }
+  for (const output of [
+    "crm_installation_authorization_plan",
+    "crm_permission_authorization_matrix",
+    "crm_install_readiness_report"
+  ]) {
+    assert.ok(contract.outputs.includes(output), `missing installation authorization output ${output}`);
+  }
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("does not authorize permissions automatically")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("forge addons authorize-permission")));
+
+  const artifactTypes = new Set(manifest.artifact_types.map((artifact) => artifact.id));
+  for (const artifactType of [
+    "crm_installation_authorization_plan",
+    "crm_permission_authorization_matrix",
+    "crm_install_readiness_report"
+  ]) {
+    assert.ok(artifactTypes.has(artifactType), `missing artifact type ${artifactType}`);
+  }
+
+  const eventTypes = new Set(manifest.event_types.map((event) => event.id));
+  assert.ok(eventTypes.has("crm.installation"));
+  assert.ok(eventTypes.has("crm.permission"));
+});
+
 test("manifest exposes CRM operating snapshot as a Forge runtime contract", () => {
   const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.operating.snapshot.executor");
   assert.ok(contract);

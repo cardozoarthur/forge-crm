@@ -23,11 +23,11 @@
     "external_delivery_requires_approval": true
   },
   "metrics": {
-    "workflow_count": 38,
+    "workflow_count": 39,
     "business_module_count": 7,
     "surface_count": 10,
-    "artifact_type_count": 112,
-    "event_type_count": 128,
+    "artifact_type_count": 115,
+    "event_type_count": 130,
     "complete_scope": true
   },
   "surfaces": [
@@ -40,6 +40,7 @@
       "permission": "crm.workflow.mutate",
       "state_source": "forge_workflow_artifacts_and_events",
       "workflow_ids": [
+        "crm.installation.authorization",
         "crm.internal.collaboration",
         "crm.work.queue.orchestration",
         "crm.daily.operating_cycle",
@@ -57,6 +58,11 @@
         "crm.workflow.automation_execution"
       ],
       "lanes": [
+        "install_detected",
+        "permission_review",
+        "authorization_wait",
+        "authorized",
+        "rework_required",
         "thread_requested",
         "notes_recorded",
         "decisions_recorded",
@@ -78,7 +84,6 @@
         "components_cataloged",
         "artifact_published",
         "adopted_by_surfaces",
-        "rework_required",
         "inspection_requested",
         "context_collected",
         "audit_reported",
@@ -160,6 +165,8 @@
         "crm_evolution_experiment",
         "crm_executive_summary",
         "crm_factory_portability_report",
+        "crm_install_readiness_report",
+        "crm_installation_authorization_plan",
         "crm_internal_note",
         "crm_kpi_dashboard",
         "crm_lineage_map",
@@ -169,6 +176,7 @@
         "crm_operating_command_brief",
         "crm_operating_readiness_report",
         "crm_operating_risk_register",
+        "crm_permission_authorization_matrix",
         "crm_permission_gate_report",
         "crm_promotion_decision",
         "crm_queue_assignment_plan",
@@ -219,6 +227,7 @@
         "crm.factory.blueprint_exported",
         "crm.factory.core_gap_reviewed",
         "crm.factory.module_mapped",
+        "crm.installation.authorization_planned",
         "crm.journey.acceptance_reported",
         "crm.journey.stage_completed",
         "crm.journey.started",
@@ -230,6 +239,7 @@
         "crm.operating.readiness_reported",
         "crm.operating.risk_registered",
         "crm.outcome.deliverables_mapped",
+        "crm.permission.authorization_required",
         "crm.queue.assignment_planned",
         "crm.queue.risk_flagged",
         "crm.queue.snapshot_generated",
@@ -1383,6 +1393,7 @@
       "id": "operations",
       "complete": true,
       "workflow_ids": [
+        "crm.installation.authorization",
         "crm.contract.signature",
         "crm.forecast.review",
         "crm.account.management",
@@ -1434,6 +1445,8 @@
         "crm_forecast_report",
         "crm_handoff_record",
         "crm_health_report",
+        "crm_install_readiness_report",
+        "crm_installation_authorization_plan",
         "crm_internal_note",
         "crm_kpi_dashboard",
         "crm_lineage_map",
@@ -1443,6 +1456,7 @@
         "crm_operating_command_brief",
         "crm_operating_readiness_report",
         "crm_operating_risk_register",
+        "crm_permission_authorization_matrix",
         "crm_permission_gate_report",
         "crm_presentation",
         "crm_project_plan",
@@ -1501,6 +1515,7 @@
         "crm.goal.progress_reviewed",
         "crm.handoff.delivered",
         "crm.handoff.delivery_blocked",
+        "crm.installation.authorization_planned",
         "crm.journey.acceptance_reported",
         "crm.journey.stage_completed",
         "crm.journey.started",
@@ -1512,6 +1527,7 @@
         "crm.operating.readiness_reported",
         "crm.operating.risk_registered",
         "crm.outcome.deliverables_mapped",
+        "crm.permission.authorization_required",
         "crm.project.accepted",
         "crm.project.handoff_requested",
         "crm.queue.assignment_planned",
@@ -1534,6 +1550,7 @@
         "crm.task.created"
       ],
       "validation_gates": [
+        "CRM Addon cannot authorize permissions automatically",
         "Core primitive gaps are routed to forge-core before Addon workarounds",
         "Forge Core gaps are routed to forge-core before CRM-local implementation",
         "account owner visible",
@@ -1566,6 +1583,7 @@
         "forecast snapshot lineage present",
         "incomplete approvals return to source workflow tasks with explicit rework reason",
         "inspection does not create CRM-local observability state",
+        "installation remains blocked until Forge permission authorization is recorded",
         "internal notes and decisions are Forge artifacts before promotion",
         "lineage points to Forge artifact",
         "main CRM flow has no external system dependency",
@@ -1574,6 +1592,7 @@
         "ownership gaps and SLA risks are returned to work before closure",
         "parent workflow promotion is blocked while any child validation gate fails",
         "permission gates pass before any approval mutates workflow state",
+        "permission policy mutation must go through forge addons authorize-permission",
         "queue actions require Forge workflow approval before mutation",
         "readiness evidence sourced from Forge workflows artifacts events and validation gates",
         "recommended decisions remain advisory until Forge approval",
@@ -1726,6 +1745,42 @@
   "workflow_graph": {
     "state_owner": "forge_workflow_runtime",
     "nodes": [
+      {
+        "id": "crm.installation.authorization",
+        "title": "CRM installation authorization",
+        "domain": "operations",
+        "state_count": 5,
+        "states": [
+          "install_detected",
+          "permission_review",
+          "authorization_wait",
+          "authorized",
+          "rework_required"
+        ],
+        "wait_states": [
+          "authorization_wait"
+        ],
+        "runtime_contracts": [
+          "crm.installation.authorization.executor"
+        ],
+        "artifact_types": [
+          "crm_installation_authorization_plan",
+          "crm_permission_authorization_matrix",
+          "crm_install_readiness_report"
+        ],
+        "event_types": [
+          "crm.installation.authorization_planned",
+          "crm.permission.authorization_required"
+        ],
+        "surface_ids": [
+          "crm.system-map"
+        ],
+        "validation_gates": [
+          "installation remains blocked until Forge permission authorization is recorded",
+          "CRM Addon cannot authorize permissions automatically",
+          "permission policy mutation must go through forge addons authorize-permission"
+        ]
+      },
       {
         "id": "crm.lead.lifecycle",
         "title": "Lead, contact and company lifecycle",
@@ -3328,6 +3383,18 @@
       }
     ],
     "edges": [
+      {
+        "from": "crm.installation.authorization",
+        "to": "crm.enterprise.readiness",
+        "reason": "installation authorization evidence updates readiness",
+        "state_owner": "forge_workflow_runtime"
+      },
+      {
+        "from": "crm.installation.authorization",
+        "to": "crm.lead.lifecycle",
+        "reason": "authorized CRM permissions unblock tenant operation",
+        "state_owner": "forge_workflow_runtime"
+      },
       {
         "from": "crm.lead.lifecycle",
         "to": "crm.opportunity.pipeline",
@@ -5099,6 +5166,121 @@
           "inspect_action_id": "crm.inspect-observability",
           "readiness_action_id": "crm.generate-readiness-package"
         }
+      }
+    ]
+  },
+  "installation_authorization_workbench": {
+    "schema_version": "forge.crm_installation_authorization_workbench.v1",
+    "workflow_id": "crm.installation.authorization",
+    "workflow_extension_id": "crm_installation_authorization",
+    "state_owner": "forge_workflow_runtime",
+    "action_id": "crm.prepare-installation-authorization",
+    "contract_id": "crm.installation.authorization.executor",
+    "core_authorization_owner": "forge.addons.authorize_permission",
+    "authorization_state": "requires_human_authorization",
+    "mutates_permission_state": false,
+    "mutates_crm_state": false,
+    "local_permission_store_allowed": false,
+    "permission_matrix": [
+      {
+        "permission_id": "crm.workflow.mutate",
+        "risk": "high",
+        "reason": "create, mutate and resume CRM workflows through Forge",
+        "requires_human_authorization": true,
+        "authorization_owner": "forge.addons.authorize_permission",
+        "authorization_command": "forge addons authorize-permission --addon forge.addon.crm --permission crm.workflow.mutate --risk high --approved-by crm-operator --output json"
+      },
+      {
+        "permission_id": "crm.omnichannel.ingest",
+        "risk": "medium",
+        "reason": "ingest approved channel events into Forge workflows",
+        "requires_human_authorization": true,
+        "authorization_owner": "forge.addons.authorize_permission",
+        "authorization_command": "forge addons authorize-permission --addon forge.addon.crm --permission crm.omnichannel.ingest --risk medium --approved-by crm-operator --output json"
+      },
+      {
+        "permission_id": "crm.document.generate",
+        "risk": "medium",
+        "reason": "generate CRM customer documents as Forge artifacts",
+        "requires_human_authorization": true,
+        "authorization_owner": "forge.addons.authorize_permission",
+        "authorization_command": "forge addons authorize-permission --addon forge.addon.crm --permission crm.document.generate --risk medium --approved-by crm-operator --output json"
+      },
+      {
+        "permission_id": "crm.ai.recommend",
+        "risk": "medium",
+        "reason": "run bounded CRM copilots and recommendations",
+        "requires_human_authorization": true,
+        "authorization_owner": "forge.addons.authorize_permission",
+        "authorization_command": "forge addons authorize-permission --addon forge.addon.crm --permission crm.ai.recommend --risk medium --approved-by crm-operator --output json"
+      },
+      {
+        "permission_id": "crm.observability.inspect",
+        "risk": "medium",
+        "reason": "inspect Forge CRM audit, lineage, metrics and readiness evidence",
+        "requires_human_authorization": true,
+        "authorization_owner": "forge.addons.authorize_permission",
+        "authorization_command": "forge addons authorize-permission --addon forge.addon.crm --permission crm.observability.inspect --risk medium --approved-by crm-operator --output json"
+      }
+    ],
+    "authorization_commands": [
+      "forge addons authorize-permission --addon forge.addon.crm --permission crm.workflow.mutate --risk high --approved-by crm-operator --output json",
+      "forge addons authorize-permission --addon forge.addon.crm --permission crm.omnichannel.ingest --risk medium --approved-by crm-operator --output json",
+      "forge addons authorize-permission --addon forge.addon.crm --permission crm.document.generate --risk medium --approved-by crm-operator --output json",
+      "forge addons authorize-permission --addon forge.addon.crm --permission crm.ai.recommend --risk medium --approved-by crm-operator --output json",
+      "forge addons authorize-permission --addon forge.addon.crm --permission crm.observability.inspect --risk medium --approved-by crm-operator --output json"
+    ],
+    "generated_artifact_types": [
+      "crm_installation_authorization_plan",
+      "crm_permission_authorization_matrix",
+      "crm_install_readiness_report"
+    ],
+    "unblocked_surfaces": [
+      "crm.system-map",
+      "crm.relationship-graph",
+      "crm.pipeline-kanban",
+      "crm.support-queue"
+    ],
+    "unblocked_runtime_contracts": [
+      "crm.tenant.bootstrap.executor",
+      "crm.operating.snapshot.executor",
+      "crm.operating.readiness.executor"
+    ],
+    "readiness_report": {
+      "artifact_id": "crm-install-readiness-default",
+      "operable_after_authorization": true,
+      "blocked_until_authorized": true,
+      "local_permission_store_used": false
+    },
+    "authorization_plan": {
+      "artifact_id": "crm-installation-authorization-default",
+      "validation_gates": [
+        "installation remains blocked until Forge permission authorization is recorded",
+        "CRM Addon does not write local permission policy",
+        "CRM tenant bootstrap remains disabled until permission policy is authorized"
+      ],
+      "command_count": 5
+    },
+    "operation_plan": [
+      {
+        "id": "inspect_permission_requirements",
+        "title": "Inspect CRM Addon permission requirements",
+        "owner": "forge.addon.crm"
+      },
+      {
+        "id": "prepare_forge_authorization_commands",
+        "title": "Prepare Forge permission authorization commands",
+        "owner": "crm.installation.authorization.executor"
+      },
+      {
+        "id": "await_human_authorization",
+        "title": "Wait for human authorization through Forge Core permission policy",
+        "owner": "forge.addons.authorize_permission"
+      },
+      {
+        "id": "resume_tenant_bootstrap",
+        "title": "Resume CRM tenant bootstrap after authorization evidence exists",
+        "owner": "forge.workflow.runtime"
       }
     ]
   },
@@ -7322,6 +7504,37 @@
     "contract_id": "crm.factory.blueprint_export.executor",
     "module_templates": [
       {
+        "id": "module.crm_installation_authorization",
+        "title": "CRM installation authorization",
+        "domain": "operations",
+        "workflow_ids": [
+          "crm.installation.authorization"
+        ],
+        "workflow_extension_id": "crm_installation_authorization",
+        "runtime_contracts": [
+          "crm.installation.authorization.executor"
+        ],
+        "artifact_types": [
+          "crm_installation_authorization_plan",
+          "crm_permission_authorization_matrix",
+          "crm_install_readiness_report"
+        ],
+        "event_types": [
+          "crm.installation.authorization_planned",
+          "crm.permission.authorization_required"
+        ],
+        "surface_ids": [
+          "crm.system-map"
+        ],
+        "validation_gates": [
+          "installation remains blocked until Forge permission authorization is recorded",
+          "CRM Addon cannot authorize permissions automatically",
+          "permission policy mutation must go through forge addons authorize-permission"
+        ],
+        "state_owner": "forge_workflow_runtime",
+        "reuse_policy": "copy_as_forge_workflow_module_template"
+      },
+      {
         "id": "module.crm_lead_lifecycle",
         "title": "Lead, contact and company lifecycle",
         "domain": "relationship",
@@ -8829,7 +9042,7 @@
     ],
     "portability_report": {
       "state": "ready_for_reuse",
-      "module_count": 38,
+      "module_count": 39,
       "missing_runtime_contract_modules": [],
       "target_repository_for_core_gaps": "forge-core",
       "local_state_allowed": false
@@ -9476,6 +9689,33 @@
     ]
   },
   "actions": [
+    {
+      "id": "crm.prepare-installation-authorization",
+      "label": "Prepare installation authorization",
+      "surface_id": "crm.system-map",
+      "contract_id": "crm.installation.authorization.executor",
+      "requires_permission": "crm.observability.inspect",
+      "mutates_workflow": true,
+      "command_template": [
+        "forge",
+        "addons",
+        "execute-executor",
+        "--addon",
+        "forge.addon.crm",
+        "--contract",
+        "crm.installation.authorization.executor",
+        "--worker",
+        "<worker-id>",
+        "--task",
+        "<task-ref>",
+        "--input",
+        "<json>",
+        "--context",
+        "<json>",
+        "--output",
+        "json"
+      ]
+    },
     {
       "id": "crm.refresh-operating-snapshot",
       "label": "Refresh operating snapshot",
@@ -10805,6 +11045,68 @@
     "state_owner": "forge_workflow_runtime",
     "local_mutation_allowed": false,
     "plans": [
+      {
+        "action_id": "crm.prepare-installation-authorization",
+        "label": "Prepare installation authorization",
+        "surface_id": "crm.system-map",
+        "contract_id": "crm.installation.authorization.executor",
+        "required_permission": "crm.observability.inspect",
+        "selected_command": [
+          "forge",
+          "addons",
+          "execute-executor",
+          "--addon",
+          "forge.addon.crm",
+          "--contract",
+          "crm.installation.authorization.executor",
+          "--worker",
+          "<worker-id>",
+          "--task",
+          "<task-ref>",
+          "--input",
+          "<json>",
+          "--context",
+          "<json>",
+          "--output",
+          "json"
+        ],
+        "permission_gate": {
+          "status": "requires_forge_permission",
+          "permission": "crm.observability.inspect",
+          "approval_owner": "forge_permission_policy"
+        },
+        "operation_plan": [
+          {
+            "id": "check_addon_permission",
+            "title": "Check Addon permission",
+            "owner": "forge.permissions",
+            "evidence": "crm.observability.inspect"
+          },
+          {
+            "id": "execute_runtime_contract",
+            "title": "Execute runtime contract",
+            "owner": "forge.addons.runtime",
+            "evidence": "crm.installation.authorization.executor"
+          },
+          {
+            "id": "promote_result_to_workflow",
+            "title": "Promote result to workflow",
+            "owner": "forge.workflow.runtime",
+            "evidence": "artifact and event promotion"
+          },
+          {
+            "id": "refresh_operating_snapshot",
+            "title": "Refresh operating snapshot",
+            "owner": "forge.addon.crm",
+            "evidence": "crm.operating.snapshot.executor"
+          }
+        ],
+        "output_policy": {
+          "promote_result_to_workflow": true,
+          "browser_local_state_write": false,
+          "refresh_source": "forge_workflow_artifacts_and_events"
+        }
+      },
       {
         "action_id": "crm.refresh-operating-snapshot",
         "label": "Refresh operating snapshot",
