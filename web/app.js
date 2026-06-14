@@ -337,6 +337,40 @@ export function renderAiWorkbench(snapshot) {
   return section;
 }
 
+export function renderWorkflowCadences(snapshot) {
+  const section = nodeElement("section", "panel cadence-panel");
+  section.append(nodeElement("h2", "", "Workflow Cadences"));
+  section.append(
+    nodeElement(
+      "p",
+      "panel-source",
+      `${snapshot.workflow_cadences?.event_channel_id || "crm.schedule"} · Forge-owned wait states and triggers`
+    )
+  );
+
+  const list = nodeElement("div", "cadence-list");
+  for (const cadence of snapshot.workflow_cadences?.cadences || []) {
+    const item = nodeElement("article", "cadence-row");
+    item.dataset.surfacePanel = cadence.surface_id;
+    item.append(nodeElement("strong", "", cadence.title));
+    item.append(nodeElement("span", "cadence-workflow", cadence.workflow_id));
+    item.append(nodeElement("span", "cadence-state", compactTitle(cadence.due_state)));
+    item.append(nodeElement("code", "", actionLabel(snapshot, cadence.action_id)));
+
+    const steps = nodeElement("ol", "cadence-steps");
+    for (const step of cadence.operation_plan) {
+      const stepItem = nodeElement("li", "", step.title);
+      stepItem.title = `${step.owner}: ${step.evidence}`;
+      steps.append(stepItem);
+    }
+    item.append(steps);
+    list.append(item);
+  }
+
+  section.append(list);
+  return section;
+}
+
 function renderModuleBoard(snapshot) {
   const section = nodeElement("section", "panel module-panel");
   section.append(nodeElement("h2", "", "Business Modules"));
@@ -431,6 +465,7 @@ function render(snapshot) {
   workspace.append(renderSupportQueue(snapshot));
   workspace.append(renderMarketingCalendar(snapshot));
   workspace.append(renderAiWorkbench(snapshot));
+  workspace.append(renderWorkflowCadences(snapshot));
   workspace.append(renderWorkflowGraph(snapshot));
   workspace.append(renderModuleBoard(snapshot));
   workspace.append(renderKnowledgeGraph(snapshot));

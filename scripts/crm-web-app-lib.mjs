@@ -773,6 +773,153 @@ function actionInvocationPlans(actionList) {
   };
 }
 
+function workflowCadences(workflows, actionList) {
+  const workflowIds = new Set(workflows.map((workflow) => workflow.id));
+  const actionById = new Map(actionList.map((action) => [action.id, action]));
+  const specs = [
+    {
+      id: "cadence.commercial.followup_forecast",
+      title: "Commercial follow-up and forecast review",
+      workflow_id: "crm.followup.forecast",
+      workflow_extension_id: "crm_followup_sequence",
+      surface_id: "crm.commercial-command",
+      cadence_kind: "wait_state_schedule",
+      schedule_source: "Forge wait states for follow-up due dates, forecast reviews, goals and commissions",
+      trigger_id: "crm.schedule.followup_due",
+      event_type: "crm.followup",
+      due_state: "waiting_due_date",
+      action_id: "crm.review-followup-forecast",
+      owner_role: "commercial.ops"
+    },
+    {
+      id: "cadence.commercial.contract_renewal",
+      title: "Contract signature and renewal follow-up",
+      workflow_id: "crm.contract.signature",
+      workflow_extension_id: "crm_contract_lifecycle",
+      surface_id: "crm.commercial-command",
+      cadence_kind: "renewal_schedule",
+      schedule_source: "Forge contract workflow renewal waits and signature checkpoints",
+      trigger_id: "crm.schedule.contract_renewal_due",
+      event_type: "crm.contract",
+      due_state: "renewal_wait",
+      action_id: "crm.manage-contract-signature",
+      owner_role: "legal.ops"
+    },
+    {
+      id: "cadence.support.ticket_sla",
+      title: "Ticket SLA escalation clock",
+      workflow_id: "crm.ticket.sla",
+      workflow_extension_id: "crm_ticket_sla",
+      surface_id: "crm.support-queue",
+      cadence_kind: "sla_wait_state",
+      schedule_source: "Forge SLA wait states and escalation events",
+      trigger_id: "crm.schedule.ticket_sla_due",
+      event_type: "crm.sla",
+      due_state: "sla_escalation",
+      action_id: "crm.triage-ticket-sla",
+      owner_role: "support.lead"
+    },
+    {
+      id: "cadence.marketing.campaign_launch",
+      title: "Campaign launch and reporting cadence",
+      workflow_id: "crm.campaign.lifecycle",
+      workflow_extension_id: "crm_campaign_lifecycle",
+      surface_id: "crm.marketing-calendar",
+      cadence_kind: "campaign_schedule",
+      schedule_source: "Forge campaign schedule events after approval gates",
+      trigger_id: "crm.schedule.campaign_launch_due",
+      event_type: "crm.campaign",
+      due_state: "scheduled",
+      action_id: "crm.automate-campaign",
+      owner_role: "marketing.ops"
+    },
+    {
+      id: "cadence.marketing.lead_nurture",
+      title: "Lead nurture wait-step cadence",
+      workflow_id: "crm.lead.nurture",
+      workflow_extension_id: "crm_lead_nurture",
+      surface_id: "crm.marketing-calendar",
+      cadence_kind: "nurture_wait_state",
+      schedule_source: "Forge wait nodes for segment-backed nurture steps",
+      trigger_id: "crm.schedule.nurture_step_due",
+      event_type: "crm.nurture",
+      due_state: "wait_step",
+      action_id: "crm.automate-campaign",
+      owner_role: "lifecycle.marketing"
+    },
+    {
+      id: "cadence.operations.project_handoff",
+      title: "Project handoff unblock review",
+      workflow_id: "crm.project.handoff",
+      workflow_extension_id: "crm_project_handoff",
+      surface_id: "crm.commercial-command",
+      cadence_kind: "blocked_wait_review",
+      schedule_source: "Forge task waits and handoff checkpoints for internal operations",
+      trigger_id: "crm.schedule.project_handoff_due",
+      event_type: "crm.task",
+      due_state: "blocked_wait",
+      action_id: "crm.plan-project-handoff",
+      owner_role: "delivery.ops"
+    }
+  ];
+
+  return {
+    schema_version: "forge.crm_workflow_cadences.v1",
+    state_owner: "forge_workflow_runtime",
+    local_scheduler_allowed: false,
+    event_channel_id: "crm.schedule",
+    trigger_transport: "cron",
+    cadences: specs
+      .filter((spec) => workflowIds.has(spec.workflow_id) && actionById.has(spec.action_id))
+      .map((spec) => {
+        const action = actionById.get(spec.action_id);
+        return {
+          ...spec,
+          contract_id: action.contract_id,
+          required_permission: action.requires_permission,
+          operation_plan: [
+            {
+              id: "detect_due_wait_state",
+              title: "Detect due wait state",
+              owner: "forge.workflow.scheduler",
+              evidence: spec.due_state
+            },
+            {
+              id: "emit_forge_schedule_event",
+              title: "Emit Forge schedule event",
+              owner: "forge.event_engine",
+              evidence: spec.trigger_id
+            },
+            {
+              id: "execute_runtime_contract",
+              title: "Execute runtime contract",
+              owner: "forge.addons.runtime",
+              evidence: action.contract_id
+            },
+            {
+              id: "promote_artifacts_and_events",
+              title: "Promote artifacts and events",
+              owner: "forge.workflow.runtime",
+              evidence: spec.event_type
+            },
+            {
+              id: "refresh_operating_snapshot",
+              title: "Refresh operating snapshot",
+              owner: "forge.addon.crm",
+              evidence: "crm.operating.snapshot.executor"
+            }
+          ],
+          output_policy: {
+            promote_schedule_result_to_workflow: true,
+            browser_local_timer: false,
+            external_scheduler_required: false,
+            refresh_source: WORKBENCH_STATE_SOURCE
+          }
+        };
+      })
+  };
+}
+
 export function buildCrmWebAppSnapshot(options = {}) {
   const tenantId = slug(options.tenant_id || options.tenant || "default");
   const pack = buildCrmWorkflowPack({ tenant_id: tenantId });
@@ -849,6 +996,7 @@ export function buildCrmWebAppSnapshot(options = {}) {
     operational_workbench: buildOperationalWorkbench(workflows, actionList, documentQueueSnapshot),
     actions: actionList,
     action_invocation_plans: actionInvocationPlans(actionList),
+    workflow_cadences: workflowCadences(workflows, actionList),
     design_tokens: DESIGN_TOKENS,
     observability: model.observability
   };

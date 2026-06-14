@@ -108,6 +108,53 @@ test("web app snapshot exposes auditable Forge action invocation plans", () => {
   }
 });
 
+test("web app snapshot exposes Forge-owned operational workflow cadences", () => {
+  const snapshot = buildCrmWebAppSnapshot({ tenant_id: "demo" });
+  const cadences = snapshot.workflow_cadences;
+
+  assert.equal(cadences.schema_version, "forge.crm_workflow_cadences.v1");
+  assert.equal(cadences.state_owner, "forge_workflow_runtime");
+  assert.equal(cadences.local_scheduler_allowed, false);
+  assert.equal(cadences.event_channel_id, "crm.schedule");
+
+  const actionById = new Map(snapshot.actions.map((action) => [action.id, action]));
+  const workflowIds = new Set(snapshot.workflow_graph.nodes.map((node) => node.id));
+  const surfaceIds = new Set(snapshot.surfaces.map((surface) => surface.id));
+  const cadenceByWorkflow = new Map(cadences.cadences.map((cadence) => [cadence.workflow_id, cadence]));
+
+  for (const workflowId of [
+    "crm.followup.forecast",
+    "crm.contract.signature",
+    "crm.ticket.sla",
+    "crm.campaign.lifecycle",
+    "crm.lead.nurture",
+    "crm.project.handoff"
+  ]) {
+    assert.ok(cadenceByWorkflow.has(workflowId), `missing cadence for ${workflowId}`);
+  }
+
+  for (const cadence of cadences.cadences) {
+    const action = actionById.get(cadence.action_id);
+    assert.ok(action, `missing action ${cadence.action_id}`);
+    assert.ok(workflowIds.has(cadence.workflow_id), `missing workflow ${cadence.workflow_id}`);
+    assert.ok(surfaceIds.has(cadence.surface_id), `missing surface ${cadence.surface_id}`);
+    assert.equal(cadence.contract_id, action.contract_id);
+    assert.equal(cadence.required_permission, action.requires_permission);
+    assert.equal(cadence.output_policy.promote_schedule_result_to_workflow, true);
+    assert.equal(cadence.output_policy.browser_local_timer, false);
+    assert.deepEqual(
+      cadence.operation_plan.map((step) => step.id),
+      [
+        "detect_due_wait_state",
+        "emit_forge_schedule_event",
+        "execute_runtime_contract",
+        "promote_artifacts_and_events",
+        "refresh_operating_snapshot"
+      ]
+    );
+  }
+});
+
 test("web app snapshot exposes an operational workbench backed by Forge artifacts and events", () => {
   const snapshot = buildCrmWebAppSnapshot({ tenant_id: "demo" });
   const workbench = snapshot.operational_workbench;
@@ -166,6 +213,7 @@ test("web assets mount the generated CRM snapshot without a build step", async (
   assert.match(app, /renderMarketingCalendar/);
   assert.match(app, /renderAiWorkbench/);
   assert.match(app, /renderActionInvocationPlans/);
+  assert.match(app, /renderWorkflowCadences/);
   assert.match(styles, /\.workflow-node/);
   assert.match(styles, /\.knowledge-node/);
   assert.match(styles, /\.document-row/);
@@ -175,6 +223,7 @@ test("web assets mount the generated CRM snapshot without a build step", async (
   assert.match(styles, /\.marketing-calendar/);
   assert.match(styles, /\.ai-workbench/);
   assert.match(styles, /\.action-plan/);
+  assert.match(styles, /\.cadence-row/);
   assert.match(favicon, /<svg/);
 });
 
