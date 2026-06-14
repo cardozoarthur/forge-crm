@@ -12,6 +12,7 @@
     "operating-model": "node scripts/generate-crm-operating-model.mjs",
     "web:snapshot": "node scripts/generate-crm-web-snapshot.mjs default --write web/data/operating-snapshot.json",
     "enterprise:audit": "node scripts/audit-crm-enterprise-readiness.mjs",
+    "strategic:audit": "node scripts/audit-crm-strategic-objective.mjs",
     "worker": "node runtime/crm-worker.mjs",
     "smoke:forge": "node scripts/smoke-forge-runtime.mjs",
     "forge:catalog": "forge addons catalog --addon-dir addons --output json",

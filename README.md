@@ -15,6 +15,7 @@ This repository starts the CRM as a verifiable Forge Addon:
 - `scripts/generate-crm-operating-model.mjs` emits the Forge-owned operating model for pipeline, support, marketing, documents, cross-domain work queue, design system, commercial command and AI workbench surfaces.
 - `scripts/generate-crm-web-snapshot.mjs` emits the static web app snapshot derived from the operating model, including Forge-owned action invocation plans, benchmark evidence, design-system artifacts, subworkflow orchestration, workflow automation design, executive reporting, goal and commission settlement, daily operating cycle and operational workflow cadences for schedules, waits and triggers.
 - `scripts/audit-crm-enterprise-readiness.mjs` emits a deterministic readiness audit that maps the strategic objective, Forge v0.5/v0.6/v0.7 benchmark tracks, public AddOn posture, user-facing deliverables and Core requirements to current Forge-owned evidence.
+- `scripts/audit-crm-strategic-objective.mjs` emits a requirement-by-requirement audit for the original CRM-on-Forge objective, including support channel coverage, memory scopes, artifacts, observability and hybrid UI evidence.
 - `web/` contains a no-build business CRM web surface that renders workflows, knowledge relationships, document queues, benchmark evidence and Forge actions from `web/data/operating-snapshot.json`.
 - `crm.operational-cockpit` exposes a Forge TUI dashboard view with permission-gated CRM actions in parity with the web CRM command contracts: tenant bootstrap, operating snapshot refresh, observability inspection, automatic lead classification, relationship timeline/profile operations, pipeline stage movement, commercial account/contract/forecast/commission flows, proposals, documents, approvals, memory promotion, omnichannel support, marketing, cross-domain queues, daily operating cycle, subworkflows, workflow automation, design system, copilots, enterprise journey execution and readiness packaging.
 - `crm.ops-console` exposes the CRM inside `forge ops snapshot` as an `ops_console` projection with Forge operational digital twin, Addon observability, memory governance and safe renderer bindings. High-risk CRM actions remain visible but disabled until Forge permission policy records human authorization.
@@ -42,6 +43,7 @@ node scripts/generate-crm-workflow-pack.mjs "acme"
 node scripts/generate-crm-operating-model.mjs "acme"
 npm run web:snapshot
 npm run enterprise:audit -- demo
+npm run strategic:audit -- demo
 ```
 
 Run the runtime smoke against a Forge binary:

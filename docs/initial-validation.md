@@ -10,6 +10,7 @@ node scripts/generate-crm-workflow-pack.mjs smoke
 node scripts/generate-crm-operating-model.mjs smoke
 node scripts/generate-crm-web-snapshot.mjs smoke
 npm run web:snapshot
+node scripts/audit-crm-strategic-objective.mjs default --format markdown --write docs/strategic-objective-audit.md
 /home/arthur/projects/forge-core/target/release/forge addons validate --addon-dir /home/arthur/projects/forge-crm/addons --output json
 /home/arthur/projects/forge-core/target/release/forge addons resolve --goal "Create a workflow-first CRM" --addon-dir /home/arthur/projects/forge-crm/addons --output json
 /home/arthur/projects/forge-core/target/release/forge addons package --manifest addons/forge-crm.json --repository https://github.com/cardozoarthur/forge-crm --channel stable --package-path forge-crm-0.1.0.package.json --output json
@@ -18,7 +19,7 @@ FORGE_BIN=/home/arthur/projects/forge-core/target/release/forge npm run smoke:fo
 
 ## Result
 
-- Node tests passed: 171 tests, 0 failures.
+- Node tests passed: 175 tests, 0 failures.
 - CRM workflow pack generation produced `schema_version=forge.crm_workflow_pack.v1`, 34 workflows, 123 object types and complete scope coverage.
 - CRM operating model generation produced `schema_version=forge.crm_operating_model.v1`, 10 operator surfaces and 7 complete business modules.
 - CRM web snapshot generation produced `schema_version=forge.crm_web_app_snapshot.v1`, 34 workflow graph nodes, relationship profile enrichment, document queue lanes, document library records, support channel intake, 4 omnichannel message threads, unified omnichannel center, marketing segment builder, 6 cross-domain work queue modes, daily operating cycle workbench, 4 child subworkflow bindings, workflow automation designer with 3 trigger sources and 3 Forge action targets, executive reporting workbench with 9 KPI tiles, goal and commission settlement workbench, 5 design-system components, enterprise journey workbench, 5 specialized area copilots and 43 Forge command actions without browser persistence.
@@ -36,6 +37,7 @@ FORGE_BIN=/home/arthur/projects/forge-core/target/release/forge npm run smoke:fo
 - CRM executive reporting executor produced `crm_executive_summary`, `crm_kpi_dashboard` and `crm_business_review_report` artifacts, generated 12 KPI outputs from Forge workflow evidence, promoted `crm.executive.summary_generated`, `crm.kpi.dashboard_generated` and `crm.risk.reviewed` events, and kept recommendations advisory until Forge approval.
 - CRM operating readiness executor produced `crm_operating_readiness_report`, `crm_user_outcome_manifest`, `crm_domain_coverage_matrix` and `crm_business_runbook` artifacts, mapped 15 ready user-facing deliverables and promoted `crm.operating.readiness_reported` plus `crm.outcome.deliverables_mapped` events without creating CRM-local state.
 - CRM daily operating cycle executor produced `crm_daily_operating_cycle`, `crm_operating_command_brief` and `crm_operating_risk_register` artifacts, generated a Forge command package across sales, marketing, support, documents and handoffs, promoted `crm.operating.daily_cycle_generated`, `crm.operating.command_brief_generated` and `crm.operating.risk_registered` events, and kept CRM state mutation blocked until Forge approval.
+- CRM strategic objective audit produced `schema_version=forge.crm_strategic_objective_audit.v1`, 9 complete sections, 0 missing requirements, explicit Chat/WhatsApp/Telegram/Email support channel evidence and requirement-level proof for memory scopes, artifact portfolio, observability and hybrid UI.
 - CRM commercial follow-up forecast executor produced `crm_followup_plan`, `crm_email`, `crm_forecast_report` and `crm_commission_record` artifacts and promoted `crm.followup.scheduled`, `crm.forecast.reviewed`, `crm.goal.progress_reviewed` and `crm.commission.accrued` events without direct CRM state mutation.
 - CRM goal and commission settlement executor produced `crm_goal_scorecard`, `crm_commission_statement` and `crm_compensation_audit_report` artifacts, reconciled target attainment from revenue-event and contract lineage, kept payout blocked until Forge approval, and promoted `crm.goal.target_set`, `crm.goal.attainment_reviewed` and `crm.commission.statement_generated` events without direct CRM state mutation.
 - CRM account management executor produced `crm_account_plan`, `crm_health_report`, `crm_forecast_report` and `crm_task_plan` artifacts and promoted `crm.account.health_reviewed`, `crm.account.renewal_planned`, `crm.account.expansion_identified` and `crm.task.created` events without direct CRM state mutation.

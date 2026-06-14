@@ -6059,6 +6059,11 @@
       "integration_type": "messaging"
     },
     {
+      "id": "crm.chat",
+      "title": "CRM chat channel",
+      "integration_type": "messaging"
+    },
+    {
       "id": "crm.web",
       "title": "CRM web application",
       "integration_type": "ui"

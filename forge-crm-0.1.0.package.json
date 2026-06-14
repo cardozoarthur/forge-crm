@@ -6,9 +6,9 @@
   "addon_name": "Forge CRM",
   "addon_version": "0.1.0",
   "manifest_path": "addons/forge-crm.json",
-  "manifest_sha256": "956c4f01d7e9ce0cbd11c575eb72e43565604c467ef64111be622ddb176460bd",
-  "manifest_canonical_sha256": "11c5fdf5369ab3c67cbcb6bc1824d45431b302f5f9b402df83d0088b8740435d",
-  "manifest_bytes": 179005,
+  "manifest_sha256": "c1a78f4403f2c2de5b80d600bf2ffab061991288919a654f424d123943575e01",
+  "manifest_canonical_sha256": "421fe6a7bb4f640bfce85705016ca8bfe49b8abc8d829d639578e191a2dc34b3",
+  "manifest_bytes": 179115,
   "distribution": {
     "repository": "https://github.com/cardozoarthur/forge-crm",
     "channel": "stable",
@@ -23,7 +23,7 @@
     "scheme": "ed25519_detached",
     "signature": "",
     "public_key": "",
-    "payload_sha256": "a8ad70e5dee6fe5ba1de721517bf72822d75380b1cbeae7deb8acf4a13c3797a",
+    "payload_sha256": "d6fe7169c42dc2fac33ae0373e6e54812373e662ac380980f03e21be3cbe4916",
     "verification_note": "package records detached signature metadata; trust verification is a marketplace policy gate"
   },
   "summary": {
@@ -34,7 +34,7 @@
     "runtime_contract_count": 44,
     "view_count": 12,
     "event_adapter_count": 3,
-    "integration_count": 4,
+    "integration_count": 5,
     "capabilities": [
       "crm_workflow_factory",
       "crm_relationship_management",
@@ -6265,6 +6265,11 @@
       {
         "id": "crm.telegram",
         "title": "CRM Telegram channel",
+        "integration_type": "messaging"
+      },
+      {
+        "id": "crm.chat",
+        "title": "CRM chat channel",
         "integration_type": "messaging"
       },
       {
