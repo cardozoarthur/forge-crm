@@ -350,6 +350,36 @@ test("manifest exposes adaptive CRM workflow evolution through Forge", () => {
   assert.ok(eventTypes.has("crm.evolution"));
 });
 
+test("manifest exposes CRM workflow automation designer as a Forge-owned runtime contract", () => {
+  const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.workflow.automation_designer.executor");
+  assert.ok(contract);
+  assert.equal(contract.contract_type, "executor");
+  assert.equal(contract.capability_id, "crm_workflow_factory");
+  assert.equal(contract.workflow_extension_id, "crm_workflow_automation_designer");
+  assert.equal(contract.entrypoint, "forge_crm.design_workflow_automation");
+  assert.deepEqual(contract.permissions, ["crm.workflow.mutate", "crm.observability.inspect"]);
+  for (const input of ["automation_goal", "trigger_sources", "rule_graph", "validation_policy", "tenant_context"]) {
+    assert.ok(contract.inputs.includes(input), `missing workflow automation designer input ${input}`);
+  }
+  for (const output of ["crm_workflow_automation_spec", "crm_trigger_condition_map", "crm_automation_validation_report"]) {
+    assert.ok(contract.outputs.includes(output), `missing workflow automation designer output ${output}`);
+  }
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("Forge workflows schedules triggers")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("does not execute or persist automation outside Forge")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("validation evidence and permission gates")));
+
+  const workflowExtensionIds = new Set(manifest.workflows.map((extension) => extension.id));
+  assert.ok(workflowExtensionIds.has("crm_workflow_automation_designer"));
+
+  const artifactTypes = new Set(manifest.artifact_types.map((artifact) => artifact.id));
+  for (const artifactType of ["crm_workflow_automation_spec", "crm_trigger_condition_map", "crm_automation_validation_report"]) {
+    assert.ok(artifactTypes.has(artifactType), `missing artifact type ${artifactType}`);
+  }
+
+  const eventTypes = new Set(manifest.event_types.map((event) => event.id));
+  assert.ok(eventTypes.has("crm.automation"));
+});
+
 test("manifest exposes enterprise journey execution as a Forge-owned CRM acceptance contract", () => {
   const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.enterprise.journey.executor");
   assert.ok(contract);
@@ -836,6 +866,7 @@ test("manifest exposes a Forge TUI operational cockpit with permission-gated CRM
     "crm.tui.run-area-copilot",
     "crm.tui.run-work-queue",
     "crm.tui.orchestrate-subworkflows",
+    "crm.tui.design-workflow-automation",
     "crm.tui.generate-design-system",
     "crm.tui.generate-readiness-package"
   ]) {
@@ -874,6 +905,7 @@ test("CRM scope is workflow-backed across core business areas", () => {
     "crm_document_library",
     "crm_omnichannel_center",
     "crm_subworkflow_orchestration",
+    "crm_workflow_automation_designer",
     "crm_ai_copilot_recommendation"
   ]) {
     assert.ok(workflowIds.has(workflowId), `missing workflow ${workflowId}`);

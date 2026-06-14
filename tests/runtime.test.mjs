@@ -314,7 +314,8 @@ test("operating readiness maps Forge evidence into user-facing CRM deliverables"
             "document approvals",
             "project handoff",
             "enterprise customer journey",
-            "subworkflow orchestration"
+            "subworkflow orchestration",
+            "workflow automation designer"
           ]
         },
         operating_snapshot: {
@@ -335,8 +336,8 @@ test("operating readiness maps Forge evidence into user-facing CRM deliverables"
   assert.equal(result.status, "completed");
   assert.equal(result.outputs.tenant_id, "demo");
   assert.equal(result.outputs.success_criteria_status, "operable_with_evidence");
-  assert.equal(result.outputs.user_facing_deliverable_count, 9);
-  assert.equal(result.outputs.ready_domain_count, 9);
+  assert.equal(result.outputs.user_facing_deliverable_count, 10);
+  assert.equal(result.outputs.ready_domain_count, 10);
   assert.equal(result.outputs.forge_only_operations, true);
   assert.equal(result.outputs.main_flow_dependency_external, false);
   assert.equal(result.outputs.mutates_crm_state, false);
@@ -355,6 +356,10 @@ test("operating readiness maps Forge evidence into user-facing CRM deliverables"
   assert.ok(
     outcomeManifest.data.outcomes.some((outcome) => outcome.deliverable === "subworkflow orchestration"),
     "missing subworkflow orchestration user outcome"
+  );
+  assert.ok(
+    outcomeManifest.data.outcomes.some((outcome) => outcome.deliverable === "workflow automation designer"),
+    "missing workflow automation designer user outcome"
   );
   assert.ok(result.events.some((event) => event.kind === "crm.operating.readiness_reported"));
   assert.ok(result.events.some((event) => event.kind === "crm.outcome.deliverables_mapped"));
@@ -813,6 +818,64 @@ test("workflow evolution executor proposes governed Forge experiments without se
   assert.ok(result.events.some((event) => event.kind === "crm.evolution.candidate_generated"));
   assert.ok(result.events.some((event) => event.kind === "crm.evolution.benchmark_reported"));
   assert.ok(result.events.some((event) => event.kind === "crm.evolution.promotion_decision_recorded"));
+});
+
+test("workflow automation designer compiles triggers conditions and actions without local execution", () => {
+  assert.equal(typeof runtime.buildWorkflowAutomationDesignResult, "function");
+
+  const result = runtime.buildWorkflowAutomationDesignResult(
+    workerRequest(
+      "forge_crm.design_workflow_automation",
+      {
+        tenant_context: { tenant_id: "demo" },
+        automation_goal: {
+          id: "auto-hot-lead-sla",
+          title: "Route hot leads and SLA risks into governed work queues",
+          business_goal: "Create auditable follow-up and support tasks from approved CRM events"
+        },
+        trigger_sources: [
+          { id: "lead-created", event_type: "crm.lead.created", workflow_id: "crm.lead.lifecycle" },
+          { id: "sla-escalated", event_type: "crm.sla.escalated", workflow_id: "crm.ticket.sla" },
+          { id: "daily-forecast", schedule: "0 9 * * 1-5", workflow_id: "crm.followup.forecast" }
+        ],
+        rule_graph: {
+          conditions: [
+            { id: "lead-score", expression: "lead.score >= 80", evidence_artifact_type: "crm_ai_recommendation" },
+            { id: "sla-risk", expression: "ticket.sla_state == 'sla_escalation'", evidence_artifact_type: "crm_support_summary" }
+          ],
+          actions: [
+            { id: "queue-commercial", contract_id: "crm.queue.orchestrator.executor", workflow_id: "crm.work.queue.orchestration" },
+            { id: "schedule-followup", contract_id: "crm.commercial.followup_forecast.executor", workflow_id: "crm.followup.forecast" },
+            { id: "notify-support", contract_id: "crm.support.ticket_sla.executor", workflow_id: "crm.ticket.sla" }
+          ]
+        },
+        validation_policy: {
+          require_human_approval_before_activation: true,
+          require_dry_run: true,
+          approved_by: null
+        }
+      },
+      { contract_id: "crm.workflow.automation_designer.executor", task_ref: "automation-designer-test" }
+    )
+  );
+
+  assert.equal(result.schema_version, "forge.addon_executor_result.v1");
+  assert.equal(result.status, "completed");
+  assert.equal(result.outputs.workflow_id, "crm.workflow.automation_design");
+  assert.equal(result.outputs.automation_state, "validation_ready");
+  assert.equal(result.outputs.trigger_count, 3);
+  assert.equal(result.outputs.condition_count, 2);
+  assert.equal(result.outputs.action_count, 3);
+  assert.equal(result.outputs.activation_allowed, false);
+  assert.equal(result.outputs.mutates_crm_state, false);
+  assert.equal(result.outputs.forge_event_sourced, true);
+
+  for (const artifactKind of ["crm_workflow_automation_spec", "crm_trigger_condition_map", "crm_automation_validation_report"]) {
+    assert.ok(result.artifacts.some((artifact) => artifact.kind === artifactKind), `missing automation artifact ${artifactKind}`);
+  }
+  assert.ok(result.events.some((event) => event.kind === "crm.automation.designed"));
+  assert.ok(result.events.some((event) => event.kind === "crm.automation.validated"));
+  assert.ok(result.events.some((event) => event.kind === "crm.automation.queued"));
 });
 
 test("enterprise journey executor packages a full lead-to-support CRM operation through Forge", () => {

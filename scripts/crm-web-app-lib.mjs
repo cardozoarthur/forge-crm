@@ -54,6 +54,9 @@ const WORKFLOW_EDGES = [
   ["crm.design.system", "crm.enterprise.readiness", "published design artifacts update readiness evidence"],
   ["crm.operational.observability", "crm.workflow.evolution", "observability findings generate controlled evolution candidates"],
   ["crm.workflow.evolution", "crm.enterprise.readiness", "validated experiments update readiness evidence"],
+  ["crm.operational.observability", "crm.workflow.automation_design", "observability can drive safer automation design"],
+  ["crm.workflow.automation_design", "crm.work.queue.orchestration", "validated automation queues governed CRM work"],
+  ["crm.workflow.automation_design", "crm.enterprise.readiness", "automation validation evidence updates readiness"],
   ["crm.project.handoff", "crm.enterprise.customer_journey", "accepted handoff completes customer lifecycle evidence"],
   ["crm.enterprise.customer_journey", "crm.enterprise.readiness", "accepted journey updates operating readiness evidence"]
 ];
@@ -1228,6 +1231,111 @@ function subworkflowOrchestrationWorkbench(workflows, actionList) {
   };
 }
 
+function workflowAutomationDesignerWorkbench(workflows, actionList) {
+  const actionById = new Map(actionList.map((action) => [action.id, action]));
+  const action = actionById.get("crm.design-workflow-automation");
+  const workflow = workflows.find((candidate) => candidate.id === "crm.workflow.automation_design");
+  const triggerPalette = [
+    {
+      id: "lead-created",
+      title: "Lead created",
+      kind: "event",
+      event_type: "crm.lead.created",
+      workflow_id: "crm.lead.lifecycle"
+    },
+    {
+      id: "sla-escalated",
+      title: "SLA escalated",
+      kind: "event",
+      event_type: "crm.sla.escalated",
+      workflow_id: "crm.ticket.sla"
+    },
+    {
+      id: "daily-forecast",
+      title: "Daily forecast review",
+      kind: "schedule",
+      schedule: "0 9 * * 1-5",
+      workflow_id: "crm.followup.forecast"
+    }
+  ];
+  const actionPalette = [
+    {
+      id: "queue-commercial",
+      title: "Queue commercial work",
+      contract_id: "crm.queue.orchestrator.executor",
+      workflow_id: "crm.work.queue.orchestration"
+    },
+    {
+      id: "schedule-followup",
+      title: "Schedule follow-up",
+      contract_id: "crm.commercial.followup_forecast.executor",
+      workflow_id: "crm.followup.forecast"
+    },
+    {
+      id: "notify-support",
+      title: "Route support SLA",
+      contract_id: "crm.support.ticket_sla.executor",
+      workflow_id: "crm.ticket.sla"
+    }
+  ];
+
+  return {
+    schema_version: "forge.crm_workflow_automation_designer_workbench.v1",
+    workflow_id: workflow?.id || "crm.workflow.automation_design",
+    workflow_extension_id: workflow?.workflow_extension_id || "crm_workflow_automation_designer",
+    state_owner: "forge_workflow_runtime",
+    state_source: "forge_events_schedules_and_workflow_contracts",
+    local_state_allowed: false,
+    action_id: action?.id || "crm.design-workflow-automation",
+    contract_id: action?.contract_id || "crm.workflow.automation_designer.executor",
+    trigger_palette: triggerPalette,
+    action_palette: actionPalette,
+    rule_graph: {
+      nodes: [
+        ...triggerPalette.map((trigger) => ({ id: trigger.id, kind: "trigger", title: trigger.title, workflow_id: trigger.workflow_id })),
+        {
+          id: "condition-hot-lead-or-sla",
+          kind: "condition",
+          title: "Lead score or SLA risk passes policy",
+          expression: "lead.score >= 80 OR ticket.sla_state == 'sla_escalation'",
+          evidence_artifact_types: ["crm_ai_recommendation", "crm_support_summary"]
+        },
+        ...actionPalette.map((paletteAction) => ({
+          id: paletteAction.id,
+          kind: "action",
+          title: paletteAction.title,
+          contract_id: paletteAction.contract_id,
+          workflow_id: paletteAction.workflow_id
+        }))
+      ],
+      edges: [
+        ...triggerPalette.map((trigger) => ({ from: trigger.id, to: "condition-hot-lead-or-sla", relation: "evaluates" })),
+        ...actionPalette.map((paletteAction) => ({ from: "condition-hot-lead-or-sla", to: paletteAction.id, relation: "queues" }))
+      ]
+    },
+    validation_gates: [
+      {
+        id: "trigger_condition_action_graph_valid",
+        title: "Trigger, condition and action graph validates before activation",
+        owner: "Forge validation",
+        required: true
+      },
+      {
+        id: "automation_stays_in_forge",
+        title: "Automation actions route through Forge runtime contracts",
+        owner: "Forge validation",
+        required: true
+      },
+      {
+        id: "permission_gates_pass",
+        title: "Activation waits for permission gates and dry-run evidence",
+        owner: "Forge validation",
+        required: true
+      }
+    ]
+  };
+}
+
 function actions() {
   return [
     {
@@ -1301,6 +1409,15 @@ function actions() {
       requires_permission: "crm.workflow.mutate",
       mutates_workflow: true,
       command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.workflow.subworkflow_orchestrator.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
+    },
+    {
+      id: "crm.design-workflow-automation",
+      label: "Design workflow automation",
+      surface_id: "crm.system-map",
+      contract_id: "crm.workflow.automation_designer.executor",
+      requires_permission: "crm.workflow.mutate",
+      mutates_workflow: true,
+      command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.workflow.automation_designer.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
     },
     {
       id: "crm.record-relationship-event",
@@ -1824,6 +1941,7 @@ export function buildCrmWebAppSnapshot(options = {}) {
     workflow_evolution_workbench: workflowEvolutionWorkbench(workflows, actionList),
     enterprise_journey_workbench: enterpriseJourneyWorkbench(workflows, actionList),
     subworkflow_orchestration_workbench: subworkflowOrchestrationWorkbench(workflows, actionList),
+    workflow_automation_designer_workbench: workflowAutomationDesignerWorkbench(workflows, actionList),
     actions: actionList,
     action_invocation_plans: actionInvocationPlans(actionList),
     workflow_cadences: workflowCadences(workflows, actionList),

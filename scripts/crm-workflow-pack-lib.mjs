@@ -815,6 +815,39 @@ const WORKFLOWS = [
     ]
   },
   {
+    id: "crm.workflow.automation_design",
+    title: "CRM workflow automation designer",
+    domain: "ai_automation",
+    workflow_extension_id: "crm_workflow_automation_designer",
+    object_types: ["workflow_automation", "trigger", "condition", "action", "schedule", "validation_gate", "automation_recipe"],
+    states: ["goal_collected", "trigger_mapped", "rule_graph_designed", "validation_ready", "queued_for_activation", "rework_required"],
+    transitions: [
+      ["goal_collected", "trigger_mapped", "Forge event and schedule trigger sources selected"],
+      ["trigger_mapped", "rule_graph_designed", "condition and action graph composed"],
+      ["rule_graph_designed", "validation_ready", "trigger condition action graph validates against Forge contracts"],
+      ["validation_ready", "queued_for_activation", "activation request waits for Forge permission gates"],
+      ["rule_graph_designed", "rework_required", "missing lineage, invalid contract or unsafe action found"],
+      ["rework_required", "trigger_mapped", "automation graph corrected with evidence"]
+    ],
+    runtime_contracts: ["crm.workflow.automation_designer.executor", "crm.observability.inspector.executor"],
+    depends_on_workflows: [
+      "crm.lead.lifecycle",
+      "crm.campaign.lifecycle",
+      "crm.ticket.sla",
+      "crm.work.queue.orchestration"
+    ],
+    artifacts: ["crm_workflow_automation_spec", "crm_trigger_condition_map", "crm_automation_validation_report"],
+    events: ["crm.automation.designed", "crm.automation.validated", "crm.automation.queued"],
+    memory_scopes: ["organization", "project", "processing"],
+    permissions: ["crm.workflow.mutate", "crm.observability.inspect"],
+    views: ["crm.system-map", "crm.ai-workbench", "crm.work-queue"],
+    validation_gates: [
+      "automation design validates trigger condition action graph before activation",
+      "automation execution remains inside Forge workflows",
+      "activation is blocked until validation evidence and permission gates pass"
+    ]
+  },
+  {
     id: "crm.ai.copilot.recommendation",
     title: "Specialized CRM copilots and risk analysis",
     domain: "ai_automation",
@@ -842,6 +875,7 @@ const WORKFLOWS = [
       "crm.memory.promotion.executor",
       "crm.proposal.generator.executor"
     ],
+    depends_on_workflows: ["crm.workflow.automation_design"],
     artifacts: ["crm_area_copilot_brief", "crm_ai_recommendation", "crm_risk_analysis", "crm_report", "crm_knowledge_summary", "crm_memory_promotion_request"],
     events: [
       "crm.ai.area_copilot_generated",

@@ -1815,6 +1815,186 @@ export function buildWorkflowEvolutionResult(request) {
   };
 }
 
+export function buildWorkflowAutomationDesignResult(request) {
+  const input = dispatchPayload(request);
+  const context = providedContext(request);
+  const tenantId = input.tenant_id || input.tenant_context?.tenant_id || input.tenant_context?.id || context.tenant || "default";
+  const taskRef = dispatchEnvelope(request).task_ref || `workflow-automation-design-${slug(tenantId, "tenant")}`;
+  const automationGoal = asObject(input.automation_goal ?? input.goal);
+  const ruleGraph = asObject(input.rule_graph ?? input.automation_graph);
+  const validationPolicy = asObject(input.validation_policy ?? input.policy);
+  const workflowId = "crm.workflow.automation_design";
+  const automationId = String(automationGoal.id || input.automation_id || `automation-${slug(tenantId, "tenant")}`);
+  const triggers = asArray(input.trigger_sources ?? ruleGraph.triggers).map((trigger, index) => {
+    const source = asObject(trigger);
+    const eventType = source.event_type ? String(source.event_type) : null;
+    const schedule = source.schedule ? String(source.schedule) : null;
+    return {
+      id: String(source.id || `trigger-${index + 1}`),
+      kind: eventType ? "event" : schedule ? "schedule" : "manual",
+      event_type: eventType,
+      schedule,
+      workflow_id: String(source.workflow_id || source.source_workflow_id || "crm.work.queue.orchestration"),
+      state_owner: "forge_event_engine",
+      valid: Boolean(eventType || schedule || source.manual === true)
+    };
+  });
+  const conditions = asArray(ruleGraph.conditions).map((condition, index) => {
+    const source = asObject(condition);
+    return {
+      id: String(source.id || `condition-${index + 1}`),
+      expression: String(source.expression || source.rule || "true"),
+      evidence_artifact_type: source.evidence_artifact_type || source.artifact_type || null,
+      valid: Boolean(source.expression || source.rule || source.evidence_artifact_type)
+    };
+  });
+  const actions = asArray(ruleGraph.actions).map((action, index) => {
+    const source = asObject(action);
+    return {
+      id: String(source.id || `action-${index + 1}`),
+      contract_id: String(source.contract_id || source.contract || "crm.queue.orchestrator.executor"),
+      workflow_id: String(source.workflow_id || source.target_workflow_id || "crm.work.queue.orchestration"),
+      permission: String(source.permission || "crm.workflow.mutate"),
+      valid: Boolean(source.contract_id || source.contract || source.workflow_id || source.target_workflow_id)
+    };
+  });
+  const validGraph =
+    triggers.length > 0 &&
+    actions.length > 0 &&
+    triggers.every((trigger) => trigger.valid) &&
+    conditions.every((condition) => condition.valid) &&
+    actions.every((action) => action.valid);
+  const requiresApproval = validationPolicy.require_human_approval_before_activation !== false;
+  const dryRunRequired = validationPolicy.require_dry_run !== false;
+  const activationAllowed = Boolean(validGraph && (!requiresApproval || validationPolicy.approved_by) && !dryRunRequired);
+  const automationState = validGraph ? "validation_ready" : "rework_required";
+  const blockedReason = activationAllowed
+    ? null
+    : requiresApproval && !validationPolicy.approved_by
+      ? "human approval required before activation"
+      : dryRunRequired
+        ? "dry-run validation required before activation"
+        : "invalid trigger condition action graph";
+  const lineage = {
+    workflow_id: workflowId,
+    task_ref: taskRef,
+    source_contract: "crm.workflow.automation_designer.executor",
+    tenant_id: tenantId,
+    automation_id: automationId
+  };
+
+  return {
+    schema_version: "forge.addon_executor_result.v1",
+    status: "completed",
+    task_ref: taskRef,
+    summary: `CRM workflow automation ${automationId} designed with ${triggers.length} trigger(s) and ${actions.length} action(s)`,
+    outputs: {
+      tenant_id: tenantId,
+      workflow_id: workflowId,
+      automation_id: automationId,
+      automation_state: automationState,
+      trigger_count: triggers.length,
+      condition_count: conditions.length,
+      action_count: actions.length,
+      activation_allowed: activationAllowed,
+      activation_blocked_reason: blockedReason,
+      mutates_crm_state: false,
+      forge_event_sourced: true
+    },
+    artifacts: [
+      {
+        kind: "crm_workflow_automation_spec",
+        id: `crm-workflow-automation-${slug(automationId, "automation")}`,
+        title: `CRM workflow automation ${automationGoal.title || automationId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          automation_goal: automationGoal,
+          triggers,
+          conditions,
+          actions,
+          state_owner: "forge_workflow_runtime",
+          local_execution_allowed: false,
+          activation_allowed: activationAllowed,
+          activation_blocked_reason: blockedReason,
+          lineage
+        }
+      },
+      {
+        kind: "crm_trigger_condition_map",
+        id: `crm-trigger-condition-map-${slug(automationId, "automation")}`,
+        title: `CRM trigger and condition map for ${automationId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          automation_id: automationId,
+          trigger_sources: triggers,
+          conditions,
+          trigger_condition_edges: triggers.flatMap((trigger) =>
+            conditions.map((condition) => ({
+              from: trigger.id,
+              to: condition.id,
+              relation: "evaluates"
+            }))
+          ),
+          lineage
+        }
+      },
+      {
+        kind: "crm_automation_validation_report",
+        id: `crm-automation-validation-${slug(automationId, "automation")}`,
+        title: `CRM automation validation report for ${automationId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          automation_id: automationId,
+          automation_state: automationState,
+          valid_graph: validGraph,
+          invalid_triggers: triggers.filter((trigger) => !trigger.valid).map((trigger) => trigger.id),
+          invalid_conditions: conditions.filter((condition) => !condition.valid).map((condition) => condition.id),
+          invalid_actions: actions.filter((action) => !action.valid).map((action) => action.id),
+          activation_allowed: activationAllowed,
+          activation_blocked_reason: blockedReason,
+          validation_policy: validationPolicy,
+          validation_gates: [
+            "automation design validates trigger condition action graph before activation",
+            "automation execution remains inside Forge workflows",
+            "activation is blocked until validation evidence and permission gates pass"
+          ],
+          lineage
+        }
+      }
+    ],
+    events: [
+      {
+        kind: "crm.automation.designed",
+        tenant_id: tenantId,
+        workflow_id: workflowId,
+        automation_id: automationId,
+        trigger_count: triggers.length,
+        action_count: actions.length
+      },
+      {
+        kind: "crm.automation.validated",
+        tenant_id: tenantId,
+        workflow_id: workflowId,
+        automation_id: automationId,
+        automation_state: automationState,
+        valid_graph: validGraph
+      },
+      {
+        kind: "crm.automation.queued",
+        tenant_id: tenantId,
+        workflow_id: workflowId,
+        automation_id: automationId,
+        activation_allowed: activationAllowed,
+        blocked_reason: blockedReason
+      }
+    ],
+    context_tenant: context.tenant || tenantId
+  };
+}
+
 const ENTERPRISE_JOURNEY_STAGES = [
   {
     id: "lead_capture",
@@ -2420,6 +2600,14 @@ const READINESS_OUTCOME_DOMAINS = [
     workflow_ids: ["crm.subworkflow.orchestration", "crm.enterprise.customer_journey"],
     required_artifacts: ["crm_subworkflow_plan", "crm_subworkflow_lineage_map", "crm_subworkflow_validation_report"],
     required_events: ["crm.subworkflow.bound", "crm.subworkflow.validated", "crm.subworkflow.promoted"]
+  },
+  {
+    id: "workflow_automation_designer",
+    title: "Workflow automation designer",
+    deliverable: "workflow automation designer",
+    workflow_ids: ["crm.workflow.automation_design"],
+    required_artifacts: ["crm_workflow_automation_spec", "crm_trigger_condition_map", "crm_automation_validation_report"],
+    required_events: ["crm.automation.designed", "crm.automation.validated", "crm.automation.queued"]
   },
   {
     id: "user_experience",
@@ -5353,6 +5541,8 @@ export function executeCrmRuntimeRequest(request) {
       return buildMemoryPromotionCandidateResult(request);
     case "forge_crm.evolve_workflow":
       return buildWorkflowEvolutionResult(request);
+    case "forge_crm.design_workflow_automation":
+      return buildWorkflowAutomationDesignResult(request);
     case "forge_crm.run_enterprise_journey":
       return buildEnterpriseJourneyResult(request);
     case "forge_crm.orchestrate_subworkflows":

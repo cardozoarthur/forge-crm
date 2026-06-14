@@ -608,6 +608,43 @@ test("subworkflow orchestration composes CRM child workflows through Forge linea
   assert.ok(journey.depends_on_workflows.includes("crm.subworkflow.orchestration"));
 });
 
+test("workflow automation designer compiles CRM automations into Forge-owned trigger graphs", () => {
+  const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
+  const workflow = pack.workflows.find((candidate) => candidate.id === "crm.workflow.automation_design");
+  const aiWorkflow = pack.workflows.find((candidate) => candidate.id === "crm.ai.copilot.recommendation");
+
+  assert.ok(workflow);
+  assert.equal(workflow.workflow_extension_id, "crm_workflow_automation_designer");
+  assert.equal(workflow.domain, "ai_automation");
+  for (const objectType of ["workflow_automation", "trigger", "condition", "action", "schedule", "validation_gate"]) {
+    assert.ok(workflow.object_types.includes(objectType), `missing automation object type ${objectType}`);
+  }
+  assert.ok(workflow.runtime_contracts.includes("crm.workflow.automation_designer.executor"));
+  assert.ok(workflow.runtime_contracts.includes("crm.observability.inspector.executor"));
+
+  for (const workflowId of [
+    "crm.lead.lifecycle",
+    "crm.campaign.lifecycle",
+    "crm.ticket.sla",
+    "crm.work.queue.orchestration"
+  ]) {
+    assert.ok(workflow.depends_on_workflows.includes(workflowId), `missing automation dependency ${workflowId}`);
+  }
+
+  for (const artifact of ["crm_workflow_automation_spec", "crm_trigger_condition_map", "crm_automation_validation_report"]) {
+    assert.ok(workflow.artifacts.includes(artifact), `missing automation artifact ${artifact}`);
+    assert.ok(pack.indexes.artifact_types.includes(artifact), `missing indexed automation artifact ${artifact}`);
+  }
+  for (const event of ["crm.automation.designed", "crm.automation.validated", "crm.automation.queued"]) {
+    assert.ok(workflow.events.includes(event), `missing automation event ${event}`);
+  }
+
+  assert.ok(workflow.validation_gates.includes("automation design validates trigger condition action graph before activation"));
+  assert.ok(workflow.validation_gates.includes("automation execution remains inside Forge workflows"));
+  assert.ok(pack.indexes.runtime_contracts.includes("crm.workflow.automation_designer.executor"));
+  assert.ok(aiWorkflow.depends_on_workflows.includes("crm.workflow.automation_design"));
+});
+
 test("enterprise customer journey proves the CRM can operate one full company lifecycle through Forge", () => {
   const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
   const workflow = pack.workflows.find((candidate) => candidate.id === "crm.enterprise.customer_journey");

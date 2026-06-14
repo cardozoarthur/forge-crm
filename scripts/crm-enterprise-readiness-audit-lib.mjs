@@ -62,6 +62,13 @@ const USER_FACING_DELIVERABLES = [
     workflow_ids: ["crm.subworkflow.orchestration", "crm.enterprise.customer_journey"]
   },
   {
+    id: "workflow_automation_designer",
+    title: "Workflow automation designer",
+    domain: "ai_automation",
+    surface_id: "crm.system-map",
+    workflow_ids: ["crm.workflow.automation_design"]
+  },
+  {
     id: "design_system",
     title: "Design system",
     domain: "user_experience",

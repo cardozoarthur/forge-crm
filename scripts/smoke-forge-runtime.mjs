@@ -9,23 +9,36 @@ const forgeBin = process.env.FORGE_BIN || "forge";
 const workerId = "forge-crm-runtime-worker";
 const store = path.join(mkdtempSync(path.join(os.tmpdir(), "forge-crm-smoke-")), "forge.sqlite");
 
+function formatArgsForError(args) {
+  return args
+    .map((arg) => {
+      const value = String(arg);
+      return value.length > 300 ? `${value.slice(0, 300)}...<truncated ${value.length} chars>` : value;
+    })
+    .join(" ");
+}
+
 function runForge(args) {
   const result = spawnSync(forgeBin, ["--store", store, ...args], {
     cwd: repoRoot,
-    encoding: "utf8"
+    encoding: "utf8",
+    maxBuffer: 16 * 1024 * 1024
   });
+  const stdout = typeof result.stdout === "string" ? result.stdout.trim() : "";
+  const stderr = typeof result.stderr === "string" ? result.stderr.trim() : "";
   if (result.status !== 0) {
     throw new Error(
       [
-        `forge command failed: ${forgeBin} --store ${store} ${args.join(" ")}`,
-        result.stdout.trim(),
-        result.stderr.trim()
+        `forge command failed: ${forgeBin} --store ${store} ${formatArgsForError(args)}`,
+        result.error ? `spawn error: ${result.error.message}` : "",
+        stderr ? `stderr: ${stderr}` : "",
+        stdout ? `stdout: ${stdout}` : ""
       ]
         .filter(Boolean)
         .join("\n")
     );
   }
-  return JSON.parse(result.stdout);
+  return JSON.parse(stdout);
 }
 
 function waitForEndpoint(worker) {
@@ -88,6 +101,7 @@ try {
       "forge_crm.generate_design_system",
       "forge_crm.prepare_memory_promotion",
       "forge_crm.evolve_workflow",
+      "forge_crm.design_workflow_automation",
       "forge_crm.run_enterprise_journey",
       "forge_crm.inspect_observability",
       "forge_crm.generate_operating_readiness",
@@ -125,6 +139,7 @@ try {
       "crm.design_system.executor",
       "crm.memory.promotion.executor",
       "crm.workflow.evolution.executor",
+      "crm.workflow.automation_designer.executor",
       "crm.enterprise.journey.executor",
       "crm.observability.inspector.executor",
       "crm.operating.readiness.executor",
@@ -819,6 +834,120 @@ try {
     throw new Error("expected workflow evolution promotion to stay blocked until benchmark evidence exists");
   }
 
+  const workflowAutomationDesign = runForge([
+    "addons",
+    "execute-executor",
+    "--addon-dir",
+    "addons",
+    "--addon",
+    "forge.addon.crm",
+    "--contract",
+    "crm.workflow.automation_designer.executor",
+    "--worker",
+    workerId,
+    "--task",
+    "crm-smoke-workflow-automation-design",
+    "--workflow",
+    workflowId,
+    "--input",
+    JSON.stringify({
+      tenant_context: { id: "smoke", tenant_id: "smoke" },
+      automation_goal: {
+        id: "auto-hot-lead-sla",
+        title: "Route hot leads and SLA escalations through Forge-owned CRM workflows",
+        owner: "ops.commander"
+      },
+      trigger_sources: [
+        {
+          id: "lead-created",
+          event_type: "crm.lead.created",
+          workflow_id: "crm.lead.lifecycle"
+        },
+        {
+          id: "sla-escalated",
+          event_type: "crm.sla.escalated",
+          workflow_id: "crm.ticket.sla"
+        },
+        {
+          id: "business-day-forecast",
+          schedule: "0 9 * * 1-5",
+          workflow_id: "crm.commercial.followup_forecast"
+        }
+      ],
+      rule_graph: {
+        conditions: [
+          {
+            id: "enterprise-hot-lead",
+            expression: "lead.score >= 80 && account.tier == 'enterprise'",
+            evidence_artifact_type: "crm_relationship_profile"
+          },
+          {
+            id: "sla-risk",
+            expression: "ticket.sla_minutes_remaining <= 60",
+            evidence_artifact_type: "crm_support_summary"
+          }
+        ],
+        actions: [
+          {
+            id: "queue-risk",
+            contract_id: "crm.queue.orchestrator.executor",
+            workflow_id: "crm.work.queue.orchestration",
+            permission: "crm.workflow.mutate"
+          },
+          {
+            id: "forecast-followup",
+            contract_id: "crm.commercial.followup_forecast.executor",
+            workflow_id: "crm.commercial.followup_forecast",
+            permission: "crm.workflow.mutate"
+          },
+          {
+            id: "support-sla",
+            contract_id: "crm.support.ticket_sla.executor",
+            workflow_id: "crm.ticket.sla",
+            permission: "crm.workflow.mutate"
+          }
+        ]
+      },
+      validation_policy: {
+        require_human_approval_before_activation: true,
+        require_dry_run: true,
+        required_evidence_artifacts: [
+          "crm_workflow_automation_spec",
+          "crm_trigger_condition_map",
+          "crm_automation_validation_report"
+        ]
+      }
+    }),
+    "--context",
+    JSON.stringify({ tenant: "smoke" }),
+    "--output",
+    "json"
+  ]);
+
+  if (workflowAutomationDesign.promotion?.status !== "addon_executor_result_promoted") {
+    throw new Error(
+      `expected workflow automation design promotion, got ${workflowAutomationDesign.promotion?.status || "missing"}`
+    );
+  }
+  if (workflowAutomationDesign.executor_result.outputs.automation_state !== "validation_ready") {
+    throw new Error(
+      `expected workflow automation design validation_ready, got ${workflowAutomationDesign.executor_result.outputs.automation_state}`
+    );
+  }
+  if (workflowAutomationDesign.executor_result.outputs.trigger_count !== 3) {
+    throw new Error(
+      `expected 3 workflow automation triggers, got ${workflowAutomationDesign.executor_result.outputs.trigger_count}`
+    );
+  }
+  if (workflowAutomationDesign.executor_result.outputs.action_count !== 3) {
+    throw new Error(
+      `expected 3 workflow automation actions, got ${workflowAutomationDesign.executor_result.outputs.action_count}`
+    );
+  }
+  if (workflowAutomationDesign.executor_result.outputs.activation_allowed !== false) {
+    throw new Error("expected workflow automation activation to stay blocked before approval and dry-run evidence");
+  }
+
   const workflowPackArtifact = bootstrap.executor_result.artifacts.find((artifact) => artifact.kind === "crm_workflow_pack");
   const operatingSnapshotArtifact = operatingSnapshot.executor_result.artifacts.find((artifact) => artifact.kind === "crm_operating_snapshot");
   const operatingReadiness = runForge([
@@ -839,12 +968,16 @@ try {
     "--input",
     JSON.stringify({
       tenant_context: { id: "smoke", tenant_id: "smoke" },
-      workflow_pack: workflowPackArtifact?.data,
-      operating_snapshot: operatingSnapshotArtifact?.data,
+      operating_snapshot: {
+        external_database_required: operatingSnapshotArtifact?.data?.external_database_required ?? false,
+        direct_browser_persistence: operatingSnapshotArtifact?.data?.direct_browser_persistence ?? false
+      },
       validation_evidence: {
         commands: ["npm test", "forge addons validate", "forge runtime smoke"],
         workflow_artifact_count: observabilityInspection.promotion?.artifact_count ?? 0,
-        runtime_contract_count: workflowPackArtifact?.data?.summary?.runtime_contract_count
+        runtime_contract_count: workflowPackArtifact?.data?.summary?.runtime_contract_count,
+        workflow_count: workflowPackArtifact?.data?.summary?.workflow_count,
+        complete_scope: workflowPackArtifact?.data?.summary?.complete_scope
       },
       success_criteria: {
         goal: "Operate a complete enterprise CRM through Forge workflows",
@@ -853,6 +986,7 @@ try {
           "commercial command center",
           "support inbox",
           "marketing automation",
+          "workflow automation designer",
           "document approvals",
           "project handoff"
         ]
@@ -2020,6 +2154,8 @@ try {
   const observabilityPromotedEventCount = observabilityInspection.promotion?.event_count ?? 0;
   const workflowEvolutionPromotedArtifactCount = workflowEvolution.promotion?.artifact_count ?? 0;
   const workflowEvolutionPromotedEventCount = workflowEvolution.promotion?.event_count ?? 0;
+  const workflowAutomationDesignPromotedArtifactCount = workflowAutomationDesign.promotion?.artifact_count ?? 0;
+  const workflowAutomationDesignPromotedEventCount = workflowAutomationDesign.promotion?.event_count ?? 0;
   const readinessPromotedArtifactCount = operatingReadiness.promotion?.artifact_count ?? 0;
   const readinessPromotedEventCount = operatingReadiness.promotion?.event_count ?? 0;
   const relationshipProfilePromotedArtifactCount = relationshipProfileEnrichment.promotion?.artifact_count ?? 0;
@@ -2171,6 +2307,16 @@ try {
     "crm.evolution.benchmark_reported",
     "crm.evolution.promotion_decision_recorded"
   ]) {
+    if (!workflowEventKinds.includes(eventKind)) {
+      throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
+    }
+  }
+  if (workflowAutomationDesignPromotedArtifactCount < 3 || workflowAutomationDesignPromotedEventCount < 3) {
+    throw new Error(
+      `expected promoted workflow automation design artifacts/events, got artifacts=${workflowAutomationDesignPromotedArtifactCount} events=${workflowAutomationDesignPromotedEventCount}`
+    );
+  }
+  for (const eventKind of ["crm.automation.designed", "crm.automation.validated", "crm.automation.queued"]) {
     if (!workflowEventKinds.includes(eventKind)) {
       throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
     }
@@ -2569,6 +2715,14 @@ try {
     workflow_evolution_benchmark_metric: workflowEvolution.executor_result.outputs.benchmark_metric,
     workflow_evolution_promoted_artifacts: workflowEvolutionPromotedArtifactCount,
     workflow_evolution_promoted_events: workflowEvolutionPromotedEventCount,
+    workflow_automation_design_status: workflowAutomationDesign.status,
+    workflow_automation_design_promotion_status: workflowAutomationDesign.promotion.status,
+    workflow_automation_design_state: workflowAutomationDesign.executor_result.outputs.automation_state,
+    workflow_automation_design_trigger_count: workflowAutomationDesign.executor_result.outputs.trigger_count,
+    workflow_automation_design_action_count: workflowAutomationDesign.executor_result.outputs.action_count,
+    workflow_automation_design_activation_allowed: workflowAutomationDesign.executor_result.outputs.activation_allowed,
+    workflow_automation_design_promoted_artifacts: workflowAutomationDesignPromotedArtifactCount,
+    workflow_automation_design_promoted_events: workflowAutomationDesignPromotedEventCount,
     operating_readiness_status: operatingReadiness.status,
     operating_readiness_promotion_status: operatingReadiness.promotion.status,
     operating_readiness_success_criteria_status: operatingReadiness.executor_result.outputs.success_criteria_status,

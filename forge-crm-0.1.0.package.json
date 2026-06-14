@@ -6,9 +6,9 @@
   "addon_name": "Forge CRM",
   "addon_version": "0.1.0",
   "manifest_path": "addons/forge-crm.json",
-  "manifest_sha256": "c1aedf50640518339bd2f3d5de803dc93c9e2507ec19959b1606d0142a0366fc",
-  "manifest_canonical_sha256": "38d7df902c5194c92fc3b97d74f40aae336adf9003c5dac97e93ef4f9d8a33b7",
-  "manifest_bytes": 111278,
+  "manifest_sha256": "84cb54fd6498746c8114dde6458b6d6a437a2f65ceb69ae84eb26121d96d017c",
+  "manifest_canonical_sha256": "c0e1b7e053d07f5ebc61223a39d3d8c86723c20dea7b9b22cb7b782d42fc6a17",
+  "manifest_bytes": 114679,
   "distribution": {
     "repository": "https://github.com/cardozoarthur/forge-crm",
     "channel": "stable",
@@ -23,15 +23,15 @@
     "scheme": "ed25519_detached",
     "signature": "",
     "public_key": "",
-    "payload_sha256": "0bd60c1000d53dc859a7145350396b261eb32dc80953a998735235c91cd9a938",
+    "payload_sha256": "51a70c18131857f523e6db5f6f5d76c11828e41aed51b83a0b820e6bfe2cd0a8",
     "verification_note": "package records detached signature metadata; trust verification is a marketplace policy gate"
   },
   "summary": {
     "capability_count": 9,
     "dependency_count": 1,
     "permission_count": 5,
-    "workflow_extension_count": 28,
-    "runtime_contract_count": 35,
+    "workflow_extension_count": 29,
+    "runtime_contract_count": 36,
     "view_count": 11,
     "event_adapter_count": 2,
     "integration_count": 4,
@@ -68,6 +68,7 @@
       "crm.design_system.executor",
       "crm.memory.promotion.executor",
       "crm.workflow.evolution.executor",
+      "crm.workflow.automation_designer.executor",
       "crm.enterprise.journey.executor",
       "crm.workflow.subworkflow_orchestrator.executor",
       "crm.observability.inspector.executor",
@@ -299,12 +300,14 @@
           "crm_enterprise_readiness",
           "crm_enterprise_customer_journey",
           "crm_subworkflow_orchestration",
+          "crm_workflow_automation_designer",
           "crm_workflow_evolution"
         ],
         "deliverables": [
           "CRM system blueprint",
           "workflow-backed entity model",
           "CRM subworkflow orchestration plan",
+          "CRM workflow automation design",
           "CRM operating readiness package",
           "Forge Core gap report"
         ],
@@ -334,6 +337,9 @@
           "crm_subworkflow_plan",
           "crm_subworkflow_lineage_map",
           "crm_subworkflow_validation_report",
+          "crm_workflow_automation_spec",
+          "crm_trigger_condition_map",
+          "crm_automation_validation_report",
           "crm_workflow_evolution_plan",
           "crm_evolution_experiment",
           "crm_benchmark_report",
@@ -692,9 +698,11 @@
           "observability"
         ],
         "workflow_extensions": [
+          "crm_workflow_automation_designer",
           "crm_ai_copilot_recommendation"
         ],
         "deliverables": [
+          "Workflow automation design",
           "Copilot recommendation artifact",
           "Area-specialized copilot brief",
           "Lead score evidence",
@@ -706,6 +714,9 @@
         "unknowns": [],
         "event_triggers": [],
         "artifact_types": [
+          "crm_workflow_automation_spec",
+          "crm_trigger_condition_map",
+          "crm_automation_validation_report",
           "crm_area_copilot_brief",
           "crm_ai_recommendation",
           "crm_risk_analysis",
@@ -892,6 +903,11 @@
         "id": "crm_subworkflow_orchestration",
         "kind": "operations_workflow",
         "description": "Bind, validate and promote CRM child workflows through Forge child_subflows and lineage artifacts."
+      },
+      {
+        "id": "crm_workflow_automation_designer",
+        "kind": "automation_workflow",
+        "description": "Design CRM trigger, condition and action graphs that compile to Forge workflows, schedules and event listeners."
       },
       {
         "id": "crm_workflow_evolution",
@@ -1215,6 +1231,36 @@
           "workflow evolution must be expressed as forge improve candidates, benchmark evidence and governed promotion",
           "CRM workflow evolution does not self-modify or bypass Forge validation gates",
           "promotion is blocked until benchmark and rollback evidence pass"
+        ]
+      },
+      {
+        "id": "crm.workflow.automation_designer.executor",
+        "title": "CRM workflow automation designer",
+        "contract_type": "executor",
+        "capability_id": "crm_workflow_factory",
+        "workflow_extension_id": "crm_workflow_automation_designer",
+        "runtime": "external_api",
+        "entrypoint": "forge_crm.design_workflow_automation",
+        "inputs": [
+          "automation_goal",
+          "trigger_sources",
+          "rule_graph",
+          "validation_policy",
+          "tenant_context"
+        ],
+        "outputs": [
+          "crm_workflow_automation_spec",
+          "crm_trigger_condition_map",
+          "crm_automation_validation_report"
+        ],
+        "permissions": [
+          "crm.workflow.mutate",
+          "crm.observability.inspect"
+        ],
+        "constraints": [
+          "automation design must compile to Forge workflows schedules triggers and event listeners",
+          "designer does not execute or persist automation outside Forge",
+          "activation waits for validation evidence and permission gates"
         ]
       },
       {
@@ -2941,6 +2987,51 @@
               "handoff_policy",
               "tenant_context"
             ]
+          },
+          {
+            "id": "crm.tui.design-workflow-automation",
+            "label": "Design workflow automation",
+            "description": "Compose CRM trigger, condition and action graphs before Forge activation.",
+            "palette_group": "CRM",
+            "source_panel": "crm.operational-cockpit",
+            "type": "command",
+            "target": "forge addons execute-executor",
+            "method": "CLI",
+            "permission": "crm.workflow.mutate",
+            "requires_confirmation": true,
+            "risk_level": "high",
+            "mutates_workflow": true,
+            "command_template": [
+              "addons",
+              "execute-executor",
+              "--addon",
+              "forge.addon.crm",
+              "--contract",
+              "crm.workflow.automation_designer.executor",
+              "--worker",
+              "<worker-id>",
+              "--task",
+              "<task-ref>",
+              "--input",
+              "<json>",
+              "--context",
+              "<json>",
+              "--output",
+              "json"
+            ],
+            "keywords": [
+              "crm",
+              "workflow",
+              "automation",
+              "trigger"
+            ],
+            "payload_schema": [
+              "automation_goal",
+              "trigger_sources",
+              "rule_graph",
+              "validation_policy",
+              "tenant_context"
+            ]
           }
         ],
         "permissions": [
@@ -3231,6 +3322,21 @@
         "id": "crm_automation_plan",
         "title": "CRM automation plan",
         "generic_kind": "artifact"
+      },
+      {
+        "id": "crm_workflow_automation_spec",
+        "title": "CRM workflow automation spec",
+        "generic_kind": "artifact"
+      },
+      {
+        "id": "crm_trigger_condition_map",
+        "title": "CRM trigger condition map",
+        "generic_kind": "artifact"
+      },
+      {
+        "id": "crm_automation_validation_report",
+        "title": "CRM automation validation report",
+        "generic_kind": "report"
       },
       {
         "id": "crm_form_submission",
@@ -3627,6 +3733,11 @@
       {
         "id": "crm.subworkflow",
         "title": "CRM subworkflow event",
+        "transport": "crm"
+      },
+      {
+        "id": "crm.automation",
+        "title": "CRM workflow automation event",
         "transport": "crm"
       },
       {

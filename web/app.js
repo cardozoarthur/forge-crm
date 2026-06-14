@@ -651,6 +651,59 @@ export function renderSubworkflowOrchestrationWorkbench(snapshot) {
   return section;
 }
 
+export function renderWorkflowAutomationDesignerWorkbench(snapshot) {
+  const workbench = snapshot.workflow_automation_designer_workbench;
+  const section = nodeElement("section", "panel automation-designer");
+  section.dataset.surfacePanel = "crm.system-map";
+  section.append(nodeElement("h2", "", "Workflow Automation Designer"));
+  if (!workbench) {
+    section.append(nodeElement("p", "muted-copy", "Workflow automation designer unavailable in this snapshot."));
+    return section;
+  }
+
+  section.append(nodeElement("p", "panel-source", `${workbench.workflow_id} · ${workbench.contract_id}`));
+  section.append(nodeElement("code", "", actionLabel(snapshot, workbench.action_id)));
+
+  const graph = nodeElement("div", "automation-graph");
+  for (const graphNode of workbench.rule_graph.nodes) {
+    const item = nodeElement("article", `automation-node automation-${graphNode.kind}`);
+    item.append(nodeElement("span", "node-kind", graphNode.kind));
+    item.append(nodeElement("strong", "", graphNode.title));
+    item.append(nodeElement("small", "", graphNode.workflow_id || graphNode.expression || graphNode.contract_id || ""));
+    graph.append(item);
+  }
+
+  const palettes = nodeElement("div", "automation-palettes");
+  const triggers = nodeElement("div", "automation-palette");
+  triggers.append(nodeElement("h3", "", "Triggers"));
+  for (const trigger of workbench.trigger_palette) {
+    const item = nodeElement("article", "automation-palette-item");
+    item.append(nodeElement("strong", "", trigger.title));
+    item.append(nodeElement("span", "", trigger.event_type || trigger.schedule || trigger.kind));
+    triggers.append(item);
+  }
+
+  const actions = nodeElement("div", "automation-palette");
+  actions.append(nodeElement("h3", "", "Actions"));
+  for (const automationAction of workbench.action_palette) {
+    const item = nodeElement("article", "automation-palette-item");
+    item.append(nodeElement("strong", "", automationAction.title));
+    item.append(nodeElement("code", "", automationAction.contract_id));
+    actions.append(item);
+  }
+  palettes.append(triggers, actions);
+
+  const gates = nodeElement("ul", "automation-gates");
+  for (const gate of workbench.validation_gates) {
+    const item = nodeElement("li", "automation-gate");
+    item.textContent = `${gate.title} · ${gate.owner}`;
+    gates.append(item);
+  }
+
+  section.append(graph, palettes, gates);
+  return section;
+}
+
 function renderModuleBoard(snapshot) {
   const section = nodeElement("section", "panel module-panel");
   section.append(nodeElement("h2", "", "Business Modules"));
@@ -752,6 +805,7 @@ function render(snapshot) {
   workspace.append(renderWorkflowEvolutionWorkbench(snapshot));
   workspace.append(renderEnterpriseJourneyWorkbench(snapshot));
   workspace.append(renderSubworkflowOrchestrationWorkbench(snapshot));
+  workspace.append(renderWorkflowAutomationDesignerWorkbench(snapshot));
   workspace.append(renderWorkflowGraph(snapshot));
   workspace.append(renderModuleBoard(snapshot));
   workspace.append(renderKnowledgeGraph(snapshot));

@@ -23,11 +23,11 @@
     "external_delivery_requires_approval": true
   },
   "metrics": {
-    "workflow_count": 25,
+    "workflow_count": 26,
     "business_module_count": 7,
     "surface_count": 10,
-    "artifact_type_count": 73,
-    "event_type_count": 86,
+    "artifact_type_count": 76,
+    "event_type_count": 89,
     "complete_scope": true
   },
   "surfaces": [
@@ -46,7 +46,8 @@
         "crm.enterprise.readiness",
         "crm.subworkflow.orchestration",
         "crm.enterprise.customer_journey",
-        "crm.workflow.evolution"
+        "crm.workflow.evolution",
+        "crm.workflow.automation_design"
       ],
       "lanes": [
         "queue_snapshot_requested",
@@ -88,10 +89,15 @@
         "benchmark_wait",
         "promotion_blocked",
         "promoted",
-        "core_gap_reported"
+        "core_gap_reported",
+        "goal_collected",
+        "trigger_mapped",
+        "rule_graph_designed",
+        "queued_for_activation"
       ],
       "artifact_types": [
         "crm_audit_report",
+        "crm_automation_validation_report",
         "crm_benchmark_report",
         "crm_business_runbook",
         "crm_core_gap_report",
@@ -112,13 +118,18 @@
         "crm_subworkflow_lineage_map",
         "crm_subworkflow_plan",
         "crm_subworkflow_validation_report",
+        "crm_trigger_condition_map",
         "crm_ui_component_catalog",
         "crm_user_outcome_manifest",
         "crm_work_queue_snapshot",
+        "crm_workflow_automation_spec",
         "crm_workflow_evolution_plan"
       ],
       "event_types": [
         "crm.audit.reported",
+        "crm.automation.designed",
+        "crm.automation.queued",
+        "crm.automation.validated",
         "crm.core_gap.reported",
         "crm.cost.reviewed",
         "crm.design.system_generated",
@@ -568,7 +579,8 @@
       "state_source": "forge_workflow_artifacts_and_events",
       "workflow_ids": [
         "crm.work.queue.orchestration",
-        "crm.subworkflow.orchestration"
+        "crm.subworkflow.orchestration",
+        "crm.workflow.automation_design"
       ],
       "lanes": [
         "queue_snapshot_requested",
@@ -583,17 +595,27 @@
         "lineage_mapped",
         "validation_ready",
         "parent_promoted",
-        "rework_required"
+        "rework_required",
+        "goal_collected",
+        "trigger_mapped",
+        "rule_graph_designed",
+        "queued_for_activation"
       ],
       "artifact_types": [
+        "crm_automation_validation_report",
         "crm_queue_assignment_plan",
         "crm_queue_sla_risk_report",
         "crm_subworkflow_lineage_map",
         "crm_subworkflow_plan",
         "crm_subworkflow_validation_report",
-        "crm_work_queue_snapshot"
+        "crm_trigger_condition_map",
+        "crm_work_queue_snapshot",
+        "crm_workflow_automation_spec"
       ],
       "event_types": [
+        "crm.automation.designed",
+        "crm.automation.queued",
+        "crm.automation.validated",
         "crm.queue.assignment_planned",
         "crm.queue.risk_flagged",
         "crm.queue.snapshot_generated",
@@ -643,6 +665,7 @@
       "state_source": "forge_workflow_artifacts_and_events",
       "workflow_ids": [
         "crm.workflow.evolution",
+        "crm.workflow.automation_design",
         "crm.ai.copilot.recommendation"
       ],
       "lanes": [
@@ -652,6 +675,12 @@
         "promotion_blocked",
         "promoted",
         "core_gap_reported",
+        "goal_collected",
+        "trigger_mapped",
+        "rule_graph_designed",
+        "validation_ready",
+        "queued_for_activation",
+        "rework_required",
         "context_requested",
         "recommendation_generated",
         "review_wait",
@@ -661,6 +690,7 @@
       "artifact_types": [
         "crm_ai_recommendation",
         "crm_area_copilot_brief",
+        "crm_automation_validation_report",
         "crm_benchmark_report",
         "crm_core_gap_report",
         "crm_evolution_experiment",
@@ -669,12 +699,17 @@
         "crm_promotion_decision",
         "crm_report",
         "crm_risk_analysis",
+        "crm_trigger_condition_map",
+        "crm_workflow_automation_spec",
         "crm_workflow_evolution_plan"
       ],
       "event_types": [
         "crm.ai.area_copilot_generated",
         "crm.ai.recommendation_generated",
         "crm.ai.risk_flagged",
+        "crm.automation.designed",
+        "crm.automation.queued",
+        "crm.automation.validated",
         "crm.core_gap.reported",
         "crm.evolution.benchmark_reported",
         "crm.evolution.candidate_generated",
@@ -1088,11 +1123,13 @@
         "crm.proposal.approval",
         "crm.work.queue.orchestration",
         "crm.workflow.evolution",
+        "crm.workflow.automation_design",
         "crm.ai.copilot.recommendation"
       ],
       "artifact_types": [
         "crm_ai_recommendation",
         "crm_area_copilot_brief",
+        "crm_automation_validation_report",
         "crm_benchmark_report",
         "crm_core_gap_report",
         "crm_document",
@@ -1105,13 +1142,18 @@
         "crm_queue_sla_risk_report",
         "crm_report",
         "crm_risk_analysis",
+        "crm_trigger_condition_map",
         "crm_work_queue_snapshot",
+        "crm_workflow_automation_spec",
         "crm_workflow_evolution_plan"
       ],
       "event_types": [
         "crm.ai.area_copilot_generated",
         "crm.ai.recommendation_generated",
         "crm.ai.risk_flagged",
+        "crm.automation.designed",
+        "crm.automation.queued",
+        "crm.automation.validated",
         "crm.core_gap.reported",
         "crm.document.approval_requested",
         "crm.evolution.benchmark_reported",
@@ -1128,7 +1170,10 @@
       ],
       "validation_gates": [
         "Core primitive gaps are reported to forge-core before CRM workaround",
+        "activation is blocked until validation evidence and permission gates pass",
         "artifact lineage present",
+        "automation design validates trigger condition action graph before activation",
+        "automation execution remains inside Forge workflows",
         "every queue item cites artifact or event evidence",
         "experiment candidate includes changelog and rollback plan",
         "external delivery blocked until approval",
@@ -2147,6 +2192,45 @@
         ]
       },
       {
+        "id": "crm.workflow.automation_design",
+        "title": "CRM workflow automation designer",
+        "domain": "ai_automation",
+        "state_count": 6,
+        "states": [
+          "goal_collected",
+          "trigger_mapped",
+          "rule_graph_designed",
+          "validation_ready",
+          "queued_for_activation",
+          "rework_required"
+        ],
+        "wait_states": [],
+        "runtime_contracts": [
+          "crm.workflow.automation_designer.executor",
+          "crm.observability.inspector.executor"
+        ],
+        "artifact_types": [
+          "crm_workflow_automation_spec",
+          "crm_trigger_condition_map",
+          "crm_automation_validation_report"
+        ],
+        "event_types": [
+          "crm.automation.designed",
+          "crm.automation.validated",
+          "crm.automation.queued"
+        ],
+        "surface_ids": [
+          "crm.system-map",
+          "crm.ai-workbench",
+          "crm.work-queue"
+        ],
+        "validation_gates": [
+          "automation design validates trigger condition action graph before activation",
+          "automation execution remains inside Forge workflows",
+          "activation is blocked until validation evidence and permission gates pass"
+        ]
+      },
+      {
         "id": "crm.ai.copilot.recommendation",
         "title": "Specialized CRM copilots and risk analysis",
         "domain": "ai_automation",
@@ -2356,6 +2440,24 @@
         "from": "crm.workflow.evolution",
         "to": "crm.enterprise.readiness",
         "reason": "validated experiments update readiness evidence",
+        "state_owner": "forge_workflow_runtime"
+      },
+      {
+        "from": "crm.operational.observability",
+        "to": "crm.workflow.automation_design",
+        "reason": "observability can drive safer automation design",
+        "state_owner": "forge_workflow_runtime"
+      },
+      {
+        "from": "crm.workflow.automation_design",
+        "to": "crm.work.queue.orchestration",
+        "reason": "validated automation queues governed CRM work",
+        "state_owner": "forge_workflow_runtime"
+      },
+      {
+        "from": "crm.workflow.automation_design",
+        "to": "crm.enterprise.readiness",
+        "reason": "automation validation evidence updates readiness",
         "state_owner": "forge_workflow_runtime"
       },
       {
@@ -3300,7 +3402,8 @@
         "mutation_requires_forge": true,
         "workflow_ids": [
           "crm.work.queue.orchestration",
-          "crm.subworkflow.orchestration"
+          "crm.subworkflow.orchestration",
+          "crm.workflow.automation_design"
         ],
         "action_ids": [
           "crm.run-work-queue",
@@ -3446,6 +3549,7 @@
         "mutation_requires_forge": true,
         "workflow_ids": [
           "crm.workflow.evolution",
+          "crm.workflow.automation_design",
           "crm.ai.copilot.recommendation"
         ],
         "action_ids": [
@@ -3934,6 +4038,164 @@
       }
     ]
   },
+  "workflow_automation_designer_workbench": {
+    "schema_version": "forge.crm_workflow_automation_designer_workbench.v1",
+    "workflow_id": "crm.workflow.automation_design",
+    "workflow_extension_id": "crm_workflow_automation_designer",
+    "state_owner": "forge_workflow_runtime",
+    "state_source": "forge_events_schedules_and_workflow_contracts",
+    "local_state_allowed": false,
+    "action_id": "crm.design-workflow-automation",
+    "contract_id": "crm.workflow.automation_designer.executor",
+    "trigger_palette": [
+      {
+        "id": "lead-created",
+        "title": "Lead created",
+        "kind": "event",
+        "event_type": "crm.lead.created",
+        "workflow_id": "crm.lead.lifecycle"
+      },
+      {
+        "id": "sla-escalated",
+        "title": "SLA escalated",
+        "kind": "event",
+        "event_type": "crm.sla.escalated",
+        "workflow_id": "crm.ticket.sla"
+      },
+      {
+        "id": "daily-forecast",
+        "title": "Daily forecast review",
+        "kind": "schedule",
+        "schedule": "0 9 * * 1-5",
+        "workflow_id": "crm.followup.forecast"
+      }
+    ],
+    "action_palette": [
+      {
+        "id": "queue-commercial",
+        "title": "Queue commercial work",
+        "contract_id": "crm.queue.orchestrator.executor",
+        "workflow_id": "crm.work.queue.orchestration"
+      },
+      {
+        "id": "schedule-followup",
+        "title": "Schedule follow-up",
+        "contract_id": "crm.commercial.followup_forecast.executor",
+        "workflow_id": "crm.followup.forecast"
+      },
+      {
+        "id": "notify-support",
+        "title": "Route support SLA",
+        "contract_id": "crm.support.ticket_sla.executor",
+        "workflow_id": "crm.ticket.sla"
+      }
+    ],
+    "rule_graph": {
+      "nodes": [
+        {
+          "id": "lead-created",
+          "kind": "trigger",
+          "title": "Lead created",
+          "workflow_id": "crm.lead.lifecycle"
+        },
+        {
+          "id": "sla-escalated",
+          "kind": "trigger",
+          "title": "SLA escalated",
+          "workflow_id": "crm.ticket.sla"
+        },
+        {
+          "id": "daily-forecast",
+          "kind": "trigger",
+          "title": "Daily forecast review",
+          "workflow_id": "crm.followup.forecast"
+        },
+        {
+          "id": "condition-hot-lead-or-sla",
+          "kind": "condition",
+          "title": "Lead score or SLA risk passes policy",
+          "expression": "lead.score >= 80 OR ticket.sla_state == 'sla_escalation'",
+          "evidence_artifact_types": [
+            "crm_ai_recommendation",
+            "crm_support_summary"
+          ]
+        },
+        {
+          "id": "queue-commercial",
+          "kind": "action",
+          "title": "Queue commercial work",
+          "contract_id": "crm.queue.orchestrator.executor",
+          "workflow_id": "crm.work.queue.orchestration"
+        },
+        {
+          "id": "schedule-followup",
+          "kind": "action",
+          "title": "Schedule follow-up",
+          "contract_id": "crm.commercial.followup_forecast.executor",
+          "workflow_id": "crm.followup.forecast"
+        },
+        {
+          "id": "notify-support",
+          "kind": "action",
+          "title": "Route support SLA",
+          "contract_id": "crm.support.ticket_sla.executor",
+          "workflow_id": "crm.ticket.sla"
+        }
+      ],
+      "edges": [
+        {
+          "from": "lead-created",
+          "to": "condition-hot-lead-or-sla",
+          "relation": "evaluates"
+        },
+        {
+          "from": "sla-escalated",
+          "to": "condition-hot-lead-or-sla",
+          "relation": "evaluates"
+        },
+        {
+          "from": "daily-forecast",
+          "to": "condition-hot-lead-or-sla",
+          "relation": "evaluates"
+        },
+        {
+          "from": "condition-hot-lead-or-sla",
+          "to": "queue-commercial",
+          "relation": "queues"
+        },
+        {
+          "from": "condition-hot-lead-or-sla",
+          "to": "schedule-followup",
+          "relation": "queues"
+        },
+        {
+          "from": "condition-hot-lead-or-sla",
+          "to": "notify-support",
+          "relation": "queues"
+        }
+      ]
+    },
+    "validation_gates": [
+      {
+        "id": "trigger_condition_action_graph_valid",
+        "title": "Trigger, condition and action graph validates before activation",
+        "owner": "Forge validation",
+        "required": true
+      },
+      {
+        "id": "automation_stays_in_forge",
+        "title": "Automation actions route through Forge runtime contracts",
+        "owner": "Forge validation",
+        "required": true
+      },
+      {
+        "id": "permission_gates_pass",
+        "title": "Activation waits for permission gates and dry-run evidence",
+        "owner": "Forge validation",
+        "required": true
+      }
+    ]
+  },
   "actions": [
     {
       "id": "crm.refresh-operating-snapshot",
@@ -4085,6 +4347,33 @@
         "forge.addon.crm",
         "--contract",
         "crm.workflow.subworkflow_orchestrator.executor",
+        "--worker",
+        "<worker-id>",
+        "--task",
+        "<task-ref>",
+        "--input",
+        "<json>",
+        "--context",
+        "<json>",
+        "--output",
+        "json"
+      ]
+    },
+    {
+      "id": "crm.design-workflow-automation",
+      "label": "Design workflow automation",
+      "surface_id": "crm.system-map",
+      "contract_id": "crm.workflow.automation_designer.executor",
+      "requires_permission": "crm.workflow.mutate",
+      "mutates_workflow": true,
+      "command_template": [
+        "forge",
+        "addons",
+        "execute-executor",
+        "--addon",
+        "forge.addon.crm",
+        "--contract",
+        "crm.workflow.automation_designer.executor",
         "--worker",
         "<worker-id>",
         "--task",
@@ -5184,6 +5473,68 @@
             "title": "Execute runtime contract",
             "owner": "forge.addons.runtime",
             "evidence": "crm.workflow.subworkflow_orchestrator.executor"
+          },
+          {
+            "id": "promote_result_to_workflow",
+            "title": "Promote result to workflow",
+            "owner": "forge.workflow.runtime",
+            "evidence": "artifact and event promotion"
+          },
+          {
+            "id": "refresh_operating_snapshot",
+            "title": "Refresh operating snapshot",
+            "owner": "forge.addon.crm",
+            "evidence": "crm.operating.snapshot.executor"
+          }
+        ],
+        "output_policy": {
+          "promote_result_to_workflow": true,
+          "browser_local_state_write": false,
+          "refresh_source": "forge_workflow_artifacts_and_events"
+        }
+      },
+      {
+        "action_id": "crm.design-workflow-automation",
+        "label": "Design workflow automation",
+        "surface_id": "crm.system-map",
+        "contract_id": "crm.workflow.automation_designer.executor",
+        "required_permission": "crm.workflow.mutate",
+        "selected_command": [
+          "forge",
+          "addons",
+          "execute-executor",
+          "--addon",
+          "forge.addon.crm",
+          "--contract",
+          "crm.workflow.automation_designer.executor",
+          "--worker",
+          "<worker-id>",
+          "--task",
+          "<task-ref>",
+          "--input",
+          "<json>",
+          "--context",
+          "<json>",
+          "--output",
+          "json"
+        ],
+        "permission_gate": {
+          "status": "requires_forge_permission",
+          "permission": "crm.workflow.mutate",
+          "approval_owner": "forge_permission_policy"
+        },
+        "operation_plan": [
+          {
+            "id": "check_addon_permission",
+            "title": "Check Addon permission",
+            "owner": "forge.permissions",
+            "evidence": "crm.workflow.mutate"
+          },
+          {
+            "id": "execute_runtime_contract",
+            "title": "Execute runtime contract",
+            "owner": "forge.addons.runtime",
+            "evidence": "crm.workflow.automation_designer.executor"
           },
           {
             "id": "promote_result_to_workflow",

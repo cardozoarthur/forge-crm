@@ -828,10 +828,16 @@ h3 {
   border-left: 4px solid #285f9d;
 }
 
+.automation-designer {
+  border-left: 4px solid #7a5c12;
+}
+
 .journey-lanes,
 .journey-gates,
 .subworkflow-bindings,
-.subworkflow-gates {
+.subworkflow-gates,
+.automation-graph,
+.automation-palettes {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 8px;
@@ -841,7 +847,10 @@ h3 {
 .journey-lane,
 .journey-gate,
 .subworkflow-binding,
-.subworkflow-gate {
+.subworkflow-gate,
+.automation-node,
+.automation-palette,
+.automation-gate {
   display: grid;
   gap: 6px;
   min-height: 112px;
@@ -854,23 +863,38 @@ h3 {
 .journey-lane strong,
 .journey-gate strong,
 .subworkflow-binding strong,
-.subworkflow-gate strong {
+.subworkflow-gate strong,
+.automation-node strong,
+.automation-palette strong {
   color: #1d2428;
   font-size: 0.9rem;
   line-height: 1.25;
 }
 
-.subworkflow-binding code {
+.subworkflow-binding code,
+.automation-palette code {
   color: #285f9d;
   font-size: 0.74rem;
   overflow-wrap: anywhere;
 }
 
 .journey-lane span,
-.journey-gate span {
+.journey-gate span,
+.automation-node span,
+.automation-node small,
+.automation-palette span,
+.automation-gate {
   color: #607078;
   font-size: 0.78rem;
   overflow-wrap: anywhere;
+}
+
+.automation-gates {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  padding-left: 0;
+  list-style: none;
 }
 
 .journey-lane code {
@@ -929,6 +953,8 @@ h3 {
 	  .evolution-steps,
 	  .journey-lanes,
 	  .journey-gates,
+	  .automation-graph,
+	  .automation-palettes,
 	  .plan-steps {
     grid-template-columns: 1fr;
   }
