@@ -2582,6 +2582,51 @@
           ]
         },
         {
+          "id": "crm.tui.capture-form-submission",
+          "label": "Capture form submission",
+          "description": "Convert an approved landing-page form submission into Forge lead lifecycle and consent artifacts.",
+          "palette_group": "CRM",
+          "source_panel": "crm.operational-cockpit",
+          "type": "command",
+          "target": "forge addons execute-executor",
+          "method": "CLI",
+          "permission": "crm.workflow.mutate",
+          "requires_confirmation": true,
+          "risk_level": "high",
+          "mutates_workflow": true,
+          "command_template": [
+            "addons",
+            "execute-executor",
+            "--addon",
+            "forge.addon.crm",
+            "--contract",
+            "crm.marketing.form_capture.executor",
+            "--worker",
+            "<worker-id>",
+            "--task",
+            "<task-ref>",
+            "--input",
+            "<json>",
+            "--context",
+            "<json>",
+            "--output",
+            "json"
+          ],
+          "keywords": [
+            "crm",
+            "form",
+            "lead",
+            "marketing"
+          ],
+          "payload_schema": [
+            "form_submission",
+            "form_schema",
+            "consent_policy",
+            "routing_policy",
+            "tenant_context"
+          ]
+        },
+        {
           "id": "crm.tui.generate-document",
           "label": "Generate document",
           "description": "Generate a CRM proposal, contract, report, email, campaign, landing page or presentation artifact through Forge.",

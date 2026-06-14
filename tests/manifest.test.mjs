@@ -941,6 +941,7 @@ test("manifest exposes a Forge TUI operational cockpit with permission-gated CRM
     "crm.tui.triage-ticket-sla",
     "crm.tui.automate-campaign",
     "crm.tui.publish-landing-page",
+    "crm.tui.capture-form-submission",
     "crm.tui.generate-document",
     "crm.tui.manage-document-library",
     "crm.tui.run-operating-copilot",
@@ -962,6 +963,16 @@ test("manifest exposes a Forge TUI operational cockpit with permission-gated CRM
   assert.ok(messageIngestion.keywords.includes("message"));
   assert.ok(messageIngestion.payload_schema.includes("message"));
   assert.ok(messageIngestion.payload_schema.includes("routing_policy"));
+
+  const formCapture = cockpit.actions.find((action) => action.id === "crm.tui.capture-form-submission");
+  assert.ok(formCapture);
+  assert.equal(formCapture.permission, "crm.workflow.mutate");
+  assert.equal(formCapture.mutates_workflow, true);
+  assert.ok(formCapture.command_template.includes("crm.marketing.form_capture.executor"));
+  assert.ok(formCapture.keywords.includes("form"));
+  assert.ok(formCapture.keywords.includes("lead"));
+  assert.ok(formCapture.payload_schema.includes("form_submission"));
+  assert.ok(formCapture.payload_schema.includes("consent_policy"));
 
   for (const action of cockpit.actions) {
     assert.equal(action.palette_group, "CRM");

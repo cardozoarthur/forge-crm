@@ -6,9 +6,9 @@
   "addon_name": "Forge CRM",
   "addon_version": "0.1.0",
   "manifest_path": "addons/forge-crm.json",
-  "manifest_sha256": "66a94ce1fe367e89d6359b6d78dfca5528697de3d23bf5c35edd424990865aa8",
-  "manifest_canonical_sha256": "6063e1b7dca620f57cdfc60441b355596710c057469e65a2d48ccd64daa36362",
-  "manifest_bytes": 122795,
+  "manifest_sha256": "cb264af84ca731dbbca6eff377c7bcfbfb9d22a920d92fed54a82348eca839ec",
+  "manifest_canonical_sha256": "bd75899c6bb61e6b7162d4f268c1299e05d979792729897dfd4f60016bb6941c",
+  "manifest_bytes": 124164,
   "distribution": {
     "repository": "https://github.com/cardozoarthur/forge-crm",
     "channel": "stable",
@@ -23,7 +23,7 @@
     "scheme": "ed25519_detached",
     "signature": "",
     "public_key": "",
-    "payload_sha256": "7dac4b0f9d6c44a35624188d162a5649de397407e071381af24bf820dac0cb00",
+    "payload_sha256": "92239a8939c2d78bb123b87515f0ea1ee709e3deb503397a139b46d97aa99910",
     "verification_note": "package records detached signature metadata; trust verification is a marketplace policy gate"
   },
   "summary": {
@@ -2777,6 +2777,51 @@
               "landing_page",
               "form_schema",
               "approval_policy"
+            ]
+          },
+          {
+            "id": "crm.tui.capture-form-submission",
+            "label": "Capture form submission",
+            "description": "Convert an approved landing-page form submission into Forge lead lifecycle and consent artifacts.",
+            "palette_group": "CRM",
+            "source_panel": "crm.operational-cockpit",
+            "type": "command",
+            "target": "forge addons execute-executor",
+            "method": "CLI",
+            "permission": "crm.workflow.mutate",
+            "requires_confirmation": true,
+            "risk_level": "high",
+            "mutates_workflow": true,
+            "command_template": [
+              "addons",
+              "execute-executor",
+              "--addon",
+              "forge.addon.crm",
+              "--contract",
+              "crm.marketing.form_capture.executor",
+              "--worker",
+              "<worker-id>",
+              "--task",
+              "<task-ref>",
+              "--input",
+              "<json>",
+              "--context",
+              "<json>",
+              "--output",
+              "json"
+            ],
+            "keywords": [
+              "crm",
+              "form",
+              "lead",
+              "marketing"
+            ],
+            "payload_schema": [
+              "form_submission",
+              "form_schema",
+              "consent_policy",
+              "routing_policy",
+              "tenant_context"
             ]
           },
           {
