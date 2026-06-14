@@ -304,6 +304,40 @@ export function renderDocumentQueue(snapshot) {
   return section;
 }
 
+export function renderWorkQueue(snapshot) {
+  const { section, panel } = panelShell(snapshot, "work_queue", "work-queue");
+  if (!panel) {
+    return section;
+  }
+
+  const summary = nodeElement("div", "command-summary");
+  summary.append(metric("Queues", panel.queue_modes.length));
+  summary.append(metric("Risk items", panel.risk_summary.risk_item_count));
+  summary.append(metric("Ownership gaps", panel.risk_summary.ownership_gap_count));
+
+  const queues = nodeElement("div", "work-queue-grid");
+  for (const queue of panel.queues) {
+    const item = nodeElement("article", "work-queue-card");
+    item.append(nodeElement("strong", "", compactTitle(queue.title)));
+    item.append(nodeElement("span", "", `${queue.item_count} items · ${queue.risk_item_count} risks`));
+    item.append(nodeElement("small", "", `${queue.workflow_ids.length} workflows`));
+    item.append(nodeElement("code", "", actionLabel(snapshot, queue.action_id)));
+    queues.append(item);
+  }
+
+  const assignments = nodeElement("div", "assignment-list");
+  for (const assignment of panel.assignments) {
+    const item = nodeElement("article", "assignment-row");
+    item.append(nodeElement("strong", "", compactTitle(assignment.queue)));
+    item.append(nodeElement("span", "", assignment.owner));
+    item.append(nodeElement("code", "", assignment.contract_id));
+    assignments.append(item);
+  }
+
+  section.append(summary, queues, assignments);
+  return section;
+}
+
 export function renderAiWorkbench(snapshot) {
   const { section, panel } = panelShell(snapshot, "ai_workbench", "ai-workbench");
   if (!panel) {
@@ -550,6 +584,7 @@ function render(snapshot) {
   workspace.append(renderCommercialCommand(snapshot));
   workspace.append(renderSupportQueue(snapshot));
   workspace.append(renderMarketingCalendar(snapshot));
+  workspace.append(renderWorkQueue(snapshot));
   workspace.append(renderAiWorkbench(snapshot));
   workspace.append(renderWorkflowCadences(snapshot));
   workspace.append(renderWorkflowEvolutionWorkbench(snapshot));

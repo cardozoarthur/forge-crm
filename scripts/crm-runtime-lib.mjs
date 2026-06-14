@@ -863,6 +863,288 @@ export function buildAreaCopilotResult(request) {
   };
 }
 
+const WORK_QUEUE_BASELINES = [
+  {
+    queue: "approvals",
+    title: "Approval queue",
+    workflow_ids: ["crm.proposal.approval", "crm.document.approval", "crm.campaign.lifecycle"],
+    default_owner: "operations.approvals",
+    permission: "crm.workflow.mutate",
+    recommended_action: "review_pending_approval_with_forge_evidence"
+  },
+  {
+    queue: "sla",
+    title: "SLA queue",
+    workflow_ids: ["crm.ticket.sla"],
+    default_owner: "support.lead",
+    permission: "crm.omnichannel.ingest",
+    recommended_action: "prioritize_sla_recovery_workflow"
+  },
+  {
+    queue: "documents",
+    title: "Document queue",
+    workflow_ids: ["crm.document.approval", "crm.contract.signature", "crm.proposal.approval"],
+    default_owner: "document.ops",
+    permission: "crm.document.generate",
+    recommended_action: "clear_document_validation_or_rework"
+  },
+  {
+    queue: "campaigns",
+    title: "Campaign queue",
+    workflow_ids: ["crm.campaign.lifecycle", "crm.lead.nurture"],
+    default_owner: "marketing.ops",
+    permission: "crm.workflow.mutate",
+    recommended_action: "approve_or_reschedule_campaign_workflow"
+  },
+  {
+    queue: "handoffs",
+    title: "Handoff queue",
+    workflow_ids: ["crm.project.handoff", "crm.account.management"],
+    default_owner: "delivery.ops",
+    permission: "crm.workflow.mutate",
+    recommended_action: "assign_handoff_owner_and_unblock_tasks"
+  },
+  {
+    queue: "blocked_waits",
+    title: "Blocked wait queue",
+    workflow_ids: ["crm.followup.forecast", "crm.contract.signature", "crm.project.handoff"],
+    default_owner: "ops.commander",
+    permission: "crm.observability.inspect",
+    recommended_action: "inspect_wait_state_and_request_resolution"
+  }
+];
+
+function queueKey(value, fallback = "work_queue") {
+  return slug(value, fallback).replace(/-/g, "_");
+}
+
+function workQueueBaseline(queue) {
+  return WORK_QUEUE_BASELINES.find((baseline) => baseline.queue === queue) || {
+    queue,
+    title: `${queue.replace(/_/g, " ")} queue`,
+    workflow_ids: [],
+    default_owner: "ops.commander",
+    permission: "crm.workflow.mutate",
+    recommended_action: "review_queue_item_with_forge_evidence"
+  };
+}
+
+function defaultWorkQueueItems() {
+  return WORK_QUEUE_BASELINES.map((baseline, index) => ({
+    id: `${baseline.queue}-default-${index + 1}`,
+    queue: baseline.queue,
+    workflow_id: baseline.workflow_ids[0] || "crm.work.queue.orchestration",
+    state: baseline.queue === "sla" ? "sla_escalation" : baseline.queue === "handoffs" ? "blocked_wait" : "approval_wait",
+    owner: baseline.default_owner,
+    artifact_refs: [`crm_work_queue_snapshot:${baseline.queue}`],
+    event_refs: ["crm.queue.snapshot_generated"],
+    priority: baseline.queue === "sla" || baseline.queue === "handoffs" ? "high" : "medium",
+    sla_minutes_remaining: baseline.queue === "sla" ? 30 : undefined
+  }));
+}
+
+function normalizeWorkQueueItem(item, policy, index) {
+  const source = asObject(item);
+  const queue = queueKey(source.queue || source.queue_id || source.kind || source.type, "work_queue");
+  const baseline = workQueueBaseline(queue);
+  const rawOwner = source.owner || source.assignee || source.owner_id || source.assigned_to || null;
+  const owner = rawOwner || policy.default_owner || baseline.default_owner;
+  const workflowId = String(source.workflow_id || baseline.workflow_ids[0] || "crm.work.queue.orchestration");
+  const state = String(source.state || source.status || "review_wait");
+  const priority = String(source.priority || source.severity || "medium").toLowerCase();
+  const artifactRefs = asArray(source.artifact_refs ?? source.artifacts ?? source.evidence_artifacts).map((artifact) => String(artifact));
+  const eventRefs = asArray(source.event_refs ?? source.events ?? source.evidence_events).map((event) => String(event));
+  const slaMinutesRemaining = source.sla_minutes_remaining === undefined ? null : numberFrom(source.sla_minutes_remaining, null);
+  const threshold = numberFrom(policy.risk_threshold_minutes, 60);
+  const riskReasons = [];
+
+  if (!rawOwner) {
+    riskReasons.push("missing_owner");
+  }
+  if (["critical", "high"].includes(priority)) {
+    riskReasons.push("high_priority");
+  }
+  if (slaMinutesRemaining !== null && slaMinutesRemaining <= threshold) {
+    riskReasons.push("sla_threshold");
+  }
+  if (textIncludes(state, ["blocked", "escalation", "rework", "breach"])) {
+    riskReasons.push("blocked_or_rework_state");
+  }
+
+  return {
+    id: String(source.id || source.item_id || `${queue}-${index + 1}`),
+    queue,
+    title: source.title || source.summary || `${baseline.title} item`,
+    workflow_id: workflowId,
+    state,
+    owner,
+    owner_missing: !rawOwner,
+    priority,
+    sla_minutes_remaining: slaMinutesRemaining,
+    artifact_refs: artifactRefs,
+    event_refs: eventRefs,
+    ready: Boolean(workflowId && state && artifactRefs.length + eventRefs.length > 0),
+    risk_reasons: unique(riskReasons),
+    state_owner: "forge_workflow_runtime",
+    mutates_crm_state: false
+  };
+}
+
+function buildWorkQueueAssignments(queueSummaries, itemsByQueue, policy) {
+  const queueOwners = asObject(policy.queue_owners);
+  return queueSummaries.map((queueSummary) => {
+    const baseline = workQueueBaseline(queueSummary.queue);
+    const items = itemsByQueue.get(queueSummary.queue) || [];
+    const owner = queueOwners[queueSummary.queue] || items.find((item) => !item.owner_missing)?.owner || policy.default_owner || baseline.default_owner;
+
+    return {
+      queue: queueSummary.queue,
+      title: baseline.title,
+      owner,
+      workflow_ids: queueSummary.workflow_ids,
+      item_ids: items.map((item) => item.id),
+      risk_item_count: queueSummary.risk_item_count,
+      recommended_action: baseline.recommended_action,
+      command_action_id: "crm.run-work-queue",
+      contract_id: "crm.queue.orchestrator.executor",
+      permission: baseline.permission,
+      requires_forge_approval: true,
+      state_owner: "forge_workflow_runtime"
+    };
+  });
+}
+
+export function buildWorkQueueOrchestrationResult(request) {
+  const input = dispatchPayload(request);
+  const context = providedContext(request);
+  const tenantId = input.tenant_id || input.tenant_context?.tenant_id || input.tenant_context?.id || context.tenant || "default";
+  const taskRef = dispatchEnvelope(request).task_ref || `crm-work-queue-${slug(tenantId, "tenant")}`;
+  const policy = asObject(input.assignment_policy ?? input.queue_policy);
+  const providedItems = asArray(input.queue_items ?? input.items);
+  const queueItems = (providedItems.length > 0 ? providedItems : defaultWorkQueueItems()).map((item, index) =>
+    normalizeWorkQueueItem(item, policy, index)
+  );
+  const requiredQueues = asArray(policy.required_queues).length > 0
+    ? asArray(policy.required_queues).map((queue) => queueKey(queue, "work_queue"))
+    : WORK_QUEUE_BASELINES.map((baseline) => baseline.queue);
+  const queueModes = unique([...requiredQueues, ...queueItems.map((item) => item.queue)]).sort((left, right) => left.localeCompare(right));
+  const itemsByQueue = new Map(queueModes.map((queue) => [queue, queueItems.filter((item) => item.queue === queue)]));
+  const queueSummaries = queueModes.map((queue) => {
+    const items = itemsByQueue.get(queue) || [];
+    const baseline = workQueueBaseline(queue);
+    return {
+      queue,
+      title: baseline.title,
+      workflow_ids: unique([...baseline.workflow_ids, ...items.map((item) => item.workflow_id)]).filter(Boolean).sort(),
+      item_count: items.length,
+      ready_item_count: items.filter((item) => item.ready).length,
+      risk_item_count: items.filter((item) => item.risk_reasons.length > 0).length,
+      ownership_gap_count: items.filter((item) => item.owner_missing).length,
+      action_id: "crm.run-work-queue",
+      state_owner: "forge_workflow_runtime"
+    };
+  });
+  const assignments = buildWorkQueueAssignments(queueSummaries, itemsByQueue, policy);
+  const riskItems = queueItems.filter((item) => item.risk_reasons.length > 0);
+  const ownershipGapCount = queueItems.filter((item) => item.owner_missing).length;
+  const readyItemCount = queueItems.filter((item) => item.ready).length;
+  const mutationPolicy = policy.mutation_policy || "recommendation_only_until_forge_approval";
+
+  return {
+    schema_version: "forge.addon_executor_result.v1",
+    status: "completed",
+    task_ref: taskRef,
+    summary: `CRM work queue orchestration packaged ${queueItems.length} items across ${queueSummaries.length} queues for ${tenantId}`,
+    outputs: {
+      tenant_id: tenantId,
+      workflow_id: "crm.work.queue.orchestration",
+      queue_count: queueSummaries.length,
+      item_count: queueItems.length,
+      ready_item_count: readyItemCount,
+      risk_item_count: riskItems.length,
+      ownership_gap_count: ownershipGapCount,
+      queue_modes: queueModes,
+      queues: queueSummaries,
+      assignments,
+      recommended_actions: assignments.map((assignment) => ({
+        queue: assignment.queue,
+        action_id: assignment.command_action_id,
+        recommended_action: assignment.recommended_action,
+        requires_forge_approval: assignment.requires_forge_approval
+      })),
+      mutates_crm_state: false,
+      mutation_requires_workflow_approval: true,
+      forge_event_sourced: true,
+      state_owner: "forge_workflow_runtime"
+    },
+    artifacts: [
+      {
+        kind: "crm_work_queue_snapshot",
+        id: `crm-work-queue-snapshot-${slug(tenantId, "tenant")}`,
+        title: `CRM work queue snapshot for ${tenantId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          queue_modes: queueModes,
+          queues: queueSummaries,
+          items: queueItems,
+          state_owner: "forge_workflow_runtime"
+        }
+      },
+      {
+        kind: "crm_queue_assignment_plan",
+        id: `crm-queue-assignment-plan-${slug(tenantId, "tenant")}`,
+        title: `CRM queue assignment plan for ${tenantId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          assignments,
+          mutation_policy: mutationPolicy,
+          approval_policy: "queue assignments require Forge workflow approval before mutation"
+        }
+      },
+      {
+        kind: "crm_queue_sla_risk_report",
+        id: `crm-queue-sla-risk-report-${slug(tenantId, "tenant")}`,
+        title: `CRM queue SLA and risk report for ${tenantId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          risk_item_count: riskItems.length,
+          ownership_gap_count: ownershipGapCount,
+          risk_items: riskItems,
+          closure_policy: "risk closure requires Forge workflow artifact or event evidence"
+        }
+      }
+    ],
+    events: [
+      {
+        kind: "crm.queue.snapshot_generated",
+        tenant_id: tenantId,
+        queue_count: queueSummaries.length,
+        item_count: queueItems.length
+      },
+      {
+        kind: "crm.queue.assignment_planned",
+        tenant_id: tenantId,
+        assignment_count: assignments.length,
+        ownership_gap_count: ownershipGapCount
+      },
+      ...(riskItems.length > 0
+        ? [
+            {
+              kind: "crm.queue.risk_flagged",
+              tenant_id: tenantId,
+              risk_item_count: riskItems.length,
+              source_contract: "crm.queue.orchestrator.executor"
+            }
+          ]
+        : [])
+    ],
+    context_tenant: context.tenant || tenantId
+  };
+}
+
 export function buildMemoryPromotionCandidateResult(request) {
   const input = dispatchPayload(request);
   const context = providedContext(request);
@@ -3706,6 +3988,8 @@ export function executeCrmRuntimeRequest(request) {
       return buildOperatingCopilotResult(request);
     case "forge_crm.run_area_copilot":
       return buildAreaCopilotResult(request);
+    case "forge_crm.orchestrate_work_queue":
+      return buildWorkQueueOrchestrationResult(request);
     case "forge_crm.prepare_memory_promotion":
       return buildMemoryPromotionCandidateResult(request);
     case "forge_crm.evolve_workflow":

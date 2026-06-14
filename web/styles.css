@@ -310,6 +310,8 @@ h3 {
 .support-ticket,
 .campaign-row,
 .form-row,
+	.work-queue-card,
+	.assignment-row,
 	.ai-recommendation,
 	.memory-promotion,
 	.document-item,
@@ -337,6 +339,9 @@ h3 {
 .support-ticket span,
 .campaign-row span,
 .form-row span,
+	.work-queue-card span,
+	.work-queue-card small,
+	.assignment-row span,
 	.ai-recommendation span,
 	.memory-promotion span,
 	.evolution-candidate span,
@@ -352,6 +357,8 @@ h3 {
 .support-ticket code,
 .campaign-row code,
 .form-row code,
+	.work-queue-card code,
+	.assignment-row code,
 	.ai-recommendation code,
 	.memory-promotion code,
 	.document-item code,
@@ -389,6 +396,7 @@ h3 {
 
 .support-queue,
 .marketing-calendar,
+.work-queue,
 .ai-workbench {
   grid-column: span 1;
 }
@@ -408,6 +416,22 @@ h3 {
 .campaign-row,
 .form-row {
   border-left: 4px solid #9b4d19;
+}
+
+.work-queue-card,
+.assignment-row {
+  border-left: 4px solid #126c55;
+}
+
+.work-queue-grid,
+.assignment-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.work-queue-grid {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
 }
 
 .ai-recommendation,
@@ -473,6 +497,7 @@ h3 {
 
 .module-grid,
 .document-lanes,
+	.work-queue-grid,
 	.action-list,
 	.action-plan-list,
 	.cadence-list,

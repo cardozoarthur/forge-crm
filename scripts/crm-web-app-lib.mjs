@@ -8,6 +8,7 @@ const SURFACE_ROUTES = {
   "crm.support-queue": "/crm/support",
   "crm.marketing-calendar": "/crm/marketing",
   "crm.document-queue": "/crm/documents",
+  "crm.work-queue": "/crm/work-queue",
   "crm.ai-workbench": "/crm/ai"
 };
 
@@ -19,6 +20,7 @@ const SURFACE_PERMISSIONS = {
   "crm.support-queue": "crm.omnichannel.ingest",
   "crm.marketing-calendar": "crm.workflow.mutate",
   "crm.document-queue": "crm.document.generate",
+  "crm.work-queue": "crm.workflow.mutate",
   "crm.ai-workbench": "crm.ai.recommend"
 };
 
@@ -33,6 +35,9 @@ const WORKFLOW_EDGES = [
   ["crm.project.handoff", "crm.document.approval", "handoff deliverables enter document queue"],
   ["crm.document.approval", "crm.proposal.approval", "document validation gates proposal delivery"],
   ["crm.ai.copilot.recommendation", "crm.opportunity.pipeline", "approved recommendation mutates pipeline state"],
+  ["crm.work.queue.orchestration", "crm.ticket.sla", "queue risk can return SLA work to support"],
+  ["crm.work.queue.orchestration", "crm.document.approval", "queue assignment can return documents to approval work"],
+  ["crm.work.queue.orchestration", "crm.project.handoff", "queue assignment can return blocked handoffs to operations"],
   ["crm.operational.observability", "crm.workflow.evolution", "observability findings generate controlled evolution candidates"],
   ["crm.workflow.evolution", "crm.enterprise.readiness", "validated experiments update readiness evidence"],
   ["crm.project.handoff", "crm.enterprise.customer_journey", "accepted handoff completes customer lifecycle evidence"],
@@ -451,6 +456,123 @@ function buildOperationalWorkbench(workflows, actionList, documentQueueSnapshot)
     ]
   };
 
+  const workQueuePanel = {
+    ...panelBase({
+      id: "work_queue",
+      title: "Work queue",
+      surface_id: "crm.work-queue",
+      workflow_ids: workflowIdsForSurface(workflows, "crm.work-queue"),
+      action_ids: checkedActionIds(actionList, [
+        "crm.run-work-queue",
+        "crm.inspect-observability",
+        "crm.run-area-copilot"
+      ])
+    }),
+    state_owner: "forge_workflow_runtime",
+    contract_id: "crm.queue.orchestrator.executor",
+    queue_modes: ["approvals", "sla", "documents", "campaigns", "handoffs", "blocked_waits"],
+    queues: [
+      {
+        id: "approvals",
+        title: "Approvals",
+        workflow_ids: ["crm.proposal.approval", "crm.document.approval", "crm.campaign.lifecycle"],
+        item_count: 3,
+        risk_item_count: 1,
+        action_id: "crm.run-work-queue"
+      },
+      {
+        id: "sla",
+        title: "SLA",
+        workflow_ids: ["crm.ticket.sla"],
+        item_count: 2,
+        risk_item_count: 2,
+        action_id: "crm.run-work-queue"
+      },
+      {
+        id: "documents",
+        title: "Documents",
+        workflow_ids: ["crm.document.approval", "crm.contract.signature", "crm.proposal.approval"],
+        item_count: 3,
+        risk_item_count: 1,
+        action_id: "crm.run-work-queue"
+      },
+      {
+        id: "campaigns",
+        title: "Campaigns",
+        workflow_ids: ["crm.campaign.lifecycle", "crm.lead.nurture"],
+        item_count: 2,
+        risk_item_count: 1,
+        action_id: "crm.run-work-queue"
+      },
+      {
+        id: "handoffs",
+        title: "Handoffs",
+        workflow_ids: ["crm.project.handoff", "crm.account.management"],
+        item_count: 2,
+        risk_item_count: 1,
+        action_id: "crm.run-work-queue"
+      },
+      {
+        id: "blocked_waits",
+        title: "Blocked waits",
+        workflow_ids: ["crm.followup.forecast", "crm.contract.signature", "crm.project.handoff"],
+        item_count: 2,
+        risk_item_count: 1,
+        action_id: "crm.run-work-queue"
+      }
+    ],
+    assignments: [
+      {
+        queue: "approvals",
+        owner: "commercial.director",
+        contract_id: "crm.queue.orchestrator.executor",
+        requires_forge_approval: true,
+        state_owner: "forge_workflow_runtime"
+      },
+      {
+        queue: "sla",
+        owner: "support.lead",
+        contract_id: "crm.queue.orchestrator.executor",
+        requires_forge_approval: true,
+        state_owner: "forge_workflow_runtime"
+      },
+      {
+        queue: "documents",
+        owner: "document.ops",
+        contract_id: "crm.queue.orchestrator.executor",
+        requires_forge_approval: true,
+        state_owner: "forge_workflow_runtime"
+      },
+      {
+        queue: "campaigns",
+        owner: "marketing.ops",
+        contract_id: "crm.queue.orchestrator.executor",
+        requires_forge_approval: true,
+        state_owner: "forge_workflow_runtime"
+      },
+      {
+        queue: "handoffs",
+        owner: "delivery.ops",
+        contract_id: "crm.queue.orchestrator.executor",
+        requires_forge_approval: true,
+        state_owner: "forge_workflow_runtime"
+      },
+      {
+        queue: "blocked_waits",
+        owner: "ops.commander",
+        contract_id: "crm.queue.orchestrator.executor",
+        requires_forge_approval: true,
+        state_owner: "forge_workflow_runtime"
+      }
+    ],
+    risk_summary: {
+      risk_item_count: 7,
+      ownership_gap_count: 1,
+      evidence_artifact_type: "crm_queue_sla_risk_report",
+      closure_policy: "risk closure requires Forge workflow evidence"
+    }
+  };
+
   const aiPanel = {
     ...panelBase({
       id: "ai_workbench",
@@ -563,7 +685,7 @@ function buildOperationalWorkbench(workflows, actionList, documentQueueSnapshot)
     schema_version: "forge.crm_operational_workbench.v1",
     state_source: WORKBENCH_STATE_SOURCE,
     mutation_requires_forge: true,
-    panels: [pipelinePanel, commercialPanel, supportPanel, marketingPanel, documentPanel, aiPanel]
+    panels: [pipelinePanel, commercialPanel, supportPanel, marketingPanel, documentPanel, workQueuePanel, aiPanel]
   };
 }
 
@@ -961,6 +1083,15 @@ function actions() {
       requires_permission: "crm.ai.recommend",
       mutates_workflow: true,
       command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.ai.area_copilot.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
+    },
+    {
+      id: "crm.run-work-queue",
+      label: "Run work queue",
+      surface_id: "crm.work-queue",
+      contract_id: "crm.queue.orchestrator.executor",
+      requires_permission: "crm.workflow.mutate",
+      mutates_workflow: true,
+      command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.queue.orchestrator.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
     },
     {
       id: "crm.prepare-memory-promotion",

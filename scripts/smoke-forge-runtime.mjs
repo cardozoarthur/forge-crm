@@ -82,6 +82,7 @@ try {
       "forge_crm.move_opportunity_stage",
       "forge_crm.operating_copilot",
       "forge_crm.run_area_copilot",
+      "forge_crm.orchestrate_work_queue",
       "forge_crm.prepare_memory_promotion",
       "forge_crm.evolve_workflow",
       "forge_crm.run_enterprise_journey",
@@ -110,6 +111,7 @@ try {
       "crm.pipeline.stage_move.executor",
       "crm.ai.operating_copilot.executor",
       "crm.ai.area_copilot.executor",
+      "crm.queue.orchestrator.executor",
       "crm.memory.promotion.executor",
       "crm.workflow.evolution.executor",
       "crm.enterprise.journey.executor",
@@ -137,6 +139,7 @@ try {
     ["crm.workflow.mutate", "high"],
     ["crm.document.generate", "medium"],
     ["crm.omnichannel.ingest", "medium"],
+    ["crm.ai.recommend", "medium"],
     ["crm.observability.inspect", "medium"]
   ].map(([permission, risk]) =>
     runForge([
@@ -372,6 +375,110 @@ try {
   }
   if (areaCopilot.executor_result.outputs.ready_area_count !== 5) {
     throw new Error(`expected 5 ready area copilots, got ${areaCopilot.executor_result.outputs.ready_area_count}`);
+  }
+
+  const workQueue = runForge([
+    "addons",
+    "execute-executor",
+    "--addon-dir",
+    "addons",
+    "--addon",
+    "forge.addon.crm",
+    "--contract",
+    "crm.queue.orchestrator.executor",
+    "--worker",
+    workerId,
+    "--task",
+    "crm-smoke-work-queue",
+    "--workflow",
+    workflowId,
+    "--input",
+    JSON.stringify({
+      tenant_context: { id: "smoke", tenant_id: "smoke" },
+      queue_items: [
+        {
+          id: "approval-smoke-proposal",
+          queue: "approvals",
+          workflow_id: "crm.proposal.approval",
+          state: "approval_wait",
+          owner: "commercial.director",
+          artifact_refs: ["crm_proposal:proposal-smoke-001"],
+          event_refs: ["crm.document.approval_requested"],
+          priority: "high",
+          sla_minutes_remaining: 90
+        },
+        {
+          id: "sla-smoke-ticket",
+          queue: "sla",
+          workflow_id: "crm.ticket.sla",
+          state: "sla_escalation",
+          owner: "support.lead",
+          artifact_refs: ["crm_support_summary:ticket-smoke-001"],
+          event_refs: ["crm.sla.escalated"],
+          priority: "critical",
+          sla_minutes_remaining: 25
+        },
+        {
+          id: "document-smoke-rework",
+          queue: "documents",
+          workflow_id: "crm.document.approval",
+          state: "rework_required",
+          artifact_refs: ["crm_document:doc-smoke-rework"],
+          event_refs: ["crm.document.rework_required"],
+          priority: "medium"
+        },
+        {
+          id: "campaign-smoke-approval",
+          queue: "campaigns",
+          workflow_id: "crm.campaign.lifecycle",
+          state: "approval_wait",
+          owner: "marketing.ops",
+          artifact_refs: ["crm_campaign:campaign-smoke"],
+          event_refs: ["crm.campaign.created"],
+          priority: "medium"
+        },
+        {
+          id: "handoff-smoke-blocked",
+          queue: "handoffs",
+          workflow_id: "crm.project.handoff",
+          state: "blocked_wait",
+          owner: "delivery.ops",
+          artifact_refs: ["crm_project_plan:project-smoke"],
+          event_refs: ["crm.task.blocked"],
+          priority: "high"
+        },
+        {
+          id: "renewal-smoke-wait",
+          queue: "blocked_waits",
+          workflow_id: "crm.contract.signature",
+          state: "renewal_wait",
+          owner: "legal.ops",
+          artifact_refs: ["crm_renewal_plan:contract-smoke"],
+          event_refs: ["crm.contract.renewal_scheduled"],
+          priority: "low"
+        }
+      ],
+      assignment_policy: {
+        required_queues: ["approvals", "sla", "documents", "campaigns", "handoffs", "blocked_waits"],
+        default_owner: "ops.commander",
+        risk_threshold_minutes: 60,
+        mutation_policy: "recommendation_only_until_forge_approval"
+      }
+    }),
+    "--context",
+    JSON.stringify({ tenant: "smoke" }),
+    "--output",
+    "json"
+  ]);
+
+  if (workQueue.promotion?.status !== "addon_executor_result_promoted") {
+    throw new Error(`expected work queue promotion, got ${workQueue.promotion?.status || "missing"}`);
+  }
+  if (workQueue.executor_result.outputs.queue_count !== 6) {
+    throw new Error(`expected 6 work queue modes, got ${workQueue.executor_result.outputs.queue_count}`);
+  }
+  if (workQueue.executor_result.outputs.risk_item_count < 3) {
+    throw new Error(`expected work queue risk items, got ${workQueue.executor_result.outputs.risk_item_count}`);
   }
 
   const memoryPromotion = runForge([
@@ -1373,6 +1480,8 @@ try {
   const copilotPromotedEventCount = copilot.promotion?.event_count ?? 0;
   const areaCopilotPromotedArtifactCount = areaCopilot.promotion?.artifact_count ?? 0;
   const areaCopilotPromotedEventCount = areaCopilot.promotion?.event_count ?? 0;
+  const workQueuePromotedArtifactCount = workQueue.promotion?.artifact_count ?? 0;
+  const workQueuePromotedEventCount = workQueue.promotion?.event_count ?? 0;
   const memoryPromotedArtifactCount = memoryPromotion.promotion?.artifact_count ?? 0;
   const memoryPromotedEventCount = memoryPromotion.promotion?.event_count ?? 0;
   const observabilityPromotedArtifactCount = observabilityInspection.promotion?.artifact_count ?? 0;
@@ -1451,6 +1560,16 @@ try {
   }
   if (!workflowEventKinds.includes("crm.ai.area_copilot_generated")) {
     throw new Error(`expected area copilot event in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
+  }
+  if (workQueuePromotedArtifactCount < 3 || workQueuePromotedEventCount < 3) {
+    throw new Error(
+      `expected promoted work queue artifacts/events, got artifacts=${workQueuePromotedArtifactCount} events=${workQueuePromotedEventCount}`
+    );
+  }
+  for (const eventKind of ["crm.queue.snapshot_generated", "crm.queue.assignment_planned", "crm.queue.risk_flagged"]) {
+    if (!workflowEventKinds.includes(eventKind)) {
+      throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
+    }
   }
   if (memoryPromotedArtifactCount < 2 || memoryPromotedEventCount < 2) {
     throw new Error(
@@ -1782,6 +1901,12 @@ try {
     area_copilot_modes: areaCopilot.executor_result.outputs.copilot_modes,
     area_copilot_promoted_artifacts: areaCopilotPromotedArtifactCount,
     area_copilot_promoted_events: areaCopilotPromotedEventCount,
+    work_queue_status: workQueue.status,
+    work_queue_promotion_status: workQueue.promotion.status,
+    work_queue_queue_count: workQueue.executor_result.outputs.queue_count,
+    work_queue_risk_item_count: workQueue.executor_result.outputs.risk_item_count,
+    work_queue_promoted_artifacts: workQueuePromotedArtifactCount,
+    work_queue_promoted_events: workQueuePromotedEventCount,
     memory_promotion_status: memoryPromotion.status,
     memory_promotion_promotion_status: memoryPromotion.promotion.status,
     memory_promotion_to_scope: memoryPromotion.executor_result.outputs.to_scope,

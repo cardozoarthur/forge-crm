@@ -11,14 +11,14 @@ This repository starts the CRM as a verifiable Forge Addon:
 - `addons/forge-crm.json` declares CRM capabilities, workflows, permissions, event adapters, memory/context providers, artifact types and runtime contracts.
 - `scripts/generate-crm-plan.mjs` emits a deterministic Forge-compatible planning result for CRM system creation.
 - `runtime/crm-worker.mjs` exposes planner, executor, validator and handoff contracts over a local Forge `external_api` worker.
-- `scripts/crm-workflow-pack-lib.mjs` generates a workflow-backed CRM tenant pack covering relationship, commercial, support, marketing, operations, AI automation, observability, enterprise readiness and end-to-end customer journey acceptance.
-- `scripts/generate-crm-operating-model.mjs` emits the Forge-owned operating model for pipeline, support, marketing, documents, commercial command and AI workbench surfaces.
+- `scripts/crm-workflow-pack-lib.mjs` generates a workflow-backed CRM tenant pack covering relationship, commercial, support, marketing, operations, cross-domain work queues, AI automation, observability, enterprise readiness and end-to-end customer journey acceptance.
+- `scripts/generate-crm-operating-model.mjs` emits the Forge-owned operating model for pipeline, support, marketing, documents, cross-domain work queue, commercial command and AI workbench surfaces.
 - `scripts/generate-crm-web-snapshot.mjs` emits the static web app snapshot derived from the operating model, including Forge-owned action invocation plans and operational workflow cadences for schedules, waits and triggers.
 - `scripts/audit-crm-enterprise-readiness.mjs` emits a deterministic readiness audit that maps the strategic objective, Forge v0.5/v0.6/v0.7 benchmark tracks, public AddOn posture, user-facing deliverables and Core requirements to current Forge-owned evidence.
 - `web/` contains a no-build business CRM web surface that renders workflows, knowledge relationships, document queues and Forge actions from `web/data/operating-snapshot.json`.
-- `crm.operational-cockpit` exposes a Forge TUI dashboard view with permission-gated CRM actions for operating snapshot refresh, commercial forecast review, SLA triage, campaign automation, document generation, operating copilot, specialized area copilots, enterprise customer journey execution and readiness packaging.
+- `crm.operational-cockpit` exposes a Forge TUI dashboard view with permission-gated CRM actions for operating snapshot refresh, commercial forecast review, SLA triage, campaign automation, document generation, cross-domain work queue orchestration, operating copilot, specialized area copilots, enterprise customer journey execution and readiness packaging.
 - `crm.workflow.evolution.executor` turns CRM observability bottlenecks into Forge `improve` experiments, benchmark reports, rollback plans and promotion decisions without unrestricted CRM self-modification.
-- `scripts/smoke-forge-runtime.mjs` registers the worker in Forge and executes planner, tenant bootstrap, operating snapshot, relationship timeline, pipeline stage movement, operating copilot, specialized area copilots, memory promotion preparation, observability inspection, operating readiness, enterprise customer journey acceptance, lead classification, proposal generation, commercial follow-up forecast, account management, contract signature, document generation, document validation, document approval, marketing campaign automation, marketing form capture, omnichannel message ingestion, ticket SLA triage, project handoff planning and omnichannel handoff contracts.
+- `scripts/smoke-forge-runtime.mjs` registers the worker in Forge and executes planner, tenant bootstrap, operating snapshot, relationship timeline, pipeline stage movement, operating copilot, specialized area copilots, cross-domain work queue orchestration, memory promotion preparation, observability inspection, operating readiness, enterprise customer journey acceptance, lead classification, proposal generation, commercial follow-up forecast, account management, contract signature, document generation, document validation, document approval, marketing campaign automation, marketing form capture, omnichannel message ingestion, ticket SLA triage, project handoff planning and omnichannel handoff contracts.
 - `workflows/crm-system-template.json` maps the enterprise CRM domains into workflow-backed modules.
 - `docs/` records the architecture boundary between `forge-core` and this Addon.
 
@@ -80,6 +80,7 @@ The tenant bootstrap emits a `crm_operating_model` artifact, and `crm.operating.
 - support queue;
 - marketing calendar;
 - document queue;
+- cross-domain work queue;
 - AI workbench.
 
 The operating model is explicitly `forge_workflow_runtime` owned and declares `external_database_required=false`; CRM state is expected to come from Forge workflow artifacts, events, memory scopes and validation gates.
@@ -99,6 +100,7 @@ The Addon declares `crm.operational-cockpit` with `surface=tui`. The cockpit is 
 - triage support SLA;
 - automate campaigns and nurture;
 - generate governed CRM documents;
+- run cross-domain work queue orchestration;
 - run the operating copilot;
 - run specialized area copilots;
 - evolve a CRM workflow through a governed Forge improve experiment;
@@ -114,9 +116,10 @@ The first business user surface is a static Addon asset:
 - workflow graph view for CRM process topology;
 - relationship graph view for company, contact, lead, opportunity, ticket and artifact relationships;
 - document queue view for proposals, contracts, approval waits and rework;
+- work queue view for approvals, SLA risks, documents, campaigns, handoffs and blocked waiting states;
 - workflow cadence view for follow-ups, renewals, SLA clocks, campaign launches, nurture waits and project handoff reviews sourced from Forge schedule events;
 - enterprise journey workbench for lead capture, opportunity, proposal, contract, account, support and handoff acceptance evidence;
-- Forge action list for runtime contracts such as operating snapshot refresh, tenant bootstrap, observability inspection, operating readiness package generation, enterprise customer journey execution, relationship timeline recording, pipeline stage movement, operating copilot, specialized area copilots, proposal generation, commercial follow-up forecast, account management, contract signature management, document generation, document validation, marketing campaign automation, form submission capture, omnichannel message ingestion, ticket SLA triage, project handoff planning and omnichannel handoff.
+- Forge action list for runtime contracts such as operating snapshot refresh, tenant bootstrap, observability inspection, operating readiness package generation, enterprise customer journey execution, relationship timeline recording, pipeline stage movement, operating copilot, specialized area copilots, cross-domain work queue orchestration, proposal generation, commercial follow-up forecast, account management, contract signature management, document generation, document validation, marketing campaign automation, form submission capture, omnichannel message ingestion, ticket SLA triage, project handoff planning and omnichannel handoff.
 - Adaptive workflow evolution workbench for Forge improve candidates, benchmark queue and promotion gates.
 
 The manifest declares this through `crm.system-map.props.web_app`, with `web/index.html` as the entrypoint and `web/data/operating-snapshot.json` as the generated data source.

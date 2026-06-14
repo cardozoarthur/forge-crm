@@ -7,6 +7,7 @@ import {
   buildDocumentGeneratorResult,
   buildDocumentValidatorResult,
   buildOperatingCopilotResult,
+  buildWorkQueueOrchestrationResult,
   buildLeadClassifierResult,
   buildRelationshipTimelineResult,
   buildOmnichannelHandoffResult,
@@ -416,6 +417,111 @@ test("area copilot generates specialized CRM recommendations without mutating st
   assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_risk_analysis"));
   assert.ok(result.events.some((event) => event.kind === "crm.ai.area_copilot_generated"));
   assert.ok(result.events.some((event) => event.kind === "crm.ai.recommendation_generated"));
+});
+
+test("work queue orchestrator packages approvals SLAs documents campaigns and handoffs through Forge", () => {
+  assert.equal(typeof buildWorkQueueOrchestrationResult, "function");
+
+  const result = buildWorkQueueOrchestrationResult(
+    workerRequest(
+      "forge_crm.orchestrate_work_queue",
+      {
+        tenant_context: { tenant_id: "demo" },
+        queue_items: [
+          {
+            id: "approval-prop-001",
+            queue: "approvals",
+            workflow_id: "crm.proposal.approval",
+            state: "approval_wait",
+            owner: "commercial.director",
+            artifact_refs: ["crm_proposal:doc-prop-001"],
+            event_refs: ["crm.document.approval_requested"],
+            priority: "high",
+            sla_minutes_remaining: 90
+          },
+          {
+            id: "ticket-sla-001",
+            queue: "sla",
+            workflow_id: "crm.ticket.sla",
+            state: "sla_escalation",
+            owner: "support.lead",
+            artifact_refs: ["crm_support_summary:ticket-sla-001"],
+            event_refs: ["crm.sla.escalated"],
+            priority: "critical",
+            sla_minutes_remaining: 15
+          },
+          {
+            id: "doc-rework-001",
+            queue: "documents",
+            workflow_id: "crm.document.approval",
+            state: "rework_required",
+            artifact_refs: ["crm_document:doc-rework-001"],
+            event_refs: ["crm.document.rework_required"],
+            priority: "medium"
+          },
+          {
+            id: "campaign-approval-001",
+            queue: "campaigns",
+            workflow_id: "crm.campaign.lifecycle",
+            state: "approval_wait",
+            owner: "marketing.ops",
+            artifact_refs: ["crm_campaign:campaign-approval-001"],
+            event_refs: ["crm.campaign.created"],
+            priority: "medium"
+          },
+          {
+            id: "handoff-blocked-001",
+            queue: "handoffs",
+            workflow_id: "crm.project.handoff",
+            state: "blocked_wait",
+            owner: "delivery.ops",
+            artifact_refs: ["crm_project_plan:handoff-blocked-001"],
+            event_refs: ["crm.task.blocked"],
+            priority: "high"
+          },
+          {
+            id: "renewal-wait-001",
+            queue: "blocked_waits",
+            workflow_id: "crm.contract.signature",
+            state: "renewal_wait",
+            owner: "legal.ops",
+            artifact_refs: ["crm_renewal_plan:renewal-wait-001"],
+            event_refs: ["crm.contract.renewal_scheduled"],
+            priority: "low"
+          }
+        ],
+        assignment_policy: {
+          required_queues: ["approvals", "sla", "documents", "campaigns", "handoffs", "blocked_waits"],
+          default_owner: "ops.commander",
+          risk_threshold_minutes: 60,
+          mutation_policy: "recommendation_only_until_forge_approval"
+        }
+      },
+      { contract_id: "crm.queue.orchestrator.executor", task_ref: "queue-orchestration-test" }
+    )
+  );
+
+  assert.equal(result.schema_version, "forge.addon_executor_result.v1");
+  assert.equal(result.status, "completed");
+  assert.equal(result.outputs.tenant_id, "demo");
+  assert.equal(result.outputs.workflow_id, "crm.work.queue.orchestration");
+  assert.equal(result.outputs.queue_count, 6);
+  assert.equal(result.outputs.ready_item_count, 6);
+  assert.equal(result.outputs.ownership_gap_count, 1);
+  assert.ok(result.outputs.risk_item_count >= 3);
+  assert.equal(result.outputs.mutates_crm_state, false);
+  assert.equal(result.outputs.mutation_requires_workflow_approval, true);
+  assert.deepEqual(result.outputs.queue_modes, ["approvals", "blocked_waits", "campaigns", "documents", "handoffs", "sla"]);
+  assert.ok(result.outputs.assignments.every((assignment) => assignment.command_action_id === "crm.run-work-queue"));
+  assert.ok(result.outputs.assignments.every((assignment) => assignment.state_owner === "forge_workflow_runtime"));
+
+  for (const artifactKind of ["crm_work_queue_snapshot", "crm_queue_assignment_plan", "crm_queue_sla_risk_report"]) {
+    assert.ok(result.artifacts.some((artifact) => artifact.kind === artifactKind), `missing ${artifactKind}`);
+  }
+
+  assert.ok(result.events.some((event) => event.kind === "crm.queue.snapshot_generated"));
+  assert.ok(result.events.some((event) => event.kind === "crm.queue.assignment_planned"));
+  assert.ok(result.events.some((event) => event.kind === "crm.queue.risk_flagged"));
 });
 
 test("memory promotion executor prepares governed Forge memory promotion requests", () => {

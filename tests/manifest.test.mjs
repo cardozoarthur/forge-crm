@@ -134,6 +134,33 @@ test("manifest exposes specialized CRM area copilots as Forge recommendation con
   assert.ok(aiEvents.has("crm.ai"));
 });
 
+test("manifest exposes cross-domain CRM work queues as a Forge-owned executor", () => {
+  const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.queue.orchestrator.executor");
+  assert.ok(contract);
+  assert.equal(contract.contract_type, "executor");
+  assert.equal(contract.capability_id, "crm_internal_operations");
+  assert.equal(contract.workflow_extension_id, "crm_work_queue_orchestration");
+  assert.equal(contract.entrypoint, "forge_crm.orchestrate_work_queue");
+  assert.deepEqual(contract.permissions, ["crm.workflow.mutate", "crm.ai.recommend", "crm.observability.inspect"]);
+  for (const input of ["queue_items", "assignment_policy", "tenant_context"]) {
+    assert.ok(contract.inputs.includes(input), `missing work queue input ${input}`);
+  }
+  for (const output of ["crm_work_queue_snapshot", "crm_queue_assignment_plan", "crm_queue_sla_risk_report"]) {
+    assert.ok(contract.outputs.includes(output), `missing work queue output ${output}`);
+  }
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("does not mutate")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("Forge workflow approval")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("artifact and event evidence")));
+
+  const artifactTypes = new Set(manifest.artifact_types.map((artifact) => artifact.id));
+  for (const artifactType of ["crm_work_queue_snapshot", "crm_queue_assignment_plan", "crm_queue_sla_risk_report"]) {
+    assert.ok(artifactTypes.has(artifactType), `missing artifact type ${artifactType}`);
+  }
+
+  const eventTypes = new Set(manifest.event_types.map((event) => event.id));
+  assert.ok(eventTypes.has("crm.queue"));
+});
+
 test("manifest exposes CRM memory promotion as governed Forge memory preparation", () => {
   const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.memory.promotion.executor");
   assert.ok(contract);
@@ -581,6 +608,7 @@ test("manifest exposes a Forge TUI operational cockpit with permission-gated CRM
     "crm.tui.generate-document",
     "crm.tui.run-operating-copilot",
     "crm.tui.run-area-copilot",
+    "crm.tui.run-work-queue",
     "crm.tui.generate-readiness-package"
   ]) {
     assert.ok(actionIds.has(actionId), `missing TUI action ${actionId}`);

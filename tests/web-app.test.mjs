@@ -26,6 +26,7 @@ test("web app snapshot exposes business CRM surfaces from Forge state only", () 
     "crm.support-queue",
     "crm.marketing-calendar",
     "crm.document-queue",
+    "crm.work-queue",
     "crm.ai-workbench"
   ]) {
     assert.ok(surfaceIds.has(surfaceId), `missing web surface ${surfaceId}`);
@@ -76,6 +77,7 @@ test("web app snapshot provides Forge command actions instead of local automatio
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.proposal.generator.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.document.generator.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.document.approval.executor"));
+  assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.queue.orchestrator.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.memory.promotion.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.observability.inspector.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.operating.readiness.executor"));
@@ -172,6 +174,7 @@ test("web app snapshot exposes an operational workbench backed by Forge artifact
     ["support_queue", "crm.support-queue"],
     ["marketing_calendar", "crm.marketing-calendar"],
     ["document_queue", "crm.document-queue"],
+    ["work_queue", "crm.work-queue"],
     ["ai_workbench", "crm.ai-workbench"]
   ]) {
     const panel = panels.get(panelId);
@@ -191,9 +194,28 @@ test("web app snapshot exposes an operational workbench backed by Forge artifact
   assert.ok(panels.get("marketing_calendar").campaigns.some((campaign) => campaign.next_action_id === "crm.automate-campaign"));
   assert.ok(panels.get("marketing_calendar").forms.some((form) => form.capture_action_id === "crm.capture-form-submission"));
   assert.ok(panels.get("document_queue").documents.some((document) => document.approval_action_id === "crm.record-document-approval"));
+  assert.ok(panels.get("work_queue").queues.some((queue) => queue.action_id === "crm.run-work-queue"));
+  assert.ok(panels.get("work_queue").assignments.every((assignment) => assignment.contract_id === "crm.queue.orchestrator.executor"));
   assert.ok(panels.get("ai_workbench").recommendations.some((recommendation) => recommendation.action_id === "crm.run-operating-copilot"));
   assert.ok(panels.get("ai_workbench").specialized_copilots.some((copilot) => copilot.action_id === "crm.run-area-copilot"));
   assert.ok(panels.get("ai_workbench").memory_promotions.some((promotion) => promotion.action_id === "crm.prepare-memory-promotion"));
+});
+
+test("web app snapshot exposes cross-domain work queues as Forge command surfaces", () => {
+  const snapshot = buildCrmWebAppSnapshot({ tenant_id: "demo" });
+  const workQueue = snapshot.operational_workbench.panels.find((panel) => panel.id === "work_queue");
+
+  assert.ok(workQueue);
+  assert.equal(workQueue.surface_id, "crm.work-queue");
+  assert.equal(workQueue.state_owner, "forge_workflow_runtime");
+  assert.ok(workQueue.action_ids.includes("crm.run-work-queue"));
+  assert.ok(workQueue.queue_modes.includes("approvals"));
+  assert.ok(workQueue.queue_modes.includes("sla"));
+  assert.ok(workQueue.queue_modes.includes("documents"));
+  assert.ok(workQueue.risk_summary.risk_item_count > 0);
+  assert.ok(workQueue.queues.every((queue) => queue.workflow_ids.length > 0));
+  assert.ok(workQueue.assignments.every((assignment) => assignment.requires_forge_approval === true));
+  assert.ok(snapshot.actions.some((action) => action.id === "crm.run-work-queue" && action.contract_id === "crm.queue.orchestrator.executor"));
 });
 
 test("web app snapshot exposes specialized CRM area copilots in the AI workbench", () => {

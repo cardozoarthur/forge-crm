@@ -3,7 +3,7 @@ const REQUIRED_SCOPE = {
   commercial: ["proposal", "contract", "signature", "follow_up", "forecast", "goal", "commission", "account_management"],
   support: ["ticket", "sla", "chat", "whatsapp", "telegram", "email", "omnichannel_center"],
   marketing: ["campaign", "segmentation", "automation", "landing_page", "form", "lead_nurturing"],
-  operations: ["project", "task", "approval", "document", "internal_flow", "team_handoff"],
+  operations: ["project", "task", "approval", "document", "internal_flow", "team_handoff", "work_queue", "ownership", "waiting_state"],
   ai_automation: [
     "lead_classification",
     "opportunity_prioritization",
@@ -300,6 +300,61 @@ const WORKFLOWS = [
     validation_gates: ["approval actor recorded", "approval decision lineage recorded", "lineage points to Forge artifact"]
   },
   {
+    id: "crm.work.queue.orchestration",
+    title: "Cross-domain work queue orchestration",
+    domain: "operations",
+    workflow_extension_id: "crm_work_queue_orchestration",
+    object_types: [
+      "work_queue",
+      "approval",
+      "document",
+      "task",
+      "internal_flow",
+      "team_handoff",
+      "ownership",
+      "waiting_state",
+      "sla",
+      "campaign",
+      "risk_analysis"
+    ],
+    states: [
+      "queue_snapshot_requested",
+      "queue_snapshot_ready",
+      "assignment_planned",
+      "approval_wait",
+      "work_in_progress",
+      "risk_review_wait",
+      "closed"
+    ],
+    transitions: [
+      ["queue_snapshot_requested", "queue_snapshot_ready", "Forge queue evidence collected"],
+      ["queue_snapshot_ready", "assignment_planned", "owners and next actions proposed"],
+      ["assignment_planned", "approval_wait", "state mutation requires approval"],
+      ["approval_wait", "work_in_progress", "approved queue action started"],
+      ["assignment_planned", "risk_review_wait", "SLA or ownership risk flagged"],
+      ["work_in_progress", "closed", "queue item resolved with artifact or event evidence"]
+    ],
+    runtime_contracts: ["crm.queue.orchestrator.executor", "crm.observability.inspector.executor"],
+    depends_on_workflows: [
+      "crm.proposal.approval",
+      "crm.ticket.sla",
+      "crm.document.approval",
+      "crm.campaign.lifecycle",
+      "crm.project.handoff",
+      "crm.contract.signature"
+    ],
+    artifacts: ["crm_work_queue_snapshot", "crm_queue_assignment_plan", "crm_queue_sla_risk_report"],
+    events: ["crm.queue.snapshot_generated", "crm.queue.assignment_planned", "crm.queue.risk_flagged"],
+    memory_scopes: ["organization", "project", "processing"],
+    permissions: ["crm.workflow.mutate", "crm.ai.recommend", "crm.observability.inspect"],
+    views: ["crm.work-queue", "crm.system-map", "crm.support-queue", "crm.document-queue"],
+    validation_gates: [
+      "queue actions require Forge workflow approval before mutation",
+      "every queue item cites artifact or event evidence",
+      "ownership gaps and SLA risks are returned to work before closure"
+    ]
+  },
+  {
     id: "crm.operational.observability",
     title: "Operational observability, audit and lineage",
     domain: "operations",
@@ -587,6 +642,7 @@ export function buildCrmOperatingModel(options = {}) {
       support_queue: operatorSurface(workflows, "crm.support-queue", "queue", "Support queue"),
       marketing_calendar: operatorSurface(workflows, "crm.marketing-calendar", "calendar", "Marketing calendar"),
       document_queue: operatorSurface(workflows, "crm.document-queue", "queue", "Document queue"),
+      work_queue: operatorSurface(workflows, "crm.work-queue", "queue", "Cross-domain work queue"),
       ai_workbench: operatorSurface(workflows, "crm.ai-workbench", "workbench", "AI workbench")
     },
     business_modules: businessModules,

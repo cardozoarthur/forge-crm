@@ -87,6 +87,29 @@ test("workflow pack includes a Forge-owned operating model for business surfaces
   }
 });
 
+test("workflow pack includes cross-domain work queue orchestration through Forge", () => {
+  const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
+  const workflow = pack.workflows.find((candidate) => candidate.id === "crm.work.queue.orchestration");
+
+  assert.ok(workflow);
+  assert.equal(workflow.domain, "operations");
+  assert.ok(workflow.runtime_contracts.includes("crm.queue.orchestrator.executor"));
+  assert.ok(workflow.depends_on_workflows.includes("crm.ticket.sla"));
+  assert.ok(workflow.depends_on_workflows.includes("crm.document.approval"));
+  assert.ok(workflow.depends_on_workflows.includes("crm.project.handoff"));
+
+  for (const artifact of ["crm_work_queue_snapshot", "crm_queue_assignment_plan", "crm_queue_sla_risk_report"]) {
+    assert.ok(workflow.artifacts.includes(artifact), `missing queue artifact ${artifact}`);
+    assert.ok(pack.indexes.artifact_types.includes(artifact), `missing indexed queue artifact ${artifact}`);
+  }
+
+  assert.ok(workflow.events.includes("crm.queue.snapshot_generated"));
+  assert.ok(workflow.events.includes("crm.queue.assignment_planned"));
+  assert.ok(workflow.events.includes("crm.queue.risk_flagged"));
+  assert.ok(workflow.validation_gates.includes("queue actions require Forge workflow approval before mutation"));
+  assert.ok(pack.indexes.runtime_contracts.includes("crm.queue.orchestrator.executor"));
+});
+
 test("AI automation workflow routes operating copilot through a runtime contract", () => {
   const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
   const aiWorkflow = pack.workflows.find((workflow) => workflow.id === "crm.ai.copilot.recommendation");

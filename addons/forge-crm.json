@@ -379,7 +379,9 @@
         "task",
         "approval",
         "document",
-        "handoff"
+        "handoff",
+        "queue",
+        "ownership"
       ],
       "requires_capabilities": [
         "workflow_runtime",
@@ -388,22 +390,28 @@
       ],
       "workflow_extensions": [
         "crm_project_handoff",
-        "crm_document_approval"
+        "crm_document_approval",
+        "crm_work_queue_orchestration"
       ],
       "deliverables": [
         "Handoff workflow",
         "Approval queue",
-        "Document audit trail"
+        "Document audit trail",
+        "Cross-domain work queue"
       ],
       "artifact_types": [
         "crm_project_plan",
         "crm_task_plan",
         "crm_document",
         "crm_presentation",
-        "crm_handoff_record"
+        "crm_handoff_record",
+        "crm_work_queue_snapshot",
+        "crm_queue_assignment_plan",
+        "crm_queue_sla_risk_report"
       ],
       "view_ids": [
-        "crm.document-queue"
+        "crm.document-queue",
+        "crm.work-queue"
       ]
     },
     {
@@ -562,6 +570,11 @@
       "id": "crm_document_approval",
       "kind": "approval_workflow",
       "description": "Manage CRM document queues, approvals and audit trail."
+    },
+    {
+      "id": "crm_work_queue_orchestration",
+      "kind": "operations_workflow",
+      "description": "Package approvals, SLA risks, documents, campaigns, handoffs and waiting states into Forge-owned work queues."
     },
     {
       "id": "crm_operational_observability",
@@ -753,6 +766,35 @@
         "area copilots are specialized by CRM area and cite Forge workflow evidence",
         "area copilot does not mutate CRM state directly",
         "recommendations require Forge workflow approval before state mutation"
+      ]
+    },
+    {
+      "id": "crm.queue.orchestrator.executor",
+      "title": "CRM cross-domain work queue orchestrator",
+      "contract_type": "executor",
+      "capability_id": "crm_internal_operations",
+      "workflow_extension_id": "crm_work_queue_orchestration",
+      "runtime": "external_api",
+      "entrypoint": "forge_crm.orchestrate_work_queue",
+      "inputs": [
+        "queue_items",
+        "assignment_policy",
+        "tenant_context"
+      ],
+      "outputs": [
+        "crm_work_queue_snapshot",
+        "crm_queue_assignment_plan",
+        "crm_queue_sla_risk_report"
+      ],
+      "permissions": [
+        "crm.workflow.mutate",
+        "crm.ai.recommend",
+        "crm.observability.inspect"
+      ],
+      "constraints": [
+        "work queue orchestration does not mutate CRM state directly",
+        "queue assignments require Forge workflow approval before state mutation",
+        "every queue item must cite Forge artifact and event evidence"
       ]
     },
     {
@@ -1831,6 +1873,49 @@
           ]
         },
         {
+          "id": "crm.tui.run-work-queue",
+          "label": "Run work queue",
+          "description": "Package CRM approvals, SLA risks, documents, campaigns, handoffs and waiting states through Forge.",
+          "palette_group": "CRM",
+          "source_panel": "crm.operational-cockpit",
+          "type": "command",
+          "target": "forge addons execute-executor",
+          "method": "CLI",
+          "permission": "crm.workflow.mutate",
+          "requires_confirmation": true,
+          "risk_level": "high",
+          "mutates_workflow": true,
+          "command_template": [
+            "addons",
+            "execute-executor",
+            "--addon",
+            "forge.addon.crm",
+            "--contract",
+            "crm.queue.orchestrator.executor",
+            "--worker",
+            "<worker-id>",
+            "--task",
+            "<task-ref>",
+            "--input",
+            "<json>",
+            "--context",
+            "<json>",
+            "--output",
+            "json"
+          ],
+          "keywords": [
+            "crm",
+            "queue",
+            "sla",
+            "approval"
+          ],
+          "payload_schema": [
+            "queue_items",
+            "assignment_policy",
+            "tenant_context"
+          ]
+        },
+        {
           "id": "crm.tui.generate-readiness-package",
           "label": "Generate readiness package",
           "description": "Produce the CRM operating readiness package from Forge workflow evidence.",
@@ -2024,6 +2109,26 @@
       },
       "permissions": [
         "crm.document.generate"
+      ]
+    },
+    {
+      "id": "crm.work-queue",
+      "title": "CRM work queue",
+      "surface": "web",
+      "type": "queue",
+      "component": "ForgeCrmWorkQueue",
+      "route": "/crm/work-queue",
+      "layout": {
+        "zone": "main",
+        "order": 75,
+        "width": "full",
+        "height": "full",
+        "density": "compact"
+      },
+      "permissions": [
+        "crm.workflow.mutate",
+        "crm.ai.recommend",
+        "crm.observability.inspect"
       ]
     },
     {
@@ -2282,6 +2387,21 @@
       "generic_kind": "artifact"
     },
     {
+      "id": "crm_work_queue_snapshot",
+      "title": "CRM work queue snapshot",
+      "generic_kind": "report"
+    },
+    {
+      "id": "crm_queue_assignment_plan",
+      "title": "CRM queue assignment plan",
+      "generic_kind": "artifact"
+    },
+    {
+      "id": "crm_queue_sla_risk_report",
+      "title": "CRM queue SLA risk report",
+      "generic_kind": "report"
+    },
+    {
       "id": "crm_ai_recommendation",
       "title": "CRM AI recommendation",
       "generic_kind": "artifact"
@@ -2406,6 +2526,11 @@
     {
       "id": "crm.document",
       "title": "CRM document event",
+      "transport": "crm"
+    },
+    {
+      "id": "crm.queue",
+      "title": "CRM queue event",
       "transport": "crm"
     },
     {
