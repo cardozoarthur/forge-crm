@@ -139,6 +139,47 @@ test("manifest exposes CRM observability inspection as a Forge-owned executor", 
   }
 });
 
+test("manifest exposes CRM operating readiness as a user-facing outcome package", () => {
+  const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.operating.readiness.executor");
+  assert.ok(contract);
+  assert.equal(contract.contract_type, "executor");
+  assert.equal(contract.capability_id, "crm_workflow_factory");
+  assert.equal(contract.workflow_extension_id, "crm_enterprise_readiness");
+  assert.equal(contract.entrypoint, "forge_crm.generate_operating_readiness");
+  assert.deepEqual(contract.permissions, ["crm.observability.inspect"]);
+
+  for (const input of ["workflow_pack", "operating_snapshot", "validation_evidence", "success_criteria", "tenant_context"]) {
+    assert.ok(contract.inputs.includes(input), `missing readiness input ${input}`);
+  }
+
+  for (const output of [
+    "crm_operating_readiness_report",
+    "crm_user_outcome_manifest",
+    "crm_domain_coverage_matrix",
+    "crm_business_runbook"
+  ]) {
+    assert.ok(contract.outputs.includes(output), `missing readiness output ${output}`);
+  }
+
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("user-facing deliverables")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("Forge workflows")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("does not create CRM-local state")));
+
+  const artifactTypes = new Set(manifest.artifact_types.map((artifact) => artifact.id));
+  for (const artifactType of [
+    "crm_operating_readiness_report",
+    "crm_user_outcome_manifest",
+    "crm_domain_coverage_matrix",
+    "crm_business_runbook"
+  ]) {
+    assert.ok(artifactTypes.has(artifactType), `missing artifact type ${artifactType}`);
+  }
+
+  const eventTypes = new Set(manifest.event_types.map((event) => event.id));
+  assert.ok(eventTypes.has("crm.readiness"));
+  assert.ok(eventTypes.has("crm.outcome"));
+});
+
 test("manifest exposes CRM pipeline stage movement as a Forge-owned executor", () => {
   const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.pipeline.stage_move.executor");
   assert.ok(contract);

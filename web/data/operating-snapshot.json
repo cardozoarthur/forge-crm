@@ -23,11 +23,11 @@
     "external_delivery_requires_approval": true
   },
   "metrics": {
-    "workflow_count": 13,
+    "workflow_count": 14,
     "business_module_count": 6,
     "surface_count": 8,
-    "artifact_type_count": 38,
-    "event_type_count": 48,
+    "artifact_type_count": 42,
+    "event_type_count": 50,
     "complete_scope": true
   },
   "surfaces": [
@@ -40,7 +40,8 @@
       "permission": "crm.workflow.mutate",
       "state_source": "forge_workflow_artifacts_and_events",
       "workflow_ids": [
-        "crm.operational.observability"
+        "crm.operational.observability",
+        "crm.enterprise.readiness"
       ],
       "lanes": [
         "inspection_requested",
@@ -48,19 +49,30 @@
         "audit_reported",
         "risk_review_wait",
         "remediation_started",
-        "closed"
+        "closed",
+        "criteria_collected",
+        "evidence_mapped",
+        "readiness_reported",
+        "rework_required",
+        "operable"
       ],
       "artifact_types": [
         "crm_audit_report",
+        "crm_business_runbook",
         "crm_cost_report",
+        "crm_domain_coverage_matrix",
         "crm_lineage_map",
-        "crm_metric_snapshot"
+        "crm_metric_snapshot",
+        "crm_operating_readiness_report",
+        "crm_user_outcome_manifest"
       ],
       "event_types": [
         "crm.audit.reported",
         "crm.cost.reviewed",
         "crm.metric.reviewed",
-        "crm.observability.inspected"
+        "crm.observability.inspected",
+        "crm.operating.readiness_reported",
+        "crm.outcome.deliverables_mapped"
       ],
       "mutation_requires_forge": true
     },
@@ -548,26 +560,31 @@
         "crm.account.management",
         "crm.project.handoff",
         "crm.document.approval",
-        "crm.operational.observability"
+        "crm.operational.observability",
+        "crm.enterprise.readiness"
       ],
       "artifact_types": [
         "crm_account_plan",
         "crm_approval_record",
         "crm_audit_report",
+        "crm_business_runbook",
         "crm_contract",
         "crm_cost_report",
         "crm_document",
+        "crm_domain_coverage_matrix",
         "crm_forecast_report",
         "crm_handoff_record",
         "crm_health_report",
         "crm_lineage_map",
         "crm_metric_snapshot",
+        "crm_operating_readiness_report",
         "crm_presentation",
         "crm_project_plan",
         "crm_renewal_plan",
         "crm_report",
         "crm_signature_receipt",
-        "crm_task_plan"
+        "crm_task_plan",
+        "crm_user_outcome_manifest"
       ],
       "event_types": [
         "crm.account.expansion_identified",
@@ -586,6 +603,8 @@
         "crm.document.validated",
         "crm.metric.reviewed",
         "crm.observability.inspected",
+        "crm.operating.readiness_reported",
+        "crm.outcome.deliverables_mapped",
         "crm.project.accepted",
         "crm.project.handoff_requested",
         "crm.task.blocked",
@@ -602,9 +621,12 @@
         "inspection does not create CRM-local observability state",
         "lineage points to Forge artifact",
         "owner visible",
+        "readiness evidence sourced from Forge workflows artifacts events and validation gates",
         "remediation requires Forge workflow mutation",
         "renewal state explicit",
-        "signature receipt attached"
+        "rework reason recorded before any operable claim",
+        "signature receipt attached",
+        "success criteria mapped to user-facing deliverables"
       ]
     },
     {
@@ -1138,6 +1160,41 @@
         ]
       },
       {
+        "id": "crm.enterprise.readiness",
+        "title": "Enterprise CRM operating readiness",
+        "domain": "operations",
+        "state_count": 5,
+        "states": [
+          "criteria_collected",
+          "evidence_mapped",
+          "readiness_reported",
+          "rework_required",
+          "operable"
+        ],
+        "wait_states": [],
+        "runtime_contracts": [
+          "crm.operating.readiness.executor"
+        ],
+        "artifact_types": [
+          "crm_operating_readiness_report",
+          "crm_user_outcome_manifest",
+          "crm_domain_coverage_matrix",
+          "crm_business_runbook"
+        ],
+        "event_types": [
+          "crm.operating.readiness_reported",
+          "crm.outcome.deliverables_mapped"
+        ],
+        "surface_ids": [
+          "crm.system-map"
+        ],
+        "validation_gates": [
+          "success criteria mapped to user-facing deliverables",
+          "readiness evidence sourced from Forge workflows artifacts events and validation gates",
+          "rework reason recorded before any operable claim"
+        ]
+      },
+      {
         "id": "crm.ai.copilot.recommendation",
         "title": "Specialized CRM copilots and risk analysis",
         "domain": "ai_automation",
@@ -1513,6 +1570,33 @@
         "forge.addon.crm",
         "--contract",
         "crm.observability.inspector.executor",
+        "--worker",
+        "<worker-id>",
+        "--task",
+        "<task-ref>",
+        "--input",
+        "<json>",
+        "--context",
+        "<json>",
+        "--output",
+        "json"
+      ]
+    },
+    {
+      "id": "crm.generate-readiness-package",
+      "label": "Generate readiness package",
+      "surface_id": "crm.system-map",
+      "contract_id": "crm.operating.readiness.executor",
+      "requires_permission": "crm.observability.inspect",
+      "mutates_workflow": true,
+      "command_template": [
+        "forge",
+        "addons",
+        "execute-executor",
+        "--addon",
+        "forge.addon.crm",
+        "--contract",
+        "crm.operating.readiness.executor",
         "--worker",
         "<worker-id>",
         "--task",

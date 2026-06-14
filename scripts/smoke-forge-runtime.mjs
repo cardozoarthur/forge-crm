@@ -83,6 +83,7 @@ try {
       "forge_crm.operating_copilot",
       "forge_crm.prepare_memory_promotion",
       "forge_crm.inspect_observability",
+      "forge_crm.generate_operating_readiness",
       "forge_crm.generate_proposal",
       "forge_crm.review_followup_forecast",
       "forge_crm.manage_account",
@@ -107,6 +108,7 @@ try {
       "crm.ai.operating_copilot.executor",
       "crm.memory.promotion.executor",
       "crm.observability.inspector.executor",
+      "crm.operating.readiness.executor",
       "crm.proposal.generator.executor",
       "crm.commercial.followup_forecast.executor",
       "crm.commercial.account_management.executor",
@@ -404,6 +406,60 @@ try {
   }
   if (observabilityInspection.executor_result.outputs.cost_total_usd !== 1.5) {
     throw new Error(`expected observability cost total 1.5, got ${observabilityInspection.executor_result.outputs.cost_total_usd}`);
+  }
+
+  const workflowPackArtifact = bootstrap.executor_result.artifacts.find((artifact) => artifact.kind === "crm_workflow_pack");
+  const operatingSnapshotArtifact = operatingSnapshot.executor_result.artifacts.find((artifact) => artifact.kind === "crm_operating_snapshot");
+  const operatingReadiness = runForge([
+    "addons",
+    "execute-executor",
+    "--addon-dir",
+    "addons",
+    "--addon",
+    "forge.addon.crm",
+    "--contract",
+    "crm.operating.readiness.executor",
+    "--worker",
+    workerId,
+    "--task",
+    "crm-smoke-operating-readiness",
+    "--workflow",
+    workflowId,
+    "--input",
+    JSON.stringify({
+      tenant_context: { id: "smoke", tenant_id: "smoke" },
+      workflow_pack: workflowPackArtifact?.data,
+      operating_snapshot: operatingSnapshotArtifact?.data,
+      validation_evidence: {
+        commands: ["npm test", "forge addons validate", "forge runtime smoke"],
+        workflow_artifact_count: observabilityInspection.promotion?.artifact_count ?? 0,
+        runtime_contract_count: workflowPackArtifact?.data?.summary?.runtime_contract_count
+      },
+      success_criteria: {
+        goal: "Operate a complete enterprise CRM through Forge workflows",
+        required_deliverables: [
+          "relationship workspace",
+          "commercial command center",
+          "support inbox",
+          "marketing automation",
+          "document approvals",
+          "project handoff"
+        ]
+      }
+    }),
+    "--context",
+    JSON.stringify({ tenant: "smoke" }),
+    "--output",
+    "json"
+  ]);
+
+  if (operatingReadiness.promotion?.status !== "addon_executor_result_promoted") {
+    throw new Error(`expected operating readiness promotion, got ${operatingReadiness.promotion?.status || "missing"}`);
+  }
+  if (operatingReadiness.executor_result.outputs.success_criteria_status !== "operable_with_evidence") {
+    throw new Error(
+      `expected operating readiness to be operable_with_evidence, got ${operatingReadiness.executor_result.outputs.success_criteria_status}`
+    );
   }
 
   const relationshipTimeline = runForge([
@@ -1075,6 +1131,8 @@ try {
   const memoryPromotedEventCount = memoryPromotion.promotion?.event_count ?? 0;
   const observabilityPromotedArtifactCount = observabilityInspection.promotion?.artifact_count ?? 0;
   const observabilityPromotedEventCount = observabilityInspection.promotion?.event_count ?? 0;
+  const readinessPromotedArtifactCount = operatingReadiness.promotion?.artifact_count ?? 0;
+  const readinessPromotedEventCount = operatingReadiness.promotion?.event_count ?? 0;
   const relationshipPromotedArtifactCount = relationshipTimeline.promotion?.artifact_count ?? 0;
   const relationshipPromotedEventCount = relationshipTimeline.promotion?.event_count ?? 0;
   const pipelinePromotedArtifactCount = pipelineStageMove.promotion?.artifact_count ?? 0;
@@ -1157,6 +1215,16 @@ try {
     "crm.cost.reviewed",
     "crm.metric.reviewed"
   ]) {
+    if (!workflowEventKinds.includes(eventKind)) {
+      throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
+    }
+  }
+  if (readinessPromotedArtifactCount < 4 || readinessPromotedEventCount < 2) {
+    throw new Error(
+      `expected promoted readiness artifacts/events, got artifacts=${readinessPromotedArtifactCount} events=${readinessPromotedEventCount}`
+    );
+  }
+  for (const eventKind of ["crm.operating.readiness_reported", "crm.outcome.deliverables_mapped"]) {
     if (!workflowEventKinds.includes(eventKind)) {
       throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
     }
@@ -1437,6 +1505,13 @@ try {
     observability_inspection_status: observabilityInspection.executor_result.outputs.inspection_status,
     observability_promoted_artifacts: observabilityPromotedArtifactCount,
     observability_promoted_events: observabilityPromotedEventCount,
+    operating_readiness_status: operatingReadiness.status,
+    operating_readiness_promotion_status: operatingReadiness.promotion.status,
+    operating_readiness_success_criteria_status: operatingReadiness.executor_result.outputs.success_criteria_status,
+    operating_readiness_ready_domain_count: operatingReadiness.executor_result.outputs.ready_domain_count,
+    operating_readiness_user_deliverable_count: operatingReadiness.executor_result.outputs.user_facing_deliverable_count,
+    operating_readiness_promoted_artifacts: readinessPromotedArtifactCount,
+    operating_readiness_promoted_events: readinessPromotedEventCount,
     relationship_timeline_status: relationshipTimeline.status,
     relationship_timeline_promotion_status: relationshipTimeline.promotion.status,
     relationship_timeline_pipeline_stage: relationshipTimeline.executor_result.outputs.pipeline_stage,

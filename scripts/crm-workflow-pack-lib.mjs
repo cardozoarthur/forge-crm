@@ -326,6 +326,37 @@ const WORKFLOWS = [
     ]
   },
   {
+    id: "crm.enterprise.readiness",
+    title: "Enterprise CRM operating readiness",
+    domain: "operations",
+    workflow_extension_id: "crm_enterprise_readiness",
+    object_types: ["enterprise_readiness", "user_outcome", "business_runbook", "domain_coverage", "success_criteria"],
+    states: ["criteria_collected", "evidence_mapped", "readiness_reported", "rework_required", "operable"],
+    transitions: [
+      ["criteria_collected", "evidence_mapped", "workflow pack and validation evidence collected"],
+      ["evidence_mapped", "readiness_reported", "user-facing deliverables mapped to Forge evidence"],
+      ["readiness_reported", "operable", "all required domains have workflow artifacts, events and validation gates"],
+      ["readiness_reported", "rework_required", "missing domain coverage or external dependency found"],
+      ["rework_required", "criteria_collected", "rework reason returned to Forge workflow tasks"]
+    ],
+    runtime_contracts: ["crm.operating.readiness.executor"],
+    artifacts: [
+      "crm_operating_readiness_report",
+      "crm_user_outcome_manifest",
+      "crm_domain_coverage_matrix",
+      "crm_business_runbook"
+    ],
+    events: ["crm.operating.readiness_reported", "crm.outcome.deliverables_mapped"],
+    memory_scopes: ["organization", "project"],
+    permissions: ["crm.observability.inspect"],
+    views: ["crm.system-map"],
+    validation_gates: [
+      "success criteria mapped to user-facing deliverables",
+      "readiness evidence sourced from Forge workflows artifacts events and validation gates",
+      "rework reason recorded before any operable claim"
+    ]
+  },
+  {
     id: "crm.ai.copilot.recommendation",
     title: "Specialized CRM copilots and risk analysis",
     domain: "ai_automation",

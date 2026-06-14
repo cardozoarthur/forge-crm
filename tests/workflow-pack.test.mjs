@@ -305,3 +305,23 @@ test("operations workflow routes project handoff and task planning through Forge
   assert.ok(workflow.events.includes("crm.task.blocked"));
   assert.ok(pack.indexes.runtime_contracts.includes("crm.operations.project_handoff.executor"));
 });
+
+test("enterprise readiness workflow maps success criteria to user-facing deliverables", () => {
+  const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
+  const workflow = pack.workflows.find((candidate) => candidate.id === "crm.enterprise.readiness");
+
+  assert.ok(workflow);
+  assert.equal(workflow.workflow_extension_id, "crm_enterprise_readiness");
+  assert.equal(workflow.domain, "operations");
+  assert.ok(workflow.object_types.includes("enterprise_readiness"));
+  assert.ok(workflow.object_types.includes("user_outcome"));
+  assert.ok(workflow.runtime_contracts.includes("crm.operating.readiness.executor"));
+  assert.ok(workflow.artifacts.includes("crm_operating_readiness_report"));
+  assert.ok(workflow.artifacts.includes("crm_user_outcome_manifest"));
+  assert.ok(workflow.artifacts.includes("crm_domain_coverage_matrix"));
+  assert.ok(workflow.artifacts.includes("crm_business_runbook"));
+  assert.ok(workflow.events.includes("crm.operating.readiness_reported"));
+  assert.ok(workflow.events.includes("crm.outcome.deliverables_mapped"));
+  assert.ok(workflow.validation_gates.includes("success criteria mapped to user-facing deliverables"));
+  assert.ok(pack.indexes.runtime_contracts.includes("crm.operating.readiness.executor"));
+});

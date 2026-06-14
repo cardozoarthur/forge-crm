@@ -95,19 +95,24 @@
       "title": "Operations",
       "workflow_extensions": [
         "crm_project_handoff",
-        "crm_document_approval"
+        "crm_document_approval",
+        "crm_enterprise_readiness"
       ],
       "objects": [
         "project",
         "task",
         "approval",
         "document",
-        "internal_flow"
+        "internal_flow",
+        "enterprise_readiness",
+        "user_outcome",
+        "business_runbook"
       ],
       "forge_requirements": [
         "handoff visibility",
         "approval audit",
-        "document queues"
+        "document queues",
+        "success criteria mapped to user-facing deliverables"
       ]
     },
     {

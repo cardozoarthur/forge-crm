@@ -1,5 +1,5 @@
 import { buildCrmPlan } from "./crm-plan-lib.mjs";
-import { buildCrmOperatingModel, buildTenantBootstrapResult } from "./crm-workflow-pack-lib.mjs";
+import { buildCrmOperatingModel, buildCrmWorkflowPack, buildTenantBootstrapResult } from "./crm-workflow-pack-lib.mjs";
 
 export { buildTenantBootstrapResult };
 
@@ -964,6 +964,238 @@ export function buildObservabilityInspectorResult(request) {
         workflow_id: workflowId,
         metric_count: metricSamples.length,
         log_count: logEntries.length
+      }
+    ],
+    context_tenant: context.tenant || tenantId
+  };
+}
+
+const READINESS_OUTCOME_DOMAINS = [
+  {
+    id: "relationship",
+    title: "Relationship workspace",
+    deliverable: "relationship workspace",
+    workflow_ids: ["crm.lead.lifecycle", "crm.opportunity.pipeline"],
+    required_artifacts: ["crm_timeline_snapshot", "crm_pipeline_board", "crm_entity_model"],
+    required_events: ["crm.relationship.recorded", "crm.opportunity.stage_changed"]
+  },
+  {
+    id: "commercial",
+    title: "Commercial command center",
+    deliverable: "commercial command center",
+    workflow_ids: ["crm.proposal.approval", "crm.contract.signature", "crm.followup.forecast", "crm.account.management"],
+    required_artifacts: ["crm_proposal", "crm_contract", "crm_forecast_report", "crm_health_report"],
+    required_events: ["crm.proposal.generated", "crm.contract.signed", "crm.forecast.updated"]
+  },
+  {
+    id: "support",
+    title: "Support inbox and SLA lane",
+    deliverable: "support inbox",
+    workflow_ids: ["crm.ticket.sla"],
+    required_artifacts: ["crm_message_thread", "crm_channel_receipt", "crm_support_summary"],
+    required_events: ["crm.message.received", "crm.ticket.created", "crm.sla.escalated"]
+  },
+  {
+    id: "marketing",
+    title: "Marketing automation and capture",
+    deliverable: "marketing automation",
+    workflow_ids: ["crm.campaign.lifecycle", "crm.lead.nurture"],
+    required_artifacts: ["crm_campaign", "crm_segment", "crm_form_submission", "crm_automation_plan"],
+    required_events: ["crm.campaign.scheduled", "crm.form.submitted", "crm.nurture.scheduled"]
+  },
+  {
+    id: "documents",
+    title: "Document generation and approvals",
+    deliverable: "document approvals",
+    workflow_ids: ["crm.document.approval", "crm.proposal.approval", "crm.contract.signature"],
+    required_artifacts: ["crm_document", "crm_presentation", "crm_approval_record"],
+    required_events: ["crm.document.generated", "crm.document.approved"]
+  },
+  {
+    id: "operations",
+    title: "Project handoff and internal operations",
+    deliverable: "project handoff",
+    workflow_ids: ["crm.project.handoff", "crm.operational.observability"],
+    required_artifacts: ["crm_project_plan", "crm_task_plan", "crm_handoff_record", "crm_audit_report"],
+    required_events: ["crm.project.handoff_requested", "crm.task.created", "crm.observability.inspected"]
+  }
+];
+
+function workflowReady(workflow) {
+  return Boolean(
+    workflow &&
+      asArray(workflow.runtime_contracts).length > 0 &&
+      asArray(workflow.artifacts).length > 0 &&
+      asArray(workflow.events).length > 0 &&
+      asArray(workflow.validation_gates).length > 0
+  );
+}
+
+function readinessWorkflowPack(input, tenantId) {
+  const candidate = asObject(input.workflow_pack);
+  return Array.isArray(candidate.workflows) ? candidate : buildCrmWorkflowPack({ tenant_id: tenantId });
+}
+
+export function buildOperatingReadinessResult(request) {
+  const input = dispatchPayload(request);
+  const context = providedContext(request);
+  const tenantId = input.tenant_id || input.tenant_context?.tenant_id || input.tenant_context?.id || context.tenant || "default";
+  const taskRef = dispatchEnvelope(request).task_ref || `operating-readiness-${slug(tenantId, "tenant")}`;
+  const pack = readinessWorkflowPack(input, tenantId);
+  const operatingSnapshot = asObject(input.operating_snapshot);
+  const validationEvidence = asObject(input.validation_evidence ?? input.evidence);
+  const successCriteria = asObject(input.success_criteria ?? input.criteria);
+  const workflowById = new Map(asArray(pack.workflows).map((workflow) => [workflow.id, workflow]));
+  const packArtifactTypes = new Set(asArray(pack.indexes?.artifact_types));
+  const packEventTypes = new Set(asArray(pack.indexes?.event_types));
+  const packRuntimeContracts = new Set(asArray(pack.indexes?.runtime_contracts));
+
+  const domainCoverage = READINESS_OUTCOME_DOMAINS.map((domain) => {
+    const workflows = domain.workflow_ids.map((workflowId) => workflowById.get(workflowId)).filter(Boolean);
+    const missingWorkflowIds = domain.workflow_ids.filter((workflowId) => !workflowById.has(workflowId));
+    const workflowArtifactTypes = new Set(workflows.flatMap((workflow) => asArray(workflow.artifacts)));
+    const workflowEventTypes = new Set(workflows.flatMap((workflow) => asArray(workflow.events)));
+    const workflowRuntimeContracts = new Set(workflows.flatMap((workflow) => asArray(workflow.runtime_contracts)));
+    const artifactEvidence = domain.required_artifacts.filter((artifact) => workflowArtifactTypes.has(artifact) || packArtifactTypes.has(artifact));
+    const eventEvidence = domain.required_events.filter((event) => workflowEventTypes.has(event) || packEventTypes.has(event));
+    const runtimeEvidence = [...workflowRuntimeContracts].filter((contract) => packRuntimeContracts.size === 0 || packRuntimeContracts.has(contract));
+    const ready =
+      missingWorkflowIds.length === 0 &&
+      workflows.every(workflowReady) &&
+      artifactEvidence.length > 0 &&
+      eventEvidence.length > 0 &&
+      runtimeEvidence.length > 0;
+
+    return {
+      domain: domain.id,
+      title: domain.title,
+      user_facing_deliverable: domain.deliverable,
+      ready,
+      workflow_ids: domain.workflow_ids,
+      missing_workflow_ids: missingWorkflowIds,
+      artifact_evidence: artifactEvidence,
+      event_evidence: eventEvidence,
+      runtime_contract_evidence: runtimeEvidence,
+      validation_gates: unique(workflows.flatMap((workflow) => asArray(workflow.validation_gates)))
+    };
+  });
+
+  const readyDomainCount = domainCoverage.filter((domain) => domain.ready).length;
+  const requiredDeliverables = asArray(successCriteria.required_deliverables ?? successCriteria.deliverables);
+  const userOutcomeManifest = READINESS_OUTCOME_DOMAINS.map((domain) => ({
+    deliverable: domain.deliverable,
+    domain: domain.id,
+    workflow_ids: domain.workflow_ids,
+    acceptance: "delivered when Forge workflow artifacts, events and validation gates are present",
+    requested_by_success_criteria:
+      requiredDeliverables.length === 0 ||
+      requiredDeliverables.some((deliverable) => slug(deliverable, "deliverable").includes(slug(domain.deliverable, "deliverable")))
+  }));
+  const forgeOnlyOperations =
+    operatingSnapshot.external_database_required !== true &&
+    asObject(pack.state_model).external_database_required !== true &&
+    operatingSnapshot.direct_browser_persistence !== true;
+  const successCriteriaStatus =
+    readyDomainCount === READINESS_OUTCOME_DOMAINS.length && forgeOnlyOperations ? "operable_with_evidence" : "rework_required";
+  const lineage = {
+    workflow_id: input.workflow_id || "crm.enterprise.readiness",
+    task_ref: taskRef,
+    source_contract: "crm.operating.readiness.executor",
+    tenant_id: tenantId
+  };
+
+  return {
+    schema_version: "forge.addon_executor_result.v1",
+    status: "completed",
+    task_ref: taskRef,
+    summary: `CRM operating readiness for ${tenantId} mapped ${userOutcomeManifest.length} user-facing deliverables to Forge evidence`,
+    outputs: {
+      tenant_id: tenantId,
+      workflow_id: lineage.workflow_id,
+      success_criteria_status: successCriteriaStatus,
+      user_facing_deliverable_count: userOutcomeManifest.length,
+      ready_domain_count: readyDomainCount,
+      workflow_count: asArray(pack.workflows).length,
+      runtime_contract_count: asArray(pack.indexes?.runtime_contracts).length || numberFrom(validationEvidence.runtime_contract_count, 0),
+      workflow_artifact_count: numberFrom(validationEvidence.workflow_artifact_count, 0),
+      forge_only_operations: forgeOnlyOperations,
+      main_flow_dependency_external: !forgeOnlyOperations,
+      mutates_crm_state: false,
+      forge_event_sourced: true
+    },
+    artifacts: [
+      {
+        kind: "crm_operating_readiness_report",
+        id: `crm-operating-readiness-${slug(tenantId, "tenant")}`,
+        title: `CRM operating readiness report for ${tenantId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          success_criteria: successCriteria,
+          status: successCriteriaStatus,
+          ready_domain_count: readyDomainCount,
+          user_facing_deliverable_count: userOutcomeManifest.length,
+          forge_only_operations: forgeOnlyOperations,
+          validation_evidence: validationEvidence,
+          lineage,
+          state_owner: "forge_workflow_runtime",
+          external_database_required: false
+        }
+      },
+      {
+        kind: "crm_user_outcome_manifest",
+        id: `crm-user-outcomes-${slug(tenantId, "tenant")}`,
+        title: `CRM user-facing outcomes for ${tenantId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          outcomes: userOutcomeManifest,
+          source: "forge.workflow_pack"
+        }
+      },
+      {
+        kind: "crm_domain_coverage_matrix",
+        id: `crm-domain-coverage-${slug(tenantId, "tenant")}`,
+        title: `CRM domain coverage matrix for ${tenantId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          domains: domainCoverage,
+          complete: readyDomainCount === READINESS_OUTCOME_DOMAINS.length,
+          lineage
+        }
+      },
+      {
+        kind: "crm_business_runbook",
+        id: `crm-business-runbook-${slug(tenantId, "tenant")}`,
+        title: `CRM business runbook for ${tenantId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          daily_operations: userOutcomeManifest.map((outcome) => ({
+            deliverable: outcome.deliverable,
+            command_owner: "forge",
+            workflow_ids: outcome.workflow_ids,
+            rework_path: "return incomplete goals to Forge workflow tasks with reason"
+          })),
+          escalation_policy: "readiness gaps require Forge workflow mutation, validation evidence and artifact lineage",
+          lineage
+        }
+      }
+    ],
+    events: [
+      {
+        kind: "crm.operating.readiness_reported",
+        tenant_id: tenantId,
+        workflow_id: lineage.workflow_id,
+        success_criteria_status: successCriteriaStatus,
+        ready_domain_count: readyDomainCount
+      },
+      {
+        kind: "crm.outcome.deliverables_mapped",
+        tenant_id: tenantId,
+        workflow_id: lineage.workflow_id,
+        deliverable_count: userOutcomeManifest.length
       }
     ],
     context_tenant: context.tenant || tenantId
@@ -2840,6 +3072,8 @@ export function executeCrmRuntimeRequest(request) {
       return buildMemoryPromotionCandidateResult(request);
     case "forge_crm.inspect_observability":
       return buildObservabilityInspectorResult(request);
+    case "forge_crm.generate_operating_readiness":
+      return buildOperatingReadinessResult(request);
     case "forge_crm.generate_proposal":
       return buildProposalGeneratorResult(request);
     case "forge_crm.review_followup_forecast":

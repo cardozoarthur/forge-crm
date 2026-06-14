@@ -238,6 +238,63 @@ test("operating snapshot runtime returns Forge-owned business surface state", ()
   assert.equal(result.events[0].kind, "crm.operating.snapshot_generated");
 });
 
+test("operating readiness maps Forge evidence into user-facing CRM deliverables", () => {
+  assert.equal(typeof runtime.buildOperatingReadinessResult, "function");
+
+  const result = runtime.buildOperatingReadinessResult(
+    workerRequest(
+      "forge_crm.generate_operating_readiness",
+      {
+        tenant_context: { tenant_id: "demo" },
+        success_criteria: {
+          goal: "Operate a complete enterprise CRM through Forge workflows",
+          required_deliverables: [
+            "relationship workspace",
+            "commercial command center",
+            "support inbox",
+            "marketing automation",
+            "document approvals",
+            "project handoff"
+          ]
+        },
+        operating_snapshot: {
+          state_owner: "forge_workflow_runtime",
+          external_database_required: false
+        },
+        validation_evidence: {
+          commands: ["npm test", "forge addons validate", "forge runtime smoke"],
+          workflow_artifact_count: 56,
+          runtime_contract_count: 22
+        }
+      },
+      { contract_id: "crm.operating.readiness.executor", task_ref: "readiness-test" }
+    )
+  );
+
+  assert.equal(result.schema_version, "forge.addon_executor_result.v1");
+  assert.equal(result.status, "completed");
+  assert.equal(result.outputs.tenant_id, "demo");
+  assert.equal(result.outputs.success_criteria_status, "operable_with_evidence");
+  assert.equal(result.outputs.user_facing_deliverable_count, 6);
+  assert.equal(result.outputs.ready_domain_count, 6);
+  assert.equal(result.outputs.forge_only_operations, true);
+  assert.equal(result.outputs.main_flow_dependency_external, false);
+  assert.equal(result.outputs.mutates_crm_state, false);
+  assert.equal(result.outputs.forge_event_sourced, true);
+
+  for (const artifactKind of [
+    "crm_operating_readiness_report",
+    "crm_user_outcome_manifest",
+    "crm_domain_coverage_matrix",
+    "crm_business_runbook"
+  ]) {
+    assert.ok(result.artifacts.some((artifact) => artifact.kind === artifactKind), `missing readiness artifact ${artifactKind}`);
+  }
+
+  assert.ok(result.events.some((event) => event.kind === "crm.operating.readiness_reported"));
+  assert.ok(result.events.some((event) => event.kind === "crm.outcome.deliverables_mapped"));
+});
+
 test("operating copilot prioritizes opportunities without mutating CRM state", () => {
   const result = buildOperatingCopilotResult(
     workerRequest("forge_crm.operating_copilot", {

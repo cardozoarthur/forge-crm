@@ -141,11 +141,13 @@
         "addon_registry"
       ],
       "workflow_extensions": [
-        "crm_workflow_factory_system_bootstrap"
+        "crm_workflow_factory_system_bootstrap",
+        "crm_enterprise_readiness"
       ],
       "deliverables": [
         "CRM system blueprint",
         "workflow-backed entity model",
+        "CRM operating readiness package",
         "Forge Core gap report"
       ],
       "constraints": [
@@ -161,7 +163,11 @@
         "crm_core_gap_report",
         "crm_workflow_pack",
         "crm_operating_model",
-        "crm_operating_snapshot"
+        "crm_operating_snapshot",
+        "crm_operating_readiness_report",
+        "crm_user_outcome_manifest",
+        "crm_domain_coverage_matrix",
+        "crm_business_runbook"
       ],
       "view_ids": [
         "crm.system-map"
@@ -552,6 +558,11 @@
       "description": "Inspect CRM audit, lineage, costs, events, logs, metrics and state from Forge-owned runtime evidence."
     },
     {
+      "id": "crm_enterprise_readiness",
+      "kind": "operations_workflow",
+      "description": "Map enterprise CRM success criteria to user-facing deliverables backed by Forge workflows, artifacts, events and validation evidence."
+    },
+    {
       "id": "crm_ai_copilot_recommendation",
       "kind": "agentic_workflow",
       "description": "Run bounded copilots for classification, prioritization and recommendations."
@@ -753,6 +764,36 @@
         "observability inspection is derived from Forge workflow artifacts, events, costs, metrics and logs",
         "observability inspection does not create CRM-local observability state",
         "remediation from observations must be promoted through Forge workflow mutation or approval"
+      ]
+    },
+    {
+      "id": "crm.operating.readiness.executor",
+      "title": "CRM operating readiness package",
+      "contract_type": "executor",
+      "capability_id": "crm_workflow_factory",
+      "workflow_extension_id": "crm_enterprise_readiness",
+      "runtime": "external_api",
+      "entrypoint": "forge_crm.generate_operating_readiness",
+      "inputs": [
+        "workflow_pack",
+        "operating_snapshot",
+        "validation_evidence",
+        "success_criteria",
+        "tenant_context"
+      ],
+      "outputs": [
+        "crm_operating_readiness_report",
+        "crm_user_outcome_manifest",
+        "crm_domain_coverage_matrix",
+        "crm_business_runbook"
+      ],
+      "permissions": [
+        "crm.observability.inspect"
+      ],
+      "constraints": [
+        "readiness must map success criteria to user-facing deliverables",
+        "readiness evidence must come from Forge workflows, artifacts, events and validation gates",
+        "readiness inspection does not create CRM-local state"
       ]
     },
     {
@@ -1621,6 +1662,26 @@
       "generic_kind": "report"
     },
     {
+      "id": "crm_operating_readiness_report",
+      "title": "CRM operating readiness report",
+      "generic_kind": "report"
+    },
+    {
+      "id": "crm_user_outcome_manifest",
+      "title": "CRM user outcome manifest",
+      "generic_kind": "artifact"
+    },
+    {
+      "id": "crm_domain_coverage_matrix",
+      "title": "CRM domain coverage matrix",
+      "generic_kind": "report"
+    },
+    {
+      "id": "crm_business_runbook",
+      "title": "CRM business runbook",
+      "generic_kind": "document"
+    },
+    {
       "id": "crm_ai_recommendation",
       "title": "CRM AI recommendation",
       "generic_kind": "artifact"
@@ -1715,6 +1776,16 @@
     {
       "id": "crm.observability",
       "title": "CRM observability event",
+      "transport": "crm"
+    },
+    {
+      "id": "crm.readiness",
+      "title": "CRM readiness event",
+      "transport": "crm"
+    },
+    {
+      "id": "crm.outcome",
+      "title": "CRM outcome event",
       "transport": "crm"
     },
     {
