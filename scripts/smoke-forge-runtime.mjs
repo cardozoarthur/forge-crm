@@ -97,6 +97,7 @@ try {
       "forge_crm.operating_copilot",
       "forge_crm.run_area_copilot",
       "forge_crm.orchestrate_work_queue",
+      "forge_crm.govern_approval_queue",
       "forge_crm.orchestrate_subworkflows",
       "forge_crm.generate_design_system",
       "forge_crm.prepare_memory_promotion",
@@ -140,6 +141,7 @@ try {
       "crm.ai.operating_copilot.executor",
       "crm.ai.area_copilot.executor",
       "crm.queue.orchestrator.executor",
+      "crm.workflow.approval_governance.executor",
       "crm.workflow.subworkflow_orchestrator.executor",
       "crm.design_system.executor",
       "crm.memory.promotion.executor",
@@ -520,6 +522,73 @@ try {
   }
   if (workQueue.executor_result.outputs.risk_item_count < 3) {
     throw new Error(`expected work queue risk items, got ${workQueue.executor_result.outputs.risk_item_count}`);
+  }
+
+  const approvalGovernance = runForge([
+    "addons",
+    "execute-executor",
+    "--addon-dir",
+    "addons",
+    "--addon",
+    "forge.addon.crm",
+    "--contract",
+    "crm.workflow.approval_governance.executor",
+    "--worker",
+    workerId,
+    "--task",
+    "crm-smoke-approval-governance",
+    "--workflow",
+    workflowId,
+    "--input",
+    JSON.stringify({
+      tenant_context: { id: "smoke", tenant_id: "smoke" },
+      approval_queue: [
+        {
+          id: "approval-smoke-proposal",
+          workflow_id: "crm.document.approval",
+          task_ref: "approve-proposal-smoke",
+          artifact_type: "crm_document_approval",
+          artifact_ref: "forge://artifact/crm_approval_record/proposal-smoke",
+          required_permission: "crm.document.generate",
+          approval_state: "approval_wait",
+          decision: { state: "approved", approver: "forge-crm-smoke", reason: "document lineage attached" }
+        },
+        {
+          id: "approval-smoke-reply",
+          workflow_id: "crm.omnichannel.reply",
+          task_ref: "reply-thread-smoke",
+          artifact_type: "crm_support_reply",
+          artifact_ref: "forge://artifact/crm_reply_draft/thread-smoke",
+          required_permission: "crm.omnichannel.ingest",
+          approval_state: "approval_wait",
+          decision: { state: "rework_required", approver: "forge-crm-smoke", reason: "missing escalation context" }
+        }
+      ],
+      permission_gates: [
+        { permission: "crm.document.generate", status: "authorized" },
+        { permission: "crm.omnichannel.ingest", status: "authorized" }
+      ],
+      decision_policy: {
+        require_rework_reason: true,
+        promote_events: true
+      }
+    }),
+    "--context",
+    JSON.stringify({ tenant: "smoke" }),
+    "--output",
+    "json"
+  ]);
+
+  if (approvalGovernance.promotion?.status !== "addon_executor_result_promoted") {
+    throw new Error(
+      `expected approval governance promotion, got ${approvalGovernance.promotion?.status || "missing"}`
+    );
+  }
+  if (approvalGovernance.executor_result.outputs.approved_count !== 1) {
+    throw new Error(`expected one approved governance item, got ${approvalGovernance.executor_result.outputs.approved_count}`);
+  }
+  if (approvalGovernance.executor_result.outputs.rework_count !== 1) {
+    throw new Error(`expected one rework governance item, got ${approvalGovernance.executor_result.outputs.rework_count}`);
   }
 
   const subworkflowOrchestration = runForge([
@@ -2488,6 +2557,8 @@ try {
   const areaCopilotPromotedEventCount = areaCopilot.promotion?.event_count ?? 0;
   const workQueuePromotedArtifactCount = workQueue.promotion?.artifact_count ?? 0;
   const workQueuePromotedEventCount = workQueue.promotion?.event_count ?? 0;
+  const approvalGovernancePromotedArtifactCount = approvalGovernance.promotion?.artifact_count ?? 0;
+  const approvalGovernancePromotedEventCount = approvalGovernance.promotion?.event_count ?? 0;
   const subworkflowPromotedArtifactCount = subworkflowOrchestration.promotion?.artifact_count ?? 0;
   const subworkflowPromotedEventCount = subworkflowOrchestration.promotion?.event_count ?? 0;
   const designSystemPromotedArtifactCount = designSystem.promotion?.artifact_count ?? 0;
@@ -2601,6 +2672,22 @@ try {
     );
   }
   for (const eventKind of ["crm.queue.snapshot_generated", "crm.queue.assignment_planned", "crm.queue.risk_flagged"]) {
+    if (!workflowEventKinds.includes(eventKind)) {
+      throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
+    }
+  }
+  if (approvalGovernancePromotedArtifactCount < 4 || approvalGovernancePromotedEventCount < 5) {
+    throw new Error(
+      `expected promoted approval governance artifacts/events, got artifacts=${approvalGovernancePromotedArtifactCount} events=${approvalGovernancePromotedEventCount}`
+    );
+  }
+  for (const eventKind of [
+    "crm.approval.queue_inspected",
+    "crm.approval.permission_gate_checked",
+    "crm.approval.decision_recorded",
+    "crm.approval.rework_returned",
+    "crm.approval.event_promoted"
+  ]) {
     if (!workflowEventKinds.includes(eventKind)) {
       throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
     }
@@ -3080,6 +3167,13 @@ try {
     work_queue_risk_item_count: workQueue.executor_result.outputs.risk_item_count,
     work_queue_promoted_artifacts: workQueuePromotedArtifactCount,
     work_queue_promoted_events: workQueuePromotedEventCount,
+    approval_governance_status: approvalGovernance.status,
+    approval_governance_promotion_status: approvalGovernance.promotion.status,
+    approval_governance_state: approvalGovernance.executor_result.outputs.governance_state,
+    approval_governance_approved_count: approvalGovernance.executor_result.outputs.approved_count,
+    approval_governance_rework_count: approvalGovernance.executor_result.outputs.rework_count,
+    approval_governance_promoted_artifacts: approvalGovernancePromotedArtifactCount,
+    approval_governance_promoted_events: approvalGovernancePromotedEventCount,
     subworkflow_orchestration_status: subworkflowOrchestration.status,
     subworkflow_orchestration_promotion_status: subworkflowOrchestration.promotion.status,
     subworkflow_orchestration_state: subworkflowOrchestration.executor_result.outputs.orchestration_state,

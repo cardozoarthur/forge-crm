@@ -136,8 +136,8 @@ test("enterprise readiness Markdown report is generated from current audit evide
   const markdown = enterpriseReadinessAuditToMarkdown(audit);
   const committed = await readFile(new URL("../docs/enterprise-readiness-audit.md", import.meta.url), "utf8");
 
-  assert.match(markdown, /- Workflows: 31/);
-  assert.match(markdown, /- Runtime contracts: 41/);
+  assert.match(markdown, /- Workflows: 32/);
+  assert.match(markdown, /- Runtime contracts: 42/);
   assert.match(markdown, /## Forge Core Requirements/);
   assert.match(markdown, /## Distribution Evidence/);
   assert.match(markdown, /Distribution status: ready_for_public_addon_distribution/);

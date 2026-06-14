@@ -23,11 +23,11 @@
     "external_delivery_requires_approval": true
   },
   "metrics": {
-    "workflow_count": 31,
+    "workflow_count": 32,
     "business_module_count": 7,
     "surface_count": 10,
-    "artifact_type_count": 84,
-    "event_type_count": 99,
+    "artifact_type_count": 88,
+    "event_type_count": 104,
     "complete_scope": true
   },
   "surfaces": [
@@ -45,6 +45,7 @@
         "crm.operational.observability",
         "crm.executive.reporting",
         "crm.enterprise.readiness",
+        "crm.approval.governance",
         "crm.subworkflow.orchestration",
         "crm.enterprise.customer_journey",
         "crm.workflow.evolution",
@@ -78,6 +79,12 @@
         "evidence_mapped",
         "readiness_reported",
         "operable",
+        "queue_inspected",
+        "permission_gate_wait",
+        "approval_artifacts_collected",
+        "decision_recorded",
+        "rework_returned",
+        "event_promoted",
         "parent_selected",
         "children_bound",
         "lineage_mapped",
@@ -103,6 +110,9 @@
         "queued_for_activation"
       ],
       "artifact_types": [
+        "crm_approval_decision_batch",
+        "crm_approval_governance_queue",
+        "crm_approval_rework_reason",
         "crm_audit_report",
         "crm_automation_validation_report",
         "crm_benchmark_report",
@@ -122,6 +132,7 @@
         "crm_metric_snapshot",
         "crm_operating_acceptance_evidence",
         "crm_operating_readiness_report",
+        "crm_permission_gate_report",
         "crm_promotion_decision",
         "crm_queue_assignment_plan",
         "crm_queue_sla_risk_report",
@@ -136,6 +147,11 @@
         "crm_workflow_evolution_plan"
       ],
       "event_types": [
+        "crm.approval.decision_recorded",
+        "crm.approval.event_promoted",
+        "crm.approval.permission_gate_checked",
+        "crm.approval.queue_inspected",
+        "crm.approval.rework_returned",
         "crm.audit.reported",
         "crm.automation.designed",
         "crm.automation.queued",
@@ -257,6 +273,7 @@
         "crm.goal.commission",
         "crm.account.management",
         "crm.project.handoff",
+        "crm.approval.governance",
         "crm.enterprise.customer_journey"
       ],
       "lanes": [
@@ -295,6 +312,12 @@
         "tasks_in_progress",
         "blocked_wait",
         "accepted",
+        "queue_inspected",
+        "permission_gate_wait",
+        "approval_artifacts_collected",
+        "decision_recorded",
+        "rework_returned",
+        "event_promoted",
         "lead_capture",
         "opportunity",
         "contract",
@@ -306,6 +329,9 @@
       ],
       "artifact_types": [
         "crm_account_plan",
+        "crm_approval_decision_batch",
+        "crm_approval_governance_queue",
+        "crm_approval_rework_reason",
         "crm_business_runbook",
         "crm_commission_record",
         "crm_commission_statement",
@@ -319,6 +345,7 @@
         "crm_handoff_record",
         "crm_health_report",
         "crm_operating_acceptance_evidence",
+        "crm_permission_gate_report",
         "crm_pipeline_board",
         "crm_project_plan",
         "crm_report",
@@ -331,6 +358,11 @@
         "crm.account.expansion_identified",
         "crm.account.health_reviewed",
         "crm.account.renewal_planned",
+        "crm.approval.decision_recorded",
+        "crm.approval.event_promoted",
+        "crm.approval.permission_gate_checked",
+        "crm.approval.queue_inspected",
+        "crm.approval.rework_returned",
         "crm.commission.accrued",
         "crm.commission.statement_generated",
         "crm.followup.scheduled",
@@ -365,6 +397,7 @@
         "crm.omnichannel.center",
         "crm.omnichannel.reply",
         "crm.work.queue.orchestration",
+        "crm.approval.governance",
         "crm.enterprise.customer_journey"
       ],
       "lanes": [
@@ -400,6 +433,12 @@
         "assignment_planned",
         "work_in_progress",
         "risk_review_wait",
+        "queue_inspected",
+        "permission_gate_wait",
+        "approval_artifacts_collected",
+        "decision_recorded",
+        "rework_returned",
+        "event_promoted",
         "lead_capture",
         "opportunity",
         "proposal",
@@ -410,7 +449,10 @@
         "operating_acceptance"
       ],
       "artifact_types": [
+        "crm_approval_decision_batch",
+        "crm_approval_governance_queue",
         "crm_approval_record",
+        "crm_approval_rework_reason",
         "crm_business_runbook",
         "crm_channel_identity_map",
         "crm_channel_intake",
@@ -422,6 +464,7 @@
         "crm_message_thread",
         "crm_omnichannel_center_snapshot",
         "crm_operating_acceptance_evidence",
+        "crm_permission_gate_report",
         "crm_queue_assignment_plan",
         "crm_queue_sla_risk_report",
         "crm_support_queue_snapshot",
@@ -430,6 +473,11 @@
         "crm_work_queue_snapshot"
       ],
       "event_types": [
+        "crm.approval.decision_recorded",
+        "crm.approval.event_promoted",
+        "crm.approval.permission_gate_checked",
+        "crm.approval.queue_inspected",
+        "crm.approval.rework_returned",
         "crm.channel.authorization_blocked",
         "crm.channel.authorized",
         "crm.channel.identity_mapped",
@@ -464,7 +512,8 @@
         "crm.campaign.lifecycle",
         "crm.marketing.segment_builder",
         "crm.marketing.landing_page",
-        "crm.lead.nurture"
+        "crm.lead.nurture",
+        "crm.approval.governance"
       ],
       "lanes": [
         "brief",
@@ -486,10 +535,19 @@
         "wait_step",
         "message_ready",
         "sent",
-        "qualified_or_exit"
+        "qualified_or_exit",
+        "queue_inspected",
+        "permission_gate_wait",
+        "approval_artifacts_collected",
+        "decision_recorded",
+        "rework_returned",
+        "event_promoted"
       ],
       "artifact_types": [
         "crm_ai_recommendation",
+        "crm_approval_decision_batch",
+        "crm_approval_governance_queue",
+        "crm_approval_rework_reason",
         "crm_automation_plan",
         "crm_campaign",
         "crm_consent_record",
@@ -498,6 +556,7 @@
         "crm_form_submission",
         "crm_landing_page",
         "crm_nurture_plan",
+        "crm_permission_gate_report",
         "crm_presentation",
         "crm_report",
         "crm_segment",
@@ -505,6 +564,11 @@
         "crm_segment_definition"
       ],
       "event_types": [
+        "crm.approval.decision_recorded",
+        "crm.approval.event_promoted",
+        "crm.approval.permission_gate_checked",
+        "crm.approval.queue_inspected",
+        "crm.approval.rework_returned",
         "crm.campaign.created",
         "crm.campaign.reported",
         "crm.campaign.scheduled",
@@ -539,6 +603,7 @@
         "crm.document.approval",
         "crm.document.library",
         "crm.work.queue.orchestration",
+        "crm.approval.governance",
         "crm.enterprise.customer_journey"
       ],
       "lanes": [
@@ -566,6 +631,12 @@
         "work_in_progress",
         "risk_review_wait",
         "closed",
+        "queue_inspected",
+        "permission_gate_wait",
+        "approval_artifacts_collected",
+        "decision_recorded",
+        "rework_returned",
+        "event_promoted",
         "lead_capture",
         "opportunity",
         "proposal",
@@ -576,7 +647,10 @@
         "operating_acceptance"
       ],
       "artifact_types": [
+        "crm_approval_decision_batch",
+        "crm_approval_governance_queue",
         "crm_approval_record",
+        "crm_approval_rework_reason",
         "crm_business_runbook",
         "crm_contract",
         "crm_cross_domain_handoff_map",
@@ -587,6 +661,7 @@
         "crm_file_record",
         "crm_handoff_record",
         "crm_operating_acceptance_evidence",
+        "crm_permission_gate_report",
         "crm_presentation",
         "crm_proposal",
         "crm_queue_assignment_plan",
@@ -596,6 +671,11 @@
         "crm_work_queue_snapshot"
       ],
       "event_types": [
+        "crm.approval.decision_recorded",
+        "crm.approval.event_promoted",
+        "crm.approval.permission_gate_checked",
+        "crm.approval.queue_inspected",
+        "crm.approval.rework_returned",
         "crm.contract.renewal_scheduled",
         "crm.contract.reviewed",
         "crm.contract.signed",
@@ -629,6 +709,7 @@
       "state_source": "forge_workflow_artifacts_and_events",
       "workflow_ids": [
         "crm.work.queue.orchestration",
+        "crm.approval.governance",
         "crm.subworkflow.orchestration",
         "crm.workflow.automation_design"
       ],
@@ -640,6 +721,12 @@
         "work_in_progress",
         "risk_review_wait",
         "closed",
+        "queue_inspected",
+        "permission_gate_wait",
+        "approval_artifacts_collected",
+        "decision_recorded",
+        "rework_returned",
+        "event_promoted",
         "parent_selected",
         "children_bound",
         "lineage_mapped",
@@ -652,7 +739,11 @@
         "queued_for_activation"
       ],
       "artifact_types": [
+        "crm_approval_decision_batch",
+        "crm_approval_governance_queue",
+        "crm_approval_rework_reason",
         "crm_automation_validation_report",
+        "crm_permission_gate_report",
         "crm_queue_assignment_plan",
         "crm_queue_sla_risk_report",
         "crm_subworkflow_lineage_map",
@@ -663,6 +754,11 @@
         "crm_workflow_automation_spec"
       ],
       "event_types": [
+        "crm.approval.decision_recorded",
+        "crm.approval.event_promoted",
+        "crm.approval.permission_gate_checked",
+        "crm.approval.queue_inspected",
+        "crm.approval.rework_returned",
         "crm.automation.designed",
         "crm.automation.queued",
         "crm.automation.validated",
@@ -715,6 +811,7 @@
       "state_source": "forge_workflow_artifacts_and_events",
       "workflow_ids": [
         "crm.executive.reporting",
+        "crm.approval.governance",
         "crm.workflow.evolution",
         "crm.workflow.automation_design",
         "crm.ai.copilot.recommendation"
@@ -726,6 +823,12 @@
         "risk_reviewed",
         "action_recommendations_queued",
         "published",
+        "queue_inspected",
+        "permission_gate_wait",
+        "approval_artifacts_collected",
+        "decision_recorded",
+        "rework_returned",
+        "event_promoted",
         "candidate_scan",
         "experiment_designed",
         "benchmark_wait",
@@ -746,6 +849,9 @@
       ],
       "artifact_types": [
         "crm_ai_recommendation",
+        "crm_approval_decision_batch",
+        "crm_approval_governance_queue",
+        "crm_approval_rework_reason",
         "crm_area_copilot_brief",
         "crm_automation_validation_report",
         "crm_benchmark_report",
@@ -756,6 +862,7 @@
         "crm_knowledge_summary",
         "crm_kpi_dashboard",
         "crm_memory_promotion_request",
+        "crm_permission_gate_report",
         "crm_promotion_decision",
         "crm_report",
         "crm_risk_analysis",
@@ -767,6 +874,11 @@
         "crm.ai.area_copilot_generated",
         "crm.ai.recommendation_generated",
         "crm.ai.risk_flagged",
+        "crm.approval.decision_recorded",
+        "crm.approval.event_promoted",
+        "crm.approval.permission_gate_checked",
+        "crm.approval.queue_inspected",
+        "crm.approval.rework_returned",
         "crm.automation.designed",
         "crm.automation.queued",
         "crm.automation.validated",
@@ -1076,12 +1188,16 @@
         "crm.operational.observability",
         "crm.executive.reporting",
         "crm.enterprise.readiness",
+        "crm.approval.governance",
         "crm.subworkflow.orchestration",
         "crm.enterprise.customer_journey"
       ],
       "artifact_types": [
         "crm_account_plan",
+        "crm_approval_decision_batch",
+        "crm_approval_governance_queue",
         "crm_approval_record",
+        "crm_approval_rework_reason",
         "crm_audit_report",
         "crm_business_review_report",
         "crm_business_runbook",
@@ -1104,6 +1220,7 @@
         "crm_metric_snapshot",
         "crm_operating_acceptance_evidence",
         "crm_operating_readiness_report",
+        "crm_permission_gate_report",
         "crm_presentation",
         "crm_project_plan",
         "crm_queue_assignment_plan",
@@ -1124,6 +1241,11 @@
         "crm.account.expansion_identified",
         "crm.account.health_reviewed",
         "crm.account.renewal_planned",
+        "crm.approval.decision_recorded",
+        "crm.approval.event_promoted",
+        "crm.approval.permission_gate_checked",
+        "crm.approval.queue_inspected",
+        "crm.approval.rework_returned",
         "crm.audit.reported",
         "crm.contract.renewal_scheduled",
         "crm.contract.reviewed",
@@ -1170,6 +1292,7 @@
         "all required customer lifecycle stages have Forge artifact and event evidence",
         "approval actor recorded",
         "approval decision lineage recorded",
+        "approval governance does not persist CRM-local state",
         "audit lineage cost metrics and logs sourced from Forge",
         "blocked reason explicit",
         "business review risk items cite workflow lineage",
@@ -1179,18 +1302,21 @@
         "customer replies are drafted as Forge artifacts before external send",
         "document library state is represented by Forge artifacts and events",
         "document versions require Forge artifact lineage before promotion",
+        "every approval decision cites source workflow artifact and event lineage",
         "every queue item cites artifact or event evidence",
         "executive KPIs are derived from Forge workflow artifacts and events",
         "expansion forecast event-backed",
         "external channel delivery is blocked until Forge approval is recorded",
         "forecast review does not send external follow-ups",
         "forecast snapshot lineage present",
+        "incomplete approvals return to source workflow tasks with explicit rework reason",
         "inspection does not create CRM-local observability state",
         "lineage points to Forge artifact",
         "main CRM flow has no external system dependency",
         "owner visible",
         "ownership gaps and SLA risks are returned to work before closure",
         "parent workflow promotion is blocked while any child validation gate fails",
+        "permission gates pass before any approval mutates workflow state",
         "queue actions require Forge workflow approval before mutation",
         "readiness evidence sourced from Forge workflows artifacts events and validation gates",
         "recommended decisions remain advisory until Forge approval",
@@ -2391,6 +2517,56 @@
         ]
       },
       {
+        "id": "crm.approval.governance",
+        "title": "CRM approval governance",
+        "domain": "operations",
+        "state_count": 6,
+        "states": [
+          "queue_inspected",
+          "permission_gate_wait",
+          "approval_artifacts_collected",
+          "decision_recorded",
+          "rework_returned",
+          "event_promoted"
+        ],
+        "wait_states": [
+          "permission_gate_wait"
+        ],
+        "runtime_contracts": [
+          "crm.workflow.approval_governance.executor",
+          "crm.document.approval.executor",
+          "crm.observability.inspector.executor"
+        ],
+        "artifact_types": [
+          "crm_approval_governance_queue",
+          "crm_permission_gate_report",
+          "crm_approval_decision_batch",
+          "crm_approval_rework_reason"
+        ],
+        "event_types": [
+          "crm.approval.queue_inspected",
+          "crm.approval.permission_gate_checked",
+          "crm.approval.decision_recorded",
+          "crm.approval.rework_returned",
+          "crm.approval.event_promoted"
+        ],
+        "surface_ids": [
+          "crm.system-map",
+          "crm.work-queue",
+          "crm.document-queue",
+          "crm.support-queue",
+          "crm.marketing-calendar",
+          "crm.commercial-command",
+          "crm.ai-workbench"
+        ],
+        "validation_gates": [
+          "every approval decision cites source workflow artifact and event lineage",
+          "permission gates pass before any approval mutates workflow state",
+          "incomplete approvals return to source workflow tasks with explicit rework reason",
+          "approval governance does not persist CRM-local state"
+        ]
+      },
+      {
         "id": "crm.subworkflow.orchestration",
         "title": "CRM subworkflow orchestration",
         "domain": "operations",
@@ -2883,6 +3059,42 @@
         "state_owner": "forge_workflow_runtime"
       },
       {
+        "from": "crm.document.approval",
+        "to": "crm.approval.governance",
+        "reason": "document approval waits enter governance review",
+        "state_owner": "forge_workflow_runtime"
+      },
+      {
+        "from": "crm.omnichannel.reply",
+        "to": "crm.approval.governance",
+        "reason": "external support replies enter governance review",
+        "state_owner": "forge_workflow_runtime"
+      },
+      {
+        "from": "crm.campaign.lifecycle",
+        "to": "crm.approval.governance",
+        "reason": "campaign and landing page approvals enter governance review",
+        "state_owner": "forge_workflow_runtime"
+      },
+      {
+        "from": "crm.goal.commission",
+        "to": "crm.approval.governance",
+        "reason": "commission payout waits enter governance review",
+        "state_owner": "forge_workflow_runtime"
+      },
+      {
+        "from": "crm.workflow.evolution",
+        "to": "crm.approval.governance",
+        "reason": "workflow evolution promotion waits enter governance review",
+        "state_owner": "forge_workflow_runtime"
+      },
+      {
+        "from": "crm.approval.governance",
+        "to": "crm.enterprise.readiness",
+        "reason": "approval governance evidence updates readiness",
+        "state_owner": "forge_workflow_runtime"
+      },
+      {
         "from": "crm.project.handoff",
         "to": "crm.enterprise.customer_journey",
         "reason": "accepted handoff completes customer lifecycle evidence",
@@ -3142,7 +3354,10 @@
       }
     ],
     "artifact_types": [
+      "crm_approval_decision_batch",
+      "crm_approval_governance_queue",
       "crm_approval_record",
+      "crm_approval_rework_reason",
       "crm_business_runbook",
       "crm_contract",
       "crm_cross_domain_handoff_map",
@@ -3153,6 +3368,7 @@
       "crm_file_record",
       "crm_handoff_record",
       "crm_operating_acceptance_evidence",
+      "crm_permission_gate_report",
       "crm_presentation",
       "crm_proposal",
       "crm_queue_assignment_plan",
@@ -3349,6 +3565,7 @@
           "crm.goal.commission",
           "crm.account.management",
           "crm.project.handoff",
+          "crm.approval.governance",
           "crm.enterprise.customer_journey",
           "crm.proposal.approval",
           "crm.contract.signature"
@@ -3435,6 +3652,7 @@
           "crm.omnichannel.center",
           "crm.omnichannel.reply",
           "crm.work.queue.orchestration",
+          "crm.approval.governance",
           "crm.enterprise.customer_journey"
         ],
         "action_ids": [
@@ -3673,7 +3891,8 @@
           "crm.campaign.lifecycle",
           "crm.marketing.segment_builder",
           "crm.marketing.landing_page",
-          "crm.lead.nurture"
+          "crm.lead.nurture",
+          "crm.approval.governance"
         ],
         "action_ids": [
           "crm.build-marketing-segment",
@@ -3787,6 +4006,7 @@
           "crm.document.approval",
           "crm.document.library",
           "crm.work.queue.orchestration",
+          "crm.approval.governance",
           "crm.enterprise.customer_journey"
         ],
         "action_ids": [
@@ -3878,7 +4098,10 @@
           }
         ],
         "artifact_types": [
+          "crm_approval_decision_batch",
+          "crm_approval_governance_queue",
           "crm_approval_record",
+          "crm_approval_rework_reason",
           "crm_business_runbook",
           "crm_contract",
           "crm_cross_domain_handoff_map",
@@ -3889,6 +4112,7 @@
           "crm_file_record",
           "crm_handoff_record",
           "crm_operating_acceptance_evidence",
+          "crm_permission_gate_report",
           "crm_presentation",
           "crm_proposal",
           "crm_queue_assignment_plan",
@@ -3966,6 +4190,7 @@
         "mutation_requires_forge": true,
         "workflow_ids": [
           "crm.work.queue.orchestration",
+          "crm.approval.governance",
           "crm.subworkflow.orchestration",
           "crm.workflow.automation_design"
         ],
@@ -4113,6 +4338,7 @@
         "mutation_requires_forge": true,
         "workflow_ids": [
           "crm.executive.reporting",
+          "crm.approval.governance",
           "crm.workflow.evolution",
           "crm.workflow.automation_design",
           "crm.ai.copilot.recommendation"
@@ -4531,7 +4757,10 @@
         "state_owner": "forge_workflow_runtime",
         "permission": "crm.workflow.mutate",
         "artifact_types": [
+          "crm_approval_decision_batch",
+          "crm_approval_governance_queue",
           "crm_approval_record",
+          "crm_approval_rework_reason",
           "crm_business_runbook",
           "crm_contract",
           "crm_cross_domain_handoff_map",
@@ -4542,6 +4771,7 @@
           "crm_file_record",
           "crm_handoff_record",
           "crm_operating_acceptance_evidence",
+          "crm_permission_gate_report",
           "crm_presentation",
           "crm_proposal",
           "crm_queue_assignment_plan",
@@ -5611,6 +5841,456 @@
       }
     ]
   },
+  "approval_governance_workbench": {
+    "schema_version": "forge.crm_approval_governance_workbench.v1",
+    "workflow_id": "crm.approval.governance",
+    "workflow_extension_id": "crm_approval_governance",
+    "state_owner": "forge_workflow_runtime",
+    "state_source": "forge_workflow_artifacts_and_events",
+    "local_state_allowed": false,
+    "action_id": "crm.govern-approval-queue",
+    "contract_id": "crm.workflow.approval_governance.executor",
+    "rework_policy": "return incomplete approvals to Forge workflow tasks with reason",
+    "approval_queue": [
+      {
+        "id": "approval-document-proposal",
+        "title": "Proposal document approval",
+        "workflow_id": "crm.document.approval",
+        "artifact_type": "crm_document_approval",
+        "action_id": "crm.record-document-approval",
+        "artifact_ref": "forge://artifact/crm_approval_record/proposal-022",
+        "surface_id": "crm.document-queue",
+        "contract_id": "crm.document.approval.executor",
+        "required_permission": "crm.workflow.mutate",
+        "approval_state": "approval_wait",
+        "state_owner": "forge_workflow_runtime",
+        "lineage_source": "forge_workflow_artifacts_and_events",
+        "approve_command_template": [
+          "forge",
+          "addons",
+          "execute-executor",
+          "--addon",
+          "forge.addon.crm",
+          "--contract",
+          "crm.document.approval.executor",
+          "--worker",
+          "<worker-id>",
+          "--task",
+          "<task-ref>",
+          "--input",
+          "<json>",
+          "--context",
+          "<json>",
+          "--output",
+          "json"
+        ],
+        "rework_action": "return_to_workflow_with_reason",
+        "rework_command_template": [
+          "forge",
+          "addons",
+          "execute-executor",
+          "--addon",
+          "forge.addon.crm",
+          "--contract",
+          "crm.workflow.approval_governance.executor",
+          "--worker",
+          "<worker-id>",
+          "--task",
+          "<task-ref>",
+          "--input",
+          "<json>",
+          "--context",
+          "<json>",
+          "--output",
+          "json"
+        ],
+        "rework_reason_required": true
+      },
+      {
+        "id": "approval-support-reply",
+        "title": "Customer support reply",
+        "workflow_id": "crm.omnichannel.reply",
+        "artifact_type": "crm_support_reply",
+        "action_id": "crm.compose-support-reply",
+        "artifact_ref": "forge://artifact/crm_reply_draft/thread-108",
+        "surface_id": "crm.support-queue",
+        "contract_id": "crm.support.reply_composer.executor",
+        "required_permission": "crm.omnichannel.ingest",
+        "approval_state": "approval_wait",
+        "state_owner": "forge_workflow_runtime",
+        "lineage_source": "forge_workflow_artifacts_and_events",
+        "approve_command_template": [
+          "forge",
+          "addons",
+          "execute-executor",
+          "--addon",
+          "forge.addon.crm",
+          "--contract",
+          "crm.support.reply_composer.executor",
+          "--worker",
+          "<worker-id>",
+          "--task",
+          "<task-ref>",
+          "--input",
+          "<json>",
+          "--context",
+          "<json>",
+          "--output",
+          "json"
+        ],
+        "rework_action": "return_to_workflow_with_reason",
+        "rework_command_template": [
+          "forge",
+          "addons",
+          "execute-executor",
+          "--addon",
+          "forge.addon.crm",
+          "--contract",
+          "crm.workflow.approval_governance.executor",
+          "--worker",
+          "<worker-id>",
+          "--task",
+          "<task-ref>",
+          "--input",
+          "<json>",
+          "--context",
+          "<json>",
+          "--output",
+          "json"
+        ],
+        "rework_reason_required": true
+      },
+      {
+        "id": "approval-landing-page",
+        "title": "Marketing landing page",
+        "workflow_id": "crm.marketing.landing_page",
+        "artifact_type": "crm_marketing_landing_page",
+        "action_id": "crm.publish-landing-page",
+        "artifact_ref": "forge://artifact/crm_landing_page/campaign-q3",
+        "surface_id": "crm.marketing-calendar",
+        "contract_id": "crm.marketing.landing_page.executor",
+        "required_permission": "crm.workflow.mutate",
+        "approval_state": "approval_wait",
+        "state_owner": "forge_workflow_runtime",
+        "lineage_source": "forge_workflow_artifacts_and_events",
+        "approve_command_template": [
+          "forge",
+          "addons",
+          "execute-executor",
+          "--addon",
+          "forge.addon.crm",
+          "--contract",
+          "crm.marketing.landing_page.executor",
+          "--worker",
+          "<worker-id>",
+          "--task",
+          "<task-ref>",
+          "--input",
+          "<json>",
+          "--context",
+          "<json>",
+          "--output",
+          "json"
+        ],
+        "rework_action": "return_to_workflow_with_reason",
+        "rework_command_template": [
+          "forge",
+          "addons",
+          "execute-executor",
+          "--addon",
+          "forge.addon.crm",
+          "--contract",
+          "crm.workflow.approval_governance.executor",
+          "--worker",
+          "<worker-id>",
+          "--task",
+          "<task-ref>",
+          "--input",
+          "<json>",
+          "--context",
+          "<json>",
+          "--output",
+          "json"
+        ],
+        "rework_reason_required": true
+      },
+      {
+        "id": "approval-nurture-send",
+        "title": "Lead nurture external send",
+        "workflow_id": "crm.lead.nurture",
+        "artifact_type": "crm_marketing_nurture",
+        "action_id": "crm.run-lead-nurture",
+        "artifact_ref": "forge://artifact/crm_nurture_plan/segment-growth",
+        "surface_id": "crm.marketing-calendar",
+        "contract_id": "crm.marketing.lead_nurture.executor",
+        "required_permission": "crm.workflow.mutate",
+        "approval_state": "approval_wait",
+        "state_owner": "forge_workflow_runtime",
+        "lineage_source": "forge_workflow_artifacts_and_events",
+        "approve_command_template": [
+          "forge",
+          "addons",
+          "execute-executor",
+          "--addon",
+          "forge.addon.crm",
+          "--contract",
+          "crm.marketing.lead_nurture.executor",
+          "--worker",
+          "<worker-id>",
+          "--task",
+          "<task-ref>",
+          "--input",
+          "<json>",
+          "--context",
+          "<json>",
+          "--output",
+          "json"
+        ],
+        "rework_action": "return_to_workflow_with_reason",
+        "rework_command_template": [
+          "forge",
+          "addons",
+          "execute-executor",
+          "--addon",
+          "forge.addon.crm",
+          "--contract",
+          "crm.workflow.approval_governance.executor",
+          "--worker",
+          "<worker-id>",
+          "--task",
+          "<task-ref>",
+          "--input",
+          "<json>",
+          "--context",
+          "<json>",
+          "--output",
+          "json"
+        ],
+        "rework_reason_required": true
+      },
+      {
+        "id": "approval-commission-payout",
+        "title": "Commission payout",
+        "workflow_id": "crm.goal.commission",
+        "artifact_type": "crm_commission_payout",
+        "action_id": "crm.settle-goal-commission",
+        "artifact_ref": "forge://artifact/crm_commission_statement/2026-q3",
+        "surface_id": "crm.commercial-command",
+        "contract_id": "crm.commercial.goal_commission.executor",
+        "required_permission": "crm.workflow.mutate",
+        "approval_state": "approval_wait",
+        "state_owner": "forge_workflow_runtime",
+        "lineage_source": "forge_workflow_artifacts_and_events",
+        "approve_command_template": [
+          "forge",
+          "addons",
+          "execute-executor",
+          "--addon",
+          "forge.addon.crm",
+          "--contract",
+          "crm.commercial.goal_commission.executor",
+          "--worker",
+          "<worker-id>",
+          "--task",
+          "<task-ref>",
+          "--input",
+          "<json>",
+          "--context",
+          "<json>",
+          "--output",
+          "json"
+        ],
+        "rework_action": "return_to_workflow_with_reason",
+        "rework_command_template": [
+          "forge",
+          "addons",
+          "execute-executor",
+          "--addon",
+          "forge.addon.crm",
+          "--contract",
+          "crm.workflow.approval_governance.executor",
+          "--worker",
+          "<worker-id>",
+          "--task",
+          "<task-ref>",
+          "--input",
+          "<json>",
+          "--context",
+          "<json>",
+          "--output",
+          "json"
+        ],
+        "rework_reason_required": true
+      },
+      {
+        "id": "approval-memory-promotion",
+        "title": "Memory promotion",
+        "workflow_id": "crm.ai.copilot.recommendation",
+        "artifact_type": "crm_memory_promotion",
+        "action_id": "crm.prepare-memory-promotion",
+        "artifact_ref": "forge://artifact/crm_memory_promotion_request/relationship-signals",
+        "surface_id": "crm.ai-workbench",
+        "contract_id": "crm.memory.promotion.executor",
+        "required_permission": "crm.ai.recommend",
+        "approval_state": "approval_wait",
+        "state_owner": "forge_workflow_runtime",
+        "lineage_source": "forge_workflow_artifacts_and_events",
+        "approve_command_template": [
+          "forge",
+          "addons",
+          "execute-executor",
+          "--addon",
+          "forge.addon.crm",
+          "--contract",
+          "crm.memory.promotion.executor",
+          "--worker",
+          "<worker-id>",
+          "--task",
+          "<task-ref>",
+          "--input",
+          "<json>",
+          "--context",
+          "<json>",
+          "--output",
+          "json"
+        ],
+        "rework_action": "return_to_workflow_with_reason",
+        "rework_command_template": [
+          "forge",
+          "addons",
+          "execute-executor",
+          "--addon",
+          "forge.addon.crm",
+          "--contract",
+          "crm.workflow.approval_governance.executor",
+          "--worker",
+          "<worker-id>",
+          "--task",
+          "<task-ref>",
+          "--input",
+          "<json>",
+          "--context",
+          "<json>",
+          "--output",
+          "json"
+        ],
+        "rework_reason_required": true
+      },
+      {
+        "id": "approval-workflow-evolution",
+        "title": "Workflow evolution promotion",
+        "workflow_id": "crm.workflow.evolution",
+        "artifact_type": "crm_workflow_evolution",
+        "action_id": "crm.evolve-workflow",
+        "artifact_ref": "forge://artifact/crm_promotion_decision/sla-rework-experiment",
+        "surface_id": "crm.ai-workbench",
+        "contract_id": "crm.workflow.evolution.executor",
+        "required_permission": "crm.workflow.mutate",
+        "approval_state": "approval_wait",
+        "state_owner": "forge_workflow_runtime",
+        "lineage_source": "forge_workflow_artifacts_and_events",
+        "approve_command_template": [
+          "forge",
+          "addons",
+          "execute-executor",
+          "--addon",
+          "forge.addon.crm",
+          "--contract",
+          "crm.workflow.evolution.executor",
+          "--worker",
+          "<worker-id>",
+          "--task",
+          "<task-ref>",
+          "--input",
+          "<json>",
+          "--context",
+          "<json>",
+          "--output",
+          "json"
+        ],
+        "rework_action": "return_to_workflow_with_reason",
+        "rework_command_template": [
+          "forge",
+          "addons",
+          "execute-executor",
+          "--addon",
+          "forge.addon.crm",
+          "--contract",
+          "crm.workflow.approval_governance.executor",
+          "--worker",
+          "<worker-id>",
+          "--task",
+          "<task-ref>",
+          "--input",
+          "<json>",
+          "--context",
+          "<json>",
+          "--output",
+          "json"
+        ],
+        "rework_reason_required": true
+      }
+    ],
+    "permission_gates": [
+      {
+        "required_permission": "crm.workflow.mutate",
+        "status": "requires_forge_permission",
+        "owner": "forge_permission_policy",
+        "evidence_source": "addon permission gate"
+      },
+      {
+        "required_permission": "crm.omnichannel.ingest",
+        "status": "requires_forge_permission",
+        "owner": "forge_permission_policy",
+        "evidence_source": "addon permission gate"
+      },
+      {
+        "required_permission": "crm.document.generate",
+        "status": "requires_forge_permission",
+        "owner": "forge_permission_policy",
+        "evidence_source": "addon permission gate"
+      },
+      {
+        "required_permission": "crm.ai.recommend",
+        "status": "requires_forge_permission",
+        "owner": "forge_permission_policy",
+        "evidence_source": "addon permission gate"
+      },
+      {
+        "required_permission": "crm.observability.inspect",
+        "status": "requires_forge_permission",
+        "owner": "forge_permission_policy",
+        "evidence_source": "addon permission gate"
+      }
+    ],
+    "operation_plan": [
+      {
+        "id": "inspect_permission_gate",
+        "title": "Inspect AddOn permission gate for the pending approval",
+        "owner": "forge.permissions"
+      },
+      {
+        "id": "collect_approval_artifacts",
+        "title": "Collect approval artifact, workflow state and event lineage",
+        "owner": "forge.workflow.artifacts"
+      },
+      {
+        "id": "approve_or_return_rework",
+        "title": "Approve or return the item to the source workflow with a reason",
+        "owner": "crm.workflow.approval_governance.executor"
+      },
+      {
+        "id": "promote_approval_event",
+        "title": "Promote approval or rework decision as a Forge workflow event",
+        "owner": "forge.workflow.runtime"
+      },
+      {
+        "id": "refresh_operating_snapshot",
+        "title": "Refresh the CRM operating snapshot after governance decision",
+        "owner": "crm.operating.snapshot.executor"
+      }
+    ]
+  },
   "subworkflow_orchestration_workbench": {
     "schema_version": "forge.crm_subworkflow_orchestration_workbench.v1",
     "workflow_id": "crm.subworkflow.orchestration",
@@ -6204,6 +6884,33 @@
         "forge.addon.crm",
         "--contract",
         "crm.operating.readiness.executor",
+        "--worker",
+        "<worker-id>",
+        "--task",
+        "<task-ref>",
+        "--input",
+        "<json>",
+        "--context",
+        "<json>",
+        "--output",
+        "json"
+      ]
+    },
+    {
+      "id": "crm.govern-approval-queue",
+      "label": "Govern approval queue",
+      "surface_id": "crm.work-queue",
+      "contract_id": "crm.workflow.approval_governance.executor",
+      "requires_permission": "crm.workflow.mutate",
+      "mutates_workflow": true,
+      "command_template": [
+        "forge",
+        "addons",
+        "execute-executor",
+        "--addon",
+        "forge.addon.crm",
+        "--contract",
+        "crm.workflow.approval_governance.executor",
         "--worker",
         "<worker-id>",
         "--task",
@@ -7492,6 +8199,68 @@
             "title": "Execute runtime contract",
             "owner": "forge.addons.runtime",
             "evidence": "crm.operating.readiness.executor"
+          },
+          {
+            "id": "promote_result_to_workflow",
+            "title": "Promote result to workflow",
+            "owner": "forge.workflow.runtime",
+            "evidence": "artifact and event promotion"
+          },
+          {
+            "id": "refresh_operating_snapshot",
+            "title": "Refresh operating snapshot",
+            "owner": "forge.addon.crm",
+            "evidence": "crm.operating.snapshot.executor"
+          }
+        ],
+        "output_policy": {
+          "promote_result_to_workflow": true,
+          "browser_local_state_write": false,
+          "refresh_source": "forge_workflow_artifacts_and_events"
+        }
+      },
+      {
+        "action_id": "crm.govern-approval-queue",
+        "label": "Govern approval queue",
+        "surface_id": "crm.work-queue",
+        "contract_id": "crm.workflow.approval_governance.executor",
+        "required_permission": "crm.workflow.mutate",
+        "selected_command": [
+          "forge",
+          "addons",
+          "execute-executor",
+          "--addon",
+          "forge.addon.crm",
+          "--contract",
+          "crm.workflow.approval_governance.executor",
+          "--worker",
+          "<worker-id>",
+          "--task",
+          "<task-ref>",
+          "--input",
+          "<json>",
+          "--context",
+          "<json>",
+          "--output",
+          "json"
+        ],
+        "permission_gate": {
+          "status": "requires_forge_permission",
+          "permission": "crm.workflow.mutate",
+          "approval_owner": "forge_permission_policy"
+        },
+        "operation_plan": [
+          {
+            "id": "check_addon_permission",
+            "title": "Check Addon permission",
+            "owner": "forge.permissions",
+            "evidence": "crm.workflow.mutate"
+          },
+          {
+            "id": "execute_runtime_contract",
+            "title": "Execute runtime contract",
+            "owner": "forge.addons.runtime",
+            "evidence": "crm.workflow.approval_governance.executor"
           },
           {
             "id": "promote_result_to_workflow",

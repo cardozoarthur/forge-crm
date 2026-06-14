@@ -735,6 +735,50 @@ export function renderOperatingReadinessWorkbench(snapshot) {
   return section;
 }
 
+export function renderApprovalGovernanceWorkbench(snapshot) {
+  const workbench = snapshot.approval_governance_workbench;
+  const section = nodeElement("section", "panel approval-governance");
+  section.dataset.surfacePanel = "crm.work-queue";
+  section.append(nodeElement("h2", "", "Approval Governance"));
+  if (!workbench) {
+    section.append(nodeElement("p", "muted-copy", "Approval governance unavailable in this snapshot."));
+    return section;
+  }
+
+  section.append(nodeElement("p", "panel-source", `${workbench.workflow_id} · ${workbench.contract_id}`));
+  section.append(nodeElement("code", "", actionLabel(snapshot, workbench.action_id)));
+
+  const queue = nodeElement("div", "approval-queue-grid");
+  for (const approval of workbench.approval_queue || []) {
+    const item = nodeElement("article", "approval-queue-item");
+    item.append(nodeElement("strong", "", approval.title));
+    item.append(nodeElement("span", "", `${approval.workflow_id} · ${compactTitle(approval.approval_state)}`));
+    item.append(nodeElement("small", "", approval.required_permission));
+    item.append(nodeElement("code", "", approval.contract_id || approval.action_id));
+    item.title = `${approval.artifact_type} · ${approval.rework_action}`;
+    queue.append(item);
+  }
+
+  const gates = nodeElement("div", "approval-gate-grid");
+  for (const gate of workbench.permission_gates || []) {
+    const item = nodeElement("article", "approval-gate");
+    item.append(nodeElement("strong", "", gate.required_permission));
+    item.append(nodeElement("span", "", `${compactTitle(gate.status)} · ${gate.owner}`));
+    gates.append(item);
+  }
+
+  const plan = nodeElement("ol", "approval-operation-plan");
+  for (const step of workbench.operation_plan || []) {
+    const item = nodeElement("li", "approval-operation-step");
+    item.append(nodeElement("strong", "", step.title));
+    item.append(nodeElement("span", "", step.owner));
+    plan.append(item);
+  }
+
+  section.append(queue, gates, plan);
+  return section;
+}
+
 export function renderSubworkflowOrchestrationWorkbench(snapshot) {
   const workbench = snapshot.subworkflow_orchestration_workbench;
   const section = nodeElement("section", "panel subworkflow-workbench");
@@ -1023,6 +1067,7 @@ function render(snapshot) {
   workspace.append(renderBenchmarkEvidenceMatrix(snapshot));
   workspace.append(renderEnterpriseJourneyWorkbench(snapshot));
   workspace.append(renderOperatingReadinessWorkbench(snapshot));
+  workspace.append(renderApprovalGovernanceWorkbench(snapshot));
   workspace.append(renderSubworkflowOrchestrationWorkbench(snapshot));
   workspace.append(renderWorkflowAutomationDesignerWorkbench(snapshot));
   workspace.append(renderExecutiveReportingWorkbench(snapshot));

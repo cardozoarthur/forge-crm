@@ -723,6 +723,70 @@ test("work queue orchestrator packages approvals SLAs documents campaigns and ha
   assert.ok(result.events.some((event) => event.kind === "crm.queue.risk_flagged"));
 });
 
+test("approval governance executor records decisions and returns incomplete work to Forge", () => {
+  assert.equal(typeof runtime.buildApprovalGovernanceResult, "function");
+
+  const result = runtime.buildApprovalGovernanceResult(
+    workerRequest(
+      "forge_crm.govern_approval_queue",
+      {
+        tenant_context: { tenant_id: "demo" },
+        approval_queue: [
+          {
+            id: "approval-document",
+            workflow_id: "crm.document.approval",
+            task_ref: "approve-proposal",
+            artifact_type: "crm_document_approval",
+            artifact_ref: "forge://artifact/crm_approval_record/proposal-022",
+            required_permission: "crm.document.generate",
+            approval_state: "approval_wait",
+            decision: { state: "approved", approver: "ops-lead", reason: "lineage and validation attached" }
+          },
+          {
+            id: "approval-support-reply",
+            workflow_id: "crm.omnichannel.reply",
+            task_ref: "reply-thread-108",
+            artifact_type: "crm_support_reply",
+            artifact_ref: "forge://artifact/crm_reply_draft/thread-108",
+            required_permission: "crm.omnichannel.ingest",
+            approval_state: "approval_wait",
+            decision: { state: "rework_required", approver: "support-lead", reason: "missing escalation summary" }
+          }
+        ],
+        permission_gates: [
+          { permission: "crm.document.generate", status: "authorized" },
+          { permission: "crm.omnichannel.ingest", status: "authorized" }
+        ],
+        decision_policy: {
+          require_rework_reason: true,
+          promote_events: true
+        }
+      },
+      { contract_id: "crm.workflow.approval_governance.executor", task_ref: "approval-governance-test" }
+    )
+  );
+
+  assert.equal(result.schema_version, "forge.addon_executor_result.v1");
+  assert.equal(result.status, "completed");
+  assert.equal(result.outputs.tenant_id, "demo");
+  assert.equal(result.outputs.workflow_id, "crm.approval.governance");
+  assert.equal(result.outputs.approval_queue_count, 2);
+  assert.equal(result.outputs.approved_count, 1);
+  assert.equal(result.outputs.rework_count, 1);
+  assert.equal(result.outputs.governance_state, "rework_required");
+  assert.equal(result.outputs.mutates_crm_state, false);
+  assert.equal(result.outputs.forge_event_sourced, true);
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_approval_governance_queue"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_permission_gate_report"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_approval_decision_batch"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_approval_rework_reason"));
+  assert.ok(result.events.some((event) => event.kind === "crm.approval.queue_inspected"));
+  assert.ok(result.events.some((event) => event.kind === "crm.approval.permission_gate_checked"));
+  assert.ok(result.events.some((event) => event.kind === "crm.approval.decision_recorded"));
+  assert.ok(result.events.some((event) => event.kind === "crm.approval.rework_returned"));
+  assert.ok(result.events.some((event) => event.kind === "crm.approval.event_promoted"));
+});
+
 test("design system executor packages Penpot Open Design tokens and components through Forge", () => {
   assert.equal(typeof buildDesignSystemResult, "function");
 

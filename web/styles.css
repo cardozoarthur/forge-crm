@@ -885,6 +885,11 @@ h3 {
   border-left: 4px solid #2d7668;
 }
 
+.approval-governance {
+  grid-column: 1 / -1;
+  border-left: 4px solid #9b4d19;
+}
+
 .subworkflow-workbench {
   border-left: 4px solid #285f9d;
 }
@@ -907,6 +912,8 @@ h3 {
 .readiness-domain-grid,
 .readiness-operation-list,
 .readiness-gates,
+.approval-queue-grid,
+.approval-gate-grid,
 .subworkflow-bindings,
 .subworkflow-gates,
 .automation-graph,
@@ -925,6 +932,8 @@ h3 {
 .readiness-domain,
 .readiness-operation,
 .readiness-gate,
+.approval-queue-item,
+.approval-gate,
 .subworkflow-binding,
 .subworkflow-gate,
 .automation-node,
@@ -952,6 +961,8 @@ h3 {
 .readiness-domain strong,
 .readiness-operation strong,
 .readiness-gate strong,
+.approval-queue-item strong,
+.approval-gate strong,
 .subworkflow-binding strong,
 .subworkflow-gate strong,
 .automation-node strong,
@@ -983,6 +994,9 @@ h3 {
 .readiness-operation span,
 .readiness-operation small,
 .readiness-gate span,
+.approval-queue-item span,
+.approval-queue-item small,
+.approval-gate span,
 .automation-node span,
 .automation-node small,
 .automation-palette span,
@@ -1004,6 +1018,7 @@ h3 {
 
 .automation-gates,
 .readiness-gates,
+.approval-operation-plan,
 .executive-reporting-gates,
 .goal-commission-gates {
   display: grid;
@@ -1020,12 +1035,37 @@ h3 {
   overflow-wrap: anywhere;
 }
 
-.readiness-workbench > code {
+.readiness-workbench > code,
+.approval-governance > code,
+.approval-queue-item code {
   display: inline-block;
   margin-top: 8px;
   color: #126c55;
   font-size: 0.74rem;
   overflow-wrap: anywhere;
+}
+
+.approval-queue-item {
+  border-left: 4px solid #9b4d19;
+}
+
+.approval-operation-step {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid #d8dfd8;
+  border-radius: 8px;
+  background: #fbfcf9;
+}
+
+.approval-operation-step strong {
+  color: #1d2428;
+  font-size: 0.86rem;
+}
+
+.approval-operation-step span {
+  color: #607078;
+  font-size: 0.78rem;
 }
 
 .readiness-domain.ready {
@@ -1090,6 +1130,8 @@ h3 {
 	  .readiness-domain-grid,
 	  .readiness-operation-list,
 	  .readiness-gates,
+	  .approval-queue-grid,
+	  .approval-gate-grid,
 	  .automation-graph,
 	  .automation-palettes,
 	  .executive-kpi-grid,

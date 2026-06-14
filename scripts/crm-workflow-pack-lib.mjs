@@ -850,6 +850,80 @@ const WORKFLOWS = [
     ]
   },
   {
+    id: "crm.approval.governance",
+    title: "CRM approval governance",
+    domain: "operations",
+    workflow_extension_id: "crm_approval_governance",
+    object_types: ["approval_queue", "permission_gate", "approval_decision", "rework_reason", "promotion_event"],
+    states: [
+      "queue_inspected",
+      "permission_gate_wait",
+      "approval_artifacts_collected",
+      "decision_recorded",
+      "rework_returned",
+      "event_promoted"
+    ],
+    transitions: [
+      ["queue_inspected", "permission_gate_wait", "pending approval requires AddOn permission gate"],
+      ["permission_gate_wait", "approval_artifacts_collected", "operator permission is authorized"],
+      ["approval_artifacts_collected", "decision_recorded", "approval artifact and lineage are attached"],
+      ["approval_artifacts_collected", "rework_returned", "approval is incomplete or missing evidence"],
+      ["decision_recorded", "event_promoted", "approval decision promoted to Forge workflow event"],
+      ["rework_returned", "queue_inspected", "source workflow receives rework reason"]
+    ],
+    runtime_contracts: [
+      "crm.workflow.approval_governance.executor",
+      "crm.document.approval.executor",
+      "crm.observability.inspector.executor"
+    ],
+    depends_on_workflows: [
+      "crm.document.approval",
+      "crm.omnichannel.reply",
+      "crm.marketing.landing_page",
+      "crm.lead.nurture",
+      "crm.goal.commission",
+      "crm.ai.copilot.recommendation",
+      "crm.workflow.evolution",
+      "crm.work.queue.orchestration"
+    ],
+    artifacts: [
+      "crm_approval_governance_queue",
+      "crm_permission_gate_report",
+      "crm_approval_decision_batch",
+      "crm_approval_rework_reason"
+    ],
+    events: [
+      "crm.approval.queue_inspected",
+      "crm.approval.permission_gate_checked",
+      "crm.approval.decision_recorded",
+      "crm.approval.rework_returned",
+      "crm.approval.event_promoted"
+    ],
+    memory_scopes: ["organization", "project", "processing"],
+    permissions: [
+      "crm.workflow.mutate",
+      "crm.document.generate",
+      "crm.omnichannel.ingest",
+      "crm.ai.recommend",
+      "crm.observability.inspect"
+    ],
+    views: [
+      "crm.system-map",
+      "crm.work-queue",
+      "crm.document-queue",
+      "crm.support-queue",
+      "crm.marketing-calendar",
+      "crm.commercial-command",
+      "crm.ai-workbench"
+    ],
+    validation_gates: [
+      "every approval decision cites source workflow artifact and event lineage",
+      "permission gates pass before any approval mutates workflow state",
+      "incomplete approvals return to source workflow tasks with explicit rework reason",
+      "approval governance does not persist CRM-local state"
+    ]
+  },
+  {
     id: "crm.subworkflow.orchestration",
     title: "CRM subworkflow orchestration",
     domain: "operations",

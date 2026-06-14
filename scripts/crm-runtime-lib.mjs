@@ -1306,6 +1306,217 @@ export function buildWorkQueueOrchestrationResult(request) {
   };
 }
 
+function approvalDecisionState(item) {
+  const decision = asObject(item.decision ?? item.approval_decision ?? item.approval);
+  const raw = String(decision.state || decision.decision || decision.status || (decision.approved === true ? "approved" : ""))
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  if (["approved", "approve", "accepted", "passed"].includes(raw)) {
+    return "approved";
+  }
+  if (["rework_required", "changes_requested", "rejected", "failed", "blocked"].includes(raw)) {
+    return "rework_required";
+  }
+  return "approval_wait";
+}
+
+function permissionGateAuthorized(gate) {
+  const status = String(gate.status || gate.state || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  return ["authorized", "approved", "passed", "allowed"].includes(status);
+}
+
+export function buildApprovalGovernanceResult(request) {
+  const input = dispatchPayload(request);
+  const context = providedContext(request);
+  const tenantId = input.tenant_id || input.tenant_context?.tenant_id || input.tenant_context?.id || context.tenant || "default";
+  const taskRef = dispatchEnvelope(request).task_ref || `approval-governance-${slug(tenantId, "tenant")}`;
+  const workflowId = "crm.approval.governance";
+  const permissionGates = asArray(input.permission_gates).map((gate, index) => {
+    const normalized = asObject(gate);
+    return {
+      id: normalized.id || `permission-gate-${index + 1}`,
+      permission: String(normalized.permission || normalized.required_permission || "crm.workflow.mutate"),
+      status: normalized.status || "requires_forge_permission",
+      authorized: permissionGateAuthorized(normalized),
+      owner: normalized.owner || "forge_permission_policy"
+    };
+  });
+  const gateByPermission = new Map(permissionGates.map((gate) => [gate.permission, gate]));
+  const decisionPolicy = asObject(input.decision_policy);
+  const approvalQueue = asArray(input.approval_queue).map((raw, index) => {
+    const item = asObject(raw);
+    const decision = asObject(item.decision ?? item.approval_decision ?? item.approval);
+    const requiredPermission = String(item.required_permission || item.permission || "crm.workflow.mutate");
+    const gate = gateByPermission.get(requiredPermission) || {
+      permission: requiredPermission,
+      status: "requires_forge_permission",
+      authorized: false,
+      owner: "forge_permission_policy"
+    };
+    const decisionState = gate.authorized ? approvalDecisionState(item) : "permission_wait";
+    const reworkRequired = decisionState === "rework_required";
+    return {
+      id: item.id || `approval-item-${index + 1}`,
+      workflow_id: item.workflow_id || workflowId,
+      task_ref: item.task_ref || `approval-task-${index + 1}`,
+      artifact_type: item.artifact_type || "crm_approval_record",
+      artifact_ref: item.artifact_ref || null,
+      required_permission: requiredPermission,
+      previous_state: item.approval_state || "approval_wait",
+      decision_state: decisionState,
+      approver: decision.approver || decision.approved_by || "approval-operator",
+      reason:
+        decision.reason ||
+        decision.summary ||
+        (reworkRequired ? "approval requires rework" : decisionState === "approved" ? "approval passed" : "permission gate pending"),
+      rework_required: reworkRequired,
+      rework_reason_required: decisionPolicy.require_rework_reason !== false,
+      permission_gate: gate
+    };
+  });
+  const approvedItems = approvalQueue.filter((item) => item.decision_state === "approved");
+  const reworkItems = approvalQueue.filter((item) => item.rework_required);
+  const blockedItems = approvalQueue.filter((item) => item.decision_state === "permission_wait" || item.decision_state === "approval_wait");
+  const governanceState =
+    reworkItems.length > 0 ? "rework_required" : blockedItems.length > 0 ? "permission_wait" : "event_promoted";
+  const lineage = {
+    workflow_id: workflowId,
+    task_ref: taskRef,
+    source_contract: "crm.workflow.approval_governance.executor",
+    tenant_id: tenantId
+  };
+
+  return {
+    schema_version: "forge.addon_executor_result.v1",
+    status: "completed",
+    task_ref: taskRef,
+    summary: `CRM approval governance inspected ${approvalQueue.length} pending approval(s)`,
+    outputs: {
+      tenant_id: tenantId,
+      workflow_id: workflowId,
+      approval_queue_count: approvalQueue.length,
+      approved_count: approvedItems.length,
+      rework_count: reworkItems.length,
+      blocked_count: blockedItems.length,
+      permission_gate_count: permissionGates.length,
+      governance_state: governanceState,
+      mutates_crm_state: false,
+      forge_event_sourced: true
+    },
+    artifacts: [
+      {
+        kind: "crm_approval_governance_queue",
+        id: `crm-approval-governance-queue-${slug(tenantId, "tenant")}`,
+        title: `CRM approval governance queue for ${tenantId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          approval_queue: approvalQueue,
+          state_owner: "forge_workflow_runtime",
+          local_state_allowed: false,
+          lineage
+        }
+      },
+      {
+        kind: "crm_permission_gate_report",
+        id: `crm-permission-gates-${slug(tenantId, "tenant")}`,
+        title: `CRM permission gate report for ${tenantId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          permission_gates: permissionGates,
+          blocked_permissions: permissionGates.filter((gate) => !gate.authorized).map((gate) => gate.permission),
+          lineage
+        }
+      },
+      {
+        kind: "crm_approval_decision_batch",
+        id: `crm-approval-decisions-${slug(taskRef, "task")}`,
+        title: `CRM approval decision batch for ${tenantId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          decisions: approvalQueue.map((item) => ({
+            id: item.id,
+            workflow_id: item.workflow_id,
+            task_ref: item.task_ref,
+            artifact_ref: item.artifact_ref,
+            decision_state: item.decision_state,
+            approver: item.approver,
+            reason: item.reason
+          })),
+          promote_events: decisionPolicy.promote_events !== false,
+          lineage
+        }
+      },
+      {
+        kind: "crm_approval_rework_reason",
+        id: `crm-approval-rework-${slug(taskRef, "task")}`,
+        title: `CRM approval rework reasons for ${tenantId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          rework_items: reworkItems.map((item) => ({
+            id: item.id,
+            workflow_id: item.workflow_id,
+            task_ref: item.task_ref,
+            reason: item.reason,
+            return_action: "return_to_workflow_with_reason"
+          })),
+          rework_policy: "return incomplete approvals to Forge workflow tasks with reason",
+          lineage
+        }
+      }
+    ],
+    events: [
+      {
+        kind: "crm.approval.queue_inspected",
+        tenant_id: tenantId,
+        workflow_id: workflowId,
+        approval_queue_count: approvalQueue.length
+      },
+      ...permissionGates.map((gate) => ({
+        kind: "crm.approval.permission_gate_checked",
+        tenant_id: tenantId,
+        workflow_id: workflowId,
+        permission: gate.permission,
+        authorized: gate.authorized
+      })),
+      ...approvalQueue.map((item) => ({
+        kind: "crm.approval.decision_recorded",
+        tenant_id: tenantId,
+        workflow_id: item.workflow_id,
+        governance_workflow_id: workflowId,
+        task_ref: item.task_ref,
+        decision_state: item.decision_state,
+        approver: item.approver
+      })),
+      ...reworkItems.map((item) => ({
+        kind: "crm.approval.rework_returned",
+        tenant_id: tenantId,
+        workflow_id: item.workflow_id,
+        governance_workflow_id: workflowId,
+        task_ref: item.task_ref,
+        reason: item.reason
+      })),
+      {
+        kind: "crm.approval.event_promoted",
+        tenant_id: tenantId,
+        workflow_id: workflowId,
+        governance_state: governanceState,
+        promoted_event_count: approvalQueue.length + permissionGates.length + reworkItems.length + 1
+      }
+    ],
+    context_tenant: context.tenant || tenantId
+  };
+}
+
 const DESIGN_SYSTEM_BASE_TOKENS = {
   color: {
     background: "#f6f7f4",
@@ -6399,6 +6610,8 @@ export function executeCrmRuntimeRequest(request) {
       return buildAreaCopilotResult(request);
     case "forge_crm.orchestrate_work_queue":
       return buildWorkQueueOrchestrationResult(request);
+    case "forge_crm.govern_approval_queue":
+      return buildApprovalGovernanceResult(request);
     case "forge_crm.generate_design_system":
       return buildDesignSystemResult(request);
     case "forge_crm.prepare_memory_promotion":

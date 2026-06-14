@@ -73,6 +73,12 @@ const WORKFLOW_EDGES = [
   ["crm.operational.observability", "crm.workflow.automation_design", "observability can drive safer automation design"],
   ["crm.workflow.automation_design", "crm.work.queue.orchestration", "validated automation queues governed CRM work"],
   ["crm.workflow.automation_design", "crm.enterprise.readiness", "automation validation evidence updates readiness"],
+  ["crm.document.approval", "crm.approval.governance", "document approval waits enter governance review"],
+  ["crm.omnichannel.reply", "crm.approval.governance", "external support replies enter governance review"],
+  ["crm.campaign.lifecycle", "crm.approval.governance", "campaign and landing page approvals enter governance review"],
+  ["crm.goal.commission", "crm.approval.governance", "commission payout waits enter governance review"],
+  ["crm.workflow.evolution", "crm.approval.governance", "workflow evolution promotion waits enter governance review"],
+  ["crm.approval.governance", "crm.enterprise.readiness", "approval governance evidence updates readiness"],
   ["crm.project.handoff", "crm.enterprise.customer_journey", "accepted handoff completes customer lifecycle evidence"],
   ["crm.enterprise.customer_journey", "crm.enterprise.readiness", "accepted journey updates operating readiness evidence"]
 ];
@@ -1443,6 +1449,145 @@ function operatingReadinessWorkbench({ tenantId, pack, model, actionList }) {
   };
 }
 
+function approvalGovernanceWorkbench(workflows, actionList) {
+  const workflow = workflows.find((candidate) => candidate.id === "crm.approval.governance");
+  const actionById = new Map(actionList.map((action) => [action.id, action]));
+  const governanceAction = actionById.get("crm.govern-approval-queue");
+  const queueSpecs = [
+    {
+      id: "approval-document-proposal",
+      title: "Proposal document approval",
+      workflow_id: "crm.document.approval",
+      artifact_type: "crm_document_approval",
+      action_id: "crm.record-document-approval",
+      artifact_ref: "forge://artifact/crm_approval_record/proposal-022",
+      surface_id: "crm.document-queue"
+    },
+    {
+      id: "approval-support-reply",
+      title: "Customer support reply",
+      workflow_id: "crm.omnichannel.reply",
+      artifact_type: "crm_support_reply",
+      action_id: "crm.compose-support-reply",
+      artifact_ref: "forge://artifact/crm_reply_draft/thread-108",
+      surface_id: "crm.support-queue"
+    },
+    {
+      id: "approval-landing-page",
+      title: "Marketing landing page",
+      workflow_id: "crm.marketing.landing_page",
+      artifact_type: "crm_marketing_landing_page",
+      action_id: "crm.publish-landing-page",
+      artifact_ref: "forge://artifact/crm_landing_page/campaign-q3",
+      surface_id: "crm.marketing-calendar"
+    },
+    {
+      id: "approval-nurture-send",
+      title: "Lead nurture external send",
+      workflow_id: "crm.lead.nurture",
+      artifact_type: "crm_marketing_nurture",
+      action_id: "crm.run-lead-nurture",
+      artifact_ref: "forge://artifact/crm_nurture_plan/segment-growth",
+      surface_id: "crm.marketing-calendar"
+    },
+    {
+      id: "approval-commission-payout",
+      title: "Commission payout",
+      workflow_id: "crm.goal.commission",
+      artifact_type: "crm_commission_payout",
+      action_id: "crm.settle-goal-commission",
+      artifact_ref: "forge://artifact/crm_commission_statement/2026-q3",
+      surface_id: "crm.commercial-command"
+    },
+    {
+      id: "approval-memory-promotion",
+      title: "Memory promotion",
+      workflow_id: "crm.ai.copilot.recommendation",
+      artifact_type: "crm_memory_promotion",
+      action_id: "crm.prepare-memory-promotion",
+      artifact_ref: "forge://artifact/crm_memory_promotion_request/relationship-signals",
+      surface_id: "crm.ai-workbench"
+    },
+    {
+      id: "approval-workflow-evolution",
+      title: "Workflow evolution promotion",
+      workflow_id: "crm.workflow.evolution",
+      artifact_type: "crm_workflow_evolution",
+      action_id: "crm.evolve-workflow",
+      artifact_ref: "forge://artifact/crm_promotion_decision/sla-rework-experiment",
+      surface_id: "crm.ai-workbench"
+    }
+  ];
+
+  const approvalQueue = queueSpecs.map((spec) => {
+    const sourceAction = actionById.get(spec.action_id);
+    return {
+      ...spec,
+      contract_id: sourceAction?.contract_id,
+      required_permission: sourceAction?.requires_permission || "crm.workflow.mutate",
+      approval_state: "approval_wait",
+      state_owner: "forge_workflow_runtime",
+      lineage_source: WORKBENCH_STATE_SOURCE,
+      approve_command_template: sourceAction?.command_template || [],
+      rework_action: "return_to_workflow_with_reason",
+      rework_command_template: governanceAction?.command_template || [],
+      rework_reason_required: true
+    };
+  });
+
+  return {
+    schema_version: "forge.crm_approval_governance_workbench.v1",
+    workflow_id: workflow?.id || "crm.approval.governance",
+    workflow_extension_id: workflow?.workflow_extension_id || "crm_approval_governance",
+    state_owner: "forge_workflow_runtime",
+    state_source: WORKBENCH_STATE_SOURCE,
+    local_state_allowed: false,
+    action_id: governanceAction?.id || "crm.govern-approval-queue",
+    contract_id: governanceAction?.contract_id || "crm.workflow.approval_governance.executor",
+    rework_policy: "return incomplete approvals to Forge workflow tasks with reason",
+    approval_queue: approvalQueue,
+    permission_gates: [
+      "crm.workflow.mutate",
+      "crm.omnichannel.ingest",
+      "crm.document.generate",
+      "crm.ai.recommend",
+      "crm.observability.inspect"
+    ].map((permission) => ({
+      required_permission: permission,
+      status: "requires_forge_permission",
+      owner: "forge_permission_policy",
+      evidence_source: "addon permission gate"
+    })),
+    operation_plan: [
+      {
+        id: "inspect_permission_gate",
+        title: "Inspect AddOn permission gate for the pending approval",
+        owner: "forge.permissions"
+      },
+      {
+        id: "collect_approval_artifacts",
+        title: "Collect approval artifact, workflow state and event lineage",
+        owner: "forge.workflow.artifacts"
+      },
+      {
+        id: "approve_or_return_rework",
+        title: "Approve or return the item to the source workflow with a reason",
+        owner: "crm.workflow.approval_governance.executor"
+      },
+      {
+        id: "promote_approval_event",
+        title: "Promote approval or rework decision as a Forge workflow event",
+        owner: "forge.workflow.runtime"
+      },
+      {
+        id: "refresh_operating_snapshot",
+        title: "Refresh the CRM operating snapshot after governance decision",
+        owner: "crm.operating.snapshot.executor"
+      }
+    ]
+  };
+}
+
 function subworkflowOrchestrationWorkbench(workflows, actionList) {
   const actionById = new Map(actionList.map((action) => [action.id, action]));
   const action = actionById.get("crm.orchestrate-subworkflows");
@@ -1858,6 +2003,15 @@ function actions() {
       requires_permission: "crm.observability.inspect",
       mutates_workflow: true,
       command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.operating.readiness.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
+    },
+    {
+      id: "crm.govern-approval-queue",
+      label: "Govern approval queue",
+      surface_id: "crm.work-queue",
+      contract_id: "crm.workflow.approval_governance.executor",
+      requires_permission: "crm.workflow.mutate",
+      mutates_workflow: true,
+      command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.workflow.approval_governance.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
     },
     {
       id: "crm.run-enterprise-journey",
@@ -2578,6 +2732,7 @@ export function buildCrmWebAppSnapshot(options = {}) {
     benchmark_evidence_matrix: benchmarkEvidenceMatrix(workflows, actionList, documentQueueSnapshot),
     enterprise_journey_workbench: enterpriseJourneyWorkbench(workflows, actionList),
     operating_readiness_workbench: operatingReadinessWorkbench({ tenantId, pack, model, actionList }),
+    approval_governance_workbench: approvalGovernanceWorkbench(workflows, actionList),
     subworkflow_orchestration_workbench: subworkflowOrchestrationWorkbench(workflows, actionList),
     workflow_automation_designer_workbench: workflowAutomationDesignerWorkbench(workflows, actionList),
     executive_reporting_workbench: executiveReportingWorkbench(workflows, actionList),
