@@ -1378,6 +1378,363 @@
       ]
     },
     {
+      "id": "crm.operational-cockpit",
+      "title": "CRM operational cockpit",
+      "surface": "tui",
+      "type": "dashboard",
+      "component": "ForgeCrmOperationalCockpit",
+      "route": "/interactive/crm",
+      "layout": {
+        "zone": "main",
+        "order": 45,
+        "width": "full",
+        "height": "full",
+        "density": "dense"
+      },
+      "data_bindings": [
+        {
+          "id": "crm-operating-snapshot",
+          "source": "crm.operating.snapshot.executor",
+          "query": "crm.operating_snapshot",
+          "scope": "organization",
+          "refresh_seconds": 15,
+          "required_capability": "crm_workflow_factory"
+        },
+        {
+          "id": "crm-workflow-cadences",
+          "source": "crm.schedule",
+          "query": "crm.workflow_cadences",
+          "scope": "organization",
+          "refresh_seconds": 30,
+          "required_capability": "crm_commercial_operations"
+        },
+        {
+          "id": "crm-action-invocation-plans",
+          "source": "forge.interactive.action_invocation",
+          "query": "crm.actions",
+          "scope": "workflow",
+          "refresh_seconds": 10,
+          "required_capability": "crm_workflow_factory"
+        },
+        {
+          "id": "crm-structured-logs",
+          "source": "forge.interactive.structured_logs",
+          "query": "crm.*",
+          "scope": "workflow",
+          "refresh_seconds": 10,
+          "required_capability": "crm_observability"
+        }
+      ],
+      "actions": [
+        {
+          "id": "crm.tui.refresh-operating-snapshot",
+          "label": "Refresh CRM snapshot",
+          "description": "Refresh the Forge-owned CRM operating snapshot for the TUI cockpit.",
+          "palette_group": "CRM",
+          "source_panel": "crm.operational-cockpit",
+          "type": "command",
+          "target": "forge addons execute-executor",
+          "method": "CLI",
+          "permission": "crm.workflow.mutate",
+          "requires_confirmation": false,
+          "risk_level": "medium",
+          "mutates_workflow": true,
+          "command_template": [
+            "addons",
+            "execute-executor",
+            "--addon",
+            "forge.addon.crm",
+            "--contract",
+            "crm.operating.snapshot.executor",
+            "--worker",
+            "<worker-id>",
+            "--task",
+            "<task-ref>",
+            "--input",
+            "<json>",
+            "--context",
+            "<json>",
+            "--output",
+            "json"
+          ],
+          "keywords": [
+            "crm",
+            "snapshot",
+            "tui"
+          ],
+          "payload_schema": [
+            "tenant_context",
+            "workflow_scope"
+          ]
+        },
+        {
+          "id": "crm.tui.review-followup-forecast",
+          "label": "Review follow-up forecast",
+          "description": "Run commercial follow-up, forecast, goals and commission review through Forge.",
+          "palette_group": "CRM",
+          "source_panel": "crm.operational-cockpit",
+          "type": "command",
+          "target": "forge addons execute-executor",
+          "method": "CLI",
+          "permission": "crm.workflow.mutate",
+          "requires_confirmation": true,
+          "risk_level": "high",
+          "mutates_workflow": true,
+          "command_template": [
+            "addons",
+            "execute-executor",
+            "--addon",
+            "forge.addon.crm",
+            "--contract",
+            "crm.commercial.followup_forecast.executor",
+            "--worker",
+            "<worker-id>",
+            "--task",
+            "<task-ref>",
+            "--input",
+            "<json>",
+            "--context",
+            "<json>",
+            "--output",
+            "json"
+          ],
+          "keywords": [
+            "crm",
+            "forecast",
+            "followup"
+          ],
+          "payload_schema": [
+            "opportunity",
+            "followup_policy",
+            "forecast_policy"
+          ]
+        },
+        {
+          "id": "crm.tui.triage-ticket-sla",
+          "label": "Triage ticket SLA",
+          "description": "Escalate or route a support ticket through Forge SLA workflow state.",
+          "palette_group": "CRM",
+          "source_panel": "crm.operational-cockpit",
+          "type": "command",
+          "target": "forge addons execute-executor",
+          "method": "CLI",
+          "permission": "crm.omnichannel.ingest",
+          "requires_confirmation": true,
+          "risk_level": "high",
+          "mutates_workflow": true,
+          "command_template": [
+            "addons",
+            "execute-executor",
+            "--addon",
+            "forge.addon.crm",
+            "--contract",
+            "crm.support.ticket_sla.executor",
+            "--worker",
+            "<worker-id>",
+            "--task",
+            "<task-ref>",
+            "--input",
+            "<json>",
+            "--context",
+            "<json>",
+            "--output",
+            "json"
+          ],
+          "keywords": [
+            "crm",
+            "sla",
+            "support"
+          ],
+          "payload_schema": [
+            "ticket",
+            "sla_policy",
+            "handoff_policy"
+          ]
+        },
+        {
+          "id": "crm.tui.automate-campaign",
+          "label": "Automate campaign",
+          "description": "Run approved campaign and nurture workflow automation through Forge.",
+          "palette_group": "CRM",
+          "source_panel": "crm.operational-cockpit",
+          "type": "command",
+          "target": "forge addons execute-executor",
+          "method": "CLI",
+          "permission": "crm.workflow.mutate",
+          "requires_confirmation": true,
+          "risk_level": "high",
+          "mutates_workflow": true,
+          "command_template": [
+            "addons",
+            "execute-executor",
+            "--addon",
+            "forge.addon.crm",
+            "--contract",
+            "crm.marketing.campaign_automation.executor",
+            "--worker",
+            "<worker-id>",
+            "--task",
+            "<task-ref>",
+            "--input",
+            "<json>",
+            "--context",
+            "<json>",
+            "--output",
+            "json"
+          ],
+          "keywords": [
+            "crm",
+            "campaign",
+            "marketing"
+          ],
+          "payload_schema": [
+            "campaign",
+            "segment",
+            "approval"
+          ]
+        },
+        {
+          "id": "crm.tui.generate-document",
+          "label": "Generate document",
+          "description": "Generate a CRM proposal, contract, report, email, campaign, landing page or presentation artifact through Forge.",
+          "palette_group": "CRM",
+          "source_panel": "crm.operational-cockpit",
+          "type": "command",
+          "target": "forge addons execute-executor",
+          "method": "CLI",
+          "permission": "crm.document.generate",
+          "requires_confirmation": true,
+          "risk_level": "high",
+          "mutates_workflow": true,
+          "command_template": [
+            "addons",
+            "execute-executor",
+            "--addon",
+            "forge.addon.crm",
+            "--contract",
+            "crm.document.generator.executor",
+            "--worker",
+            "<worker-id>",
+            "--task",
+            "<task-ref>",
+            "--input",
+            "<json>",
+            "--context",
+            "<json>",
+            "--output",
+            "json"
+          ],
+          "keywords": [
+            "crm",
+            "document",
+            "artifact"
+          ],
+          "payload_schema": [
+            "document_request",
+            "source_workflow",
+            "approval_policy"
+          ]
+        },
+        {
+          "id": "crm.tui.run-operating-copilot",
+          "label": "Run operating copilot",
+          "description": "Generate bounded CRM recommendations, risk analysis and next actions through Forge.",
+          "palette_group": "CRM",
+          "source_panel": "crm.operational-cockpit",
+          "type": "command",
+          "target": "forge addons execute-executor",
+          "method": "CLI",
+          "permission": "crm.ai.recommend",
+          "requires_confirmation": false,
+          "risk_level": "medium",
+          "mutates_workflow": true,
+          "command_template": [
+            "addons",
+            "execute-executor",
+            "--addon",
+            "forge.addon.crm",
+            "--contract",
+            "crm.ai.operating_copilot.executor",
+            "--worker",
+            "<worker-id>",
+            "--task",
+            "<task-ref>",
+            "--input",
+            "<json>",
+            "--context",
+            "<json>",
+            "--output",
+            "json"
+          ],
+          "keywords": [
+            "crm",
+            "ai",
+            "copilot"
+          ],
+          "payload_schema": [
+            "operating_snapshot",
+            "decision_context",
+            "recommendation_policy"
+          ]
+        },
+        {
+          "id": "crm.tui.generate-readiness-package",
+          "label": "Generate readiness package",
+          "description": "Produce the CRM operating readiness package from Forge workflow evidence.",
+          "palette_group": "CRM",
+          "source_panel": "crm.operational-cockpit",
+          "type": "command",
+          "target": "forge addons execute-executor",
+          "method": "CLI",
+          "permission": "crm.observability.inspect",
+          "requires_confirmation": false,
+          "risk_level": "medium",
+          "mutates_workflow": true,
+          "command_template": [
+            "addons",
+            "execute-executor",
+            "--addon",
+            "forge.addon.crm",
+            "--contract",
+            "crm.operating.readiness.executor",
+            "--worker",
+            "<worker-id>",
+            "--task",
+            "<task-ref>",
+            "--input",
+            "<json>",
+            "--context",
+            "<json>",
+            "--output",
+            "json"
+          ],
+          "keywords": [
+            "crm",
+            "readiness",
+            "audit"
+          ],
+          "payload_schema": [
+            "workflow_pack",
+            "operating_snapshot",
+            "validation_evidence"
+          ]
+        }
+      ],
+      "permissions": [
+        "crm.workflow.mutate",
+        "crm.omnichannel.ingest",
+        "crm.document.generate",
+        "crm.ai.recommend",
+        "crm.observability.inspect"
+      ],
+      "props": {
+        "operational_center": "forge_tui",
+        "state_source": "forge_workflow_artifacts_and_events",
+        "local_state_allowed": false,
+        "action_contract": "forge.interactive.addon_action_contract.v1"
+      }
+    },
+    {
       "id": "crm.support-queue",
       "title": "CRM support queue",
       "surface": "web",

@@ -16,6 +16,7 @@ This repository starts the CRM as a verifiable Forge Addon:
 - `scripts/generate-crm-web-snapshot.mjs` emits the static web app snapshot derived from the operating model, including Forge-owned action invocation plans and operational workflow cadences for schedules, waits and triggers.
 - `scripts/audit-crm-enterprise-readiness.mjs` emits a deterministic readiness audit that maps the strategic objective, Forge v0.5/v0.6/v0.7 benchmark tracks, public AddOn posture, user-facing deliverables and Core requirements to current Forge-owned evidence.
 - `web/` contains a no-build business CRM web surface that renders workflows, knowledge relationships, document queues and Forge actions from `web/data/operating-snapshot.json`.
+- `crm.operational-cockpit` exposes a Forge TUI dashboard view with permission-gated CRM actions for operating snapshot refresh, commercial forecast review, SLA triage, campaign automation, document generation, operating copilot and readiness packaging.
 - `scripts/smoke-forge-runtime.mjs` registers the worker in Forge and executes planner, tenant bootstrap, operating snapshot, relationship timeline, pipeline stage movement, operating copilot, memory promotion preparation, observability inspection, operating readiness, lead classification, proposal generation, commercial follow-up forecast, account management, contract signature, document generation, document validation, document approval, marketing campaign automation, marketing form capture, omnichannel message ingestion, ticket SLA triage, project handoff planning and omnichannel handoff contracts.
 - `workflows/crm-system-template.json` maps the enterprise CRM domains into workflow-backed modules.
 - `docs/` records the architecture boundary between `forge-core` and this Addon.
@@ -81,6 +82,20 @@ The tenant bootstrap emits a `crm_operating_model` artifact, and `crm.operating.
 - AI workbench.
 
 The operating model is explicitly `forge_workflow_runtime` owned and declares `external_database_required=false`; CRM state is expected to come from Forge workflow artifacts, events, memory scopes and validation gates.
+
+## Forge TUI Surface
+
+The Addon declares `crm.operational-cockpit` with `surface=tui`. The cockpit is the Forge operator entrypoint for CRM operations and exposes only Forge commands for the main flows:
+
+- refresh the CRM operating snapshot;
+- review commercial follow-up, forecast, goals and commissions;
+- triage support SLA;
+- automate campaigns and nurture;
+- generate governed CRM documents;
+- run the operating copilot;
+- generate the operating readiness package.
+
+Each action declares its Addon permission, risk level, confirmation requirement, payload schema and CLI command template. The TUI surface remains diagnosable when human approval is missing; it does not introduce a CRM-local execution path.
 
 ## Web Surface
 

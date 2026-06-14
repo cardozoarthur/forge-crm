@@ -442,6 +442,64 @@ test("manifest declares the CRM web application entrypoint as an Addon view asse
   assert.equal(webIntegration.integration_type, "ui");
 });
 
+test("manifest exposes a Forge TUI operational cockpit with permission-gated CRM actions", () => {
+  const cockpit = manifest.views.find((view) => view.id === "crm.operational-cockpit");
+  assert.ok(cockpit);
+  assert.equal(cockpit.surface, "tui");
+  assert.equal(cockpit.type, "dashboard");
+  assert.equal(cockpit.component, "ForgeCrmOperationalCockpit");
+  assert.equal(cockpit.layout.zone, "main");
+  assert.equal(cockpit.layout.density, "dense");
+
+  for (const binding of [
+    "crm-operating-snapshot",
+    "crm-workflow-cadences",
+    "crm-action-invocation-plans",
+    "crm-structured-logs"
+  ]) {
+    assert.ok(cockpit.data_bindings.some((candidate) => candidate.id === binding), `missing binding ${binding}`);
+  }
+
+  for (const permission of [
+    "crm.workflow.mutate",
+    "crm.omnichannel.ingest",
+    "crm.document.generate",
+    "crm.ai.recommend",
+    "crm.observability.inspect"
+  ]) {
+    assert.ok(cockpit.permissions.includes(permission), `missing cockpit permission ${permission}`);
+  }
+
+  const actionIds = new Set(cockpit.actions.map((action) => action.id));
+  for (const actionId of [
+    "crm.tui.refresh-operating-snapshot",
+    "crm.tui.review-followup-forecast",
+    "crm.tui.triage-ticket-sla",
+    "crm.tui.automate-campaign",
+    "crm.tui.generate-document",
+    "crm.tui.run-operating-copilot",
+    "crm.tui.generate-readiness-package"
+  ]) {
+    assert.ok(actionIds.has(actionId), `missing TUI action ${actionId}`);
+  }
+
+  for (const action of cockpit.actions) {
+    assert.equal(action.palette_group, "CRM");
+    assert.equal(action.source_panel, "crm.operational-cockpit");
+    assert.equal(action.type, "command");
+    assert.equal(action.method, "CLI");
+    assert.ok(action.permission, `${action.id} needs a permission`);
+    assert.ok(cockpit.permissions.includes(action.permission), `${action.id} permission must be declared by cockpit`);
+    assert.ok(action.command_template.length > 0, `${action.id} needs command template`);
+    assert.equal(action.command_template[0], "addons");
+    assert.ok(action.command_template.includes("--addon"));
+    assert.ok(action.command_template.includes("forge.addon.crm"));
+    assert.ok(action.command_template.includes("--output"));
+    assert.ok(action.keywords.includes("crm"));
+    assert.ok(action.payload_schema.length > 0, `${action.id} needs payload schema`);
+  }
+});
+
 test("CRM scope is workflow-backed across core business areas", () => {
   const workflowIds = new Set(manifest.workflows.map((workflow) => workflow.id));
   for (const workflowId of [
