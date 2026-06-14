@@ -6,9 +6,9 @@
   "addon_name": "Forge CRM",
   "addon_version": "0.1.0",
   "manifest_path": "addons/forge-crm.json",
-  "manifest_sha256": "23d5780cd03d8ac012ee2f7ca9539497ca271ea25070e67756734361c4624f91",
-  "manifest_canonical_sha256": "f0bee8d141a5d73a2af25db6f60cc5edf2fcf2dcd44f72101f4d7cadbdc18fe6",
-  "manifest_bytes": 195894,
+  "manifest_sha256": "42663931a72d283887fb910aed4ec1d5a3ecb90571dfd9291b420877ef1e56c0",
+  "manifest_canonical_sha256": "f28f2c0fc5176a2725abb041ca433dbcbbfe5b14896b3dc1cdf9d8fcc9488284",
+  "manifest_bytes": 198700,
   "distribution": {
     "repository": "https://github.com/cardozoarthur/forge-crm",
     "channel": "stable",
@@ -23,7 +23,7 @@
     "scheme": "ed25519_detached",
     "signature": "",
     "public_key": "",
-    "payload_sha256": "10c6a8010f48b858e747c1752ceff7bdf7066d0da44fd8fff5e35eddc6a3a877",
+    "payload_sha256": "e7575e81a9e12bdf887cdffd447ce0fe6c68f6c892d77678e15e6f0932504ef8",
     "verification_note": "package records detached signature metadata; trust verification is a marketplace policy gate"
   },
   "summary": {
@@ -31,7 +31,7 @@
     "dependency_count": 1,
     "permission_count": 5,
     "workflow_extension_count": 39,
-    "runtime_contract_count": 49,
+    "runtime_contract_count": 50,
     "view_count": 12,
     "event_adapter_count": 3,
     "integration_count": 5,
@@ -69,6 +69,7 @@
       "crm.operating.daily_cycle.executor",
       "crm.design_system.executor",
       "crm.memory.promotion.executor",
+      "crm.memory.knowledge_search.executor",
       "crm.workflow.evolution.executor",
       "crm.workflow.approval_governance.executor",
       "crm.workflow.automation_designer.executor",
@@ -747,7 +748,7 @@
       {
         "id": "crm_ai_automation",
         "title": "CRM AI and automation",
-        "description": "Lead classification, opportunity prioritization, proposal/document generation, executive summaries, risk analysis and next-step recommendations.",
+        "description": "Lead classification, opportunity prioritization, proposal/document generation, executive summaries, risk analysis, Forge memory context search and next-step recommendations.",
         "domains": [
           "crm",
           "ai",
@@ -759,6 +760,8 @@
           "proposal generation",
           "risk analysis",
           "next best action",
+          "memory search",
+          "knowledge context",
           "copilot"
         ],
         "requires_capabilities": [
@@ -777,6 +780,7 @@
           "Workflow automation execution trace",
           "Copilot recommendation artifact",
           "Area-specialized copilot brief",
+          "Knowledge context pack",
           "Lead score evidence",
           "Risk analysis artifact",
           "Executive operating summary"
@@ -793,6 +797,8 @@
           "crm_automation_run_receipt",
           "crm_automation_rework_report",
           "crm_area_copilot_brief",
+          "crm_memory_search_report",
+          "crm_knowledge_context_pack",
           "crm_ai_recommendation",
           "crm_risk_analysis",
           "crm_report"
@@ -1397,6 +1403,33 @@
           "memory promotion preparation does not write memory directly",
           "actual promotion must be executed by forge memory promote with approval and lineage",
           "raw private processing memory must be summarized before organization or global sharing"
+        ]
+      },
+      {
+        "id": "crm.memory.knowledge_search.executor",
+        "title": "CRM knowledge context search",
+        "contract_type": "executor",
+        "capability_id": "crm_ai_automation",
+        "workflow_extension_id": "crm_ai_copilot_recommendation",
+        "runtime": "external_api",
+        "entrypoint": "forge_crm.search_knowledge_context",
+        "inputs": [
+          "query",
+          "memory_results",
+          "context_policy",
+          "tenant_context"
+        ],
+        "outputs": [
+          "crm_memory_search_report",
+          "crm_knowledge_context_pack"
+        ],
+        "permissions": [
+          "crm.ai.recommend"
+        ],
+        "constraints": [
+          "knowledge context consumes Forge memory search results",
+          "CRM does not run a CRM-local vector index or write memory directly",
+          "context packs must cite memory scopes, source paths and Forge lineage"
         ]
       },
       {
@@ -4298,6 +4331,51 @@
             ]
           },
           {
+            "id": "crm.tui.search-knowledge-context",
+            "label": "Search knowledge context",
+            "description": "Package Forge memory search results into CRM workflow context without a CRM-local vector index.",
+            "palette_group": "CRM",
+            "source_panel": "crm.operational-cockpit",
+            "type": "command",
+            "target": "forge addons execute-executor",
+            "method": "CLI",
+            "permission": "crm.ai.recommend",
+            "requires_confirmation": false,
+            "risk_level": "medium",
+            "mutates_workflow": true,
+            "command_template": [
+              "addons",
+              "execute-executor",
+              "--addon",
+              "forge.addon.crm",
+              "--contract",
+              "crm.memory.knowledge_search.executor",
+              "--worker",
+              "<worker-id>",
+              "--task",
+              "<task-ref>",
+              "--input",
+              "<json>",
+              "--context",
+              "<json>",
+              "--output",
+              "json"
+            ],
+            "keywords": [
+              "crm",
+              "memory",
+              "search",
+              "knowledge",
+              "context"
+            ],
+            "payload_schema": [
+              "query",
+              "memory_results",
+              "context_policy",
+              "tenant_context"
+            ]
+          },
+          {
             "id": "crm.tui.run-work-queue",
             "label": "Run work queue",
             "description": "Package CRM approvals, SLA risks, documents, campaigns, handoffs and waiting states through Forge.",
@@ -5708,6 +5786,16 @@
         "generic_kind": "artifact"
       },
       {
+        "id": "crm_memory_search_report",
+        "title": "CRM memory search report",
+        "generic_kind": "report"
+      },
+      {
+        "id": "crm_knowledge_context_pack",
+        "title": "CRM knowledge context pack",
+        "generic_kind": "artifact"
+      },
+      {
         "id": "crm_memory_promotion_request",
         "title": "CRM memory promotion request",
         "generic_kind": "artifact"
@@ -5977,6 +6065,11 @@
       {
         "id": "crm.memory",
         "title": "CRM memory event",
+        "transport": "crm"
+      },
+      {
+        "id": "crm.memory.search",
+        "title": "CRM memory search event",
         "transport": "crm"
       },
       {

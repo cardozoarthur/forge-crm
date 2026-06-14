@@ -321,6 +321,23 @@ test("AI automation workflow prepares governed memory promotion through Forge", 
   assert.ok(pack.indexes.runtime_contracts.includes("crm.memory.promotion.executor"));
 });
 
+test("AI automation workflow consumes Forge memory search for CRM context", () => {
+  const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
+  const workflow = pack.workflows.find((candidate) => candidate.id === "crm.ai.copilot.recommendation");
+
+  assert.ok(workflow);
+  assert.ok(workflow.runtime_contracts.includes("crm.memory.knowledge_search.executor"));
+  assert.ok(workflow.artifacts.includes("crm_memory_search_report"));
+  assert.ok(workflow.artifacts.includes("crm_knowledge_context_pack"));
+  assert.ok(workflow.events.includes("crm.memory.search_requested"));
+  assert.ok(workflow.events.includes("crm.memory.context_packaged"));
+  assert.ok(workflow.memory_scopes.includes("global"));
+  assert.ok(workflow.memory_scopes.includes("organization"));
+  assert.ok(workflow.memory_scopes.includes("project"));
+  assert.ok(workflow.validation_gates.includes("CRM knowledge context consumes Forge memory search results without a local vector index"));
+  assert.ok(pack.indexes.runtime_contracts.includes("crm.memory.knowledge_search.executor"));
+});
+
 test("operational observability workflow inspects audit lineage cost metrics and logs through Forge", () => {
   const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
   const workflow = pack.workflows.find((candidate) => candidate.id === "crm.operational.observability");

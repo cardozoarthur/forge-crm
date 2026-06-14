@@ -1020,6 +1020,7 @@ function buildOperationalWorkbench(workflows, actionList, documentQueueSnapshot)
         "crm.run-operating-copilot",
         "crm.run-area-copilot",
         "crm.generate-executive-report",
+        "crm.search-knowledge-context",
         "crm.prepare-memory-promotion",
         "crm.evolve-workflow",
         "crm.inspect-observability",
@@ -1121,6 +1122,21 @@ function buildOperationalWorkbench(workflows, actionList, documentQueueSnapshot)
         target_scope: "organization",
         visibility: "internal",
         action_id: "crm.prepare-memory-promotion"
+      }
+    ],
+    knowledge_contexts: [
+      {
+        context_id: "knowledge-context-renewal-risk",
+        workflow_id: "crm.ai.copilot.recommendation",
+        contract_id: "crm.memory.knowledge_search.executor",
+        query: "renewal risk with open SLA breach",
+        allowed_scopes: ["organization", "project"],
+        result_count: 2,
+        context_pack_state: "ready_for_workflow_context",
+        core_search_owner: "forge.memory.search",
+        local_vector_index_allowed: false,
+        artifact_types: ["crm_memory_search_report", "crm_knowledge_context_pack"],
+        action_id: "crm.search-knowledge-context"
       }
     ],
     observability: {
@@ -2609,6 +2625,15 @@ function actions() {
       requires_permission: "crm.ai.recommend",
       mutates_workflow: true,
       command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.memory.promotion.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
+    },
+    {
+      id: "crm.search-knowledge-context",
+      label: "Search knowledge context",
+      surface_id: "crm.ai-workbench",
+      contract_id: "crm.memory.knowledge_search.executor",
+      requires_permission: "crm.ai.recommend",
+      mutates_workflow: true,
+      command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.memory.knowledge_search.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
     },
     {
       id: "crm.evolve-workflow",

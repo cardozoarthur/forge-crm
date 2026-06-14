@@ -53,6 +53,7 @@ const DOMAIN_REQUIREMENTS = {
     ["document_generation", "Document generation", ["crm.proposal.approval", "crm.contract.signature"]],
     ["executive_summaries", "Executive summaries", ["crm.executive.reporting", "crm.ai.copilot.recommendation"]],
     ["risk_analysis", "Risk analysis", ["crm.ai.copilot.recommendation", "crm.executive.reporting", "crm.daily.operating_cycle"]],
+    ["knowledge_context_search", "Knowledge context search", ["crm.ai.copilot.recommendation"]],
     ["next_step_recommendations", "Next-step recommendations", ["crm.ai.copilot.recommendation"]],
     ["workflow_automations", "Workflow automations", ["crm.workflow.automation_design", "crm.workflow.automation_execution"]],
     ["specialized_copilots", "Specialized area copilots", ["crm.ai.copilot.recommendation"]]
@@ -316,6 +317,7 @@ function buildPlatformSection(pack, model) {
         missingScopes.length === 0 &&
           semanticSearchEnabled &&
           contracts.has("crm.memory.promotion.executor") &&
+          contracts.has("crm.memory.knowledge_search.executor") &&
           governance.status === "memory_governance_configured"
       ),
       required_scopes: ["global", "organization", "processing", "project"],
@@ -323,6 +325,7 @@ function buildPlatformSection(pack, model) {
       missing_scopes: missingScopes,
       semantic_search_enabled: semanticSearchEnabled,
       governed_promotion_contract: contracts.has("crm.memory.promotion.executor") ? "crm.memory.promotion.executor" : null,
+      memory_search_contract: contracts.has("crm.memory.knowledge_search.executor") ? "crm.memory.knowledge_search.executor" : null,
       project_governance: governance
     },
     {

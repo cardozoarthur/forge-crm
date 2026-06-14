@@ -442,8 +442,8 @@ test("operating readiness maps Forge evidence into user-facing CRM deliverables"
   assert.equal(result.status, "completed");
   assert.equal(result.outputs.tenant_id, "demo");
   assert.equal(result.outputs.success_criteria_status, "operable_with_evidence");
-  assert.equal(result.outputs.user_facing_deliverable_count, 16);
-  assert.equal(result.outputs.ready_domain_count, 16);
+  assert.equal(result.outputs.user_facing_deliverable_count, 17);
+  assert.equal(result.outputs.ready_domain_count, 17);
   assert.equal(result.outputs.forge_only_operations, true);
   assert.equal(result.outputs.main_flow_dependency_external, false);
   assert.equal(result.outputs.mutates_crm_state, false);
@@ -466,6 +466,10 @@ test("operating readiness maps Forge evidence into user-facing CRM deliverables"
   assert.ok(
     outcomeManifest.data.outcomes.some((outcome) => outcome.deliverable === "workflow automation designer"),
     "missing workflow automation designer user outcome"
+  );
+  assert.ok(
+    outcomeManifest.data.outcomes.some((outcome) => outcome.deliverable === "knowledge context search"),
+    "missing knowledge context search user outcome"
   );
   assert.ok(
     outcomeManifest.data.outcomes.some((outcome) => outcome.deliverable === "workflow-system factory blueprint"),
@@ -1199,6 +1203,61 @@ test("memory promotion executor prepares governed Forge memory promotion request
   assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_memory_promotion_request"));
   assert.ok(result.events.some((event) => event.kind === "crm.memory.knowledge_curated"));
   assert.ok(result.events.some((event) => event.kind === "crm.memory.promotion_requested"));
+});
+
+test("knowledge search executor packages Forge memory results into CRM context", () => {
+  assert.equal(typeof runtime.buildKnowledgeSearchResult, "function");
+
+  const result = runtime.buildKnowledgeSearchResult(
+    workerRequest(
+      "forge_crm.search_knowledge_context",
+      {
+        tenant_context: { tenant_id: "demo", organization_id: "acme" },
+        query: "renewal risk with open SLA breach",
+        memory_results: [
+          {
+            scope: "organization",
+            source_path: ".forge/memory/org/sla-policy.md",
+            summary: "Critical SLA breach blocks renewal recommendation until support owner clears risk.",
+            score: 0.93,
+            audience: "internal",
+            source_refs: ["policy-sla-renewal"]
+          },
+          {
+            scope: "project",
+            source_path: ".forge/memory/project/acme-success.md",
+            summary: "Acme renewal plan requires executive summary and support risk callout.",
+            score: 0.87,
+            audience: "manager",
+            source_refs: ["account-acme", "ticket-1042"]
+          }
+        ],
+        context_policy: {
+          allowed_scopes: ["organization", "project"],
+          audience: "manager",
+          max_results: 2,
+          purpose: "customer_success_renewal_brief"
+        }
+      },
+      { contract_id: "crm.memory.knowledge_search.executor", task_ref: "knowledge-search-test" }
+    )
+  );
+
+  assert.equal(result.schema_version, "forge.addon_executor_result.v1");
+  assert.equal(result.status, "completed");
+  assert.equal(result.outputs.tenant_id, "demo");
+  assert.equal(result.outputs.query, "renewal risk with open SLA breach");
+  assert.equal(result.outputs.result_count, 2);
+  assert.equal(result.outputs.context_pack_state, "ready_for_workflow_context");
+  assert.equal(result.outputs.core_search_owner, "forge.memory.search");
+  assert.equal(result.outputs.local_vector_index_used, false);
+  assert.equal(result.outputs.mutates_crm_state, false);
+  assert.equal(result.outputs.forge_event_sourced, true);
+  assert.ok(result.outputs.search_command.includes("forge memory search"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_memory_search_report"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_knowledge_context_pack"));
+  assert.ok(result.events.some((event) => event.kind === "crm.memory.search_requested"));
+  assert.ok(result.events.some((event) => event.kind === "crm.memory.context_packaged"));
 });
 
 test("workflow evolution executor proposes governed Forge experiments without self-modifying", () => {

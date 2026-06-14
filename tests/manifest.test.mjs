@@ -330,6 +330,31 @@ test("manifest exposes CRM memory promotion as governed Forge memory preparation
   }
 });
 
+test("manifest exposes CRM knowledge search as Forge memory consumption", () => {
+  const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.memory.knowledge_search.executor");
+  assert.ok(contract);
+  assert.equal(contract.contract_type, "executor");
+  assert.equal(contract.capability_id, "crm_ai_automation");
+  assert.equal(contract.workflow_extension_id, "crm_ai_copilot_recommendation");
+  assert.equal(contract.entrypoint, "forge_crm.search_knowledge_context");
+  assert.deepEqual(contract.permissions, ["crm.ai.recommend"]);
+  for (const input of ["query", "memory_results", "context_policy", "tenant_context"]) {
+    assert.ok(contract.inputs.includes(input), `missing input ${input}`);
+  }
+  for (const output of ["crm_memory_search_report", "crm_knowledge_context_pack"]) {
+    assert.ok(contract.outputs.includes(output), `missing output ${output}`);
+  }
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("consumes Forge memory search results")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("does not run a CRM-local vector index")));
+
+  const artifactTypes = new Set(manifest.artifact_types.map((artifact) => artifact.id));
+  assert.ok(artifactTypes.has("crm_memory_search_report"));
+  assert.ok(artifactTypes.has("crm_knowledge_context_pack"));
+
+  const eventTypes = new Set(manifest.event_types.map((event) => event.id));
+  assert.ok(eventTypes.has("crm.memory.search"));
+});
+
 test("manifest exposes CRM observability inspection as a Forge-owned executor", () => {
   const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.observability.inspector.executor");
   assert.ok(contract);

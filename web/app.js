@@ -616,12 +616,21 @@ export function renderAiWorkbench(snapshot) {
     memory.append(item);
   }
 
+  const knowledge = nodeElement("div", "knowledge-context-list");
+  for (const context of panel.knowledge_contexts || []) {
+    const item = nodeElement("article", "knowledge-context");
+    item.append(nodeElement("strong", "", context.query));
+    item.append(nodeElement("span", "", `${context.core_search_owner} · ${context.result_count} results`));
+    item.append(nodeElement("code", "", actionLabel(snapshot, context.action_id)));
+    knowledge.append(item);
+  }
+
   const observability = nodeElement(
     "p",
     "observability-line",
     `${panel.observability.risk_count} risks · ${panel.observability.lineage_source} · ${actionLabel(snapshot, panel.observability.readiness_action_id)}`
   );
-  section.append(recommendations, areaCopilots, memory, observability);
+  section.append(recommendations, areaCopilots, memory, knowledge, observability);
   return section;
 }
 

@@ -104,6 +104,7 @@ try {
       "forge_crm.orchestrate_subworkflows",
       "forge_crm.generate_design_system",
       "forge_crm.prepare_memory_promotion",
+      "forge_crm.search_knowledge_context",
       "forge_crm.evolve_workflow",
       "forge_crm.design_workflow_automation",
       "forge_crm.trace_workflow_automation",
@@ -155,6 +156,7 @@ try {
       "crm.workflow.subworkflow_orchestrator.executor",
       "crm.design_system.executor",
       "crm.memory.promotion.executor",
+      "crm.memory.knowledge_search.executor",
       "crm.workflow.evolution.executor",
       "crm.workflow.automation_designer.executor",
       "crm.workflow.automation_trace.executor",
@@ -888,6 +890,69 @@ try {
   }
   if (memoryPromotion.executor_result.outputs.core_promotion_owner !== "forge.memory.promote") {
     throw new Error(`expected Forge memory promotion owner, got ${memoryPromotion.executor_result.outputs.core_promotion_owner}`);
+  }
+
+  const knowledgeSearch = runForge([
+    "addons",
+    "execute-executor",
+    "--addon-dir",
+    "addons",
+    "--addon",
+    "forge.addon.crm",
+    "--contract",
+    "crm.memory.knowledge_search.executor",
+    "--worker",
+    workerId,
+    "--task",
+    "crm-smoke-knowledge-search",
+    "--workflow",
+    workflowId,
+    "--input",
+    JSON.stringify({
+      tenant_context: { id: "smoke", tenant_id: "smoke", organization_id: "smoke-org" },
+      workflow_id: "crm.ai.copilot.recommendation",
+      query: "critical SLA renewal risk",
+      memory_results: [
+        {
+          id: "mem-sla-policy",
+          scope: "organization",
+          source_path: ".forge/memory/org/sla-policy.md",
+          summary: "Critical SLA breach blocks renewal recommendation until support owner clears risk.",
+          score: 0.93,
+          audience: "internal",
+          source_refs: ["policy-sla-renewal"]
+        },
+        {
+          id: "mem-account-smoke",
+          scope: "project",
+          source_path: ".forge/memory/project/account-smoke.md",
+          summary: "Smoke account renewal plan needs support risk callout before executive review.",
+          score: 0.88,
+          audience: "manager",
+          source_refs: ["account-smoke", "ticket-smoke-001"]
+        }
+      ],
+      context_policy: {
+        allowed_scopes: ["organization", "project"],
+        audience: "manager",
+        max_results: 2,
+        purpose: "customer_success_renewal_brief"
+      }
+    }),
+    "--context",
+    JSON.stringify({ tenant: "smoke" }),
+    "--output",
+    "json"
+  ]);
+
+  if (knowledgeSearch.promotion?.status !== "addon_executor_result_promoted") {
+    throw new Error(`expected knowledge search promotion, got ${knowledgeSearch.promotion?.status || "missing"}`);
+  }
+  if (knowledgeSearch.executor_result.outputs.core_search_owner !== "forge.memory.search") {
+    throw new Error(`expected Forge memory search owner, got ${knowledgeSearch.executor_result.outputs.core_search_owner}`);
+  }
+  if (knowledgeSearch.executor_result.outputs.local_vector_index_used !== false) {
+    throw new Error("expected CRM knowledge search to avoid local vector indexes");
   }
 
   const observabilityInspection = runForge([
@@ -3092,6 +3157,8 @@ try {
   const designSystemPromotedEventCount = designSystem.promotion?.event_count ?? 0;
   const memoryPromotedArtifactCount = memoryPromotion.promotion?.artifact_count ?? 0;
   const memoryPromotedEventCount = memoryPromotion.promotion?.event_count ?? 0;
+  const knowledgeSearchPromotedArtifactCount = knowledgeSearch.promotion?.artifact_count ?? 0;
+  const knowledgeSearchPromotedEventCount = knowledgeSearch.promotion?.event_count ?? 0;
   const observabilityPromotedArtifactCount = observabilityInspection.promotion?.artifact_count ?? 0;
   const observabilityPromotedEventCount = observabilityInspection.promotion?.event_count ?? 0;
   const executiveReportingPromotedArtifactCount = executiveReporting.promotion?.artifact_count ?? 0;
@@ -3283,6 +3350,16 @@ try {
     );
   }
   for (const eventKind of ["crm.memory.knowledge_curated", "crm.memory.promotion_requested"]) {
+    if (!workflowEventKinds.includes(eventKind)) {
+      throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
+    }
+  }
+  if (knowledgeSearchPromotedArtifactCount < 2 || knowledgeSearchPromotedEventCount < 2) {
+    throw new Error(
+      `expected promoted knowledge search artifacts/events, got artifacts=${knowledgeSearchPromotedArtifactCount} events=${knowledgeSearchPromotedEventCount}`
+    );
+  }
+  for (const eventKind of ["crm.memory.search_requested", "crm.memory.context_packaged"]) {
     if (!workflowEventKinds.includes(eventKind)) {
       throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
     }
@@ -3845,6 +3922,14 @@ try {
     memory_promotion_core_owner: memoryPromotion.executor_result.outputs.core_promotion_owner,
     memory_promotion_promoted_artifacts: memoryPromotedArtifactCount,
     memory_promotion_promoted_events: memoryPromotedEventCount,
+    knowledge_search_status: knowledgeSearch.status,
+    knowledge_search_promotion_status: knowledgeSearch.promotion.status,
+    knowledge_search_result_count: knowledgeSearch.executor_result.outputs.result_count,
+    knowledge_search_context_pack_state: knowledgeSearch.executor_result.outputs.context_pack_state,
+    knowledge_search_core_owner: knowledgeSearch.executor_result.outputs.core_search_owner,
+    knowledge_search_local_vector_index_used: knowledgeSearch.executor_result.outputs.local_vector_index_used,
+    knowledge_search_promoted_artifacts: knowledgeSearchPromotedArtifactCount,
+    knowledge_search_promoted_events: knowledgeSearchPromotedEventCount,
     observability_status: observabilityInspection.status,
     observability_promotion_status: observabilityInspection.promotion.status,
     observability_cost_total_usd: observabilityInspection.executor_result.outputs.cost_total_usd,

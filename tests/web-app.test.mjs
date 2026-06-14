@@ -334,6 +334,23 @@ test("web app snapshot exposes an operational workbench backed by Forge artifact
   assert.ok(panels.get("ai_workbench").executive_reports.some((report) => report.action_id === "crm.generate-executive-report"));
   assert.ok(panels.get("ai_workbench").executive_reports.every((report) => report.contract_id === "crm.analytics.executive_report.executor"));
   assert.ok(panels.get("ai_workbench").memory_promotions.some((promotion) => promotion.action_id === "crm.prepare-memory-promotion"));
+  assert.ok(panels.get("ai_workbench").knowledge_contexts.some((context) => context.action_id === "crm.search-knowledge-context"));
+});
+
+test("web app snapshot exposes Forge memory search as CRM knowledge context", () => {
+  const snapshot = buildCrmWebAppSnapshot({ tenant_id: "demo" });
+  const action = snapshot.actions.find((candidate) => candidate.id === "crm.search-knowledge-context");
+  const aiPanel = snapshot.operational_workbench.panels.find((panel) => panel.id === "ai_workbench");
+
+  assert.ok(action);
+  assert.equal(action.contract_id, "crm.memory.knowledge_search.executor");
+  assert.equal(action.surface_id, "crm.ai-workbench");
+  assert.ok(action.command_template.includes("crm.memory.knowledge_search.executor"));
+
+  assert.ok(aiPanel);
+  assert.ok(aiPanel.knowledge_contexts.some((context) => context.contract_id === "crm.memory.knowledge_search.executor"));
+  assert.ok(aiPanel.knowledge_contexts.every((context) => context.core_search_owner === "forge.memory.search"));
+  assert.ok(aiPanel.knowledge_contexts.every((context) => context.local_vector_index_allowed === false));
 });
 
 test("web app snapshot exposes customer success planning as a Forge commercial command surface", () => {
@@ -665,20 +682,21 @@ test("web app snapshot exposes operating readiness workbench for company operati
   assert.equal(workbench.main_flow_dependency_external, false);
 
   assert.equal(workbench.domain_coverage.complete, true);
-  assert.equal(workbench.domain_coverage.domains.length, 16);
+  assert.equal(workbench.domain_coverage.domains.length, 17);
   assert.ok(workbench.domain_coverage.domains.every((domain) => domain.ready === true));
   assert.ok(workbench.domain_coverage.domains.every((domain) => domain.workflow_ids.length > 0));
   assert.ok(workbench.domain_coverage.domains.every((domain) => domain.artifact_evidence.length > 0));
   assert.ok(workbench.domain_coverage.domains.every((domain) => domain.event_evidence.length > 0));
   assert.ok(workbench.domain_coverage.domains.every((domain) => domain.runtime_contract_evidence.length > 0));
 
-  assert.equal(workbench.user_outcomes.length, 16);
+  assert.equal(workbench.user_outcomes.length, 17);
   assert.ok(workbench.user_outcomes.some((outcome) => outcome.deliverable === "commercial command center"));
   assert.ok(workbench.user_outcomes.some((outcome) => outcome.deliverable === "support inbox"));
   assert.ok(workbench.user_outcomes.some((outcome) => outcome.deliverable === "omnichannel conversation threads"));
   assert.ok(workbench.user_outcomes.some((outcome) => outcome.deliverable === "enterprise customer journey"));
   assert.ok(workbench.user_outcomes.some((outcome) => outcome.deliverable === "workflow-system factory blueprint"));
   assert.ok(workbench.user_outcomes.some((outcome) => outcome.deliverable === "internal collaboration"));
+  assert.ok(workbench.user_outcomes.some((outcome) => outcome.deliverable === "knowledge context search"));
   assert.ok(workbench.daily_operations.every((operation) => operation.command_owner === "forge"));
   assert.ok(
     workbench.daily_operations.every(

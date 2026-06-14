@@ -6,12 +6,12 @@ Status: covered_by_current_addon_evidence
 ## Summary
 
 - Sections: 9
-- Requirements: 51
+- Requirements: 52
 - Missing requirements: 0
 - Workflows: 38
-- Runtime contracts: 49
-- Artifact types: 114
-- Event types: 46
+- Runtime contracts: 50
+- Artifact types: 116
+- Event types: 47
 - Views: 12
 
 ## Sections
@@ -94,15 +94,16 @@ Missing: none
 AI and Automation: covered_by_current_addon_evidence
 Missing: none
 
-- lead_classification: covered_by_forge_evidence; workflows=crm.ai.copilot.recommendation, crm.lead.lifecycle; contracts=crm.ai.area_copilot.executor, crm.ai.operating_copilot.executor, crm.lead.classifier.executor, crm.marketing.form_capture.executor, crm.memory.promotion.executor, crm.proposal.generator.executor, crm.relationship.lifecycle.executor, crm.relationship.profile_enrichment.executor, crm.relationship.timeline.executor
-- opportunity_prioritization: covered_by_forge_evidence; workflows=crm.ai.copilot.recommendation, crm.opportunity.pipeline; contracts=crm.ai.area_copilot.executor, crm.ai.operating_copilot.executor, crm.lead.classifier.executor, crm.memory.promotion.executor, crm.pipeline.stage_move.executor, crm.proposal.generator.executor, crm.relationship.timeline.executor
-- proposal_generation: covered_by_forge_evidence; workflows=crm.ai.copilot.recommendation, crm.proposal.approval; contracts=crm.ai.area_copilot.executor, crm.ai.operating_copilot.executor, crm.document.validator, crm.lead.classifier.executor, crm.memory.promotion.executor, crm.proposal.generator.executor
+- lead_classification: covered_by_forge_evidence; workflows=crm.ai.copilot.recommendation, crm.lead.lifecycle; contracts=crm.ai.area_copilot.executor, crm.ai.operating_copilot.executor, crm.lead.classifier.executor, crm.marketing.form_capture.executor, crm.memory.knowledge_search.executor, crm.memory.promotion.executor, crm.proposal.generator.executor, crm.relationship.lifecycle.executor, crm.relationship.profile_enrichment.executor, crm.relationship.timeline.executor
+- opportunity_prioritization: covered_by_forge_evidence; workflows=crm.ai.copilot.recommendation, crm.opportunity.pipeline; contracts=crm.ai.area_copilot.executor, crm.ai.operating_copilot.executor, crm.lead.classifier.executor, crm.memory.knowledge_search.executor, crm.memory.promotion.executor, crm.pipeline.stage_move.executor, crm.proposal.generator.executor, crm.relationship.timeline.executor
+- proposal_generation: covered_by_forge_evidence; workflows=crm.ai.copilot.recommendation, crm.proposal.approval; contracts=crm.ai.area_copilot.executor, crm.ai.operating_copilot.executor, crm.document.validator, crm.lead.classifier.executor, crm.memory.knowledge_search.executor, crm.memory.promotion.executor, crm.proposal.generator.executor
 - document_generation: covered_by_forge_evidence; workflows=crm.contract.signature, crm.proposal.approval; contracts=crm.commercial.contract_signature.executor, crm.commercial.goal_commission.executor, crm.document.generator.executor, crm.document.validator, crm.proposal.generator.executor
-- executive_summaries: covered_by_forge_evidence; workflows=crm.ai.copilot.recommendation, crm.executive.reporting; contracts=crm.ai.area_copilot.executor, crm.ai.operating_copilot.executor, crm.analytics.executive_report.executor, crm.lead.classifier.executor, crm.memory.promotion.executor, crm.proposal.generator.executor
-- risk_analysis: covered_by_forge_evidence; workflows=crm.ai.copilot.recommendation, crm.daily.operating_cycle, crm.executive.reporting; contracts=crm.ai.area_copilot.executor, crm.ai.operating_copilot.executor, crm.analytics.executive_report.executor, crm.lead.classifier.executor, crm.memory.promotion.executor, crm.observability.inspector.executor, crm.operating.daily_cycle.executor, crm.proposal.generator.executor, crm.queue.orchestrator.executor
-- next_step_recommendations: covered_by_forge_evidence; workflows=crm.ai.copilot.recommendation; contracts=crm.ai.area_copilot.executor, crm.ai.operating_copilot.executor, crm.lead.classifier.executor, crm.memory.promotion.executor, crm.proposal.generator.executor
+- executive_summaries: covered_by_forge_evidence; workflows=crm.ai.copilot.recommendation, crm.executive.reporting; contracts=crm.ai.area_copilot.executor, crm.ai.operating_copilot.executor, crm.analytics.executive_report.executor, crm.lead.classifier.executor, crm.memory.knowledge_search.executor, crm.memory.promotion.executor, crm.proposal.generator.executor
+- risk_analysis: covered_by_forge_evidence; workflows=crm.ai.copilot.recommendation, crm.daily.operating_cycle, crm.executive.reporting; contracts=crm.ai.area_copilot.executor, crm.ai.operating_copilot.executor, crm.analytics.executive_report.executor, crm.lead.classifier.executor, crm.memory.knowledge_search.executor, crm.memory.promotion.executor, crm.observability.inspector.executor, crm.operating.daily_cycle.executor, crm.proposal.generator.executor, crm.queue.orchestrator.executor
+- knowledge_context_search: covered_by_forge_evidence; workflows=crm.ai.copilot.recommendation; contracts=crm.ai.area_copilot.executor, crm.ai.operating_copilot.executor, crm.lead.classifier.executor, crm.memory.knowledge_search.executor, crm.memory.promotion.executor, crm.proposal.generator.executor
+- next_step_recommendations: covered_by_forge_evidence; workflows=crm.ai.copilot.recommendation; contracts=crm.ai.area_copilot.executor, crm.ai.operating_copilot.executor, crm.lead.classifier.executor, crm.memory.knowledge_search.executor, crm.memory.promotion.executor, crm.proposal.generator.executor
 - workflow_automations: covered_by_forge_evidence; workflows=crm.workflow.automation_design, crm.workflow.automation_execution; contracts=crm.observability.inspector.executor, crm.workflow.automation_designer.executor, crm.workflow.automation_trace.executor
-- specialized_copilots: covered_by_forge_evidence; workflows=crm.ai.copilot.recommendation; contracts=crm.ai.area_copilot.executor, crm.ai.operating_copilot.executor, crm.lead.classifier.executor, crm.memory.promotion.executor, crm.proposal.generator.executor
+- specialized_copilots: covered_by_forge_evidence; workflows=crm.ai.copilot.recommendation; contracts=crm.ai.area_copilot.executor, crm.ai.operating_copilot.executor, crm.lead.classifier.executor, crm.memory.knowledge_search.executor, crm.memory.promotion.executor, crm.proposal.generator.executor
 
 ### Forge Platform
 

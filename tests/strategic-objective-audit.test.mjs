@@ -68,6 +68,7 @@ test("strategic objective audit proves memory, artifacts, observability and UI r
   assert.deepEqual(memory.missing_scopes, []);
   assert.equal(memory.semantic_search_enabled, true);
   assert.equal(memory.governed_promotion_contract, "crm.memory.promotion.executor");
+  assert.equal(memory.memory_search_contract, "crm.memory.knowledge_search.executor");
   assert.equal(memory.project_governance.status, "memory_governance_configured");
 
   const artifacts = platform.requirements.find((requirement) => requirement.id === "artifact_portfolio");

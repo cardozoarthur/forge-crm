@@ -58,9 +58,10 @@ test("enterprise readiness audit keeps CRM as a public Forge Addon and maps benc
     assert.ok(track.evidence.event_types.length > 0, `${trackId} needs event evidence`);
   }
 
-  assert.equal(audit.user_facing_deliverables.length, 16);
+  assert.equal(audit.user_facing_deliverables.length, 17);
   assert.ok(audit.user_facing_deliverables.some((deliverable) => deliverable.id === "goal_commission_settlement"));
   assert.ok(audit.user_facing_deliverables.some((deliverable) => deliverable.id === "executive_reporting"));
+  assert.ok(audit.user_facing_deliverables.some((deliverable) => deliverable.id === "knowledge_context_search"));
   assert.ok(audit.user_facing_deliverables.some((deliverable) => deliverable.id === "omnichannel_conversation_threads"));
   assert.ok(audit.user_facing_deliverables.some((deliverable) => deliverable.id === "workflow_system_factory_blueprint"));
   assert.ok(audit.user_facing_deliverables.some((deliverable) => deliverable.id === "daily_operating_cycle"));

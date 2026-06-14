@@ -53,6 +53,7 @@ export function createCrmWorkerServer() {
             "forge_crm.export_factory_blueprint",
             "forge_crm.generate_design_system",
             "forge_crm.prepare_memory_promotion",
+            "forge_crm.search_knowledge_context",
             "forge_crm.evolve_workflow",
             "forge_crm.design_workflow_automation",
             "forge_crm.trace_workflow_automation",

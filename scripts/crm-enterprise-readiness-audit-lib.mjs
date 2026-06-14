@@ -122,6 +122,13 @@ const USER_FACING_DELIVERABLES = [
     workflow_ids: ["crm.executive.reporting"]
   },
   {
+    id: "knowledge_context_search",
+    title: "Knowledge context search",
+    domain: "ai_automation",
+    surface_id: "crm.ai-workbench",
+    workflow_ids: ["crm.ai.copilot.recommendation"]
+  },
+  {
     id: "design_system",
     title: "Design system",
     domain: "user_experience",
@@ -143,6 +150,7 @@ const FORGE_CORE_REQUIREMENTS = [
   "graph_execution",
   "memory_scopes",
   "semantic_search",
+  "memory_search_consumption",
   "governed_memory_promotion",
   "artifact_lineage",
   "audit_events_logs_costs_metrics",
@@ -466,6 +474,7 @@ function coreRequirementAudit(pack, model) {
     graph_execution: model.operator_surfaces.system_map.surface_type === "graph",
     memory_scopes: asArray(manifest.memory_providers).length > 0,
     semantic_search: asArray(manifest.memory_providers).some((provider) => asArray(provider.capabilities).includes("semantic_search")),
+    memory_search_consumption: contracts.has("crm.memory.knowledge_search.executor"),
     governed_memory_promotion: contracts.has("crm.memory.promotion.executor"),
     artifact_lineage: artifactTypes.has("crm_lineage_map") && contracts.has("crm.observability.inspector.executor"),
     audit_events_logs_costs_metrics: eventTypes.has("crm.audit") && artifactTypes.has("crm_cost_report"),

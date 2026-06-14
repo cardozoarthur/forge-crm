@@ -47,6 +47,7 @@ const REQUIRED_SCOPE = {
     "document_generation",
     "executive_summary",
     "risk_analysis",
+    "knowledge_context",
     "next_step_recommendation",
     "workflow_automation",
     "specialized_copilot"
@@ -1404,7 +1405,8 @@ const WORKFLOWS = [
       "risk_analysis",
       "next_step_recommendation",
       "workflow_automation",
-      "specialized_copilot"
+      "specialized_copilot",
+      "knowledge_context"
     ],
     states: ["context_requested", "recommendation_generated", "review_wait", "approved_action", "discarded"],
     transitions: [
@@ -1417,25 +1419,38 @@ const WORKFLOWS = [
       "crm.lead.classifier.executor",
       "crm.ai.operating_copilot.executor",
       "crm.ai.area_copilot.executor",
+      "crm.memory.knowledge_search.executor",
       "crm.memory.promotion.executor",
       "crm.proposal.generator.executor"
     ],
     depends_on_workflows: ["crm.workflow.automation_design"],
-    artifacts: ["crm_area_copilot_brief", "crm_ai_recommendation", "crm_risk_analysis", "crm_report", "crm_knowledge_summary", "crm_memory_promotion_request"],
+    artifacts: [
+      "crm_area_copilot_brief",
+      "crm_ai_recommendation",
+      "crm_risk_analysis",
+      "crm_report",
+      "crm_memory_search_report",
+      "crm_knowledge_context_pack",
+      "crm_knowledge_summary",
+      "crm_memory_promotion_request"
+    ],
     events: [
       "crm.ai.area_copilot_generated",
       "crm.ai.recommendation_generated",
       "crm.ai.risk_flagged",
       "crm.next_action.approved",
+      "crm.memory.search_requested",
+      "crm.memory.context_packaged",
       "crm.memory.knowledge_curated",
       "crm.memory.promotion_requested"
     ],
-    memory_scopes: ["organization", "project", "processing"],
+    memory_scopes: ["global", "organization", "project", "processing"],
     permissions: ["crm.ai.recommend"],
     views: ["crm.ai-workbench"],
     validation_gates: [
       "recommendation includes evidence",
       "specialized copilot recommendations are scoped by area and cite Forge evidence",
+      "CRM knowledge context consumes Forge memory search results without a local vector index",
       "state mutation requires workflow approval",
       "memory promotion uses Forge memory governance"
     ]

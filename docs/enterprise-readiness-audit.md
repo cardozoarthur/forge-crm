@@ -7,11 +7,11 @@ Repository: https://github.com/cardozoarthur/forge-crm.git
 ## Summary
 
 - Workflows: 38
-- Runtime contracts: 49
-- Artifact types: 114
-- Event types: 46
+- Runtime contracts: 50
+- Artifact types: 116
+- Event types: 47
 - Views: 12
-- User-facing deliverables ready: 16/16
+- User-facing deliverables ready: 17/17
 - Missing objective items: 0
 - Complete scope: true
 
@@ -20,9 +20,9 @@ Repository: https://github.com/cardozoarthur/forge-crm.git
 - Addon: forge.addon.crm (enabled)
 - Core dependency: forge.core.kernel
 - Capabilities: 9
-- Runtime contracts: 49
-- Artifact types: 114
-- Event types: 46
+- Runtime contracts: 50
+- Artifact types: 116
+- Event types: 47
 - Views: 12
 - Public repository declared: true
 
@@ -41,7 +41,7 @@ Repository: https://github.com/cardozoarthur/forge-crm.git
 - marketing: complete; required=6; missing=none
 - operations: complete; required=11; missing=none
 - user_experience: complete; required=7; missing=none
-- ai_automation: complete; required=9; missing=none
+- ai_automation: complete; required=10; missing=none
 
 ## User-Facing Deliverables
 
@@ -60,6 +60,7 @@ Repository: https://github.com/cardozoarthur/forge-crm.git
 - Workflow-system factory blueprint: ready; workflows=crm.workflow.factory_blueprint; surface=crm.system-map
 - Goal and commission settlement: ready; workflows=crm.goal.commission; surface=crm.commercial-command
 - Executive reporting: ready; workflows=crm.executive.reporting; surface=crm.ai-workbench
+- Knowledge context search: ready; workflows=crm.ai.copilot.recommendation; surface=crm.ai-workbench
 - Design system: ready; workflows=crm.design.system; surface=crm.design-system
 
 ## Benchmark Tracks
@@ -93,6 +94,7 @@ Required dependencies public: true
 - graph_execution: crm_consumes_forge_core_contract; repository=forge-core
 - memory_scopes: crm_consumes_forge_core_contract; repository=forge-core
 - semantic_search: crm_consumes_forge_core_contract; repository=forge-core
+- memory_search_consumption: crm_consumes_forge_core_contract; repository=forge-core
 - governed_memory_promotion: crm_consumes_forge_core_contract; repository=forge-core
 - artifact_lineage: crm_consumes_forge_core_contract; repository=forge-core
 - audit_events_logs_costs_metrics: crm_consumes_forge_core_contract; repository=forge-core
@@ -102,4 +104,4 @@ Required dependencies public: true
 
 Repository: forge-core
 Rule: If a workflow primitive, memory scope, approval gate, artifact lineage or observability capability is missing, implement it in forge-core before adding CRM-local persistence.
-Gap categories: durable_workflows, interrupt_resume, checkpoints, ownership, waiting_states, approvals, subworkflows, schedules, triggers, graph_execution, memory_scopes, semantic_search, governed_memory_promotion, artifact_lineage, audit_events_logs_costs_metrics, hybrid_tui_web_ui
+Gap categories: durable_workflows, interrupt_resume, checkpoints, ownership, waiting_states, approvals, subworkflows, schedules, triggers, graph_execution, memory_scopes, semantic_search, memory_search_consumption, governed_memory_promotion, artifact_lineage, audit_events_logs_costs_metrics, hybrid_tui_web_ui

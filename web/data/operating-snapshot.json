@@ -26,8 +26,8 @@
     "workflow_count": 38,
     "business_module_count": 7,
     "surface_count": 10,
-    "artifact_type_count": 110,
-    "event_type_count": 126,
+    "artifact_type_count": 112,
+    "event_type_count": 128,
     "complete_scope": true
   },
   "surfaces": [
@@ -1034,9 +1034,11 @@
         "crm_evolution_experiment",
         "crm_executive_summary",
         "crm_factory_portability_report",
+        "crm_knowledge_context_pack",
         "crm_knowledge_summary",
         "crm_kpi_dashboard",
         "crm_memory_promotion_request",
+        "crm_memory_search_report",
         "crm_permission_gate_report",
         "crm_promotion_decision",
         "crm_report",
@@ -1072,8 +1074,10 @@
         "crm.factory.core_gap_reviewed",
         "crm.factory.module_mapped",
         "crm.kpi.dashboard_generated",
+        "crm.memory.context_packaged",
         "crm.memory.knowledge_curated",
         "crm.memory.promotion_requested",
+        "crm.memory.search_requested",
         "crm.next_action.approved",
         "crm.requirement.coverage_reported",
         "crm.risk.reviewed",
@@ -1647,9 +1651,11 @@
         "crm_document",
         "crm_evolution_experiment",
         "crm_executive_summary",
+        "crm_knowledge_context_pack",
         "crm_knowledge_summary",
         "crm_kpi_dashboard",
         "crm_memory_promotion_request",
+        "crm_memory_search_report",
         "crm_promotion_decision",
         "crm_proposal",
         "crm_queue_assignment_plan",
@@ -1680,8 +1686,10 @@
         "crm.evolution.promotion_decision_recorded",
         "crm.executive.summary_generated",
         "crm.kpi.dashboard_generated",
+        "crm.memory.context_packaged",
         "crm.memory.knowledge_curated",
         "crm.memory.promotion_requested",
+        "crm.memory.search_requested",
         "crm.next_action.approved",
         "crm.proposal.generated",
         "crm.queue.assignment_planned",
@@ -1690,6 +1698,7 @@
         "crm.risk.reviewed"
       ],
       "validation_gates": [
+        "CRM knowledge context consumes Forge memory search results without a local vector index",
         "Core primitive gaps are reported to forge-core before CRM workaround",
         "activation is blocked until validation evidence and permission gates pass",
         "approved automation actions dispatch through Forge runtime contracts only",
@@ -3282,6 +3291,7 @@
           "crm.lead.classifier.executor",
           "crm.ai.operating_copilot.executor",
           "crm.ai.area_copilot.executor",
+          "crm.memory.knowledge_search.executor",
           "crm.memory.promotion.executor",
           "crm.proposal.generator.executor"
         ],
@@ -3290,6 +3300,8 @@
           "crm_ai_recommendation",
           "crm_risk_analysis",
           "crm_report",
+          "crm_memory_search_report",
+          "crm_knowledge_context_pack",
           "crm_knowledge_summary",
           "crm_memory_promotion_request"
         ],
@@ -3298,6 +3310,8 @@
           "crm.ai.recommendation_generated",
           "crm.ai.risk_flagged",
           "crm.next_action.approved",
+          "crm.memory.search_requested",
+          "crm.memory.context_packaged",
           "crm.memory.knowledge_curated",
           "crm.memory.promotion_requested"
         ],
@@ -3307,6 +3321,7 @@
         "validation_gates": [
           "recommendation includes evidence",
           "specialized copilot recommendations are scoped by area and cite Forge evidence",
+          "CRM knowledge context consumes Forge memory search results without a local vector index",
           "state mutation requires workflow approval",
           "memory promotion uses Forge memory governance"
         ]
@@ -4949,6 +4964,7 @@
           "crm.run-operating-copilot",
           "crm.run-area-copilot",
           "crm.generate-executive-report",
+          "crm.search-knowledge-context",
           "crm.prepare-memory-promotion",
           "crm.evolve-workflow",
           "crm.inspect-observability",
@@ -5053,6 +5069,27 @@
             "target_scope": "organization",
             "visibility": "internal",
             "action_id": "crm.prepare-memory-promotion"
+          }
+        ],
+        "knowledge_contexts": [
+          {
+            "context_id": "knowledge-context-renewal-risk",
+            "workflow_id": "crm.ai.copilot.recommendation",
+            "contract_id": "crm.memory.knowledge_search.executor",
+            "query": "renewal risk with open SLA breach",
+            "allowed_scopes": [
+              "organization",
+              "project"
+            ],
+            "result_count": 2,
+            "context_pack_state": "ready_for_workflow_context",
+            "core_search_owner": "forge.memory.search",
+            "local_vector_index_allowed": false,
+            "artifact_types": [
+              "crm_memory_search_report",
+              "crm_knowledge_context_pack"
+            ],
+            "action_id": "crm.search-knowledge-context"
           }
         ],
         "observability": {
@@ -5842,8 +5879,8 @@
     "success_criteria_status": "operable_with_evidence",
     "forge_only_operations": true,
     "main_flow_dependency_external": false,
-    "ready_domain_count": 16,
-    "user_facing_deliverable_count": 16,
+    "ready_domain_count": 17,
+    "user_facing_deliverable_count": 17,
     "generated_artifact_types": [
       "crm_operating_readiness_report",
       "crm_user_outcome_manifest",
@@ -6390,6 +6427,39 @@
           ]
         },
         {
+          "domain": "knowledge_context_search",
+          "title": "Knowledge context search",
+          "user_facing_deliverable": "knowledge context search",
+          "ready": true,
+          "workflow_ids": [
+            "crm.ai.copilot.recommendation"
+          ],
+          "missing_workflow_ids": [],
+          "artifact_evidence": [
+            "crm_memory_search_report",
+            "crm_knowledge_context_pack"
+          ],
+          "event_evidence": [
+            "crm.memory.search_requested",
+            "crm.memory.context_packaged"
+          ],
+          "runtime_contract_evidence": [
+            "crm.lead.classifier.executor",
+            "crm.ai.operating_copilot.executor",
+            "crm.ai.area_copilot.executor",
+            "crm.memory.knowledge_search.executor",
+            "crm.memory.promotion.executor",
+            "crm.proposal.generator.executor"
+          ],
+          "validation_gates": [
+            "recommendation includes evidence",
+            "specialized copilot recommendations are scoped by area and cite Forge evidence",
+            "CRM knowledge context consumes Forge memory search results without a local vector index",
+            "state mutation requires workflow approval",
+            "memory promotion uses Forge memory governance"
+          ]
+        },
+        {
           "domain": "user_experience",
           "title": "Forge CRM design system",
           "user_facing_deliverable": "design system",
@@ -6567,6 +6637,15 @@
         "requested_by_success_criteria": false
       },
       {
+        "deliverable": "knowledge context search",
+        "domain": "knowledge_context_search",
+        "workflow_ids": [
+          "crm.ai.copilot.recommendation"
+        ],
+        "acceptance": "delivered when Forge workflow artifacts, events and validation gates are present",
+        "requested_by_success_criteria": false
+      },
+      {
         "deliverable": "design system",
         "domain": "user_experience",
         "workflow_ids": [
@@ -6706,6 +6785,14 @@
         "command_owner": "forge",
         "workflow_ids": [
           "crm.executive.reporting"
+        ],
+        "rework_path": "return incomplete goals to Forge workflow tasks with reason"
+      },
+      {
+        "deliverable": "knowledge context search",
+        "command_owner": "forge",
+        "workflow_ids": [
+          "crm.ai.copilot.recommendation"
         ],
         "rework_path": "return incomplete goals to Forge workflow tasks with reason"
       },
@@ -8588,6 +8675,7 @@
           "crm.lead.classifier.executor",
           "crm.ai.operating_copilot.executor",
           "crm.ai.area_copilot.executor",
+          "crm.memory.knowledge_search.executor",
           "crm.memory.promotion.executor",
           "crm.proposal.generator.executor"
         ],
@@ -8596,6 +8684,8 @@
           "crm_ai_recommendation",
           "crm_risk_analysis",
           "crm_report",
+          "crm_memory_search_report",
+          "crm_knowledge_context_pack",
           "crm_knowledge_summary",
           "crm_memory_promotion_request"
         ],
@@ -8604,6 +8694,8 @@
           "crm.ai.recommendation_generated",
           "crm.ai.risk_flagged",
           "crm.next_action.approved",
+          "crm.memory.search_requested",
+          "crm.memory.context_packaged",
           "crm.memory.knowledge_curated",
           "crm.memory.promotion_requested"
         ],
@@ -8613,6 +8705,7 @@
         "validation_gates": [
           "recommendation includes evidence",
           "specialized copilot recommendations are scoped by area and cite Forge evidence",
+          "CRM knowledge context consumes Forge memory search results without a local vector index",
           "state mutation requires workflow approval",
           "memory promotion uses Forge memory governance"
         ],
@@ -8758,7 +8851,7 @@
     "contract_id": "crm.strategic.objective_audit.executor",
     "audit_status": "covered_by_current_addon_evidence",
     "section_count": 9,
-    "requirement_count": 51,
+    "requirement_count": 52,
     "missing_requirement_count": 0,
     "section_coverage": [
       {
@@ -8807,7 +8900,7 @@
         "section_id": "ai_automation",
         "title": "AI and Automation",
         "status": "covered_by_current_addon_evidence",
-        "requirement_count": 9,
+        "requirement_count": 10,
         "missing_requirements": 0
       },
       {
@@ -10343,6 +10436,33 @@
         "forge.addon.crm",
         "--contract",
         "crm.memory.promotion.executor",
+        "--worker",
+        "<worker-id>",
+        "--task",
+        "<task-ref>",
+        "--input",
+        "<json>",
+        "--context",
+        "<json>",
+        "--output",
+        "json"
+      ]
+    },
+    {
+      "id": "crm.search-knowledge-context",
+      "label": "Search knowledge context",
+      "surface_id": "crm.ai-workbench",
+      "contract_id": "crm.memory.knowledge_search.executor",
+      "requires_permission": "crm.ai.recommend",
+      "mutates_workflow": true,
+      "command_template": [
+        "forge",
+        "addons",
+        "execute-executor",
+        "--addon",
+        "forge.addon.crm",
+        "--contract",
+        "crm.memory.knowledge_search.executor",
         "--worker",
         "<worker-id>",
         "--task",
@@ -12897,6 +13017,68 @@
             "title": "Execute runtime contract",
             "owner": "forge.addons.runtime",
             "evidence": "crm.memory.promotion.executor"
+          },
+          {
+            "id": "promote_result_to_workflow",
+            "title": "Promote result to workflow",
+            "owner": "forge.workflow.runtime",
+            "evidence": "artifact and event promotion"
+          },
+          {
+            "id": "refresh_operating_snapshot",
+            "title": "Refresh operating snapshot",
+            "owner": "forge.addon.crm",
+            "evidence": "crm.operating.snapshot.executor"
+          }
+        ],
+        "output_policy": {
+          "promote_result_to_workflow": true,
+          "browser_local_state_write": false,
+          "refresh_source": "forge_workflow_artifacts_and_events"
+        }
+      },
+      {
+        "action_id": "crm.search-knowledge-context",
+        "label": "Search knowledge context",
+        "surface_id": "crm.ai-workbench",
+        "contract_id": "crm.memory.knowledge_search.executor",
+        "required_permission": "crm.ai.recommend",
+        "selected_command": [
+          "forge",
+          "addons",
+          "execute-executor",
+          "--addon",
+          "forge.addon.crm",
+          "--contract",
+          "crm.memory.knowledge_search.executor",
+          "--worker",
+          "<worker-id>",
+          "--task",
+          "<task-ref>",
+          "--input",
+          "<json>",
+          "--context",
+          "<json>",
+          "--output",
+          "json"
+        ],
+        "permission_gate": {
+          "status": "requires_forge_permission",
+          "permission": "crm.ai.recommend",
+          "approval_owner": "forge_permission_policy"
+        },
+        "operation_plan": [
+          {
+            "id": "check_addon_permission",
+            "title": "Check Addon permission",
+            "owner": "forge.permissions",
+            "evidence": "crm.ai.recommend"
+          },
+          {
+            "id": "execute_runtime_contract",
+            "title": "Execute runtime contract",
+            "owner": "forge.addons.runtime",
+            "evidence": "crm.memory.knowledge_search.executor"
           },
           {
             "id": "promote_result_to_workflow",

@@ -2478,6 +2478,139 @@ export function buildMemoryPromotionCandidateResult(request) {
   };
 }
 
+function normalizeMemorySearchResult(result, index) {
+  const item = asObject(result);
+  const scope = String(item.scope || item.memory_scope || "project");
+  const summary = String(item.summary || item.snippet || item.text || "Forge memory result");
+  return {
+    id: item.id || item.memory_id || `memory-result-${index + 1}`,
+    scope,
+    source_path: item.source_path || item.path || item.file || null,
+    summary,
+    score: numberFrom(item.score ?? item.rank_score, 0),
+    audience: item.audience || "internal",
+    source_refs: asArray(item.source_refs ?? item.refs),
+    line_range: item.line_range || item.lines || null
+  };
+}
+
+export function buildKnowledgeSearchResult(request) {
+  const input = dispatchPayload(request);
+  const context = providedContext(request);
+  const tenantId = input.tenant_id || input.tenant_context?.tenant_id || input.tenant_context?.id || context.tenant || "default";
+  const organizationId = input.tenant_context?.organization_id || input.organization_id || "default-org";
+  const query = String(input.query || input.search_query || "crm operating context");
+  const policy = asObject(input.context_policy ?? input.memory_policy);
+  const workflowId = String(input.workflow_id || policy.workflow_id || dispatchEnvelope(request).workflow_id || "crm.ai.copilot.recommendation");
+  const taskRef = dispatchEnvelope(request).task_ref || `knowledge-search-${slug(tenantId, "tenant")}`;
+  const allowedScopes = asArray(policy.allowed_scopes ?? policy.scopes).length > 0
+    ? asArray(policy.allowed_scopes ?? policy.scopes).map((scope) => String(scope))
+    : ["organization", "project"];
+  const audience = String(policy.audience || "internal");
+  const maxResults = Math.max(1, numberFrom(policy.max_results, 5));
+  const purpose = String(policy.purpose || "crm_workflow_context");
+  const allResults = asArray(input.memory_results ?? input.results).map(normalizeMemorySearchResult);
+  const filteredResults = allResults
+    .filter((result) => allowedScopes.includes(result.scope))
+    .slice(0, maxResults);
+  const contextPackState = filteredResults.length > 0 ? "ready_for_workflow_context" : "rework_required";
+  const searchCommand = [
+    "forge memory search",
+    `--workflow ${workflowId}`,
+    `--query ${JSON.stringify(query)}`,
+    ...allowedScopes.map((scope) => `--scope ${scope}`),
+    `--audience ${audience}`,
+    `--organization ${organizationId}`,
+    "--output json"
+  ].join(" ");
+  const lineage = {
+    workflow_id: workflowId,
+    task_ref: taskRef,
+    source_contract: "crm.memory.knowledge_search.executor",
+    tenant_id: tenantId,
+    core_search_owner: "forge.memory.search"
+  };
+
+  return {
+    schema_version: "forge.addon_executor_result.v1",
+    status: "completed",
+    task_ref: taskRef,
+    summary: `Packaged ${filteredResults.length} Forge memory result(s) for CRM workflow context`,
+    outputs: {
+      tenant_id: tenantId,
+      organization_id: organizationId,
+      workflow_id: workflowId,
+      query,
+      result_count: filteredResults.length,
+      allowed_scopes: allowedScopes,
+      audience,
+      purpose,
+      context_pack_state: contextPackState,
+      core_search_owner: "forge.memory.search",
+      search_command: searchCommand,
+      local_vector_index_used: false,
+      mutates_crm_state: false,
+      forge_event_sourced: true
+    },
+    artifacts: [
+      {
+        kind: "crm_memory_search_report",
+        id: `crm-memory-search-${slug(tenantId, "tenant")}-${slug(purpose, "purpose")}`,
+        title: `CRM memory search report for ${tenantId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          organization_id: organizationId,
+          query,
+          allowed_scopes: allowedScopes,
+          audience,
+          result_count: filteredResults.length,
+          results: filteredResults,
+          core_search_owner: "forge.memory.search",
+          local_vector_index_used: false,
+          lineage
+        }
+      },
+      {
+        kind: "crm_knowledge_context_pack",
+        id: `crm-knowledge-context-${slug(tenantId, "tenant")}-${slug(purpose, "purpose")}`,
+        title: `CRM knowledge context pack for ${tenantId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          purpose,
+          query,
+          context_pack_state: contextPackState,
+          summaries: filteredResults.map((result) => result.summary),
+          source_refs: unique(filteredResults.flatMap((result) => result.source_refs)),
+          memory_result_ids: filteredResults.map((result) => result.id),
+          use_policy: "inject as bounded Forge workflow context, not as CRM-local memory state",
+          local_vector_index_allowed: false,
+          lineage
+        }
+      }
+    ],
+    events: [
+      {
+        kind: "crm.memory.search_requested",
+        tenant_id: tenantId,
+        workflow_id: workflowId,
+        query,
+        scopes: allowedScopes,
+        core_search_owner: "forge.memory.search"
+      },
+      {
+        kind: "crm.memory.context_packaged",
+        tenant_id: tenantId,
+        workflow_id: workflowId,
+        result_count: filteredResults.length,
+        context_pack_state: contextPackState
+      }
+    ],
+    context_tenant: context.tenant || tenantId
+  };
+}
+
 function metricValue(metrics, name, fallback = 0) {
   const found = asArray(metrics).find((metric) => String(metric.name || metric.id) === name);
   return numberFrom(found?.value, fallback);
@@ -3968,6 +4101,14 @@ const READINESS_OUTCOME_DOMAINS = [
     workflow_ids: ["crm.executive.reporting"],
     required_artifacts: ["crm_executive_summary", "crm_kpi_dashboard", "crm_business_review_report"],
     required_events: ["crm.executive.summary_generated", "crm.kpi.dashboard_generated", "crm.risk.reviewed"]
+  },
+  {
+    id: "knowledge_context_search",
+    title: "Knowledge context search",
+    deliverable: "knowledge context search",
+    workflow_ids: ["crm.ai.copilot.recommendation"],
+    required_artifacts: ["crm_memory_search_report", "crm_knowledge_context_pack"],
+    required_events: ["crm.memory.search_requested", "crm.memory.context_packaged"]
   },
   {
     id: "user_experience",
@@ -8156,6 +8297,8 @@ export function executeCrmRuntimeRequest(request) {
       return buildDesignSystemResult(request);
     case "forge_crm.prepare_memory_promotion":
       return buildMemoryPromotionCandidateResult(request);
+    case "forge_crm.search_knowledge_context":
+      return buildKnowledgeSearchResult(request);
     case "forge_crm.evolve_workflow":
       return buildWorkflowEvolutionResult(request);
     case "forge_crm.design_workflow_automation":

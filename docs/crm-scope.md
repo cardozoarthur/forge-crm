@@ -62,6 +62,7 @@
 - Document generation
 - Executive summaries
 - Risk analysis
+- Knowledge context search
 - Next-step recommendations
 - Workflow-based automations
 - Specialized copilots by area
