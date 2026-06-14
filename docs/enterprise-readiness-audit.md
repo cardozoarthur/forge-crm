@@ -6,12 +6,12 @@ Repository: https://github.com/cardozoarthur/forge-crm.git
 
 ## Summary
 
-- Workflows: 39
-- Runtime contracts: 51
-- Artifact types: 119
-- Event types: 49
+- Workflows: 40
+- Runtime contracts: 52
+- Artifact types: 122
+- Event types: 50
 - Views: 12
-- User-facing deliverables ready: 17/17
+- User-facing deliverables ready: 18/18
 - Missing objective items: 0
 - Complete scope: true
 
@@ -20,9 +20,9 @@ Repository: https://github.com/cardozoarthur/forge-crm.git
 - Addon: forge.addon.crm (enabled)
 - Core dependency: forge.core.kernel
 - Capabilities: 9
-- Runtime contracts: 51
-- Artifact types: 119
-- Event types: 49
+- Runtime contracts: 52
+- Artifact types: 122
+- Event types: 50
 - Views: 12
 - Public repository declared: true
 
@@ -36,7 +36,7 @@ Repository: https://github.com/cardozoarthur/forge-crm.git
 ## Objective Domains
 
 - relationship: complete; required=8; missing=none
-- commercial: complete; required=9; missing=none
+- commercial: complete; required=10; missing=none
 - support: complete; required=10; missing=none
 - marketing: complete; required=6; missing=none
 - operations: complete; required=11; missing=none
@@ -47,6 +47,7 @@ Repository: https://github.com/cardozoarthur/forge-crm.git
 
 - Relationship workspace: ready; workflows=crm.lead.lifecycle, crm.opportunity.pipeline, crm.relationship.profile_enrichment; surface=crm.relationship-graph
 - Commercial command center: ready; workflows=crm.account.management, crm.contract.signature, crm.customer_success.plan, crm.followup.forecast, crm.opportunity.pipeline, crm.proposal.approval; surface=crm.commercial-command
+- Sales cycle orchestration: ready; workflows=crm.sales.cycle; surface=crm.commercial-command
 - Support inbox: ready; workflows=crm.omnichannel.center, crm.omnichannel.channel_intake, crm.ticket.sla; surface=crm.support-queue
 - Omnichannel conversation threads: ready; workflows=crm.omnichannel.center, crm.omnichannel.message, crm.ticket.sla; surface=crm.support-queue
 - Marketing automation: ready; workflows=crm.campaign.lifecycle, crm.lead.nurture, crm.marketing.landing_page, crm.marketing.segment_builder; surface=crm.marketing-calendar

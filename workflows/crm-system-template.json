@@ -46,12 +46,14 @@
       "id": "commercial",
       "title": "Commercial",
       "workflow_extensions": [
+        "crm_sales_cycle_orchestration",
         "crm_proposal_generation",
         "crm_contract_lifecycle",
         "crm_followup_sequence",
         "crm_forecast_review"
       ],
       "objects": [
+        "sales_cycle",
         "proposal",
         "contract",
         "signature",

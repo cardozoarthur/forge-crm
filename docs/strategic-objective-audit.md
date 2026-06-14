@@ -6,12 +6,12 @@ Status: covered_by_current_addon_evidence
 ## Summary
 
 - Sections: 9
-- Requirements: 52
+- Requirements: 53
 - Missing requirements: 0
-- Workflows: 39
-- Runtime contracts: 51
-- Artifact types: 119
-- Event types: 49
+- Workflows: 40
+- Runtime contracts: 52
+- Artifact types: 122
+- Event types: 50
 - Views: 12
 
 ## Sections
@@ -44,6 +44,7 @@ Missing: none
 Commercial: covered_by_current_addon_evidence
 Missing: none
 
+- sales_cycle: covered_by_forge_evidence; workflows=crm.sales.cycle; contracts=crm.commercial.sales_cycle.executor
 - proposals: covered_by_forge_evidence; workflows=crm.proposal.approval; contracts=crm.document.validator, crm.proposal.generator.executor
 - contracts: covered_by_forge_evidence; workflows=crm.contract.signature; contracts=crm.commercial.contract_signature.executor, crm.commercial.goal_commission.executor, crm.document.generator.executor, crm.document.validator
 - signatures: covered_by_forge_evidence; workflows=crm.contract.signature; contracts=crm.commercial.contract_signature.executor, crm.commercial.goal_commission.executor, crm.document.generator.executor, crm.document.validator

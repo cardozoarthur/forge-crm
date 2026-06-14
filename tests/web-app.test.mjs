@@ -118,6 +118,7 @@ test("web app snapshot provides Forge command actions instead of local automatio
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.relationship.timeline.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.relationship.profile_enrichment.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.pipeline.stage_move.executor"));
+  assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.commercial.sales_cycle.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.commercial.followup_forecast.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.commercial.forecast_review.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.commercial.goal_commission.executor"));
@@ -713,15 +714,16 @@ test("web app snapshot exposes operating readiness workbench for company operati
   assert.equal(workbench.main_flow_dependency_external, false);
 
   assert.equal(workbench.domain_coverage.complete, true);
-  assert.equal(workbench.domain_coverage.domains.length, 17);
+  assert.equal(workbench.domain_coverage.domains.length, 18);
   assert.ok(workbench.domain_coverage.domains.every((domain) => domain.ready === true));
   assert.ok(workbench.domain_coverage.domains.every((domain) => domain.workflow_ids.length > 0));
   assert.ok(workbench.domain_coverage.domains.every((domain) => domain.artifact_evidence.length > 0));
   assert.ok(workbench.domain_coverage.domains.every((domain) => domain.event_evidence.length > 0));
   assert.ok(workbench.domain_coverage.domains.every((domain) => domain.runtime_contract_evidence.length > 0));
 
-  assert.equal(workbench.user_outcomes.length, 17);
+  assert.equal(workbench.user_outcomes.length, 18);
   assert.ok(workbench.user_outcomes.some((outcome) => outcome.deliverable === "commercial command center"));
+  assert.ok(workbench.user_outcomes.some((outcome) => outcome.deliverable === "sales cycle orchestration"));
   assert.ok(workbench.user_outcomes.some((outcome) => outcome.deliverable === "support inbox"));
   assert.ok(workbench.user_outcomes.some((outcome) => outcome.deliverable === "omnichannel conversation threads"));
   assert.ok(workbench.user_outcomes.some((outcome) => outcome.deliverable === "enterprise customer journey"));

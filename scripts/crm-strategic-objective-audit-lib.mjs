@@ -19,6 +19,7 @@ const DOMAIN_REQUIREMENTS = {
     ["unified_timeline", "Unified timeline", ["crm.lead.lifecycle", "crm.relationship.profile_enrichment"]]
   ],
   commercial: [
+    ["sales_cycle", "Sales cycle", ["crm.sales.cycle"]],
     ["proposals", "Proposals", ["crm.proposal.approval"]],
     ["contracts", "Contracts", ["crm.contract.signature"]],
     ["signatures", "Signatures", ["crm.contract.signature"]],

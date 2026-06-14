@@ -3,6 +3,7 @@ import { buildWorkflowFactoryBlueprint } from "./crm-factory-blueprint-lib.mjs";
 const REQUIRED_SCOPE = {
   relationship: ["lead", "contact", "company", "opportunity", "pipeline_kanban", "multiple_funnels", "complete_history", "unified_timeline"],
   commercial: [
+    "sales_cycle",
     "proposal",
     "contract",
     "signature",
@@ -210,6 +211,40 @@ const WORKFLOWS = [
     permissions: ["crm.document.generate"],
     views: ["crm.document-queue"],
     validation_gates: ["artifact lineage present", "external delivery blocked until approval"]
+  },
+  {
+    id: "crm.sales.cycle",
+    title: "Sales cycle orchestration",
+    domain: "commercial",
+    workflow_extension_id: "crm_sales_cycle_orchestration",
+    object_types: ["sales_cycle", "lead", "opportunity", "proposal", "contract", "follow_up", "forecast"],
+    states: ["lead_qualified", "opportunity_active", "proposal_ready", "contract_signature_ready", "closed_won", "rework_required"],
+    transitions: [
+      ["lead_qualified", "opportunity_active", "qualified lead evidence attached"],
+      ["opportunity_active", "proposal_ready", "pipeline stage and offer evidence approved"],
+      ["proposal_ready", "contract_signature_ready", "proposal artifact approved for signature workflow"],
+      ["contract_signature_ready", "closed_won", "contract signature and follow-up evidence promoted"],
+      ["proposal_ready", "rework_required", "missing proposal, forecast or approval evidence"],
+      ["rework_required", "opportunity_active", "sales owner attaches rework evidence"]
+    ],
+    runtime_contracts: ["crm.commercial.sales_cycle.executor"],
+    depends_on_workflows: [
+      "crm.lead.lifecycle",
+      "crm.opportunity.pipeline",
+      "crm.proposal.approval",
+      "crm.contract.signature",
+      "crm.followup.forecast"
+    ],
+    artifacts: ["crm_sales_cycle", "crm_sales_activity_plan", "crm_sales_operating_report"],
+    events: ["crm.sales.cycle_planned", "crm.sales.activity_planned", "crm.sales.stage_ready"],
+    memory_scopes: ["organization", "project"],
+    permissions: ["crm.workflow.mutate", "crm.observability.inspect"],
+    views: ["crm.commercial-command", "crm.pipeline-kanban"],
+    validation_gates: [
+      "sales cycle stage progression requires Forge workflow evidence",
+      "lead, opportunity, proposal, contract and follow-up evidence stay in Forge artifacts",
+      "sales cycle does not persist CRM state outside Forge"
+    ]
   },
   {
     id: "crm.contract.signature",

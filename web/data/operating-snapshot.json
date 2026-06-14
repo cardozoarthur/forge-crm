@@ -23,11 +23,11 @@
     "external_delivery_requires_approval": true
   },
   "metrics": {
-    "workflow_count": 39,
+    "workflow_count": 40,
     "business_module_count": 7,
     "surface_count": 10,
-    "artifact_type_count": 115,
-    "event_type_count": 130,
+    "artifact_type_count": 118,
+    "event_type_count": 133,
     "complete_scope": true
   },
   "surfaces": [
@@ -309,7 +309,8 @@
       "permission": "crm.workflow.mutate",
       "state_source": "forge_workflow_artifacts_and_events",
       "workflow_ids": [
-        "crm.opportunity.pipeline"
+        "crm.opportunity.pipeline",
+        "crm.sales.cycle"
       ],
       "lanes": [
         "research",
@@ -317,18 +318,30 @@
         "proposal",
         "negotiation",
         "won",
-        "lost"
+        "lost",
+        "lead_qualified",
+        "opportunity_active",
+        "proposal_ready",
+        "contract_signature_ready",
+        "closed_won",
+        "rework_required"
       ],
       "artifact_types": [
         "crm_forecast_report",
         "crm_pipeline_board",
         "crm_report",
+        "crm_sales_activity_plan",
+        "crm_sales_cycle",
+        "crm_sales_operating_report",
         "crm_stage_change",
         "crm_timeline_snapshot"
       ],
       "event_types": [
         "crm.forecast.updated",
-        "crm.opportunity.stage_changed"
+        "crm.opportunity.stage_changed",
+        "crm.sales.activity_planned",
+        "crm.sales.cycle_planned",
+        "crm.sales.stage_ready"
       ],
       "mutation_requires_forge": true
     },
@@ -342,6 +355,7 @@
       "state_source": "forge_workflow_artifacts_and_events",
       "workflow_ids": [
         "crm.opportunity.pipeline",
+        "crm.sales.cycle",
         "crm.followup.forecast",
         "crm.forecast.review",
         "crm.goal.commission",
@@ -359,6 +373,12 @@
         "negotiation",
         "won",
         "lost",
+        "lead_qualified",
+        "opportunity_active",
+        "proposal_ready",
+        "contract_signature_ready",
+        "closed_won",
+        "rework_required",
         "scheduled",
         "waiting_due_date",
         "sent",
@@ -410,8 +430,7 @@
         "account",
         "support",
         "handoff",
-        "operating_acceptance",
-        "rework_required"
+        "operating_acceptance"
       ],
       "artifact_types": [
         "crm_account_plan",
@@ -443,6 +462,9 @@
         "crm_renewal_risk_report",
         "crm_report",
         "crm_risk_analysis",
+        "crm_sales_activity_plan",
+        "crm_sales_cycle",
+        "crm_sales_operating_report",
         "crm_stage_change",
         "crm_task_plan",
         "crm_timeline_snapshot"
@@ -473,6 +495,9 @@
         "crm.opportunity.stage_changed",
         "crm.project.accepted",
         "crm.project.handoff_requested",
+        "crm.sales.activity_planned",
+        "crm.sales.cycle_planned",
+        "crm.sales.stage_ready",
         "crm.success.adoption_reviewed",
         "crm.success.expansion_playbook_created",
         "crm.success.plan_created",
@@ -1105,6 +1130,7 @@
         "crm.lead.lifecycle",
         "crm.relationship.profile_enrichment",
         "crm.opportunity.pipeline",
+        "crm.sales.cycle",
         "crm.marketing.segment_builder"
       ],
       "artifact_types": [
@@ -1118,6 +1144,9 @@
         "crm_relationship_lifecycle",
         "crm_relationship_profile",
         "crm_report",
+        "crm_sales_activity_plan",
+        "crm_sales_cycle",
+        "crm_sales_operating_report",
         "crm_segment",
         "crm_segment_audience",
         "crm_segment_definition",
@@ -1135,6 +1164,9 @@
         "crm.relationship.lifecycle_packaged",
         "crm.relationship.profile_updated",
         "crm.relationship.recorded",
+        "crm.sales.activity_planned",
+        "crm.sales.cycle_planned",
+        "crm.sales.stage_ready",
         "crm.segment.audience_selected",
         "crm.segment.defined",
         "crm.segment.ready_for_campaign"
@@ -1145,8 +1177,11 @@
         "enrichment sources are attached as Forge artifacts",
         "forecast impact recorded",
         "lead conversion requires Forge workflow approval before CRM state mutation",
+        "lead, opportunity, proposal, contract and follow-up evidence stay in Forge artifacts",
         "profile changes require Forge workflow approval before promotion",
         "relationship signals cite source lineage",
+        "sales cycle does not persist CRM state outside Forge",
+        "sales cycle stage progression requires Forge workflow evidence",
         "segment definition cites Forge relationship and lead evidence",
         "segment membership changes require Forge workflow approval before campaign use",
         "stage movement is event-backed",
@@ -1159,6 +1194,7 @@
       "workflow_ids": [
         "crm.opportunity.pipeline",
         "crm.proposal.approval",
+        "crm.sales.cycle",
         "crm.contract.signature",
         "crm.followup.forecast",
         "crm.forecast.review",
@@ -1194,6 +1230,9 @@
         "crm_renewal_risk_report",
         "crm_report",
         "crm_risk_analysis",
+        "crm_sales_activity_plan",
+        "crm_sales_cycle",
+        "crm_sales_operating_report",
         "crm_signature_receipt",
         "crm_stage_change",
         "crm_task_plan",
@@ -1224,6 +1263,9 @@
         "crm.project.accepted",
         "crm.project.handoff_requested",
         "crm.proposal.generated",
+        "crm.sales.activity_planned",
+        "crm.sales.cycle_planned",
+        "crm.sales.stage_ready",
         "crm.success.adoption_reviewed",
         "crm.success.expansion_playbook_created",
         "crm.success.plan_created",
@@ -1246,10 +1288,13 @@
         "forecast review does not send external follow-ups",
         "forecast snapshot lineage present",
         "goal attainment and commission settlement require revenue event lineage",
+        "lead, opportunity, proposal, contract and follow-up evidence stay in Forge artifacts",
         "owner visible",
         "renewal risk is reviewed before success plan promotion",
         "renewal state explicit",
         "risk review owner visible",
+        "sales cycle does not persist CRM state outside Forge",
+        "sales cycle stage progression requires Forge workflow evidence",
         "scheduled wait visible",
         "signature receipt attached",
         "stage movement is event-backed",
@@ -1945,6 +1990,43 @@
         "validation_gates": [
           "artifact lineage present",
           "external delivery blocked until approval"
+        ]
+      },
+      {
+        "id": "crm.sales.cycle",
+        "title": "Sales cycle orchestration",
+        "domain": "commercial",
+        "state_count": 6,
+        "states": [
+          "lead_qualified",
+          "opportunity_active",
+          "proposal_ready",
+          "contract_signature_ready",
+          "closed_won",
+          "rework_required"
+        ],
+        "wait_states": [],
+        "runtime_contracts": [
+          "crm.commercial.sales_cycle.executor"
+        ],
+        "artifact_types": [
+          "crm_sales_cycle",
+          "crm_sales_activity_plan",
+          "crm_sales_operating_report"
+        ],
+        "event_types": [
+          "crm.sales.cycle_planned",
+          "crm.sales.activity_planned",
+          "crm.sales.stage_ready"
+        ],
+        "surface_ids": [
+          "crm.commercial-command",
+          "crm.pipeline-kanban"
+        ],
+        "validation_gates": [
+          "sales cycle stage progression requires Forge workflow evidence",
+          "lead, opportunity, proposal, contract and follow-up evidence stay in Forge artifacts",
+          "sales cycle does not persist CRM state outside Forge"
         ]
       },
       {
@@ -4059,7 +4141,8 @@
         "state_source": "forge_workflow_artifacts_and_events",
         "mutation_requires_forge": true,
         "workflow_ids": [
-          "crm.opportunity.pipeline"
+          "crm.opportunity.pipeline",
+          "crm.sales.cycle"
         ],
         "action_ids": [
           "crm.move-pipeline-stage",
@@ -4187,6 +4270,7 @@
         "mutation_requires_forge": true,
         "workflow_ids": [
           "crm.opportunity.pipeline",
+          "crm.sales.cycle",
           "crm.followup.forecast",
           "crm.forecast.review",
           "crm.goal.commission",
@@ -7680,6 +7764,39 @@
         "reuse_policy": "copy_as_forge_workflow_module_template"
       },
       {
+        "id": "module.crm_sales_cycle",
+        "title": "Sales cycle orchestration",
+        "domain": "commercial",
+        "workflow_ids": [
+          "crm.sales.cycle"
+        ],
+        "workflow_extension_id": "crm_sales_cycle_orchestration",
+        "runtime_contracts": [
+          "crm.commercial.sales_cycle.executor"
+        ],
+        "artifact_types": [
+          "crm_sales_cycle",
+          "crm_sales_activity_plan",
+          "crm_sales_operating_report"
+        ],
+        "event_types": [
+          "crm.sales.cycle_planned",
+          "crm.sales.activity_planned",
+          "crm.sales.stage_ready"
+        ],
+        "surface_ids": [
+          "crm.commercial-command",
+          "crm.pipeline-kanban"
+        ],
+        "validation_gates": [
+          "sales cycle stage progression requires Forge workflow evidence",
+          "lead, opportunity, proposal, contract and follow-up evidence stay in Forge artifacts",
+          "sales cycle does not persist CRM state outside Forge"
+        ],
+        "state_owner": "forge_workflow_runtime",
+        "reuse_policy": "copy_as_forge_workflow_module_template"
+      },
+      {
         "id": "module.crm_contract_signature",
         "title": "Contract and signature lifecycle",
         "domain": "commercial",
@@ -9042,7 +9159,7 @@
     ],
     "portability_report": {
       "state": "ready_for_reuse",
-      "module_count": 39,
+      "module_count": 40,
       "missing_runtime_contract_modules": [],
       "target_repository_for_core_gaps": "forge-core",
       "local_state_allowed": false
@@ -9064,7 +9181,7 @@
     "contract_id": "crm.strategic.objective_audit.executor",
     "audit_status": "covered_by_current_addon_evidence",
     "section_count": 9,
-    "requirement_count": 52,
+    "requirement_count": 53,
     "missing_requirement_count": 0,
     "section_coverage": [
       {
@@ -9085,7 +9202,7 @@
         "section_id": "commercial",
         "title": "Commercial",
         "status": "covered_by_current_addon_evidence",
-        "requirement_count": 8,
+        "requirement_count": 9,
         "missing_requirements": 0
       },
       {
@@ -10163,6 +10280,33 @@
         "forge.addon.crm",
         "--contract",
         "crm.pipeline.stage_move.executor",
+        "--worker",
+        "<worker-id>",
+        "--task",
+        "<task-ref>",
+        "--input",
+        "<json>",
+        "--context",
+        "<json>",
+        "--output",
+        "json"
+      ]
+    },
+    {
+      "id": "crm.run-sales-cycle",
+      "label": "Run sales cycle",
+      "surface_id": "crm.commercial-command",
+      "contract_id": "crm.commercial.sales_cycle.executor",
+      "requires_permission": "crm.workflow.mutate",
+      "mutates_workflow": true,
+      "command_template": [
+        "forge",
+        "addons",
+        "execute-executor",
+        "--addon",
+        "forge.addon.crm",
+        "--contract",
+        "crm.commercial.sales_cycle.executor",
         "--worker",
         "<worker-id>",
         "--task",
@@ -12141,6 +12285,68 @@
             "title": "Execute runtime contract",
             "owner": "forge.addons.runtime",
             "evidence": "crm.pipeline.stage_move.executor"
+          },
+          {
+            "id": "promote_result_to_workflow",
+            "title": "Promote result to workflow",
+            "owner": "forge.workflow.runtime",
+            "evidence": "artifact and event promotion"
+          },
+          {
+            "id": "refresh_operating_snapshot",
+            "title": "Refresh operating snapshot",
+            "owner": "forge.addon.crm",
+            "evidence": "crm.operating.snapshot.executor"
+          }
+        ],
+        "output_policy": {
+          "promote_result_to_workflow": true,
+          "browser_local_state_write": false,
+          "refresh_source": "forge_workflow_artifacts_and_events"
+        }
+      },
+      {
+        "action_id": "crm.run-sales-cycle",
+        "label": "Run sales cycle",
+        "surface_id": "crm.commercial-command",
+        "contract_id": "crm.commercial.sales_cycle.executor",
+        "required_permission": "crm.workflow.mutate",
+        "selected_command": [
+          "forge",
+          "addons",
+          "execute-executor",
+          "--addon",
+          "forge.addon.crm",
+          "--contract",
+          "crm.commercial.sales_cycle.executor",
+          "--worker",
+          "<worker-id>",
+          "--task",
+          "<task-ref>",
+          "--input",
+          "<json>",
+          "--context",
+          "<json>",
+          "--output",
+          "json"
+        ],
+        "permission_gate": {
+          "status": "requires_forge_permission",
+          "permission": "crm.workflow.mutate",
+          "approval_owner": "forge_permission_policy"
+        },
+        "operation_plan": [
+          {
+            "id": "check_addon_permission",
+            "title": "Check Addon permission",
+            "owner": "forge.permissions",
+            "evidence": "crm.workflow.mutate"
+          },
+          {
+            "id": "execute_runtime_contract",
+            "title": "Execute runtime contract",
+            "owner": "forge.addons.runtime",
+            "evidence": "crm.commercial.sales_cycle.executor"
           },
           {
             "id": "promote_result_to_workflow",

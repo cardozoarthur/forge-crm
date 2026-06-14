@@ -108,6 +108,39 @@ test("workflow pack includes an explicit relationship lifecycle executor", () =>
   assert.ok(workflow.validation_gates.includes("lead conversion requires Forge workflow approval before CRM state mutation"));
 });
 
+test("workflow pack includes sales cycle orchestration as its own Forge workflow", () => {
+  const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
+  const workflow = pack.workflows.find((candidate) => candidate.id === "crm.sales.cycle");
+
+  assert.ok(workflow);
+  assert.equal(workflow.domain, "commercial");
+  assert.equal(workflow.workflow_extension_id, "crm_sales_cycle_orchestration");
+  assert.ok(workflow.object_types.includes("sales_cycle"));
+  assert.ok(workflow.runtime_contracts.includes("crm.commercial.sales_cycle.executor"));
+
+  for (const dependency of [
+    "crm.lead.lifecycle",
+    "crm.opportunity.pipeline",
+    "crm.proposal.approval",
+    "crm.contract.signature",
+    "crm.followup.forecast"
+  ]) {
+    assert.ok(workflow.depends_on_workflows.includes(dependency), `missing sales cycle dependency ${dependency}`);
+  }
+
+  for (const artifact of ["crm_sales_cycle", "crm_sales_activity_plan", "crm_sales_operating_report"]) {
+    assert.ok(workflow.artifacts.includes(artifact), `missing sales cycle artifact ${artifact}`);
+    assert.ok(pack.indexes.artifact_types.includes(artifact), `missing indexed sales cycle artifact ${artifact}`);
+  }
+
+  for (const event of ["crm.sales.cycle_planned", "crm.sales.activity_planned", "crm.sales.stage_ready"]) {
+    assert.ok(workflow.events.includes(event), `missing sales cycle event ${event}`);
+  }
+
+  assert.ok(workflow.validation_gates.includes("sales cycle stage progression requires Forge workflow evidence"));
+  assert.ok(pack.indexes.runtime_contracts.includes("crm.commercial.sales_cycle.executor"));
+});
+
 test("workflow pack includes a Forge-owned operating model for business surfaces", () => {
   const pack = buildCrmWorkflowPack({ tenant_id: "acme" });
   const model = pack.operating_model;

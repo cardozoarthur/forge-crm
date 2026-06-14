@@ -186,6 +186,33 @@ test("manifest exposes strategic objective audit as a Forge-owned executor", () 
   assert.ok(eventTypes.has("crm.requirement"));
 });
 
+test("manifest exposes CRM sales cycle orchestration as a Forge-owned executor", () => {
+  const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.commercial.sales_cycle.executor");
+  assert.ok(contract);
+  assert.equal(contract.contract_type, "executor");
+  assert.equal(contract.capability_id, "crm_commercial_operations");
+  assert.equal(contract.workflow_extension_id, "crm_sales_cycle_orchestration");
+  assert.equal(contract.entrypoint, "forge_crm.run_sales_cycle");
+  assert.deepEqual(contract.permissions, ["crm.workflow.mutate", "crm.observability.inspect"]);
+
+  for (const input of ["tenant_context", "sales_cycle", "stage_evidence", "sales_policy"]) {
+    assert.ok(contract.inputs.includes(input), `missing sales cycle input ${input}`);
+  }
+  for (const output of ["crm_sales_cycle", "crm_sales_activity_plan", "crm_sales_operating_report"]) {
+    assert.ok(contract.outputs.includes(output), `missing sales cycle output ${output}`);
+  }
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("does not persist CRM state outside Forge")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("lead, opportunity, proposal, contract and follow-up")));
+
+  const artifactTypes = new Set(manifest.artifact_types.map((artifact) => artifact.id));
+  for (const artifactType of ["crm_sales_cycle", "crm_sales_activity_plan", "crm_sales_operating_report"]) {
+    assert.ok(artifactTypes.has(artifactType), `missing artifact type ${artifactType}`);
+  }
+
+  const eventTypes = new Set(manifest.event_types.map((event) => event.id));
+  assert.ok(eventTypes.has("crm.sales"));
+});
+
 test("manifest exposes CRM relationship timeline as a Forge-owned executor", () => {
   const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.relationship.timeline.executor");
   assert.ok(contract);
@@ -1416,6 +1443,7 @@ test("manifest exposes a Forge TUI operational cockpit with permission-gated CRM
     "crm.tui.refresh-operating-snapshot",
     "crm.tui.classify-lead",
     "crm.tui.enrich-relationship-profile",
+    "crm.tui.run-sales-cycle",
     "crm.tui.review-followup-forecast",
     "crm.tui.review-forecast",
     "crm.tui.normalize-channel-intake",
@@ -1458,6 +1486,17 @@ test("manifest exposes a Forge TUI operational cockpit with permission-gated CRM
   assert.ok(formCapture.keywords.includes("lead"));
   assert.ok(formCapture.payload_schema.includes("form_submission"));
   assert.ok(formCapture.payload_schema.includes("consent_policy"));
+
+  const salesCycle = cockpit.actions.find((action) => action.id === "crm.tui.run-sales-cycle");
+  assert.ok(salesCycle);
+  assert.equal(salesCycle.permission, "crm.workflow.mutate");
+  assert.equal(salesCycle.mutates_workflow, true);
+  assert.equal(salesCycle.requires_confirmation, true);
+  assert.ok(salesCycle.command_template.includes("crm.commercial.sales_cycle.executor"));
+  assert.ok(salesCycle.keywords.includes("sales"));
+  assert.ok(salesCycle.keywords.includes("cycle"));
+  assert.ok(salesCycle.payload_schema.includes("sales_cycle"));
+  assert.ok(salesCycle.payload_schema.includes("stage_evidence"));
 
   const leadClassifier = cockpit.actions.find((action) => action.id === "crm.tui.classify-lead");
   assert.ok(leadClassifier);
@@ -1573,6 +1612,7 @@ test("CRM scope is workflow-backed across core business areas", () => {
     "crm_entity_lifecycle",
     "crm_relationship_profile_enrichment",
     "crm_pipeline_kanban",
+    "crm_sales_cycle_orchestration",
     "crm_proposal_generation",
     "crm_contract_lifecycle",
     "crm_ticket_sla",

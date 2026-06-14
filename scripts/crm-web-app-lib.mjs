@@ -2559,6 +2559,15 @@ function actions() {
       command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.pipeline.stage_move.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
     },
     {
+      id: "crm.run-sales-cycle",
+      label: "Run sales cycle",
+      surface_id: "crm.commercial-command",
+      contract_id: "crm.commercial.sales_cycle.executor",
+      requires_permission: "crm.workflow.mutate",
+      mutates_workflow: true,
+      command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.commercial.sales_cycle.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
+    },
+    {
       id: "crm.generate-proposal",
       label: "Generate proposal",
       surface_id: "crm.document-queue",

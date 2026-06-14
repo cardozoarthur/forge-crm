@@ -288,6 +288,7 @@
         "observability"
       ],
       "workflow_extensions": [
+        "crm_sales_cycle_orchestration",
         "crm_proposal_generation",
         "crm_contract_lifecycle",
         "crm_followup_sequence",
@@ -297,6 +298,7 @@
         "crm_customer_success_plan"
       ],
       "deliverables": [
+        "Sales cycle workflow",
         "Proposal workflow",
         "Contract workflow",
         "Forecast report",
@@ -305,6 +307,9 @@
         "Customer success plan"
       ],
       "artifact_types": [
+        "crm_sales_cycle",
+        "crm_sales_activity_plan",
+        "crm_sales_operating_report",
         "crm_proposal",
         "crm_contract",
         "crm_followup_plan",
@@ -693,6 +698,11 @@
       "id": "crm_pipeline_kanban",
       "kind": "visual_workflow",
       "description": "Render opportunity stages and movement as Forge workflow state transitions."
+    },
+    {
+      "id": "crm_sales_cycle_orchestration",
+      "kind": "commercial_workflow",
+      "description": "Orchestrate lead, opportunity, proposal, contract and follow-up evidence as a Forge-owned sales cycle."
     },
     {
       "id": "crm_proposal_generation",
@@ -1676,6 +1686,35 @@
       "constraints": [
         "proposal artifact must be attached to a workflow",
         "approval is required before external delivery"
+      ]
+    },
+    {
+      "id": "crm.commercial.sales_cycle.executor",
+      "title": "CRM sales cycle orchestration",
+      "contract_type": "executor",
+      "capability_id": "crm_commercial_operations",
+      "workflow_extension_id": "crm_sales_cycle_orchestration",
+      "runtime": "external_api",
+      "entrypoint": "forge_crm.run_sales_cycle",
+      "inputs": [
+        "tenant_context",
+        "sales_cycle",
+        "stage_evidence",
+        "sales_policy"
+      ],
+      "outputs": [
+        "crm_sales_cycle",
+        "crm_sales_activity_plan",
+        "crm_sales_operating_report"
+      ],
+      "permissions": [
+        "crm.workflow.mutate",
+        "crm.observability.inspect"
+      ],
+      "constraints": [
+        "sales cycle executor does not persist CRM state outside Forge",
+        "lead, opportunity, proposal, contract and follow-up evidence must remain Forge workflow artifacts or events",
+        "stage progression requires Forge workflow evidence before promotion"
       ]
     },
     {
@@ -2964,6 +3003,51 @@
             "pipeline_move",
             "board_context",
             "forecast_policy",
+            "tenant_context"
+          ]
+        },
+        {
+          "id": "crm.tui.run-sales-cycle",
+          "label": "Run sales cycle",
+          "description": "Orchestrate lead, opportunity, proposal, contract and follow-up evidence through Forge.",
+          "palette_group": "CRM",
+          "source_panel": "crm.operational-cockpit",
+          "type": "command",
+          "target": "forge addons execute-executor",
+          "method": "CLI",
+          "permission": "crm.workflow.mutate",
+          "requires_confirmation": true,
+          "risk_level": "high",
+          "mutates_workflow": true,
+          "command_template": [
+            "addons",
+            "execute-executor",
+            "--addon",
+            "forge.addon.crm",
+            "--contract",
+            "crm.commercial.sales_cycle.executor",
+            "--worker",
+            "<worker-id>",
+            "--task",
+            "<task-ref>",
+            "--input",
+            "<json>",
+            "--context",
+            "<json>",
+            "--output",
+            "json"
+          ],
+          "keywords": [
+            "crm",
+            "sales",
+            "cycle",
+            "proposal",
+            "contract"
+          ],
+          "payload_schema": [
+            "sales_cycle",
+            "stage_evidence",
+            "sales_policy",
             "tenant_context"
           ]
         },
@@ -5328,6 +5412,21 @@
       "generic_kind": "artifact"
     },
     {
+      "id": "crm_sales_cycle",
+      "title": "CRM sales cycle",
+      "generic_kind": "artifact"
+    },
+    {
+      "id": "crm_sales_activity_plan",
+      "title": "CRM sales activity plan",
+      "generic_kind": "artifact"
+    },
+    {
+      "id": "crm_sales_operating_report",
+      "title": "CRM sales operating report",
+      "generic_kind": "report"
+    },
+    {
       "id": "crm_proposal",
       "title": "CRM proposal",
       "generic_kind": "document"
@@ -5852,6 +5951,11 @@
     {
       "id": "crm.operating",
       "title": "CRM operating event",
+      "transport": "crm"
+    },
+    {
+      "id": "crm.sales",
+      "title": "CRM sales event",
       "transport": "crm"
     },
     {

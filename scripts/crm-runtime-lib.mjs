@@ -4167,6 +4167,14 @@ const READINESS_OUTCOME_DOMAINS = [
     required_events: ["crm.proposal.generated", "crm.contract.signed", "crm.forecast.updated"]
   },
   {
+    id: "sales_cycle_orchestration",
+    title: "Sales cycle orchestration",
+    deliverable: "sales cycle orchestration",
+    workflow_ids: ["crm.sales.cycle"],
+    required_artifacts: ["crm_sales_cycle", "crm_sales_activity_plan", "crm_sales_operating_report"],
+    required_events: ["crm.sales.cycle_planned", "crm.sales.activity_planned", "crm.sales.stage_ready"]
+  },
+  {
     id: "support",
     title: "Support inbox and SLA lane",
     deliverable: "support inbox",
@@ -4672,6 +4680,155 @@ export function buildProposalGeneratorResult(request) {
       }
     ],
     context_tenant: contextTenant(request)
+  };
+}
+
+export function buildSalesCycleResult(request) {
+  const input = dispatchPayload(request);
+  const context = providedContext(request);
+  const tenantId = input.tenant_context?.tenant_id || input.tenant_context?.id || input.tenant_id || context.tenant || "default";
+  const salesCycle = asObject(input.sales_cycle ?? input);
+  const stageEvidence = asObject(input.stage_evidence);
+  const salesPolicy = asObject(input.sales_policy);
+  const salesCycleId = String(salesCycle.id || salesCycle.sales_cycle_id || dispatchEnvelope(request).task_ref || "sales-cycle");
+  const account = salesCycle.account || salesCycle.company || salesCycle.customer || "Target account";
+  const owner = salesCycle.owner || salesPolicy.owner || "sales";
+  const currentStage = String(salesCycle.current_stage || salesCycle.stage || "opportunity");
+  const nextStage = String(salesPolicy.next_stage || "proposal");
+  const targetAmount = numberFrom(salesPolicy.target_amount ?? salesCycle.target_amount ?? salesCycle.amount, 0);
+  const workflowId = String(input.workflow_id || "crm.sales.cycle");
+  const taskRef = dispatchEnvelope(request).task_ref || `sales-cycle-${slug(salesCycleId, "cycle")}`;
+  const stageEvidenceEntries = [
+    ["lead", stageEvidence.lead_workflow_id || "crm.lead.lifecycle"],
+    ["opportunity", stageEvidence.opportunity_workflow_id || "crm.opportunity.pipeline"],
+    ["proposal", stageEvidence.proposal_artifact_id || stageEvidence.proposal_workflow_id || "crm.proposal.approval"],
+    ["contract", stageEvidence.contract_workflow_id || "crm.contract.signature"],
+    ["followup", stageEvidence.followup_workflow_id || "crm.followup.forecast"]
+  ];
+  const stageCount = stageEvidenceEntries.length;
+  const salesCycleState = nextStage === "contract_signature" ? "contract_signature_ready" : `${slug(nextStage, "stage")}_ready`;
+  const lineage = {
+    workflow_id: workflowId,
+    task_ref: taskRef,
+    source_contract: "crm.commercial.sales_cycle.executor",
+    tenant_id: tenantId,
+    sales_cycle_id: salesCycleId
+  };
+
+  return {
+    schema_version: "forge.addon_executor_result.v1",
+    status: "completed",
+    task_ref: taskRef,
+    summary: `Sales cycle ${salesCycleId} for ${account} prepared ${stageCount} Forge stage evidence checkpoint(s)`,
+    outputs: {
+      tenant_id: tenantId,
+      workflow_id: workflowId,
+      sales_cycle_id: salesCycleId,
+      account,
+      owner,
+      current_stage: currentStage,
+      next_stage: nextStage,
+      sales_cycle_state: salesCycleState,
+      stage_count: stageCount,
+      target_amount: targetAmount,
+      approval_required: salesPolicy.approval_required !== false,
+      external_database_required: false,
+      mutates_crm_state: false,
+      forge_event_sourced: true
+    },
+    artifacts: [
+      {
+        kind: "crm_sales_cycle",
+        id: `sales-cycle-${slug(salesCycleId, "cycle")}`,
+        title: `Sales cycle for ${account}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          sales_cycle_id: salesCycleId,
+          account,
+          owner,
+          current_stage: currentStage,
+          next_stage: nextStage,
+          state: salesCycleState,
+          stage_evidence: stageEvidence,
+          stage_evidence_entries: stageEvidenceEntries.map(([stage, reference]) => ({ stage, reference })),
+          lineage,
+          state_owner: "forge_workflow_runtime",
+          external_database_required: false
+        }
+      },
+      {
+        kind: "crm_sales_activity_plan",
+        id: `sales-activity-plan-${slug(salesCycleId, "cycle")}`,
+        title: `Sales activity plan for ${account}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          sales_cycle_id: salesCycleId,
+          owner,
+          activities: [
+            {
+              id: "verify_stage_evidence",
+              owner,
+              workflow_id: "crm.sales.cycle",
+              required_evidence: stageEvidenceEntries.map(([stage]) => stage)
+            },
+            {
+              id: "advance_next_stage",
+              owner,
+              next_stage: nextStage,
+              approval_required: salesPolicy.approval_required !== false
+            }
+          ],
+          lineage,
+          state_owner: "forge_workflow_runtime",
+          external_database_required: false
+        }
+      },
+      {
+        kind: "crm_sales_operating_report",
+        id: `sales-operating-report-${slug(salesCycleId, "cycle")}`,
+        title: `Sales operating report for ${account}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          sales_cycle_id: salesCycleId,
+          account,
+          target_amount: targetAmount,
+          stage_count: stageCount,
+          ready_stage: nextStage,
+          missing_evidence_count: stageEvidenceEntries.filter(([, reference]) => !reference).length,
+          no_external_main_flow_dependency: true,
+          lineage
+        }
+      }
+    ],
+    events: [
+      {
+        kind: "crm.sales.cycle_planned",
+        tenant_id: tenantId,
+        workflow_id: workflowId,
+        sales_cycle_id: salesCycleId,
+        current_stage: currentStage
+      },
+      {
+        kind: "crm.sales.activity_planned",
+        tenant_id: tenantId,
+        workflow_id: workflowId,
+        sales_cycle_id: salesCycleId,
+        activity_count: 2,
+        owner
+      },
+      {
+        kind: "crm.sales.stage_ready",
+        tenant_id: tenantId,
+        workflow_id: workflowId,
+        sales_cycle_id: salesCycleId,
+        next_stage: nextStage,
+        state: salesCycleState
+      }
+    ],
+    context_tenant: context.tenant || tenantId
   };
 }
 
@@ -8506,6 +8663,8 @@ export function executeCrmRuntimeRequest(request) {
       return buildStrategicObjectiveAuditResult(request);
     case "forge_crm.generate_proposal":
       return buildProposalGeneratorResult(request);
+    case "forge_crm.run_sales_cycle":
+      return buildSalesCycleResult(request);
     case "forge_crm.review_followup_forecast":
       return buildCommercialFollowupForecastResult(request);
     case "forge_crm.review_commercial_forecast":

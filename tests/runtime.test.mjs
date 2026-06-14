@@ -414,6 +414,7 @@ test("operating readiness maps Forge evidence into user-facing CRM deliverables"
           required_deliverables: [
             "relationship workspace",
             "commercial command center",
+            "sales cycle orchestration",
             "support inbox",
             "omnichannel conversation threads",
             "marketing automation",
@@ -442,8 +443,8 @@ test("operating readiness maps Forge evidence into user-facing CRM deliverables"
   assert.equal(result.status, "completed");
   assert.equal(result.outputs.tenant_id, "demo");
   assert.equal(result.outputs.success_criteria_status, "operable_with_evidence");
-  assert.equal(result.outputs.user_facing_deliverable_count, 17);
-  assert.equal(result.outputs.ready_domain_count, 17);
+  assert.equal(result.outputs.user_facing_deliverable_count, 18);
+  assert.equal(result.outputs.ready_domain_count, 18);
   assert.equal(result.outputs.forge_only_operations, true);
   assert.equal(result.outputs.main_flow_dependency_external, false);
   assert.equal(result.outputs.mutates_crm_state, false);
@@ -459,6 +460,10 @@ test("operating readiness maps Forge evidence into user-facing CRM deliverables"
   }
 
   const outcomeManifest = result.artifacts.find((artifact) => artifact.kind === "crm_user_outcome_manifest");
+  assert.ok(
+    outcomeManifest.data.outcomes.some((outcome) => outcome.deliverable === "sales cycle orchestration"),
+    "missing sales cycle orchestration user outcome"
+  );
   assert.ok(
     outcomeManifest.data.outcomes.some((outcome) => outcome.deliverable === "subworkflow orchestration"),
     "missing subworkflow orchestration user outcome"
@@ -539,6 +544,60 @@ test("installation authorization executor prepares Forge permission commands wit
   assert.equal(readiness.data.local_permission_store_used, false);
   assert.ok(result.events.some((event) => event.kind === "crm.installation.authorization_planned"));
   assert.ok(result.events.some((event) => event.kind === "crm.permission.authorization_required"));
+});
+
+test("sales cycle executor packages sales as a Forge workflow without local CRM state", () => {
+  assert.equal(typeof runtime.buildSalesCycleResult, "function");
+
+  const result = runtime.buildSalesCycleResult(
+    workerRequest(
+      "forge_crm.run_sales_cycle",
+      {
+        tenant_context: { tenant_id: "demo" },
+        sales_cycle: {
+          id: "sales-cycle-acme-q3",
+          account: "Acme Logistics",
+          owner: "sales-owner",
+          current_stage: "proposal"
+        },
+        stage_evidence: {
+          lead_workflow_id: "crm.lead.lifecycle",
+          opportunity_workflow_id: "crm.opportunity.pipeline",
+          proposal_artifact_id: "proposal-opp-001",
+          contract_workflow_id: "crm.contract.signature",
+          followup_workflow_id: "crm.followup.forecast"
+        },
+        sales_policy: {
+          target_amount: 300000,
+          next_stage: "contract_signature",
+          approval_required: true
+        }
+      },
+      { contract_id: "crm.commercial.sales_cycle.executor", task_ref: "sales-cycle-test" }
+    )
+  );
+
+  assert.equal(result.schema_version, "forge.addon_executor_result.v1");
+  assert.equal(result.status, "completed");
+  assert.equal(result.outputs.tenant_id, "demo");
+  assert.equal(result.outputs.workflow_id, "crm.sales.cycle");
+  assert.equal(result.outputs.sales_cycle_state, "contract_signature_ready");
+  assert.equal(result.outputs.stage_count, 5);
+  assert.equal(result.outputs.external_database_required, false);
+  assert.equal(result.outputs.mutates_crm_state, false);
+  assert.equal(result.outputs.forge_event_sourced, true);
+
+  for (const artifactKind of ["crm_sales_cycle", "crm_sales_activity_plan", "crm_sales_operating_report"]) {
+    assert.ok(result.artifacts.some((artifact) => artifact.kind === artifactKind), `missing sales cycle artifact ${artifactKind}`);
+  }
+
+  const salesCycle = result.artifacts.find((artifact) => artifact.kind === "crm_sales_cycle");
+  assert.equal(salesCycle.data.stage_evidence.proposal_artifact_id, "proposal-opp-001");
+  assert.equal(salesCycle.data.state_owner, "forge_workflow_runtime");
+
+  assert.ok(result.events.some((event) => event.kind === "crm.sales.cycle_planned"));
+  assert.ok(result.events.some((event) => event.kind === "crm.sales.activity_planned"));
+  assert.ok(result.events.some((event) => event.kind === "crm.sales.stage_ready"));
 });
 
 test("strategic objective audit executor promotes requirement coverage through Forge artifacts", () => {

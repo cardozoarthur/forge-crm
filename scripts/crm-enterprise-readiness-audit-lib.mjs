@@ -31,6 +31,13 @@ const USER_FACING_DELIVERABLES = [
     ]
   },
   {
+    id: "sales_cycle_orchestration",
+    title: "Sales cycle orchestration",
+    domain: "commercial",
+    surface_id: "crm.commercial-command",
+    workflow_ids: ["crm.sales.cycle"]
+  },
+  {
     id: "support_inbox",
     title: "Support inbox",
     domain: "support",

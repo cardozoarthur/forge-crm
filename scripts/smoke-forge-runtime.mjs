@@ -115,6 +115,7 @@ try {
       "forge_crm.generate_operating_readiness",
       "forge_crm.generate_strategic_objective_audit",
       "forge_crm.generate_proposal",
+      "forge_crm.run_sales_cycle",
       "forge_crm.review_followup_forecast",
       "forge_crm.review_commercial_forecast",
       "forge_crm.settle_goal_commission",
@@ -168,6 +169,7 @@ try {
       "crm.operating.readiness.executor",
       "crm.strategic.objective_audit.executor",
       "crm.proposal.generator.executor",
+      "crm.commercial.sales_cycle.executor",
       "crm.commercial.followup_forecast.executor",
       "crm.commercial.forecast_review.executor",
       "crm.commercial.goal_commission.executor",
@@ -1509,6 +1511,7 @@ try {
         required_deliverables: [
           "relationship workspace",
           "commercial command center",
+          "sales cycle orchestration",
           "support inbox",
           "omnichannel conversation threads",
           "marketing automation",
@@ -1815,6 +1818,59 @@ try {
   }
   if (pipelineStageMove.executor_result.outputs.to_stage !== "negotiation") {
     throw new Error(`expected pipeline stage negotiation, got ${pipelineStageMove.executor_result.outputs.to_stage}`);
+  }
+
+  const salesCycle = runForge([
+    "addons",
+    "execute-executor",
+    "--addon-dir",
+    "addons",
+    "--addon",
+    "forge.addon.crm",
+    "--contract",
+    "crm.commercial.sales_cycle.executor",
+    "--worker",
+    workerId,
+    "--task",
+    "crm-smoke-sales-cycle",
+    "--workflow",
+    workflowId,
+    "--input",
+    JSON.stringify({
+      tenant_context: { id: "smoke", tenant_id: "smoke" },
+      sales_cycle: {
+        id: "sales-cycle-smoke-q3",
+        account: "Example Logistics",
+        owner: "forge-crm-smoke",
+        current_stage: "proposal"
+      },
+      stage_evidence: {
+        lead_artifact_id: "lead-smoke-001",
+        opportunity_artifact_id: "opp-smoke-priority",
+        proposal_artifact_id: "proposal-opp-smoke-001",
+        contract_artifact_id: "contract-smoke-001",
+        followup_artifact_id: "followup-smoke-001"
+      },
+      sales_policy: {
+        target_amount: 180000,
+        next_stage: "contract_signature",
+        approval_required: true
+      }
+    }),
+    "--context",
+    JSON.stringify({ tenant: "smoke" }),
+    "--output",
+    "json"
+  ]);
+
+  if (salesCycle.promotion?.status !== "addon_executor_result_promoted") {
+    throw new Error(`expected sales cycle promotion, got ${salesCycle.promotion?.status || "missing"}`);
+  }
+  if (salesCycle.executor_result.outputs.workflow_id !== "crm.sales.cycle") {
+    throw new Error(`expected sales cycle workflow crm.sales.cycle, got ${salesCycle.executor_result.outputs.workflow_id}`);
+  }
+  if (salesCycle.executor_result.outputs.sales_cycle_state !== "contract_signature_ready") {
+    throw new Error(`expected contract signature ready sales cycle, got ${salesCycle.executor_result.outputs.sales_cycle_state}`);
   }
 
   const commercialFollowupForecast = runForge([
@@ -3216,6 +3272,8 @@ try {
   const relationshipPromotedEventCount = relationshipTimeline.promotion?.event_count ?? 0;
   const pipelinePromotedArtifactCount = pipelineStageMove.promotion?.artifact_count ?? 0;
   const pipelinePromotedEventCount = pipelineStageMove.promotion?.event_count ?? 0;
+  const salesCyclePromotedArtifactCount = salesCycle.promotion?.artifact_count ?? 0;
+  const salesCyclePromotedEventCount = salesCycle.promotion?.event_count ?? 0;
   const commercialPromotedArtifactCount = commercialFollowupForecast.promotion?.artifact_count ?? 0;
   const commercialPromotedEventCount = commercialFollowupForecast.promotion?.event_count ?? 0;
   const commercialForecastReviewPromotedArtifactCount = commercialForecastReview.promotion?.artifact_count ?? 0;
@@ -3558,6 +3616,16 @@ try {
     );
   }
   for (const eventKind of ["crm.opportunity.stage_changed", "crm.forecast.updated"]) {
+    if (!workflowEventKinds.includes(eventKind)) {
+      throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
+    }
+  }
+  if (salesCyclePromotedArtifactCount < 3 || salesCyclePromotedEventCount < 3) {
+    throw new Error(
+      `expected promoted sales cycle artifacts/events, got artifacts=${salesCyclePromotedArtifactCount} events=${salesCyclePromotedEventCount}`
+    );
+  }
+  for (const eventKind of ["crm.sales.cycle_planned", "crm.sales.activity_planned", "crm.sales.stage_ready"]) {
     if (!workflowEventKinds.includes(eventKind)) {
       throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
     }
@@ -4068,6 +4136,12 @@ try {
     pipeline_stage_move_to_stage: pipelineStageMove.executor_result.outputs.to_stage,
     pipeline_stage_move_promoted_artifacts: pipelinePromotedArtifactCount,
     pipeline_stage_move_promoted_events: pipelinePromotedEventCount,
+    sales_cycle_status: salesCycle.status,
+    sales_cycle_promotion_status: salesCycle.promotion.status,
+    sales_cycle_state: salesCycle.executor_result.outputs.sales_cycle_state,
+    sales_cycle_stage_count: salesCycle.executor_result.outputs.stage_count,
+    sales_cycle_promoted_artifacts: salesCyclePromotedArtifactCount,
+    sales_cycle_promoted_events: salesCyclePromotedEventCount,
     commercial_followup_status: commercialFollowupForecast.status,
     commercial_followup_promotion_status: commercialFollowupForecast.promotion.status,
     commercial_followup_state: commercialFollowupForecast.executor_result.outputs.followup_state,
