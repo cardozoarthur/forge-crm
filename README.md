@@ -14,6 +14,7 @@ This repository starts the CRM as a verifiable Forge Addon:
 - `scripts/crm-workflow-pack-lib.mjs` generates a workflow-backed CRM tenant pack covering relationship, commercial, support, marketing, operations, AI automation, observability and enterprise readiness.
 - `scripts/generate-crm-operating-model.mjs` emits the Forge-owned operating model for pipeline, support, marketing, documents, commercial command and AI workbench surfaces.
 - `scripts/generate-crm-web-snapshot.mjs` emits the static web app snapshot derived from the operating model.
+- `scripts/audit-crm-enterprise-readiness.mjs` emits a deterministic readiness audit that maps the strategic objective, Forge v0.5/v0.6/v0.7 benchmark tracks, public AddOn posture, user-facing deliverables and Core requirements to current Forge-owned evidence.
 - `web/` contains a no-build business CRM web surface that renders workflows, knowledge relationships, document queues and Forge actions from `web/data/operating-snapshot.json`.
 - `scripts/smoke-forge-runtime.mjs` registers the worker in Forge and executes planner, tenant bootstrap, operating snapshot, relationship timeline, pipeline stage movement, operating copilot, memory promotion preparation, observability inspection, operating readiness, lead classification, proposal generation, commercial follow-up forecast, account management, contract signature, document generation, document validation, document approval, marketing campaign automation, marketing form capture, omnichannel message ingestion, ticket SLA triage, project handoff planning and omnichannel handoff contracts.
 - `workflows/crm-system-template.json` maps the enterprise CRM domains into workflow-backed modules.
@@ -35,6 +36,7 @@ node scripts/generate-crm-plan.mjs "Create a workflow-first CRM tenant"
 node scripts/generate-crm-workflow-pack.mjs "acme"
 node scripts/generate-crm-operating-model.mjs "acme"
 npm run web:snapshot
+npm run enterprise:audit -- demo
 ```
 
 Run the runtime smoke against a Forge binary:

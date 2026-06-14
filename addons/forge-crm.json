@@ -2133,6 +2133,9 @@
       "id": "crm.global_memory",
       "title": "CRM global memory",
       "provider_type": "forge_memory",
+      "capabilities": [
+        "semantic_search"
+      ],
       "scopes": [
         "global"
       ],
@@ -2145,6 +2148,9 @@
       "id": "crm.organization_memory",
       "title": "CRM organization memory",
       "provider_type": "forge_memory",
+      "capabilities": [
+        "semantic_search"
+      ],
       "scopes": [
         "organization"
       ],
@@ -2157,6 +2163,9 @@
       "id": "crm.project_memory",
       "title": "CRM project memory",
       "provider_type": "forge_memory",
+      "capabilities": [
+        "semantic_search"
+      ],
       "scopes": [
         "project"
       ],
@@ -2169,6 +2178,9 @@
       "id": "crm.processing_memory",
       "title": "CRM processing memory",
       "provider_type": "forge_memory",
+      "capabilities": [
+        "semantic_search"
+      ],
       "scopes": [
         "processing"
       ],
