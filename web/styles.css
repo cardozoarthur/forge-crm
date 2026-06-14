@@ -312,6 +312,8 @@ h3 {
 .form-row,
 	.work-queue-card,
 	.assignment-row,
+	.token-swatch,
+	.component-row,
 	.ai-recommendation,
 	.memory-promotion,
 	.document-item,
@@ -342,6 +344,7 @@ h3 {
 	.work-queue-card span,
 	.work-queue-card small,
 	.assignment-row span,
+	.component-row span,
 	.ai-recommendation span,
 	.memory-promotion span,
 	.evolution-candidate span,
@@ -359,6 +362,8 @@ h3 {
 .form-row code,
 	.work-queue-card code,
 	.assignment-row code,
+	.token-swatch code,
+	.component-row code,
 	.ai-recommendation code,
 	.memory-promotion code,
 	.document-item code,
@@ -397,6 +402,7 @@ h3 {
 .support-queue,
 .marketing-calendar,
 .work-queue,
+.design-system-panel,
 .ai-workbench {
   grid-column: span 1;
 }
@@ -432,6 +438,29 @@ h3 {
 
 .work-queue-grid {
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.token-grid,
+.component-catalog {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.token-grid {
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+}
+
+.token-swatch,
+.component-row {
+  border-left: 4px solid #285f9d;
+}
+
+.swatch-color {
+  width: 100%;
+  min-height: 28px;
+  border: 1px solid #d8dfd8;
+  border-radius: 6px;
 }
 
 .ai-recommendation,

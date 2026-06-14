@@ -338,6 +338,40 @@ export function renderWorkQueue(snapshot) {
   return section;
 }
 
+export function renderDesignSystem(snapshot) {
+  const designSystem = snapshot.design_system;
+  const section = nodeElement("section", "panel design-system-panel");
+  section.dataset.surfacePanel = "crm.design-system";
+  section.append(nodeElement("h2", "", "Design System"));
+  if (!designSystem) {
+    section.append(nodeElement("p", "muted-copy", "Design system unavailable in this snapshot."));
+    return section;
+  }
+
+  section.append(nodeElement("p", "panel-source", `${designSystem.workflow_id} · ${designSystem.contract_id}`));
+
+  const swatches = nodeElement("div", "token-grid");
+  for (const [name, value] of Object.entries(designSystem.tokens.color || {})) {
+    const item = nodeElement("article", "token-swatch");
+    const swatch = nodeElement("span", "swatch-color");
+    swatch.style.background = value;
+    item.append(swatch, nodeElement("strong", "", name), nodeElement("code", "", value));
+    swatches.append(item);
+  }
+
+  const components = nodeElement("div", "component-catalog");
+  for (const component of designSystem.components || []) {
+    const item = nodeElement("article", "component-row");
+    item.append(nodeElement("strong", "", component.title));
+    item.append(nodeElement("span", "", component.surface_ids.join(" · ")));
+    item.append(nodeElement("code", "", component.state_source));
+    components.append(item);
+  }
+
+  section.append(swatches, components);
+  return section;
+}
+
 export function renderAiWorkbench(snapshot) {
   const { section, panel } = panelShell(snapshot, "ai_workbench", "ai-workbench");
   if (!panel) {
@@ -585,6 +619,7 @@ function render(snapshot) {
   workspace.append(renderSupportQueue(snapshot));
   workspace.append(renderMarketingCalendar(snapshot));
   workspace.append(renderWorkQueue(snapshot));
+  workspace.append(renderDesignSystem(snapshot));
   workspace.append(renderAiWorkbench(snapshot));
   workspace.append(renderWorkflowCadences(snapshot));
   workspace.append(renderWorkflowEvolutionWorkbench(snapshot));

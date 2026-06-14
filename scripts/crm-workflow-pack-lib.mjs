@@ -4,6 +4,7 @@ const REQUIRED_SCOPE = {
   support: ["ticket", "sla", "chat", "whatsapp", "telegram", "email", "omnichannel_center"],
   marketing: ["campaign", "segmentation", "automation", "landing_page", "form", "lead_nurturing"],
   operations: ["project", "task", "approval", "document", "internal_flow", "team_handoff", "work_queue", "ownership", "waiting_state"],
+  user_experience: ["tui", "web_interface", "workflow_visualization", "knowledge_graph", "document_management", "design_system", "design_tokens"],
   ai_automation: [
     "lead_classification",
     "opportunity_prioritization",
@@ -355,6 +356,41 @@ const WORKFLOWS = [
     ]
   },
   {
+    id: "crm.design.system",
+    title: "CRM design system and UI component catalog",
+    domain: "user_experience",
+    workflow_extension_id: "crm_design_system",
+    object_types: [
+      "tui",
+      "web_interface",
+      "workflow_visualization",
+      "knowledge_graph",
+      "document_management",
+      "design_system",
+      "design_tokens",
+      "ui_component_catalog"
+    ],
+    states: ["brief_collected", "tokens_generated", "components_cataloged", "artifact_published", "adopted_by_surfaces", "rework_required"],
+    transitions: [
+      ["brief_collected", "tokens_generated", "brand and operating context attached"],
+      ["tokens_generated", "components_cataloged", "token manifest validates"],
+      ["components_cataloged", "artifact_published", "component catalog attached"],
+      ["artifact_published", "adopted_by_surfaces", "web and TUI surfaces reference Forge artifacts"],
+      ["artifact_published", "rework_required", "token or component evidence missing"]
+    ],
+    runtime_contracts: ["crm.design_system.executor"],
+    artifacts: ["crm_design_system", "crm_design_token_manifest", "crm_ui_component_catalog"],
+    events: ["crm.design.system_generated", "crm.design.tokens_published"],
+    memory_scopes: ["organization", "project"],
+    permissions: ["crm.observability.inspect"],
+    views: ["crm.design-system", "crm.system-map"],
+    validation_gates: [
+      "design tokens are published as Forge artifacts before UI consumption",
+      "components cite workflow artifact state sources",
+      "browser rendering does not create CRM-local design state"
+    ]
+  },
+  {
     id: "crm.operational.observability",
     title: "Operational observability, audit and lineage",
     domain: "operations",
@@ -643,6 +679,7 @@ export function buildCrmOperatingModel(options = {}) {
       marketing_calendar: operatorSurface(workflows, "crm.marketing-calendar", "calendar", "Marketing calendar"),
       document_queue: operatorSurface(workflows, "crm.document-queue", "queue", "Document queue"),
       work_queue: operatorSurface(workflows, "crm.work-queue", "queue", "Cross-domain work queue"),
+      design_system: operatorSurface(workflows, "crm.design-system", "system", "Design system"),
       ai_workbench: operatorSurface(workflows, "crm.ai-workbench", "workbench", "AI workbench")
     },
     business_modules: businessModules,

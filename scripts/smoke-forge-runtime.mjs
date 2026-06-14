@@ -83,6 +83,7 @@ try {
       "forge_crm.operating_copilot",
       "forge_crm.run_area_copilot",
       "forge_crm.orchestrate_work_queue",
+      "forge_crm.generate_design_system",
       "forge_crm.prepare_memory_promotion",
       "forge_crm.evolve_workflow",
       "forge_crm.run_enterprise_journey",
@@ -112,6 +113,7 @@ try {
       "crm.ai.operating_copilot.executor",
       "crm.ai.area_copilot.executor",
       "crm.queue.orchestrator.executor",
+      "crm.design_system.executor",
       "crm.memory.promotion.executor",
       "crm.workflow.evolution.executor",
       "crm.enterprise.journey.executor",
@@ -479,6 +481,61 @@ try {
   }
   if (workQueue.executor_result.outputs.risk_item_count < 3) {
     throw new Error(`expected work queue risk items, got ${workQueue.executor_result.outputs.risk_item_count}`);
+  }
+
+  const designSystem = runForge([
+    "addons",
+    "execute-executor",
+    "--addon-dir",
+    "addons",
+    "--addon",
+    "forge.addon.crm",
+    "--contract",
+    "crm.design_system.executor",
+    "--worker",
+    workerId,
+    "--task",
+    "crm-smoke-design-system",
+    "--workflow",
+    workflowId,
+    "--input",
+    JSON.stringify({
+      tenant_context: { id: "smoke", tenant_id: "smoke" },
+      brand_context: {
+        product_name: "Forge CRM",
+        audience: "enterprise operators",
+        tone: "quiet operational"
+      },
+      token_overrides: {
+        color: {
+          accent: "#126c55",
+          risk: "#a53c3c"
+        },
+        radius: {
+          panel: "8px"
+        }
+      },
+      component_requests: ["workflow_node", "queue_card", "document_row", "command_action", "metric_tile"],
+      design_policy: {
+        inspiration: ["penpot", "open_design"],
+        state_source: "forge_workflow_artifacts_and_events",
+        direct_browser_persistence: false
+      }
+    }),
+    "--context",
+    JSON.stringify({ tenant: "smoke" }),
+    "--output",
+    "json"
+  ]);
+
+  if (designSystem.promotion?.status !== "addon_executor_result_promoted") {
+    throw new Error(`expected design system promotion, got ${designSystem.promotion?.status || "missing"}`);
+  }
+  if (designSystem.executor_result.outputs.component_count !== 5) {
+    throw new Error(`expected 5 design system components, got ${designSystem.executor_result.outputs.component_count}`);
+  }
+  if (designSystem.executor_result.outputs.direct_browser_persistence !== false) {
+    throw new Error("expected design system to avoid browser-local persistence");
   }
 
   const memoryPromotion = runForge([
@@ -1482,6 +1539,8 @@ try {
   const areaCopilotPromotedEventCount = areaCopilot.promotion?.event_count ?? 0;
   const workQueuePromotedArtifactCount = workQueue.promotion?.artifact_count ?? 0;
   const workQueuePromotedEventCount = workQueue.promotion?.event_count ?? 0;
+  const designSystemPromotedArtifactCount = designSystem.promotion?.artifact_count ?? 0;
+  const designSystemPromotedEventCount = designSystem.promotion?.event_count ?? 0;
   const memoryPromotedArtifactCount = memoryPromotion.promotion?.artifact_count ?? 0;
   const memoryPromotedEventCount = memoryPromotion.promotion?.event_count ?? 0;
   const observabilityPromotedArtifactCount = observabilityInspection.promotion?.artifact_count ?? 0;
@@ -1567,6 +1626,16 @@ try {
     );
   }
   for (const eventKind of ["crm.queue.snapshot_generated", "crm.queue.assignment_planned", "crm.queue.risk_flagged"]) {
+    if (!workflowEventKinds.includes(eventKind)) {
+      throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
+    }
+  }
+  if (designSystemPromotedArtifactCount < 3 || designSystemPromotedEventCount < 2) {
+    throw new Error(
+      `expected promoted design system artifacts/events, got artifacts=${designSystemPromotedArtifactCount} events=${designSystemPromotedEventCount}`
+    );
+  }
+  for (const eventKind of ["crm.design.system_generated", "crm.design.tokens_published"]) {
     if (!workflowEventKinds.includes(eventKind)) {
       throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
     }
@@ -1907,6 +1976,12 @@ try {
     work_queue_risk_item_count: workQueue.executor_result.outputs.risk_item_count,
     work_queue_promoted_artifacts: workQueuePromotedArtifactCount,
     work_queue_promoted_events: workQueuePromotedEventCount,
+    design_system_status: designSystem.status,
+    design_system_promotion_status: designSystem.promotion.status,
+    design_system_component_count: designSystem.executor_result.outputs.component_count,
+    design_system_token_count: designSystem.executor_result.outputs.token_count,
+    design_system_promoted_artifacts: designSystemPromotedArtifactCount,
+    design_system_promoted_events: designSystemPromotedEventCount,
     memory_promotion_status: memoryPromotion.status,
     memory_promotion_promotion_status: memoryPromotion.promotion.status,
     memory_promotion_to_scope: memoryPromotion.executor_result.outputs.to_scope,

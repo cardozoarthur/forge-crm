@@ -23,11 +23,11 @@
     "external_delivery_requires_approval": true
   },
   "metrics": {
-    "workflow_count": 17,
-    "business_module_count": 6,
-    "surface_count": 9,
-    "artifact_type_count": 54,
-    "event_type_count": 62,
+    "workflow_count": 18,
+    "business_module_count": 7,
+    "surface_count": 10,
+    "artifact_type_count": 57,
+    "event_type_count": 64,
     "complete_scope": true
   },
   "surfaces": [
@@ -41,6 +41,7 @@
       "state_source": "forge_workflow_artifacts_and_events",
       "workflow_ids": [
         "crm.work.queue.orchestration",
+        "crm.design.system",
         "crm.operational.observability",
         "crm.enterprise.readiness",
         "crm.enterprise.customer_journey",
@@ -54,6 +55,12 @@
         "work_in_progress",
         "risk_review_wait",
         "closed",
+        "brief_collected",
+        "tokens_generated",
+        "components_cataloged",
+        "artifact_published",
+        "adopted_by_surfaces",
+        "rework_required",
         "inspection_requested",
         "context_collected",
         "audit_reported",
@@ -61,7 +68,6 @@
         "criteria_collected",
         "evidence_mapped",
         "readiness_reported",
-        "rework_required",
         "operable",
         "lead_capture",
         "opportunity",
@@ -85,6 +91,8 @@
         "crm_core_gap_report",
         "crm_cost_report",
         "crm_cross_domain_handoff_map",
+        "crm_design_system",
+        "crm_design_token_manifest",
         "crm_domain_coverage_matrix",
         "crm_enterprise_journey_map",
         "crm_evolution_experiment",
@@ -95,6 +103,7 @@
         "crm_promotion_decision",
         "crm_queue_assignment_plan",
         "crm_queue_sla_risk_report",
+        "crm_ui_component_catalog",
         "crm_user_outcome_manifest",
         "crm_work_queue_snapshot",
         "crm_workflow_evolution_plan"
@@ -103,6 +112,8 @@
         "crm.audit.reported",
         "crm.core_gap.reported",
         "crm.cost.reviewed",
+        "crm.design.system_generated",
+        "crm.design.tokens_published",
         "crm.evolution.benchmark_reported",
         "crm.evolution.candidate_generated",
         "crm.evolution.experiment_designed",
@@ -502,6 +513,36 @@
       "mutation_requires_forge": true
     },
     {
+      "id": "crm.design-system",
+      "key": "design_system",
+      "title": "Design system",
+      "surface_type": "system",
+      "route": "/crm/design-system",
+      "permission": "crm.observability.inspect",
+      "state_source": "forge_workflow_artifacts_and_events",
+      "workflow_ids": [
+        "crm.design.system"
+      ],
+      "lanes": [
+        "brief_collected",
+        "tokens_generated",
+        "components_cataloged",
+        "artifact_published",
+        "adopted_by_surfaces",
+        "rework_required"
+      ],
+      "artifact_types": [
+        "crm_design_system",
+        "crm_design_token_manifest",
+        "crm_ui_component_catalog"
+      ],
+      "event_types": [
+        "crm.design.system_generated",
+        "crm.design.tokens_published"
+      ],
+      "mutation_requires_forge": true
+    },
+    {
       "id": "crm.ai-workbench",
       "key": "ai_workbench",
       "title": "AI workbench",
@@ -838,6 +879,27 @@
         "rework reason recorded before any operable claim",
         "signature receipt attached",
         "success criteria mapped to user-facing deliverables"
+      ]
+    },
+    {
+      "id": "user_experience",
+      "complete": true,
+      "workflow_ids": [
+        "crm.design.system"
+      ],
+      "artifact_types": [
+        "crm_design_system",
+        "crm_design_token_manifest",
+        "crm_ui_component_catalog"
+      ],
+      "event_types": [
+        "crm.design.system_generated",
+        "crm.design.tokens_published"
+      ],
+      "validation_gates": [
+        "browser rendering does not create CRM-local design state",
+        "components cite workflow artifact state sources",
+        "design tokens are published as Forge artifacts before UI consumption"
       ]
     },
     {
@@ -1402,6 +1464,42 @@
         ]
       },
       {
+        "id": "crm.design.system",
+        "title": "CRM design system and UI component catalog",
+        "domain": "user_experience",
+        "state_count": 6,
+        "states": [
+          "brief_collected",
+          "tokens_generated",
+          "components_cataloged",
+          "artifact_published",
+          "adopted_by_surfaces",
+          "rework_required"
+        ],
+        "wait_states": [],
+        "runtime_contracts": [
+          "crm.design_system.executor"
+        ],
+        "artifact_types": [
+          "crm_design_system",
+          "crm_design_token_manifest",
+          "crm_ui_component_catalog"
+        ],
+        "event_types": [
+          "crm.design.system_generated",
+          "crm.design.tokens_published"
+        ],
+        "surface_ids": [
+          "crm.design-system",
+          "crm.system-map"
+        ],
+        "validation_gates": [
+          "design tokens are published as Forge artifacts before UI consumption",
+          "components cite workflow artifact state sources",
+          "browser rendering does not create CRM-local design state"
+        ]
+      },
+      {
         "id": "crm.operational.observability",
         "title": "Operational observability, audit and lineage",
         "domain": "operations",
@@ -1696,6 +1794,12 @@
         "from": "crm.work.queue.orchestration",
         "to": "crm.project.handoff",
         "reason": "queue assignment can return blocked handoffs to operations",
+        "state_owner": "forge_workflow_runtime"
+      },
+      {
+        "from": "crm.design.system",
+        "to": "crm.enterprise.readiness",
+        "reason": "published design artifacts update readiness evidence",
         "state_owner": "forge_workflow_runtime"
       },
       {
@@ -3415,6 +3519,33 @@
       ]
     },
     {
+      "id": "crm.generate-design-system",
+      "label": "Generate design system",
+      "surface_id": "crm.design-system",
+      "contract_id": "crm.design_system.executor",
+      "requires_permission": "crm.observability.inspect",
+      "mutates_workflow": true,
+      "command_template": [
+        "forge",
+        "addons",
+        "execute-executor",
+        "--addon",
+        "forge.addon.crm",
+        "--contract",
+        "crm.design_system.executor",
+        "--worker",
+        "<worker-id>",
+        "--task",
+        "<task-ref>",
+        "--input",
+        "<json>",
+        "--context",
+        "<json>",
+        "--output",
+        "json"
+      ]
+    },
+    {
       "id": "crm.prepare-memory-promotion",
       "label": "Prepare memory promotion",
       "surface_id": "crm.ai-workbench",
@@ -4726,6 +4857,68 @@
         }
       },
       {
+        "action_id": "crm.generate-design-system",
+        "label": "Generate design system",
+        "surface_id": "crm.design-system",
+        "contract_id": "crm.design_system.executor",
+        "required_permission": "crm.observability.inspect",
+        "selected_command": [
+          "forge",
+          "addons",
+          "execute-executor",
+          "--addon",
+          "forge.addon.crm",
+          "--contract",
+          "crm.design_system.executor",
+          "--worker",
+          "<worker-id>",
+          "--task",
+          "<task-ref>",
+          "--input",
+          "<json>",
+          "--context",
+          "<json>",
+          "--output",
+          "json"
+        ],
+        "permission_gate": {
+          "status": "requires_forge_permission",
+          "permission": "crm.observability.inspect",
+          "approval_owner": "forge_permission_policy"
+        },
+        "operation_plan": [
+          {
+            "id": "check_addon_permission",
+            "title": "Check Addon permission",
+            "owner": "forge.permissions",
+            "evidence": "crm.observability.inspect"
+          },
+          {
+            "id": "execute_runtime_contract",
+            "title": "Execute runtime contract",
+            "owner": "forge.addons.runtime",
+            "evidence": "crm.design_system.executor"
+          },
+          {
+            "id": "promote_result_to_workflow",
+            "title": "Promote result to workflow",
+            "owner": "forge.workflow.runtime",
+            "evidence": "artifact and event promotion"
+          },
+          {
+            "id": "refresh_operating_snapshot",
+            "title": "Refresh operating snapshot",
+            "owner": "forge.addon.crm",
+            "evidence": "crm.operating.snapshot.executor"
+          }
+        ],
+        "output_policy": {
+          "promote_result_to_workflow": true,
+          "browser_local_state_write": false,
+          "refresh_source": "forge_workflow_artifacts_and_events"
+        }
+      },
+      {
         "action_id": "crm.prepare-memory-promotion",
         "label": "Prepare memory promotion",
         "surface_id": "crm.ai-workbench",
@@ -5493,6 +5686,88 @@
         }
       }
     ]
+  },
+  "design_system": {
+    "schema_version": "forge.crm_design_system.v1",
+    "workflow_id": "crm.design.system",
+    "contract_id": "crm.design_system.executor",
+    "design_system": "penpot_open_design_inspired_tokens",
+    "state_source": "forge_workflow_artifacts_and_events",
+    "direct_browser_persistence": false,
+    "artifact_types": [
+      "crm_design_system",
+      "crm_design_token_manifest",
+      "crm_ui_component_catalog"
+    ],
+    "event_types": [
+      "crm.design.system_generated",
+      "crm.design.tokens_published"
+    ],
+    "tokens": {
+      "color": {
+        "background": "#f6f7f4",
+        "panel": "#ffffff",
+        "ink": "#1d2428",
+        "muted": "#607078",
+        "line": "#d8dfd8",
+        "accent": "#126c55",
+        "attention": "#9b4d19",
+        "info": "#285f9d",
+        "risk": "#a53c3c"
+      },
+      "radius": {
+        "panel": "8px",
+        "control": "6px"
+      },
+      "density": "compact_operational"
+    },
+    "components": [
+      {
+        "id": "workflow_node",
+        "title": "Workflow node",
+        "surface_ids": [
+          "crm.system-map"
+        ],
+        "state_source": "forge_workflow_artifacts_and_events"
+      },
+      {
+        "id": "queue_card",
+        "title": "Queue card",
+        "surface_ids": [
+          "crm.support-queue",
+          "crm.document-queue",
+          "crm.work-queue"
+        ],
+        "state_source": "forge_workflow_artifacts_and_events"
+      },
+      {
+        "id": "document_row",
+        "title": "Document row",
+        "surface_ids": [
+          "crm.document-queue"
+        ],
+        "state_source": "forge_workflow_artifacts_and_events"
+      },
+      {
+        "id": "command_action",
+        "title": "Command action",
+        "surface_ids": [
+          "crm.operational-cockpit",
+          "crm.ai-workbench"
+        ],
+        "state_source": "forge_workflow_artifacts_and_events"
+      },
+      {
+        "id": "metric_tile",
+        "title": "Metric tile",
+        "surface_ids": [
+          "crm.commercial-command",
+          "crm.system-map"
+        ],
+        "state_source": "forge_workflow_artifacts_and_events"
+      }
+    ],
+    "action_id": "crm.generate-design-system"
   },
   "design_tokens": {
     "color": {

@@ -27,6 +27,7 @@ test("web app snapshot exposes business CRM surfaces from Forge state only", () 
     "crm.marketing-calendar",
     "crm.document-queue",
     "crm.work-queue",
+    "crm.design-system",
     "crm.ai-workbench"
   ]) {
     assert.ok(surfaceIds.has(surfaceId), `missing web surface ${surfaceId}`);
@@ -78,6 +79,7 @@ test("web app snapshot provides Forge command actions instead of local automatio
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.document.generator.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.document.approval.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.queue.orchestrator.executor"));
+  assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.design_system.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.memory.promotion.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.observability.inspector.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.operating.readiness.executor"));
@@ -216,6 +218,24 @@ test("web app snapshot exposes cross-domain work queues as Forge command surface
   assert.ok(workQueue.queues.every((queue) => queue.workflow_ids.length > 0));
   assert.ok(workQueue.assignments.every((assignment) => assignment.requires_forge_approval === true));
   assert.ok(snapshot.actions.some((action) => action.id === "crm.run-work-queue" && action.contract_id === "crm.queue.orchestrator.executor"));
+});
+
+test("web app snapshot exposes Forge-owned design system tokens and components", () => {
+  const snapshot = buildCrmWebAppSnapshot({ tenant_id: "demo" });
+  const designSystem = snapshot.design_system;
+
+  assert.ok(designSystem);
+  assert.equal(designSystem.schema_version, "forge.crm_design_system.v1");
+  assert.equal(designSystem.workflow_id, "crm.design.system");
+  assert.equal(designSystem.contract_id, "crm.design_system.executor");
+  assert.equal(designSystem.design_system, "penpot_open_design_inspired_tokens");
+  assert.equal(designSystem.state_source, "forge_workflow_artifacts_and_events");
+  assert.equal(designSystem.direct_browser_persistence, false);
+  assert.ok(designSystem.artifact_types.includes("crm_design_system"));
+  assert.ok(designSystem.artifact_types.includes("crm_design_token_manifest"));
+  assert.ok(designSystem.components.some((component) => component.id === "workflow_node"));
+  assert.ok(designSystem.components.some((component) => component.id === "queue_card"));
+  assert.ok(snapshot.actions.some((action) => action.id === "crm.generate-design-system" && action.contract_id === "crm.design_system.executor"));
 });
 
 test("web app snapshot exposes specialized CRM area copilots in the AI workbench", () => {

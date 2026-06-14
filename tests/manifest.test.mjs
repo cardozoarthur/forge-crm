@@ -42,6 +42,7 @@ test("manifest keeps CRM automation behind Forge capabilities and permissions", 
     "crm_support_omnichannel",
     "crm_marketing_automation",
     "crm_internal_operations",
+    "crm_user_experience",
     "crm_ai_automation",
     "crm_observability"
   ]) {
@@ -159,6 +160,33 @@ test("manifest exposes cross-domain CRM work queues as a Forge-owned executor", 
 
   const eventTypes = new Set(manifest.event_types.map((event) => event.id));
   assert.ok(eventTypes.has("crm.queue"));
+});
+
+test("manifest exposes CRM design system as a Forge-owned UI contract", () => {
+  const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.design_system.executor");
+  assert.ok(contract);
+  assert.equal(contract.contract_type, "executor");
+  assert.equal(contract.capability_id, "crm_user_experience");
+  assert.equal(contract.workflow_extension_id, "crm_design_system");
+  assert.equal(contract.entrypoint, "forge_crm.generate_design_system");
+  assert.deepEqual(contract.permissions, ["crm.observability.inspect"]);
+  for (const input of ["brand_context", "token_overrides", "component_requests", "design_policy", "tenant_context"]) {
+    assert.ok(contract.inputs.includes(input), `missing design system input ${input}`);
+  }
+  for (const output of ["crm_design_system", "crm_design_token_manifest", "crm_ui_component_catalog"]) {
+    assert.ok(contract.outputs.includes(output), `missing design system output ${output}`);
+  }
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("Penpot")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("does not mutate")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("Forge workflow artifacts")));
+
+  const artifactTypes = new Set(manifest.artifact_types.map((artifact) => artifact.id));
+  for (const artifactType of ["crm_design_system", "crm_design_token_manifest", "crm_ui_component_catalog"]) {
+    assert.ok(artifactTypes.has(artifactType), `missing artifact type ${artifactType}`);
+  }
+
+  const eventTypes = new Set(manifest.event_types.map((event) => event.id));
+  assert.ok(eventTypes.has("crm.design"));
 });
 
 test("manifest exposes CRM memory promotion as governed Forge memory preparation", () => {
@@ -609,6 +637,7 @@ test("manifest exposes a Forge TUI operational cockpit with permission-gated CRM
     "crm.tui.run-operating-copilot",
     "crm.tui.run-area-copilot",
     "crm.tui.run-work-queue",
+    "crm.tui.generate-design-system",
     "crm.tui.generate-readiness-package"
   ]) {
     assert.ok(actionIds.has(actionId), `missing TUI action ${actionId}`);

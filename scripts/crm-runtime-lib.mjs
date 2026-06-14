@@ -1145,6 +1145,177 @@ export function buildWorkQueueOrchestrationResult(request) {
   };
 }
 
+const DESIGN_SYSTEM_BASE_TOKENS = {
+  color: {
+    background: "#f6f7f4",
+    panel: "#ffffff",
+    ink: "#1d2428",
+    muted: "#607078",
+    line: "#d8dfd8",
+    accent: "#126c55",
+    attention: "#9b4d19",
+    info: "#285f9d",
+    risk: "#a53c3c"
+  },
+  radius: {
+    panel: "8px",
+    control: "6px"
+  },
+  density: "compact_operational"
+};
+
+const DESIGN_SYSTEM_COMPONENTS = [
+  {
+    id: "workflow_node",
+    title: "Workflow node",
+    surface_ids: ["crm.system-map"],
+    states: ["ready", "waiting", "risk", "complete"]
+  },
+  {
+    id: "queue_card",
+    title: "Queue card",
+    surface_ids: ["crm.support-queue", "crm.document-queue", "crm.work-queue"],
+    states: ["normal", "at_risk", "blocked", "approval_wait"]
+  },
+  {
+    id: "document_row",
+    title: "Document row",
+    surface_ids: ["crm.document-queue"],
+    states: ["draft", "approval_wait", "approved", "rework_required"]
+  },
+  {
+    id: "command_action",
+    title: "Command action",
+    surface_ids: ["crm.operational-cockpit", "crm.ai-workbench"],
+    states: ["enabled", "permission_wait", "executing", "completed"]
+  },
+  {
+    id: "metric_tile",
+    title: "Metric tile",
+    surface_ids: ["crm.commercial-command", "crm.system-map"],
+    states: ["neutral", "positive", "attention", "risk"]
+  }
+];
+
+function mergeDesignTokens(overrides) {
+  const overrideObject = asObject(overrides);
+  const merged = {
+    ...DESIGN_SYSTEM_BASE_TOKENS,
+    color: {
+      ...DESIGN_SYSTEM_BASE_TOKENS.color,
+      ...asObject(overrideObject.color)
+    },
+    radius: {
+      ...DESIGN_SYSTEM_BASE_TOKENS.radius,
+      ...asObject(overrideObject.radius)
+    }
+  };
+  if (overrideObject.density) {
+    merged.density = String(overrideObject.density);
+  }
+  return merged;
+}
+
+function requestedDesignComponents(componentRequests) {
+  const requestedIds = asArray(componentRequests).map((component) => slug(component, "component").replace(/-/g, "_"));
+  const selected = requestedIds.length > 0
+    ? DESIGN_SYSTEM_COMPONENTS.filter((component) => requestedIds.includes(component.id))
+    : DESIGN_SYSTEM_COMPONENTS;
+  const selectedOrDefault = selected.length > 0 ? selected : DESIGN_SYSTEM_COMPONENTS;
+  return selectedOrDefault.map((component) => ({
+    ...component,
+    state_source: "forge_workflow_artifacts_and_events",
+    artifact_type: "crm_ui_component_catalog"
+  }));
+}
+
+export function buildDesignSystemResult(request) {
+  const input = dispatchPayload(request);
+  const context = providedContext(request);
+  const tenantId = input.tenant_id || input.tenant_context?.tenant_id || input.tenant_context?.id || context.tenant || "default";
+  const taskRef = dispatchEnvelope(request).task_ref || `crm-design-system-${slug(tenantId, "tenant")}`;
+  const brandContext = asObject(input.brand_context ?? input.brand);
+  const designPolicy = asObject(input.design_policy ?? input.policy);
+  const tokens = mergeDesignTokens(input.token_overrides ?? input.tokens);
+  const components = requestedDesignComponents(input.component_requests ?? input.components);
+  const inspiration = asArray(designPolicy.inspiration).length > 0 ? asArray(designPolicy.inspiration) : ["penpot", "open_design"];
+  const stateSource = designPolicy.state_source || "forge_workflow_artifacts_and_events";
+  const directBrowserPersistence = designPolicy.direct_browser_persistence === true;
+
+  return {
+    schema_version: "forge.addon_executor_result.v1",
+    status: "completed",
+    task_ref: taskRef,
+    summary: `CRM design system generated ${components.length} components and Forge-owned tokens for ${tenantId}`,
+    outputs: {
+      tenant_id: tenantId,
+      workflow_id: input.workflow_id || "crm.design.system",
+      design_system: "penpot_open_design_inspired_tokens",
+      token_count: Object.values(tokens).reduce((count, value) => count + (typeof value === "object" ? Object.keys(value).length : 1), 0),
+      component_count: components.length,
+      tokens,
+      components,
+      inspiration,
+      state_source: stateSource,
+      direct_browser_persistence: directBrowserPersistence,
+      mutates_crm_state: false,
+      forge_event_sourced: true
+    },
+    artifacts: [
+      {
+        kind: "crm_design_system",
+        id: `crm-design-system-${slug(tenantId, "tenant")}`,
+        title: `CRM design system for ${tenantId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          brand_context: brandContext,
+          design_system: "penpot_open_design_inspired_tokens",
+          inspiration,
+          state_source: stateSource,
+          direct_browser_persistence: directBrowserPersistence
+        }
+      },
+      {
+        kind: "crm_design_token_manifest",
+        id: `crm-design-tokens-${slug(tenantId, "tenant")}`,
+        title: `CRM design token manifest for ${tenantId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          tokens,
+          policy: "tokens are consumed from Forge artifacts before UI rendering"
+        }
+      },
+      {
+        kind: "crm_ui_component_catalog",
+        id: `crm-ui-component-catalog-${slug(tenantId, "tenant")}`,
+        title: `CRM UI component catalog for ${tenantId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          components,
+          state_source: stateSource
+        }
+      }
+    ],
+    events: [
+      {
+        kind: "crm.design.system_generated",
+        tenant_id: tenantId,
+        component_count: components.length,
+        design_system: "penpot_open_design_inspired_tokens"
+      },
+      {
+        kind: "crm.design.tokens_published",
+        tenant_id: tenantId,
+        token_count: Object.values(tokens).reduce((count, value) => count + (typeof value === "object" ? Object.keys(value).length : 1), 0)
+      }
+    ],
+    context_tenant: context.tenant || tenantId
+  };
+}
+
 export function buildMemoryPromotionCandidateResult(request) {
   const input = dispatchPayload(request);
   const context = providedContext(request);
@@ -1936,6 +2107,14 @@ const READINESS_OUTCOME_DOMAINS = [
     workflow_ids: ["crm.enterprise.customer_journey"],
     required_artifacts: ["crm_enterprise_journey_map", "crm_operating_acceptance_evidence", "crm_cross_domain_handoff_map"],
     required_events: ["crm.journey.started", "crm.journey.acceptance_reported"]
+  },
+  {
+    id: "user_experience",
+    title: "Forge CRM design system",
+    deliverable: "design system",
+    workflow_ids: ["crm.design.system"],
+    required_artifacts: ["crm_design_system", "crm_design_token_manifest", "crm_ui_component_catalog"],
+    required_events: ["crm.design.system_generated", "crm.design.tokens_published"]
   }
 ];
 
@@ -3990,6 +4169,8 @@ export function executeCrmRuntimeRequest(request) {
       return buildAreaCopilotResult(request);
     case "forge_crm.orchestrate_work_queue":
       return buildWorkQueueOrchestrationResult(request);
+    case "forge_crm.generate_design_system":
+      return buildDesignSystemResult(request);
     case "forge_crm.prepare_memory_promotion":
       return buildMemoryPromotionCandidateResult(request);
     case "forge_crm.evolve_workflow":

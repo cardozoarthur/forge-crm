@@ -110,6 +110,28 @@ test("workflow pack includes cross-domain work queue orchestration through Forge
   assert.ok(pack.indexes.runtime_contracts.includes("crm.queue.orchestrator.executor"));
 });
 
+test("workflow pack includes Forge-owned design system generation", () => {
+  const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
+  const workflow = pack.workflows.find((candidate) => candidate.id === "crm.design.system");
+
+  assert.ok(workflow);
+  assert.equal(workflow.domain, "user_experience");
+  assert.ok(workflow.runtime_contracts.includes("crm.design_system.executor"));
+  assert.ok(workflow.object_types.includes("design_system"));
+  assert.ok(workflow.object_types.includes("design_tokens"));
+  assert.ok(workflow.object_types.includes("ui_component_catalog"));
+
+  for (const artifact of ["crm_design_system", "crm_design_token_manifest", "crm_ui_component_catalog"]) {
+    assert.ok(workflow.artifacts.includes(artifact), `missing design artifact ${artifact}`);
+    assert.ok(pack.indexes.artifact_types.includes(artifact), `missing indexed design artifact ${artifact}`);
+  }
+
+  assert.ok(workflow.events.includes("crm.design.system_generated"));
+  assert.ok(workflow.events.includes("crm.design.tokens_published"));
+  assert.ok(workflow.validation_gates.includes("design tokens are published as Forge artifacts before UI consumption"));
+  assert.ok(pack.indexes.runtime_contracts.includes("crm.design_system.executor"));
+});
+
 test("AI automation workflow routes operating copilot through a runtime contract", () => {
   const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
   const aiWorkflow = pack.workflows.find((workflow) => workflow.id === "crm.ai.copilot.recommendation");

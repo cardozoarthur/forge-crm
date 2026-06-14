@@ -7,6 +7,7 @@ import {
   buildDocumentGeneratorResult,
   buildDocumentValidatorResult,
   buildOperatingCopilotResult,
+  buildDesignSystemResult,
   buildWorkQueueOrchestrationResult,
   buildLeadClassifierResult,
   buildRelationshipTimelineResult,
@@ -232,7 +233,7 @@ test("operating snapshot runtime returns Forge-owned business surface state", ()
   assert.equal(result.status, "completed");
   assert.equal(result.outputs.tenant_id, "demo");
   assert.equal(result.outputs.external_database_required, false);
-  assert.equal(result.outputs.business_module_count, 6);
+  assert.equal(result.outputs.business_module_count, 7);
   assert.equal(result.outputs.operator_surface_count >= 7, true);
   assert.equal(result.artifacts[0].kind, "crm_operating_snapshot");
   assert.equal(result.artifacts[0].data.state_owner, "forge_workflow_runtime");
@@ -278,8 +279,8 @@ test("operating readiness maps Forge evidence into user-facing CRM deliverables"
   assert.equal(result.status, "completed");
   assert.equal(result.outputs.tenant_id, "demo");
   assert.equal(result.outputs.success_criteria_status, "operable_with_evidence");
-  assert.equal(result.outputs.user_facing_deliverable_count, 7);
-  assert.equal(result.outputs.ready_domain_count, 7);
+  assert.equal(result.outputs.user_facing_deliverable_count, 8);
+  assert.equal(result.outputs.ready_domain_count, 8);
   assert.equal(result.outputs.forge_only_operations, true);
   assert.equal(result.outputs.main_flow_dependency_external, false);
   assert.equal(result.outputs.mutates_crm_state, false);
@@ -522,6 +523,59 @@ test("work queue orchestrator packages approvals SLAs documents campaigns and ha
   assert.ok(result.events.some((event) => event.kind === "crm.queue.snapshot_generated"));
   assert.ok(result.events.some((event) => event.kind === "crm.queue.assignment_planned"));
   assert.ok(result.events.some((event) => event.kind === "crm.queue.risk_flagged"));
+});
+
+test("design system executor packages Penpot Open Design tokens and components through Forge", () => {
+  assert.equal(typeof buildDesignSystemResult, "function");
+
+  const result = buildDesignSystemResult(
+    workerRequest(
+      "forge_crm.generate_design_system",
+      {
+        tenant_context: { tenant_id: "demo" },
+        brand_context: {
+          product_name: "Forge CRM",
+          audience: "enterprise operators",
+          tone: "quiet operational"
+        },
+        token_overrides: {
+          color: {
+            accent: "#126c55",
+            risk: "#a53c3c"
+          },
+          radius: {
+            panel: "8px"
+          }
+        },
+        component_requests: ["workflow_node", "queue_card", "document_row", "command_action", "metric_tile"],
+        design_policy: {
+          inspiration: ["penpot", "open_design"],
+          state_source: "forge_workflow_artifacts_and_events",
+          direct_browser_persistence: false
+        }
+      },
+      { contract_id: "crm.design_system.executor", task_ref: "design-system-test" }
+    )
+  );
+
+  assert.equal(result.schema_version, "forge.addon_executor_result.v1");
+  assert.equal(result.status, "completed");
+  assert.equal(result.outputs.tenant_id, "demo");
+  assert.equal(result.outputs.workflow_id, "crm.design.system");
+  assert.equal(result.outputs.design_system, "penpot_open_design_inspired_tokens");
+  assert.equal(result.outputs.component_count, 5);
+  assert.equal(result.outputs.mutates_crm_state, false);
+  assert.equal(result.outputs.forge_event_sourced, true);
+  assert.equal(result.outputs.direct_browser_persistence, false);
+  assert.ok(result.outputs.tokens.color.accent);
+  assert.ok(result.outputs.components.every((component) => component.state_source === "forge_workflow_artifacts_and_events"));
+
+  for (const artifactKind of ["crm_design_system", "crm_design_token_manifest", "crm_ui_component_catalog"]) {
+    assert.ok(result.artifacts.some((artifact) => artifact.kind === artifactKind), `missing ${artifactKind}`);
+  }
+
+  assert.ok(result.events.some((event) => event.kind === "crm.design.system_generated"));
+  assert.ok(result.events.some((event) => event.kind === "crm.design.tokens_published"));
 });
 
 test("memory promotion executor prepares governed Forge memory promotion requests", () => {

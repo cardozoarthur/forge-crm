@@ -53,6 +53,13 @@ const USER_FACING_DELIVERABLES = [
     domain: "operations",
     surface_id: "crm.system-map",
     workflow_ids: ["crm.enterprise.customer_journey"]
+  },
+  {
+    id: "design_system",
+    title: "Design system",
+    domain: "user_experience",
+    surface_id: "crm.design-system",
+    workflow_ids: ["crm.design.system"]
   }
 ];
 

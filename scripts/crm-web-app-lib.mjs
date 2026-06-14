@@ -9,6 +9,7 @@ const SURFACE_ROUTES = {
   "crm.marketing-calendar": "/crm/marketing",
   "crm.document-queue": "/crm/documents",
   "crm.work-queue": "/crm/work-queue",
+  "crm.design-system": "/crm/design-system",
   "crm.ai-workbench": "/crm/ai"
 };
 
@@ -21,6 +22,7 @@ const SURFACE_PERMISSIONS = {
   "crm.marketing-calendar": "crm.workflow.mutate",
   "crm.document-queue": "crm.document.generate",
   "crm.work-queue": "crm.workflow.mutate",
+  "crm.design-system": "crm.observability.inspect",
   "crm.ai-workbench": "crm.ai.recommend"
 };
 
@@ -38,6 +40,7 @@ const WORKFLOW_EDGES = [
   ["crm.work.queue.orchestration", "crm.ticket.sla", "queue risk can return SLA work to support"],
   ["crm.work.queue.orchestration", "crm.document.approval", "queue assignment can return documents to approval work"],
   ["crm.work.queue.orchestration", "crm.project.handoff", "queue assignment can return blocked handoffs to operations"],
+  ["crm.design.system", "crm.enterprise.readiness", "published design artifacts update readiness evidence"],
   ["crm.operational.observability", "crm.workflow.evolution", "observability findings generate controlled evolution candidates"],
   ["crm.workflow.evolution", "crm.enterprise.readiness", "validated experiments update readiness evidence"],
   ["crm.project.handoff", "crm.enterprise.customer_journey", "accepted handoff completes customer lifecycle evidence"],
@@ -64,6 +67,14 @@ const DESIGN_TOKENS = {
 };
 
 const WORKBENCH_STATE_SOURCE = "forge_workflow_artifacts_and_events";
+
+const DESIGN_SYSTEM_COMPONENTS = [
+  { id: "workflow_node", title: "Workflow node", surface_ids: ["crm.system-map"], state_source: WORKBENCH_STATE_SOURCE },
+  { id: "queue_card", title: "Queue card", surface_ids: ["crm.support-queue", "crm.document-queue", "crm.work-queue"], state_source: WORKBENCH_STATE_SOURCE },
+  { id: "document_row", title: "Document row", surface_ids: ["crm.document-queue"], state_source: WORKBENCH_STATE_SOURCE },
+  { id: "command_action", title: "Command action", surface_ids: ["crm.operational-cockpit", "crm.ai-workbench"], state_source: WORKBENCH_STATE_SOURCE },
+  { id: "metric_tile", title: "Metric tile", surface_ids: ["crm.commercial-command", "crm.system-map"], state_source: WORKBENCH_STATE_SOURCE }
+];
 
 function slug(value, fallback = "tenant") {
   const normalized = String(value || fallback)
@@ -1094,6 +1105,15 @@ function actions() {
       command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.queue.orchestrator.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
     },
     {
+      id: "crm.generate-design-system",
+      label: "Generate design system",
+      surface_id: "crm.design-system",
+      contract_id: "crm.design_system.executor",
+      requires_permission: "crm.observability.inspect",
+      mutates_workflow: true,
+      command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.design_system.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
+    },
+    {
       id: "crm.prepare-memory-promotion",
       label: "Prepare memory promotion",
       surface_id: "crm.ai-workbench",
@@ -1437,6 +1457,19 @@ export function buildCrmWebAppSnapshot(options = {}) {
     actions: actionList,
     action_invocation_plans: actionInvocationPlans(actionList),
     workflow_cadences: workflowCadences(workflows, actionList),
+    design_system: {
+      schema_version: "forge.crm_design_system.v1",
+      workflow_id: "crm.design.system",
+      contract_id: "crm.design_system.executor",
+      design_system: "penpot_open_design_inspired_tokens",
+      state_source: WORKBENCH_STATE_SOURCE,
+      direct_browser_persistence: false,
+      artifact_types: ["crm_design_system", "crm_design_token_manifest", "crm_ui_component_catalog"],
+      event_types: ["crm.design.system_generated", "crm.design.tokens_published"],
+      tokens: DESIGN_TOKENS,
+      components: DESIGN_SYSTEM_COMPONENTS,
+      action_id: "crm.generate-design-system"
+    },
     design_tokens: DESIGN_TOKENS,
     observability: model.observability
   };

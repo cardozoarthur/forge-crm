@@ -415,6 +415,47 @@
       ]
     },
     {
+      "id": "crm_user_experience",
+      "title": "CRM user experience and design system",
+      "description": "Forge-owned TUI, web interface, workflow visualization, knowledge relationship, document management and design-token system.",
+      "domains": [
+        "crm",
+        "ui",
+        "design_system"
+      ],
+      "keywords": [
+        "tui",
+        "web",
+        "workflow visualization",
+        "knowledge graph",
+        "design system",
+        "Penpot",
+        "Open Design"
+      ],
+      "requires_capabilities": [
+        "workflow_runtime",
+        "addon_registry",
+        "observability"
+      ],
+      "workflow_extensions": [
+        "crm_design_system"
+      ],
+      "deliverables": [
+        "Design token manifest",
+        "UI component catalog",
+        "Forge-owned design system artifact"
+      ],
+      "artifact_types": [
+        "crm_design_system",
+        "crm_design_token_manifest",
+        "crm_ui_component_catalog"
+      ],
+      "view_ids": [
+        "crm.design-system",
+        "crm.system-map"
+      ]
+    },
+    {
       "id": "crm_ai_automation",
       "title": "CRM AI and automation",
       "description": "Lead classification, opportunity prioritization, proposal/document generation, executive summaries, risk analysis and next-step recommendations.",
@@ -575,6 +616,11 @@
       "id": "crm_work_queue_orchestration",
       "kind": "operations_workflow",
       "description": "Package approvals, SLA risks, documents, campaigns, handoffs and waiting states into Forge-owned work queues."
+    },
+    {
+      "id": "crm_design_system",
+      "kind": "ui_workflow",
+      "description": "Publish Penpot/Open Design-inspired tokens and CRM component catalogs as Forge artifacts."
     },
     {
       "id": "crm_operational_observability",
@@ -795,6 +841,35 @@
         "work queue orchestration does not mutate CRM state directly",
         "queue assignments require Forge workflow approval before state mutation",
         "every queue item must cite Forge artifact and event evidence"
+      ]
+    },
+    {
+      "id": "crm.design_system.executor",
+      "title": "CRM design system generator",
+      "contract_type": "executor",
+      "capability_id": "crm_user_experience",
+      "workflow_extension_id": "crm_design_system",
+      "runtime": "external_api",
+      "entrypoint": "forge_crm.generate_design_system",
+      "inputs": [
+        "brand_context",
+        "token_overrides",
+        "component_requests",
+        "design_policy",
+        "tenant_context"
+      ],
+      "outputs": [
+        "crm_design_system",
+        "crm_design_token_manifest",
+        "crm_ui_component_catalog"
+      ],
+      "permissions": [
+        "crm.observability.inspect"
+      ],
+      "constraints": [
+        "Penpot and Open Design inspiration is translated into Forge-owned artifacts, not browser-local state",
+        "design system generation does not mutate CRM state directly",
+        "components must cite Forge workflow artifacts and event-backed state sources"
       ]
     },
     {
@@ -1916,6 +1991,51 @@
           ]
         },
         {
+          "id": "crm.tui.generate-design-system",
+          "label": "Generate design system",
+          "description": "Publish CRM design tokens and component catalog as Forge artifacts.",
+          "palette_group": "CRM",
+          "source_panel": "crm.operational-cockpit",
+          "type": "command",
+          "target": "forge addons execute-executor",
+          "method": "CLI",
+          "permission": "crm.observability.inspect",
+          "requires_confirmation": false,
+          "risk_level": "medium",
+          "mutates_workflow": true,
+          "command_template": [
+            "addons",
+            "execute-executor",
+            "--addon",
+            "forge.addon.crm",
+            "--contract",
+            "crm.design_system.executor",
+            "--worker",
+            "<worker-id>",
+            "--task",
+            "<task-ref>",
+            "--input",
+            "<json>",
+            "--context",
+            "<json>",
+            "--output",
+            "json"
+          ],
+          "keywords": [
+            "crm",
+            "design",
+            "tokens",
+            "ui"
+          ],
+          "payload_schema": [
+            "brand_context",
+            "token_overrides",
+            "component_requests",
+            "design_policy",
+            "tenant_context"
+          ]
+        },
+        {
           "id": "crm.tui.generate-readiness-package",
           "label": "Generate readiness package",
           "description": "Produce the CRM operating readiness package from Forge workflow evidence.",
@@ -2128,6 +2248,24 @@
       "permissions": [
         "crm.workflow.mutate",
         "crm.ai.recommend",
+        "crm.observability.inspect"
+      ]
+    },
+    {
+      "id": "crm.design-system",
+      "title": "CRM design system",
+      "surface": "web",
+      "type": "system",
+      "component": "ForgeCrmDesignSystem",
+      "route": "/crm/design-system",
+      "layout": {
+        "zone": "main",
+        "order": 78,
+        "width": "full",
+        "height": "full",
+        "density": "compact"
+      },
+      "permissions": [
         "crm.observability.inspect"
       ]
     },
@@ -2387,6 +2525,21 @@
       "generic_kind": "artifact"
     },
     {
+      "id": "crm_design_system",
+      "title": "CRM design system",
+      "generic_kind": "artifact"
+    },
+    {
+      "id": "crm_design_token_manifest",
+      "title": "CRM design token manifest",
+      "generic_kind": "artifact"
+    },
+    {
+      "id": "crm_ui_component_catalog",
+      "title": "CRM UI component catalog",
+      "generic_kind": "artifact"
+    },
+    {
       "id": "crm_work_queue_snapshot",
       "title": "CRM work queue snapshot",
       "generic_kind": "report"
@@ -2531,6 +2684,11 @@
     {
       "id": "crm.queue",
       "title": "CRM queue event",
+      "transport": "crm"
+    },
+    {
+      "id": "crm.design",
+      "title": "CRM design event",
       "transport": "crm"
     },
     {

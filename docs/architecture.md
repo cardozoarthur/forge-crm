@@ -27,7 +27,7 @@ Forge CRM is a product proof for Forge as a factory/framework for agentic workfl
 
 No important CRM automation should bypass Forge. External tools may execute bounded work, but Forge owns the workflow, state transitions, approvals, memory scope, artifact attachment, event history and validation gates.
 
-The current CRM worker exposes twenty-seven Forge runtime entrypoints:
+The current CRM worker exposes twenty-eight Forge runtime entrypoints:
 
 - `forge_crm.plan_system` for CRM system planning;
 - `forge_crm.bootstrap_tenant` for a Forge-owned tenant workflow pack;
@@ -38,6 +38,7 @@ The current CRM worker exposes twenty-seven Forge runtime entrypoints:
 - `forge_crm.operating_copilot` for opportunity priority, risk analysis, executive summary and next-step recommendations;
 - `forge_crm.run_area_copilot` for specialized commercial, support, marketing, operations and document copilot briefs;
 - `forge_crm.orchestrate_work_queue` for cross-domain approvals, SLA risks, documents, campaigns, handoffs and waiting states;
+- `forge_crm.generate_design_system` for Penpot/Open Design-inspired CRM tokens and UI component catalogs as Forge artifacts;
 - `forge_crm.prepare_memory_promotion` for curated CRM knowledge summaries and governed `forge memory promote` requests;
 - `forge_crm.evolve_workflow` for governed Forge improve experiments, benchmarks, rollback plans and promotion decisions;
 - `forge_crm.run_enterprise_journey` for packaging a lead-to-support customer lifecycle as Forge-owned acceptance evidence;
@@ -61,7 +62,7 @@ The worker returns Forge Addon result schemas and does not persist CRM state dir
 
 ## Tenant Workflow Pack
 
-`scripts/crm-workflow-pack-lib.mjs` produces the first operational workflow model for a CRM tenant. It declares 17 Forge-owned workflows across relationship, commercial, support, marketing, operations, cross-domain work queues, AI automation, operational observability, enterprise readiness and end-to-end customer journey acceptance. Each workflow carries explicit states, transitions, object types, runtime contracts, artifact types, events, memory scopes, permissions, validation gates and mutation policy.
+`scripts/crm-workflow-pack-lib.mjs` produces the first operational workflow model for a CRM tenant. It declares 18 Forge-owned workflows across relationship, commercial, support, marketing, operations, cross-domain work queues, user experience/design system, AI automation, operational observability, enterprise readiness and end-to-end customer journey acceptance. Each workflow carries explicit states, transitions, object types, runtime contracts, artifact types, events, memory scopes, permissions, validation gates and mutation policy.
 
 The pack uses `workflow_id`, `artifact_id` and `event_id` as durable identities. External primary keys and direct external persistence are explicitly disabled.
 
@@ -79,6 +80,7 @@ The operating surfaces are:
 - `crm.marketing-calendar`;
 - `crm.document-queue`;
 - `crm.work-queue`;
+- `crm.design-system`;
 - `crm.ai-workbench`.
 
 `crm.operating.snapshot.executor` returns a `crm_operating_snapshot` artifact with the same Forge-owned state contract. It does not create or require a CRM-local database; it is a projection of Forge workflow artifacts and events for enterprise users and future web/TUI rendering.
@@ -89,7 +91,7 @@ The first web surface lives in `web/` and is declared by `crm.system-map.props.w
 
 - `scripts/generate-crm-web-snapshot.mjs` writes `web/data/operating-snapshot.json`;
 - `web/index.html` loads the snapshot;
-- `web/app.js` renders workflow graph, knowledge graph, business modules, document queue, cross-domain work queue, enterprise journey workbench, operating copilot and area copilot actions, and Forge action templates;
+- `web/app.js` renders workflow graph, knowledge graph, business modules, document queue, cross-domain work queue, design system, enterprise journey workbench, operating copilot and area copilot actions, and Forge action templates;
 - `web/styles.css` carries compact operational styling and design tokens.
 
 This is a business-user view over Forge-owned state. It does not introduce browser persistence, a CRM-local database or a side automation engine. Any action shown in the UI is represented as a Forge command template that routes through Addon runtime contracts and permission gates.
