@@ -5,6 +5,23 @@
   "principle": "Forge is the workflow system factory; CRM modules are Addon-defined workflow applications.",
   "modules": [
     {
+      "id": "installation",
+      "title": "Installation Authorization",
+      "workflow_extensions": [
+        "crm_installation_authorization"
+      ],
+      "objects": [
+        "installation_authorization",
+        "permission_gate",
+        "tenant_onboarding"
+      ],
+      "forge_requirements": [
+        "human permission authorization",
+        "no automatic permission mutation",
+        "tenant bootstrap blocked until authorization"
+      ]
+    },
+    {
       "id": "relationship",
       "title": "Relationship",
       "workflow_extensions": [
