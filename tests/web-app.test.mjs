@@ -311,6 +311,46 @@ test("web app snapshot exposes an operational workbench backed by Forge artifact
   assert.ok(panels.get("ai_workbench").memory_promotions.some((promotion) => promotion.action_id === "crm.prepare-memory-promotion"));
 });
 
+test("web app snapshot exposes a daily operating cycle workbench from Forge evidence", () => {
+  const snapshot = buildCrmWebAppSnapshot({ tenant_id: "demo" });
+  const workbench = snapshot.daily_operating_cycle_workbench;
+  const action = snapshot.actions.find((candidate) => candidate.id === "crm.run-daily-operating-cycle");
+
+  assert.ok(workbench);
+  assert.equal(workbench.schema_version, "forge.crm_daily_operating_cycle_workbench.v1");
+  assert.equal(workbench.workflow_id, "crm.daily.operating_cycle");
+  assert.equal(workbench.state_owner, "forge_workflow_runtime");
+  assert.equal(workbench.local_state_allowed, false);
+  assert.equal(workbench.action_id, "crm.run-daily-operating-cycle");
+  assert.equal(workbench.contract_id, "crm.operating.daily_cycle.executor");
+
+  assert.ok(action);
+  assert.equal(action.contract_id, "crm.operating.daily_cycle.executor");
+  assert.equal(action.surface_id, "crm.work-queue");
+  assert.equal(action.requires_permission, "crm.workflow.mutate");
+  assert.deepEqual(action.command_template.slice(0, 3), ["forge", "addons", "execute-executor"]);
+
+  const domainIds = new Set(workbench.domain_summaries.map((domain) => domain.domain));
+  for (const domain of ["sales", "support", "documents", "marketing", "handoffs"]) {
+    assert.ok(domainIds.has(domain), `missing daily cycle domain ${domain}`);
+  }
+
+  assert.ok(workbench.command_queue.length >= 5);
+  assert.ok(workbench.command_queue.every((item) => item.command_owner === "forge"));
+  assert.ok(workbench.command_queue.every((item) => item.requires_forge_approval === true));
+  assert.ok(workbench.risk_register.some((risk) => risk.severity === "high"));
+  assert.deepEqual(
+    workbench.operation_plan.map((step) => step.id),
+    [
+      "collect_forge_operating_evidence",
+      "generate_daily_operating_cycle",
+      "promote_command_brief_and_risks",
+      "dispatch_approved_domain_actions",
+      "refresh_operating_snapshot"
+    ]
+  );
+});
+
 test("web app snapshot exposes the omnichannel center as a Forge command surface", () => {
   const snapshot = buildCrmWebAppSnapshot({ tenant_id: "demo" });
   const action = snapshot.actions.find((candidate) => candidate.id === "crm.run-omnichannel-center");
@@ -561,14 +601,14 @@ test("web app snapshot exposes operating readiness workbench for company operati
   assert.equal(workbench.main_flow_dependency_external, false);
 
   assert.equal(workbench.domain_coverage.complete, true);
-  assert.equal(workbench.domain_coverage.domains.length, 14);
+  assert.equal(workbench.domain_coverage.domains.length, 15);
   assert.ok(workbench.domain_coverage.domains.every((domain) => domain.ready === true));
   assert.ok(workbench.domain_coverage.domains.every((domain) => domain.workflow_ids.length > 0));
   assert.ok(workbench.domain_coverage.domains.every((domain) => domain.artifact_evidence.length > 0));
   assert.ok(workbench.domain_coverage.domains.every((domain) => domain.event_evidence.length > 0));
   assert.ok(workbench.domain_coverage.domains.every((domain) => domain.runtime_contract_evidence.length > 0));
 
-  assert.equal(workbench.user_outcomes.length, 14);
+  assert.equal(workbench.user_outcomes.length, 15);
   assert.ok(workbench.user_outcomes.some((outcome) => outcome.deliverable === "commercial command center"));
   assert.ok(workbench.user_outcomes.some((outcome) => outcome.deliverable === "support inbox"));
   assert.ok(workbench.user_outcomes.some((outcome) => outcome.deliverable === "omnichannel conversation threads"));

@@ -463,6 +463,51 @@ export function renderWorkQueue(snapshot) {
   return section;
 }
 
+export function renderDailyOperatingCycle(snapshot) {
+  const workbench = snapshot.daily_operating_cycle_workbench;
+  const section = nodeElement("section", "panel daily-cycle");
+  section.dataset.surfacePanel = "crm.work-queue";
+  section.append(nodeElement("h2", "", "Daily Operating Cycle"));
+  if (!workbench) {
+    section.append(nodeElement("p", "muted-copy", "Daily operating cycle unavailable in this snapshot."));
+    return section;
+  }
+
+  section.append(nodeElement("p", "panel-source", `${workbench.workflow_id} · ${workbench.contract_id}`));
+  section.append(nodeElement("code", "", actionLabel(snapshot, workbench.action_id)));
+
+  const summary = nodeElement("div", "daily-domain-grid");
+  for (const domain of workbench.domain_summaries || []) {
+    const item = nodeElement("article", "daily-domain");
+    item.append(nodeElement("strong", "", compactTitle(domain.domain)));
+    item.append(nodeElement("span", "", `${domain.command_count} commands · ${domain.risk_count} risks`));
+    item.append(nodeElement("small", "", domain.workflow_id));
+    summary.append(item);
+  }
+
+  const commands = nodeElement("div", "daily-command-list");
+  for (const command of workbench.command_queue || []) {
+    const item = nodeElement("article", "daily-command");
+    item.append(nodeElement("strong", "", command.title));
+    item.append(nodeElement("span", "", `${compactTitle(command.domain)} · ${compactTitle(command.state)} · ${command.owner}`));
+    item.append(nodeElement("code", "", actionLabel(snapshot, command.action_id)));
+    item.title = `${command.contract_id} · ${command.command_owner}`;
+    commands.append(item);
+  }
+
+  const risks = nodeElement("div", "daily-risk-list");
+  for (const risk of workbench.risk_register || []) {
+    const item = nodeElement("article", `daily-risk severity-${risk.severity}`);
+    item.append(nodeElement("strong", "", compactTitle(risk.domain)));
+    item.append(nodeElement("span", "", `${compactTitle(risk.severity)} · ${risk.owner}`));
+    item.append(nodeElement("small", "", risk.closure_policy));
+    risks.append(item);
+  }
+
+  section.append(summary, commands, risks);
+  return section;
+}
+
 export function renderDesignSystem(snapshot) {
   const designSystem = snapshot.design_system;
   const section = nodeElement("section", "panel design-system-panel");
@@ -1103,6 +1148,7 @@ function render(snapshot) {
   workspace.append(renderSupportQueue(snapshot));
   workspace.append(renderMarketingCalendar(snapshot));
   workspace.append(renderWorkQueue(snapshot));
+  workspace.append(renderDailyOperatingCycle(snapshot));
   workspace.append(renderDesignSystem(snapshot));
   workspace.append(renderAiWorkbench(snapshot));
   workspace.append(renderWorkflowCadences(snapshot));

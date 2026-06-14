@@ -110,6 +110,49 @@ test("workflow pack includes cross-domain work queue orchestration through Forge
   assert.ok(pack.indexes.runtime_contracts.includes("crm.queue.orchestrator.executor"));
 });
 
+test("workflow pack includes a Forge-owned daily operating cycle", () => {
+  const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
+  const workflow = pack.workflows.find((candidate) => candidate.id === "crm.daily.operating_cycle");
+
+  assert.ok(workflow);
+  assert.equal(workflow.domain, "operations");
+  assert.equal(workflow.workflow_extension_id, "crm_daily_operating_cycle");
+  assert.ok(workflow.runtime_contracts.includes("crm.operating.daily_cycle.executor"));
+
+  for (const dependency of [
+    "crm.opportunity.pipeline",
+    "crm.followup.forecast",
+    "crm.ticket.sla",
+    "crm.campaign.lifecycle",
+    "crm.document.approval",
+    "crm.project.handoff",
+    "crm.work.queue.orchestration"
+  ]) {
+    assert.ok(workflow.depends_on_workflows.includes(dependency), `missing daily cycle dependency ${dependency}`);
+  }
+
+  for (const objectType of ["daily_operating_cycle", "command_brief", "risk_register", "task"]) {
+    assert.ok(workflow.object_types.includes(objectType), `missing daily cycle object ${objectType}`);
+  }
+
+  for (const artifact of ["crm_daily_operating_cycle", "crm_operating_command_brief", "crm_operating_risk_register"]) {
+    assert.ok(workflow.artifacts.includes(artifact), `missing daily cycle artifact ${artifact}`);
+    assert.ok(pack.indexes.artifact_types.includes(artifact), `missing indexed daily cycle artifact ${artifact}`);
+  }
+
+  for (const event of [
+    "crm.operating.daily_cycle_generated",
+    "crm.operating.command_brief_generated",
+    "crm.operating.risk_registered"
+  ]) {
+    assert.ok(workflow.events.includes(event), `missing daily cycle event ${event}`);
+  }
+
+  assert.ok(workflow.validation_gates.includes("daily operating actions route through Forge runtime contracts"));
+  assert.ok(workflow.validation_gates.includes("risk closure requires promoted Forge workflow evidence"));
+  assert.ok(pack.indexes.runtime_contracts.includes("crm.operating.daily_cycle.executor"));
+});
+
 test("workflow pack includes Forge-owned design system generation", () => {
   const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
   const workflow = pack.workflows.find((candidate) => candidate.id === "crm.design.system");

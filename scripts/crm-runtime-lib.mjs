@@ -1307,6 +1307,339 @@ export function buildWorkQueueOrchestrationResult(request) {
   };
 }
 
+const DAILY_OPERATING_DOMAINS = [
+  {
+    domain: "sales",
+    input_keys: ["sales", "pipeline", "opportunities", "commercial"],
+    title: "Sales pipeline",
+    workflow_id: "crm.opportunity.pipeline",
+    contract_id: "crm.pipeline.stage_move.executor",
+    action_id: "crm.move-pipeline-stage",
+    permission: "crm.workflow.mutate",
+    default_owner: "sales.ops"
+  },
+  {
+    domain: "support",
+    input_keys: ["support", "tickets", "sla"],
+    title: "Support and SLA",
+    workflow_id: "crm.ticket.sla",
+    contract_id: "crm.support.ticket_sla.executor",
+    action_id: "crm.triage-ticket-sla",
+    permission: "crm.omnichannel.ingest",
+    default_owner: "support.lead"
+  },
+  {
+    domain: "documents",
+    input_keys: ["documents", "document_queue", "approvals"],
+    title: "Documents and approvals",
+    workflow_id: "crm.document.approval",
+    contract_id: "crm.document.approval.executor",
+    action_id: "crm.record-document-approval",
+    permission: "crm.document.generate",
+    default_owner: "document.ops"
+  },
+  {
+    domain: "marketing",
+    input_keys: ["marketing", "campaigns", "nurture"],
+    title: "Marketing automation",
+    workflow_id: "crm.campaign.lifecycle",
+    contract_id: "crm.marketing.campaign_automation.executor",
+    action_id: "crm.automate-campaign",
+    permission: "crm.workflow.mutate",
+    default_owner: "marketing.ops"
+  },
+  {
+    domain: "handoffs",
+    input_keys: ["handoffs", "projects", "operations"],
+    title: "Project handoffs",
+    workflow_id: "crm.project.handoff",
+    contract_id: "crm.operations.project_handoff.executor",
+    action_id: "crm.plan-project-handoff",
+    permission: "crm.workflow.mutate",
+    default_owner: "delivery.ops"
+  }
+];
+
+function dailyOperatingDefaultItems() {
+  return {
+    pipeline: [
+      {
+        id: "opp-renewal-031",
+        account: "Northstar Retail",
+        amount: 540000,
+        probability: 0.78,
+        state: "negotiation",
+        priority: "high",
+        next_action_id: "crm.manage-contract-signature"
+      }
+    ],
+    support: [
+      {
+        id: "sup-1042",
+        account: "Northstar Retail",
+        priority: "p1",
+        state: "sla_escalation",
+        sla_status: "at_risk",
+        minutes_to_breach: 18,
+        next_action_id: "crm.triage-ticket-sla"
+      }
+    ],
+    documents: [
+      {
+        id: "doc-prop-022",
+        state: "approval_wait",
+        owner: "commercial.director",
+        next_action_id: "crm.record-document-approval"
+      }
+    ],
+    marketing: [
+      {
+        id: "cmp-logistics-demo",
+        state: "approval_wait",
+        launch_window: "week_33",
+        next_action_id: "crm.automate-campaign"
+      }
+    ],
+    handoffs: [
+      {
+        id: "handoff-atlas-onboarding",
+        state: "blocked_wait",
+        owner: "delivery.ops",
+        next_action_id: "crm.plan-project-handoff"
+      }
+    ]
+  };
+}
+
+function dailyItemsForDomain(operatingInputs, spec) {
+  for (const key of spec.input_keys) {
+    const value = operatingInputs[key];
+    if (Array.isArray(value) && value.length > 0) {
+      return value;
+    }
+  }
+  const defaults = dailyOperatingDefaultItems();
+  for (const key of spec.input_keys) {
+    if (Array.isArray(defaults[key]) && defaults[key].length > 0) {
+      return defaults[key];
+    }
+  }
+  return [];
+}
+
+function dailyRiskReasons(item, thresholdMinutes) {
+  const state = String(item.state || item.status || item.sla_status || "").toLowerCase();
+  const priority = String(item.priority || item.severity || "").toLowerCase();
+  const minutesToBreach = item.minutes_to_breach === undefined ? null : numberFrom(item.minutes_to_breach, null);
+  const reasons = [];
+
+  if (["p0", "p1", "critical", "high"].includes(priority)) {
+    reasons.push("high_priority");
+  }
+  if (state.includes("risk") || state.includes("blocked") || state.includes("breach") || state.includes("escalation")) {
+    reasons.push("blocked_or_sla_risk");
+  }
+  if (state.includes("approval_wait") || state.includes("rework")) {
+    reasons.push("approval_or_rework_wait");
+  }
+  if (minutesToBreach !== null && minutesToBreach <= thresholdMinutes) {
+    reasons.push("sla_threshold");
+  }
+  if (!item.owner && !item.assignee && !item.assigned_to) {
+    reasons.push("missing_owner");
+  }
+  return unique(reasons);
+}
+
+function dailySeverity(riskReasons) {
+  if (riskReasons.includes("sla_threshold") || riskReasons.includes("blocked_or_sla_risk") || riskReasons.includes("high_priority")) {
+    return "high";
+  }
+  return riskReasons.length > 0 ? "medium" : "low";
+}
+
+function normalizeDailyCommandItem({ item, spec, index, policy, businessDay }) {
+  const source = asObject(item);
+  const thresholdMinutes = numberFrom(policy.risk_threshold_minutes, 60);
+  const id = String(source.id || source.item_id || `${spec.domain}-${index + 1}`);
+  const state = String(source.state || source.status || source.stage || source.sla_status || "review_wait");
+  const riskReasons = dailyRiskReasons({ ...source, state }, thresholdMinutes);
+  const owner = source.owner || source.assignee || source.assigned_to || policy.commander || spec.default_owner;
+  const actionId = String(source.next_action_id || source.action_id || spec.action_id);
+
+  return {
+    id,
+    domain: spec.domain,
+    title: source.title || source.summary || `${spec.title} command`,
+    account: source.account || source.company || null,
+    workflow_id: String(source.workflow_id || spec.workflow_id),
+    contract_id: String(source.contract_id || spec.contract_id),
+    action_id: actionId,
+    permission: source.permission || spec.permission,
+    owner,
+    state,
+    business_day: businessDay,
+    command_owner: "forge",
+    requires_forge_approval: policy.approval_required !== false,
+    artifact_refs: asArray(source.artifact_refs ?? source.artifacts).map((artifact) => String(artifact)),
+    event_refs: asArray(source.event_refs ?? source.events).map((event) => String(event)),
+    risk_reasons: riskReasons,
+    severity: dailySeverity(riskReasons),
+    state_owner: "forge_workflow_runtime",
+    mutates_crm_state: false
+  };
+}
+
+export function buildDailyOperatingCycleResult(request) {
+  const input = dispatchPayload(request);
+  const context = providedContext(request);
+  const tenantId = input.tenant_id || input.tenant_context?.tenant_id || input.tenant_context?.id || context.tenant || "default";
+  const businessDay = String(input.business_day || input.operating_day || "current-business-day");
+  const taskRef = dispatchEnvelope(request).task_ref || `daily-operating-cycle-${slug(tenantId, "tenant")}`;
+  const policy = {
+    approval_required: true,
+    commander: "ops.commander",
+    risk_threshold: "medium",
+    ...asObject(input.operating_policy ?? input.policy)
+  };
+  const operatingInputs = asObject(input.operating_inputs ?? input);
+  const commandQueue = DAILY_OPERATING_DOMAINS.flatMap((spec) =>
+    dailyItemsForDomain(operatingInputs, spec).map((item, index) =>
+      normalizeDailyCommandItem({ item, spec, index, policy, businessDay })
+    )
+  );
+  const domainSummaries = DAILY_OPERATING_DOMAINS.map((spec) => {
+    const items = commandQueue.filter((item) => item.domain === spec.domain);
+    return {
+      domain: spec.domain,
+      title: spec.title,
+      workflow_id: spec.workflow_id,
+      contract_id: spec.contract_id,
+      action_id: spec.action_id,
+      item_count: items.length,
+      risk_count: items.filter((item) => item.risk_reasons.length > 0).length,
+      owner_ids: unique(items.map((item) => item.owner)).sort(),
+      state_owner: "forge_workflow_runtime"
+    };
+  });
+  const riskRegister = commandQueue
+    .filter((item) => item.risk_reasons.length > 0)
+    .map((item) => ({
+      risk_id: `risk-${slug(item.id, "item")}`,
+      item_id: item.id,
+      domain: item.domain,
+      severity: item.severity,
+      workflow_id: item.workflow_id,
+      owner: item.owner,
+      reasons: item.risk_reasons,
+      closure_policy: "risk closure requires promoted Forge workflow evidence"
+    }));
+
+  const commandBrief = {
+    tenant_id: tenantId,
+    business_day: businessDay,
+    commander: policy.commander,
+    state_owner: "forge_workflow_runtime",
+    local_state_allowed: false,
+    domain_count: domainSummaries.length,
+    command_item_count: commandQueue.length,
+    risk_count: riskRegister.length,
+    approval_required: policy.approval_required !== false,
+    next_actions: commandQueue.map((item) => ({
+      item_id: item.id,
+      domain: item.domain,
+      action_id: item.action_id,
+      contract_id: item.contract_id,
+      owner: item.owner,
+      requires_forge_approval: item.requires_forge_approval
+    }))
+  };
+
+  return {
+    schema_version: "forge.addon_executor_result.v1",
+    status: "completed",
+    task_ref: taskRef,
+    summary: `CRM daily operating cycle generated ${commandQueue.length} Forge command item(s) for ${tenantId}`,
+    outputs: {
+      tenant_id: tenantId,
+      workflow_id: "crm.daily.operating_cycle",
+      business_day: businessDay,
+      domain_count: domainSummaries.length,
+      command_item_count: commandQueue.length,
+      risk_count: riskRegister.length,
+      approval_required: policy.approval_required !== false,
+      mutates_crm_state: false,
+      forge_event_sourced: true,
+      state_owner: "forge_workflow_runtime"
+    },
+    artifacts: [
+      {
+        kind: "crm_daily_operating_cycle",
+        id: `crm-daily-operating-cycle-${slug(tenantId, "tenant")}-${slug(businessDay, "day")}`,
+        title: `CRM daily operating cycle for ${tenantId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          business_day: businessDay,
+          workflow_id: "crm.daily.operating_cycle",
+          state_owner: "forge_workflow_runtime",
+          local_state_allowed: false,
+          domain_summaries: domainSummaries,
+          command_queue: commandQueue,
+          risk_register: riskRegister,
+          operation_policy: {
+            mutation_path: "Forge workflow command, runtime contract or approved event",
+            approval_required: policy.approval_required !== false,
+            local_scheduler_allowed: false
+          }
+        }
+      },
+      {
+        kind: "crm_operating_command_brief",
+        id: `crm-operating-command-brief-${slug(tenantId, "tenant")}-${slug(businessDay, "day")}`,
+        title: `CRM operating command brief for ${tenantId}`,
+        content_type: "application/json",
+        data: commandBrief
+      },
+      {
+        kind: "crm_operating_risk_register",
+        id: `crm-operating-risk-register-${slug(tenantId, "tenant")}-${slug(businessDay, "day")}`,
+        title: `CRM operating risk register for ${tenantId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          business_day: businessDay,
+          risk_count: riskRegister.length,
+          risks: riskRegister,
+          state_owner: "forge_workflow_runtime",
+          closure_policy: "risk closure requires promoted Forge workflow evidence"
+        }
+      }
+    ],
+    events: [
+      {
+        kind: "crm.operating.daily_cycle_generated",
+        tenant_id: tenantId,
+        business_day: businessDay,
+        command_item_count: commandQueue.length
+      },
+      {
+        kind: "crm.operating.command_brief_generated",
+        tenant_id: tenantId,
+        business_day: businessDay,
+        domain_count: domainSummaries.length
+      },
+      {
+        kind: "crm.operating.risk_registered",
+        tenant_id: tenantId,
+        business_day: businessDay,
+        risk_count: riskRegister.length
+      }
+    ],
+    context_tenant: context.tenant || tenantId
+  };
+}
+
 function approvalDecisionState(item) {
   const decision = asObject(item.decision ?? item.approval_decision ?? item.approval);
   const raw = String(decision.state || decision.decision || decision.status || (decision.approved === true ? "approved" : ""))
@@ -3106,6 +3439,18 @@ const READINESS_OUTCOME_DOMAINS = [
     workflow_ids: ["crm.project.handoff", "crm.operational.observability"],
     required_artifacts: ["crm_project_plan", "crm_task_plan", "crm_handoff_record", "crm_audit_report"],
     required_events: ["crm.project.handoff_requested", "crm.task.created", "crm.observability.inspected"]
+  },
+  {
+    id: "daily_operating_cycle",
+    title: "Daily operating cycle",
+    deliverable: "daily operating cycle",
+    workflow_ids: ["crm.daily.operating_cycle"],
+    required_artifacts: ["crm_daily_operating_cycle", "crm_operating_command_brief", "crm_operating_risk_register"],
+    required_events: [
+      "crm.operating.daily_cycle_generated",
+      "crm.operating.command_brief_generated",
+      "crm.operating.risk_registered"
+    ]
   },
   {
     id: "enterprise_journey",
@@ -6745,6 +7090,8 @@ export function executeCrmRuntimeRequest(request) {
       return buildAreaCopilotResult(request);
     case "forge_crm.orchestrate_work_queue":
       return buildWorkQueueOrchestrationResult(request);
+    case "forge_crm.run_daily_operating_cycle":
+      return buildDailyOperatingCycleResult(request);
     case "forge_crm.govern_approval_queue":
       return buildApprovalGovernanceResult(request);
     case "forge_crm.export_factory_blueprint":

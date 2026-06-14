@@ -1083,6 +1083,162 @@ function buildOperationalWorkbench(workflows, actionList, documentQueueSnapshot)
   };
 }
 
+function dailyOperatingCycleWorkbench(operationalWorkbench, actionList) {
+  const actionById = new Map(actionList.map((action) => [action.id, action]));
+  const cycleAction = actionById.get("crm.run-daily-operating-cycle");
+  const panels = new Map(operationalWorkbench.panels.map((panel) => [panel.id, panel]));
+  const pipelineCard = panels.get("pipeline_kanban")?.lanes.flatMap((lane) => lane.cards)[0];
+  const supportTicket = panels.get("support_queue")?.tickets.find((ticket) => ticket.sla_status === "at_risk");
+  const document = panels.get("document_queue")?.documents.find((candidate) => candidate.state === "approval_wait");
+  const campaign = panels.get("marketing_calendar")?.campaigns.find((candidate) => candidate.approval_state === "waiting");
+  const handoff = panels.get("work_queue")?.queues.find((queue) => queue.id === "handoffs");
+
+  const commandQueue = [
+    {
+      id: pipelineCard?.opportunity_id || "sales-command",
+      domain: "sales",
+      title: "Advance priority pipeline work",
+      workflow_id: "crm.opportunity.pipeline",
+      contract_id: "crm.pipeline.stage_move.executor",
+      action_id: pipelineCard?.next_action_id || "crm.move-pipeline-stage",
+      owner: pipelineCard?.owner || "sales.ops",
+      state: pipelineCard?.current_state || "review_wait",
+      command_owner: "forge",
+      requires_forge_approval: true
+    },
+    {
+      id: supportTicket?.ticket_id || "support-command",
+      domain: "support",
+      title: "Recover SLA risk",
+      workflow_id: "crm.ticket.sla",
+      contract_id: "crm.support.ticket_sla.executor",
+      action_id: supportTicket?.action_id || "crm.triage-ticket-sla",
+      owner: supportTicket?.owner || "support.lead",
+      state: supportTicket?.state || "sla_escalation",
+      command_owner: "forge",
+      requires_forge_approval: true
+    },
+    {
+      id: document?.document_id || "document-command",
+      domain: "documents",
+      title: "Clear document approval",
+      workflow_id: "crm.document.approval",
+      contract_id: "crm.document.approval.executor",
+      action_id: document?.approval_action_id || "crm.record-document-approval",
+      owner: document?.owner || "document.ops",
+      state: document?.state || "approval_wait",
+      command_owner: "forge",
+      requires_forge_approval: true
+    },
+    {
+      id: campaign?.campaign_id || "marketing-command",
+      domain: "marketing",
+      title: "Review marketing launch wait",
+      workflow_id: "crm.campaign.lifecycle",
+      contract_id: "crm.marketing.campaign_automation.executor",
+      action_id: campaign?.next_action_id || "crm.automate-campaign",
+      owner: "marketing.ops",
+      state: campaign?.state || "approval_wait",
+      command_owner: "forge",
+      requires_forge_approval: true
+    },
+    {
+      id: handoff?.id || "handoff-command",
+      domain: "handoffs",
+      title: "Unblock team handoff",
+      workflow_id: "crm.project.handoff",
+      contract_id: "crm.operations.project_handoff.executor",
+      action_id: "crm.plan-project-handoff",
+      owner: "delivery.ops",
+      state: "blocked_wait",
+      command_owner: "forge",
+      requires_forge_approval: true
+    }
+  ];
+
+  const riskRegister = [
+    {
+      risk_id: "risk-support-sla",
+      domain: "support",
+      severity: "high",
+      workflow_id: "crm.ticket.sla",
+      owner: supportTicket?.owner || "support.lead",
+      closure_policy: "risk closure requires promoted Forge workflow evidence"
+    },
+    {
+      risk_id: "risk-document-approval",
+      domain: "documents",
+      severity: "medium",
+      workflow_id: "crm.document.approval",
+      owner: document?.owner || "document.ops",
+      closure_policy: "risk closure requires promoted Forge workflow evidence"
+    },
+    {
+      risk_id: "risk-handoff-blocked",
+      domain: "handoffs",
+      severity: "high",
+      workflow_id: "crm.project.handoff",
+      owner: "delivery.ops",
+      closure_policy: "risk closure requires promoted Forge workflow evidence"
+    }
+  ];
+
+  return {
+    schema_version: "forge.crm_daily_operating_cycle_workbench.v1",
+    workflow_id: "crm.daily.operating_cycle",
+    workflow_extension_id: "crm_daily_operating_cycle",
+    state_owner: "forge_workflow_runtime",
+    local_state_allowed: false,
+    action_id: cycleAction?.id || "crm.run-daily-operating-cycle",
+    contract_id: cycleAction?.contract_id || "crm.operating.daily_cycle.executor",
+    domain_summaries: [
+      { domain: "sales", workflow_id: "crm.opportunity.pipeline", command_count: 1, risk_count: 0 },
+      { domain: "support", workflow_id: "crm.ticket.sla", command_count: 1, risk_count: 1 },
+      { domain: "documents", workflow_id: "crm.document.approval", command_count: 1, risk_count: 1 },
+      { domain: "marketing", workflow_id: "crm.campaign.lifecycle", command_count: 1, risk_count: 0 },
+      { domain: "handoffs", workflow_id: "crm.project.handoff", command_count: 1, risk_count: 1 }
+    ].map((summary) => ({
+      ...summary,
+      state_owner: "forge_workflow_runtime"
+    })),
+    command_queue: commandQueue,
+    risk_register: riskRegister,
+    artifact_types: ["crm_daily_operating_cycle", "crm_operating_command_brief", "crm_operating_risk_register"],
+    event_types: [
+      "crm.operating.daily_cycle_generated",
+      "crm.operating.command_brief_generated",
+      "crm.operating.risk_registered"
+    ],
+    operation_plan: [
+      {
+        id: "collect_forge_operating_evidence",
+        title: "Collect sales, support, documents, marketing and handoff evidence",
+        owner: "forge.workflow.artifacts and forge.events.timeline"
+      },
+      {
+        id: "generate_daily_operating_cycle",
+        title: "Generate daily operating cycle package",
+        owner: "crm.operating.daily_cycle.executor"
+      },
+      {
+        id: "promote_command_brief_and_risks",
+        title: "Promote command brief and risk register artifacts",
+        owner: "forge.addon_runtime"
+      },
+      {
+        id: "dispatch_approved_domain_actions",
+        title: "Dispatch only approved domain actions through Forge runtime contracts",
+        owner: "forge.workflow.approval"
+      },
+      {
+        id: "refresh_operating_snapshot",
+        title: "Refresh the CRM operating snapshot",
+        owner: "crm.operating.snapshot.executor"
+      }
+    ]
+  };
+}
+
 function workflowEvolutionWorkbench(workflows, actionList) {
   const actionById = new Map(actionList.map((action) => [action.id, action]));
   const evolutionAction = actionById.get("crm.evolve-workflow");
@@ -1336,6 +1492,7 @@ function readinessDispatchRequest({ tenantId, pack, model }) {
             "marketing automation",
             "document management",
             "internal operations",
+            "daily operating cycle",
             "AI recommendations",
             "enterprise customer journey",
             "workflow-system factory blueprint"
@@ -2231,6 +2388,15 @@ function actions() {
       command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.queue.orchestrator.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
     },
     {
+      id: "crm.run-daily-operating-cycle",
+      label: "Run daily cycle",
+      surface_id: "crm.work-queue",
+      contract_id: "crm.operating.daily_cycle.executor",
+      requires_permission: "crm.workflow.mutate",
+      mutates_workflow: true,
+      command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.operating.daily_cycle.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
+    },
+    {
       id: "crm.generate-design-system",
       label: "Generate design system",
       surface_id: "crm.design-system",
@@ -2698,6 +2864,7 @@ export function buildCrmWebAppSnapshot(options = {}) {
   const workflows = pack.workflows;
   const actionList = actions();
   const documentQueueSnapshot = documentQueue(workflows);
+  const operationalWorkbench = buildOperationalWorkbench(workflows, actionList, documentQueueSnapshot);
   const workflowIds = new Set(workflows.map((workflow) => workflow.id));
   const surfaces = Object.entries(model.operator_surfaces).map(([key, surface]) => ({
     id: surface.view_id,
@@ -2764,7 +2931,8 @@ export function buildCrmWebAppSnapshot(options = {}) {
     },
     knowledge_graph: knowledgeGraph(),
     document_queue: documentQueueSnapshot,
-    operational_workbench: buildOperationalWorkbench(workflows, actionList, documentQueueSnapshot),
+    operational_workbench: operationalWorkbench,
+    daily_operating_cycle_workbench: dailyOperatingCycleWorkbench(operationalWorkbench, actionList),
     workflow_evolution_workbench: workflowEvolutionWorkbench(workflows, actionList),
     benchmark_evidence_matrix: benchmarkEvidenceMatrix(workflows, actionList, documentQueueSnapshot),
     enterprise_journey_workbench: enterpriseJourneyWorkbench(workflows, actionList),

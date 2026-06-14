@@ -27,7 +27,7 @@ Forge CRM is a product proof for Forge as a factory/framework for agentic workfl
 
 No important CRM automation should bypass Forge. External tools may execute bounded work, but Forge owns the workflow, state transitions, approvals, memory scope, artifact attachment, event history and validation gates.
 
-The current CRM worker exposes thirty-eight Forge runtime entrypoints:
+The current CRM worker exposes forty-four Forge runtime entrypoints:
 
 - `forge_crm.plan_system` for CRM system planning;
 - `forge_crm.bootstrap_tenant` for a Forge-owned tenant workflow pack;
@@ -39,8 +39,11 @@ The current CRM worker exposes thirty-eight Forge runtime entrypoints:
 - `forge_crm.operating_copilot` for opportunity priority, risk analysis, executive summary and next-step recommendations;
 - `forge_crm.run_area_copilot` for specialized commercial, support, marketing, operations and document copilot briefs;
 - `forge_crm.orchestrate_work_queue` for cross-domain approvals, SLA risks, documents, campaigns, handoffs and waiting states;
-- `forge_crm.orchestrate_subworkflows` for binding CRM child workflows through Forge child_subflows, lineage maps and validation gates before parent promotion;
+- `forge_crm.run_daily_operating_cycle` for a Forge-owned daily command package across sales, marketing, support, documents and handoffs;
+- `forge_crm.govern_approval_queue` for approval decisions that either promote or return work to Forge with a rework reason;
+- `forge_crm.export_factory_blueprint` for reusable workflow-system blueprints, module catalogs and Core primitive mapping;
 - `forge_crm.generate_design_system` for Penpot/Open Design-inspired CRM tokens and UI component catalogs as Forge artifacts;
+- `forge_crm.orchestrate_subworkflows` for binding CRM child workflows through Forge child_subflows, lineage maps and validation gates before parent promotion;
 - `forge_crm.prepare_memory_promotion` for curated CRM knowledge summaries and governed `forge memory promote` requests;
 - `forge_crm.evolve_workflow` for governed Forge improve experiments, benchmarks, rollback plans and promotion decisions;
 - `forge_crm.design_workflow_automation` for compiling CRM trigger-condition-action automation designs into Forge workflows, schedules and event listeners without local execution;
@@ -50,6 +53,7 @@ The current CRM worker exposes thirty-eight Forge runtime entrypoints:
 - `forge_crm.generate_operating_readiness` for mapping CRM success criteria to user-facing deliverables backed by Forge workflows, artifacts, events and validation evidence;
 - `forge_crm.generate_proposal` for draft proposal artifacts;
 - `forge_crm.review_followup_forecast` for follow-up scheduling, forecast, goal progress and commission evidence;
+- `forge_crm.review_commercial_forecast` for advisory forecast review without sending follow-ups;
 - `forge_crm.settle_goal_commission` for goal attainment, revenue-event lineage, commission statements and payout approval gates;
 - `forge_crm.manage_account` for account health, renewal, expansion and success-plan task workflows;
 - `forge_crm.manage_contract_signature` for contract review, signature receipts and renewal scheduling;
@@ -60,10 +64,12 @@ The current CRM worker exposes thirty-eight Forge runtime entrypoints:
 - `forge_crm.manage_document_library` for Forge-owned file records, document versions, collections and promotion approval state;
 - `forge_crm.build_marketing_segment` for segment definitions, audience selection and campaign readiness artifacts;
 - `forge_crm.automate_campaign` for segment-backed campaign scheduling and lead nurture workflow events;
+- `forge_crm.run_lead_nurture` for wait-step and nurture progression through Forge artifacts;
 - `forge_crm.capture_form_submission` for landing-page form submissions, consent records and lead lifecycle intake;
 - `forge_crm.normalize_channel_intake` for approved channel adapter checks and normalized support intake artifacts before ticket creation;
 - `forge_crm.unify_omnichannel_center` for channel-thread unification, identity mapping and Forge-owned support queue snapshots;
 - `forge_crm.ingest_omnichannel_message` for channel receipts, message threads and Forge event intake before SLA or handoff;
+- `forge_crm.compose_support_reply` for approval-gated support reply drafts without direct external sending;
 - `forge_crm.triage_ticket_sla` for ticket intake, SLA state and support routing artifacts;
 - `forge_crm.plan_project_handoff` for project, task, blocked-wait and acceptance handoff planning;
 - `forge_crm.deliver_handoff` for approved omnichannel handoff receipts.
@@ -72,7 +78,7 @@ The worker returns Forge Addon result schemas and does not persist CRM state dir
 
 ## Tenant Workflow Pack
 
-`scripts/crm-workflow-pack-lib.mjs` produces the first operational workflow model for a CRM tenant. It declares 29 Forge-owned workflows across relationship profile enrichment, commercial follow-up, goal and commission settlement, executive reporting, support channel intake, omnichannel message threads, unified omnichannel center, marketing segment building, campaigns, document library/versioning, operations, cross-domain work queues, subworkflow orchestration, workflow automation design, user experience/design system, AI automation, operational observability, enterprise readiness and end-to-end customer journey acceptance. Each workflow carries explicit states, transitions, object types, runtime contracts, artifact types, events, memory scopes, permissions, validation gates and mutation policy.
+`scripts/crm-workflow-pack-lib.mjs` produces the first operational workflow model for a CRM tenant. It declares 34 Forge-owned workflows across relationship profile enrichment, commercial follow-up, goal and commission settlement, executive reporting, support channel intake, omnichannel message threads, unified omnichannel center, marketing segment building, campaigns, document library/versioning, operations, cross-domain work queues, daily operating cycle, subworkflow orchestration, workflow automation design, user experience/design system, AI automation, operational observability, enterprise readiness and end-to-end customer journey acceptance. Each workflow carries explicit states, transitions, object types, runtime contracts, artifact types, events, memory scopes, permissions, validation gates and mutation policy.
 
 The pack uses `workflow_id`, `artifact_id` and `event_id` as durable identities. External primary keys and direct external persistence are explicitly disabled.
 
@@ -101,7 +107,7 @@ The first web surface lives in `web/` and is declared by `crm.system-map.props.w
 
 - `scripts/generate-crm-web-snapshot.mjs` writes `web/data/operating-snapshot.json`;
 - `web/index.html` loads the snapshot;
-- `web/app.js` renders workflow graph, knowledge graph, relationship profile enrichment, business modules, commercial goal and commission settlement, executive reporting, support channel intake, omnichannel message threads, unified omnichannel center, marketing segments and landing pages, document queue with library version records, cross-domain work queue, subworkflow orchestration, workflow automation designer, benchmark evidence matrix, design system, enterprise journey workbench, operating copilot and area copilot actions, and Forge action templates;
+- `web/app.js` renders workflow graph, knowledge graph, relationship profile enrichment, business modules, commercial goal and commission settlement, executive reporting, support channel intake, omnichannel message threads, unified omnichannel center, marketing segments and landing pages, document queue with library version records, cross-domain work queue, daily operating cycle workbench, subworkflow orchestration, workflow automation designer, benchmark evidence matrix, design system, enterprise journey workbench, operating copilot and area copilot actions, and Forge action templates;
 - `web/styles.css` carries compact operational styling and design tokens.
 
 This is a business-user view over Forge-owned state. It does not introduce browser persistence, a CRM-local database or a side automation engine. Any action shown in the UI is represented as a Forge command template that routes through Addon runtime contracts and permission gates.

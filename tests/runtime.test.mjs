@@ -76,6 +76,34 @@ function postJson(port, path, payload) {
   });
 }
 
+function getJson(port, path) {
+  return new Promise((resolve, reject) => {
+    const request = http.request(
+      {
+        hostname: "127.0.0.1",
+        port,
+        path,
+        method: "GET"
+      },
+      (response) => {
+        let raw = "";
+        response.setEncoding("utf8");
+        response.on("data", (chunk) => {
+          raw += chunk;
+        });
+        response.on("end", () => {
+          resolve({
+            statusCode: response.statusCode,
+            body: JSON.parse(raw)
+          });
+        });
+      }
+    );
+    request.on("error", reject);
+    request.end();
+  });
+}
+
 test("lead classifier returns a Forge executor result without mutating CRM state", () => {
   const result = buildLeadClassifierResult(
     workerRequest("forge_crm.classify_lead", {
@@ -337,8 +365,8 @@ test("operating readiness maps Forge evidence into user-facing CRM deliverables"
   assert.equal(result.status, "completed");
   assert.equal(result.outputs.tenant_id, "demo");
   assert.equal(result.outputs.success_criteria_status, "operable_with_evidence");
-  assert.equal(result.outputs.user_facing_deliverable_count, 14);
-  assert.equal(result.outputs.ready_domain_count, 14);
+  assert.equal(result.outputs.user_facing_deliverable_count, 15);
+  assert.equal(result.outputs.ready_domain_count, 15);
   assert.equal(result.outputs.forge_only_operations, true);
   assert.equal(result.outputs.main_flow_dependency_external, false);
   assert.equal(result.outputs.mutates_crm_state, false);
@@ -725,6 +753,98 @@ test("work queue orchestrator packages approvals SLAs documents campaigns and ha
   assert.ok(result.events.some((event) => event.kind === "crm.queue.snapshot_generated"));
   assert.ok(result.events.some((event) => event.kind === "crm.queue.assignment_planned"));
   assert.ok(result.events.some((event) => event.kind === "crm.queue.risk_flagged"));
+});
+
+test("daily operating cycle executor creates a Forge command package across CRM domains", () => {
+  assert.equal(typeof runtime.buildDailyOperatingCycleResult, "function");
+
+  const result = runtime.buildDailyOperatingCycleResult(
+    workerRequest(
+      "forge_crm.run_daily_operating_cycle",
+      {
+        tenant_context: { tenant_id: "demo" },
+        business_day: "2026-06-14",
+        operating_inputs: {
+          pipeline: [
+            {
+              id: "opp-renewal-031",
+              account: "Northstar Retail",
+              amount: 540000,
+              probability: 0.78,
+              stage: "negotiation",
+              next_action_id: "crm.manage-contract-signature"
+            }
+          ],
+          support: [
+            {
+              id: "sup-1042",
+              account: "Northstar Retail",
+              priority: "p1",
+              sla_status: "at_risk",
+              minutes_to_breach: 18,
+              next_action_id: "crm.triage-ticket-sla"
+            }
+          ],
+          documents: [
+            {
+              id: "doc-prop-022",
+              state: "approval_wait",
+              owner: "commercial.director",
+              next_action_id: "crm.record-document-approval"
+            }
+          ],
+          marketing: [
+            {
+              id: "cmp-logistics-demo",
+              state: "approval_wait",
+              launch_window: "week_33",
+              next_action_id: "crm.automate-campaign"
+            }
+          ],
+          handoffs: [
+            {
+              id: "handoff-atlas-onboarding",
+              state: "blocked_wait",
+              owner: "delivery.ops",
+              next_action_id: "crm.plan-project-handoff"
+            }
+          ]
+        },
+        operating_policy: {
+          commander: "ops.commander",
+          approval_required: true,
+          risk_threshold: "medium"
+        }
+      },
+      { contract_id: "crm.operating.daily_cycle.executor", task_ref: "daily-cycle-test" }
+    )
+  );
+
+  assert.equal(result.schema_version, "forge.addon_executor_result.v1");
+  assert.equal(result.status, "completed");
+  assert.equal(result.outputs.tenant_id, "demo");
+  assert.equal(result.outputs.workflow_id, "crm.daily.operating_cycle");
+  assert.equal(result.outputs.business_day, "2026-06-14");
+  assert.equal(result.outputs.domain_count, 5);
+  assert.ok(result.outputs.command_item_count >= 5);
+  assert.ok(result.outputs.risk_count >= 2);
+  assert.equal(result.outputs.approval_required, true);
+  assert.equal(result.outputs.mutates_crm_state, false);
+  assert.equal(result.outputs.forge_event_sourced, true);
+
+  const cycle = result.artifacts.find((artifact) => artifact.kind === "crm_daily_operating_cycle");
+  assert.ok(cycle);
+  assert.equal(cycle.data.state_owner, "forge_workflow_runtime");
+  assert.equal(cycle.data.local_state_allowed, false);
+  assert.ok(cycle.data.domain_summaries.some((domain) => domain.domain === "sales"));
+  assert.ok(cycle.data.command_queue.every((item) => item.command_owner === "forge"));
+  assert.ok(cycle.data.command_queue.every((item) => item.requires_forge_approval === true));
+
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_operating_command_brief"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_operating_risk_register"));
+  assert.ok(result.events.some((event) => event.kind === "crm.operating.daily_cycle_generated"));
+  assert.ok(result.events.some((event) => event.kind === "crm.operating.command_brief_generated"));
+  assert.ok(result.events.some((event) => event.kind === "crm.operating.risk_registered"));
 });
 
 test("approval governance executor records decisions and returns incomplete work to Forge", () => {
@@ -2439,6 +2559,12 @@ test("HTTP worker dispatches Forge runtime requests", async () => {
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   try {
     const port = server.address().port;
+    const health = await getJson(port, "/health");
+    assert.equal(health.statusCode, 200);
+    assert.equal(health.body.status, "ok");
+    assert.ok(health.body.supported_entrypoints.includes("forge_crm.generate_design_system"));
+    assert.ok(health.body.supported_entrypoints.includes("forge_crm.run_daily_operating_cycle"));
+
     const response = await postJson(
       port,
       "/runtime/execute",

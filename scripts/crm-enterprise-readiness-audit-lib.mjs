@@ -59,6 +59,13 @@ const USER_FACING_DELIVERABLES = [
     workflow_ids: ["crm.project.handoff"]
   },
   {
+    id: "daily_operating_cycle",
+    title: "Daily operating cycle",
+    domain: "operations",
+    surface_id: "crm.work-queue",
+    workflow_ids: ["crm.daily.operating_cycle"]
+  },
+  {
     id: "enterprise_customer_journey",
     title: "Enterprise customer journey",
     domain: "operations",

@@ -719,6 +719,60 @@ const WORKFLOWS = [
     ]
   },
   {
+    id: "crm.daily.operating_cycle",
+    title: "Daily CRM operating cycle",
+    domain: "operations",
+    workflow_extension_id: "crm_daily_operating_cycle",
+    object_types: ["daily_operating_cycle", "command_brief", "risk_register", "task", "work_queue", "approval"],
+    states: [
+      "cycle_requested",
+      "evidence_collected",
+      "command_brief_generated",
+      "approval_wait",
+      "domain_actions_dispatched",
+      "risk_review_wait",
+      "closed"
+    ],
+    transitions: [
+      ["cycle_requested", "evidence_collected", "sales marketing support document and handoff evidence collected"],
+      ["evidence_collected", "command_brief_generated", "daily command package generated"],
+      ["command_brief_generated", "approval_wait", "mutating domain actions require Forge approval"],
+      ["approval_wait", "domain_actions_dispatched", "approved Forge runtime contracts queued"],
+      ["command_brief_generated", "risk_review_wait", "risks require owner review"],
+      ["domain_actions_dispatched", "closed", "daily actions promoted with artifact or event evidence"]
+    ],
+    runtime_contracts: [
+      "crm.operating.daily_cycle.executor",
+      "crm.queue.orchestrator.executor",
+      "crm.observability.inspector.executor",
+      "crm.analytics.executive_report.executor"
+    ],
+    depends_on_workflows: [
+      "crm.opportunity.pipeline",
+      "crm.followup.forecast",
+      "crm.ticket.sla",
+      "crm.campaign.lifecycle",
+      "crm.document.approval",
+      "crm.project.handoff",
+      "crm.work.queue.orchestration"
+    ],
+    artifacts: ["crm_daily_operating_cycle", "crm_operating_command_brief", "crm_operating_risk_register"],
+    events: [
+      "crm.operating.daily_cycle_generated",
+      "crm.operating.command_brief_generated",
+      "crm.operating.risk_registered"
+    ],
+    memory_scopes: ["organization", "project", "processing"],
+    permissions: ["crm.workflow.mutate", "crm.observability.inspect"],
+    views: ["crm.work-queue", "crm.system-map", "crm.commercial-command", "crm.support-queue", "crm.marketing-calendar", "crm.document-queue"],
+    validation_gates: [
+      "daily operating actions route through Forge runtime contracts",
+      "sales marketing support documents and handoffs cite Forge artifacts or events",
+      "risk closure requires promoted Forge workflow evidence",
+      "daily cycle does not persist CRM-local state"
+    ]
+  },
+  {
     id: "crm.design.system",
     title: "CRM design system and UI component catalog",
     domain: "user_experience",

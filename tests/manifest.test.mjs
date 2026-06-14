@@ -85,6 +85,34 @@ test("manifest exposes CRM operating snapshot as a Forge runtime contract", () =
   assert.ok(artifactTypes.has("crm_operating_snapshot"));
 });
 
+test("manifest exposes CRM daily operating cycle as a Forge-owned executor", () => {
+  const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.operating.daily_cycle.executor");
+  assert.ok(contract);
+  assert.equal(contract.contract_type, "executor");
+  assert.equal(contract.capability_id, "crm_internal_operations");
+  assert.equal(contract.workflow_extension_id, "crm_daily_operating_cycle");
+  assert.equal(contract.entrypoint, "forge_crm.run_daily_operating_cycle");
+  assert.deepEqual(contract.permissions, ["crm.workflow.mutate", "crm.observability.inspect"]);
+
+  for (const input of ["operating_inputs", "operating_policy", "business_day", "tenant_context"]) {
+    assert.ok(contract.inputs.includes(input), `missing daily cycle input ${input}`);
+  }
+  for (const output of ["crm_daily_operating_cycle", "crm_operating_command_brief", "crm_operating_risk_register"]) {
+    assert.ok(contract.outputs.includes(output), `missing daily cycle output ${output}`);
+  }
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("does not persist CRM state outside Forge")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("Forge workflow approval")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("sales, marketing, support, documents and handoffs")));
+
+  const artifactTypes = new Set(manifest.artifact_types.map((artifact) => artifact.id));
+  for (const artifactType of ["crm_daily_operating_cycle", "crm_operating_command_brief", "crm_operating_risk_register"]) {
+    assert.ok(artifactTypes.has(artifactType), `missing artifact type ${artifactType}`);
+  }
+
+  const eventTypes = new Set(manifest.event_types.map((event) => event.id));
+  assert.ok(eventTypes.has("crm.operating"));
+});
+
 test("manifest exposes CRM relationship timeline as a Forge-owned executor", () => {
   const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.relationship.timeline.executor");
   assert.ok(contract);

@@ -97,6 +97,7 @@ try {
       "forge_crm.operating_copilot",
       "forge_crm.run_area_copilot",
       "forge_crm.orchestrate_work_queue",
+      "forge_crm.run_daily_operating_cycle",
       "forge_crm.govern_approval_queue",
       "forge_crm.export_factory_blueprint",
       "forge_crm.orchestrate_subworkflows",
@@ -142,6 +143,7 @@ try {
       "crm.ai.operating_copilot.executor",
       "crm.ai.area_copilot.executor",
       "crm.queue.orchestrator.executor",
+      "crm.operating.daily_cycle.executor",
       "crm.workflow.approval_governance.executor",
       "crm.factory.blueprint_export.executor",
       "crm.workflow.subworkflow_orchestrator.executor",
@@ -524,6 +526,99 @@ try {
   }
   if (workQueue.executor_result.outputs.risk_item_count < 3) {
     throw new Error(`expected work queue risk items, got ${workQueue.executor_result.outputs.risk_item_count}`);
+  }
+
+  const dailyOperatingCycle = runForge([
+    "addons",
+    "execute-executor",
+    "--addon-dir",
+    "addons",
+    "--addon",
+    "forge.addon.crm",
+    "--contract",
+    "crm.operating.daily_cycle.executor",
+    "--worker",
+    workerId,
+    "--task",
+    "crm-smoke-daily-operating-cycle",
+    "--workflow",
+    workflowId,
+    "--input",
+    JSON.stringify({
+      tenant_context: { id: "smoke", tenant_id: "smoke" },
+      business_day: "2026-06-14",
+      operating_inputs: {
+        pipeline: [
+          {
+            id: "opp-smoke-renewal",
+            account: "Northstar Retail",
+            amount: 540000,
+            probability: 0.78,
+            stage: "negotiation",
+            priority: "high",
+            next_action_id: "crm.manage-contract-signature"
+          }
+        ],
+        support: [
+          {
+            id: "ticket-smoke-001",
+            account: "Northstar Retail",
+            priority: "p1",
+            sla_status: "at_risk",
+            minutes_to_breach: 25,
+            next_action_id: "crm.triage-ticket-sla"
+          }
+        ],
+        documents: [
+          {
+            id: "doc-smoke-proposal",
+            state: "approval_wait",
+            owner: "commercial.director",
+            next_action_id: "crm.record-document-approval"
+          }
+        ],
+        marketing: [
+          {
+            id: "campaign-smoke",
+            state: "approval_wait",
+            launch_window: "week_33",
+            next_action_id: "crm.automate-campaign"
+          }
+        ],
+        handoffs: [
+          {
+            id: "handoff-smoke-blocked",
+            state: "blocked_wait",
+            owner: "delivery.ops",
+            next_action_id: "crm.plan-project-handoff"
+          }
+        ]
+      },
+      operating_policy: {
+        commander: "ops.commander",
+        approval_required: true,
+        risk_threshold_minutes: 60
+      }
+    }),
+    "--context",
+    JSON.stringify({ tenant: "smoke" }),
+    "--output",
+    "json"
+  ]);
+
+  if (dailyOperatingCycle.promotion?.status !== "addon_executor_result_promoted") {
+    throw new Error(`expected daily operating cycle promotion, got ${dailyOperatingCycle.promotion?.status || "missing"}`);
+  }
+  if (dailyOperatingCycle.executor_result.outputs.domain_count !== 5) {
+    throw new Error(`expected 5 daily operating domains, got ${dailyOperatingCycle.executor_result.outputs.domain_count}`);
+  }
+  if (dailyOperatingCycle.executor_result.outputs.command_item_count < 5) {
+    throw new Error(
+      `expected at least 5 daily operating commands, got ${dailyOperatingCycle.executor_result.outputs.command_item_count}`
+    );
+  }
+  if (dailyOperatingCycle.executor_result.outputs.risk_count < 2) {
+    throw new Error(`expected daily operating risks, got ${dailyOperatingCycle.executor_result.outputs.risk_count}`);
   }
 
   const approvalGovernance = runForge([
@@ -1214,6 +1309,7 @@ try {
           "workflow-system factory blueprint",
           "goal and commission settlement",
           "executive reporting",
+          "daily operating cycle",
           "document approvals",
           "project handoff"
         ]
@@ -2620,6 +2716,8 @@ try {
   const areaCopilotPromotedEventCount = areaCopilot.promotion?.event_count ?? 0;
   const workQueuePromotedArtifactCount = workQueue.promotion?.artifact_count ?? 0;
   const workQueuePromotedEventCount = workQueue.promotion?.event_count ?? 0;
+  const dailyOperatingCyclePromotedArtifactCount = dailyOperatingCycle.promotion?.artifact_count ?? 0;
+  const dailyOperatingCyclePromotedEventCount = dailyOperatingCycle.promotion?.event_count ?? 0;
   const approvalGovernancePromotedArtifactCount = approvalGovernance.promotion?.artifact_count ?? 0;
   const approvalGovernancePromotedEventCount = approvalGovernance.promotion?.event_count ?? 0;
   const factoryBlueprintPromotedArtifactCount = factoryBlueprint.promotion?.artifact_count ?? 0;
@@ -2737,6 +2835,20 @@ try {
     );
   }
   for (const eventKind of ["crm.queue.snapshot_generated", "crm.queue.assignment_planned", "crm.queue.risk_flagged"]) {
+    if (!workflowEventKinds.includes(eventKind)) {
+      throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
+    }
+  }
+  if (dailyOperatingCyclePromotedArtifactCount < 3 || dailyOperatingCyclePromotedEventCount < 3) {
+    throw new Error(
+      `expected promoted daily operating cycle artifacts/events, got artifacts=${dailyOperatingCyclePromotedArtifactCount} events=${dailyOperatingCyclePromotedEventCount}`
+    );
+  }
+  for (const eventKind of [
+    "crm.operating.daily_cycle_generated",
+    "crm.operating.command_brief_generated",
+    "crm.operating.risk_registered"
+  ]) {
     if (!workflowEventKinds.includes(eventKind)) {
       throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
     }
@@ -3246,6 +3358,13 @@ try {
     work_queue_risk_item_count: workQueue.executor_result.outputs.risk_item_count,
     work_queue_promoted_artifacts: workQueuePromotedArtifactCount,
     work_queue_promoted_events: workQueuePromotedEventCount,
+    daily_operating_cycle_status: dailyOperatingCycle.status,
+    daily_operating_cycle_promotion_status: dailyOperatingCycle.promotion.status,
+    daily_operating_cycle_domain_count: dailyOperatingCycle.executor_result.outputs.domain_count,
+    daily_operating_cycle_command_item_count: dailyOperatingCycle.executor_result.outputs.command_item_count,
+    daily_operating_cycle_risk_count: dailyOperatingCycle.executor_result.outputs.risk_count,
+    daily_operating_cycle_promoted_artifacts: dailyOperatingCyclePromotedArtifactCount,
+    daily_operating_cycle_promoted_events: dailyOperatingCyclePromotedEventCount,
     approval_governance_status: approvalGovernance.status,
     approval_governance_promotion_status: approvalGovernance.promotion.status,
     approval_governance_state: approvalGovernance.executor_result.outputs.governance_state,

@@ -6,12 +6,12 @@ Repository: https://github.com/cardozoarthur/forge-crm.git
 
 ## Summary
 
-- Workflows: 33
-- Runtime contracts: 43
-- Artifact types: 96
-- Event types: 41
+- Workflows: 34
+- Runtime contracts: 44
+- Artifact types: 99
+- Event types: 42
 - Views: 12
-- User-facing deliverables ready: 14/14
+- User-facing deliverables ready: 15/15
 - Missing objective items: 0
 - Complete scope: true
 
@@ -20,9 +20,9 @@ Repository: https://github.com/cardozoarthur/forge-crm.git
 - Addon: forge.addon.crm (enabled)
 - Core dependency: forge.core.kernel
 - Capabilities: 9
-- Runtime contracts: 43
-- Artifact types: 96
-- Event types: 41
+- Runtime contracts: 44
+- Artifact types: 99
+- Event types: 42
 - Views: 12
 - Public repository declared: true
 
@@ -52,6 +52,7 @@ Repository: https://github.com/cardozoarthur/forge-crm.git
 - Marketing automation: ready; workflows=crm.campaign.lifecycle, crm.lead.nurture, crm.marketing.landing_page, crm.marketing.segment_builder; surface=crm.marketing-calendar
 - Document approvals and library: ready; workflows=crm.contract.signature, crm.document.approval, crm.document.library, crm.proposal.approval; surface=crm.document-queue
 - Project handoff: ready; workflows=crm.project.handoff; surface=crm.commercial-command
+- Daily operating cycle: ready; workflows=crm.daily.operating_cycle; surface=crm.work-queue
 - Enterprise customer journey: ready; workflows=crm.enterprise.customer_journey; surface=crm.system-map
 - Subworkflow orchestration: ready; workflows=crm.enterprise.customer_journey, crm.subworkflow.orchestration; surface=crm.system-map
 - Workflow automation designer: ready; workflows=crm.workflow.automation_design; surface=crm.system-map

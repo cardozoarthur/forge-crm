@@ -911,12 +911,19 @@ h3 {
   border-left: 4px solid #285f9d;
 }
 
+.daily-cycle {
+  border-left: 4px solid #7a5c12;
+}
+
 .journey-lanes,
 .journey-gates,
 .readiness-summary,
 .readiness-domain-grid,
 .readiness-operation-list,
 .readiness-gates,
+.daily-domain-grid,
+.daily-command-list,
+.daily-risk-list,
 .approval-queue-grid,
 .approval-gate-grid,
 .factory-module-grid,
@@ -939,6 +946,9 @@ h3 {
 .readiness-domain,
 .readiness-operation,
 .readiness-gate,
+.daily-domain,
+.daily-command,
+.daily-risk,
 .approval-queue-item,
 .approval-gate,
 .factory-module,
@@ -971,6 +981,9 @@ h3 {
 .readiness-domain strong,
 .readiness-operation strong,
 .readiness-gate strong,
+.daily-domain strong,
+.daily-command strong,
+.daily-risk strong,
 .approval-queue-item strong,
 .approval-gate strong,
 .factory-module strong,
@@ -993,6 +1006,7 @@ h3 {
 
 .subworkflow-binding code,
 .automation-palette code,
+.daily-cycle code,
 .executive-reporting code,
 .goal-commission code {
   color: #285f9d;
@@ -1007,6 +1021,11 @@ h3 {
 .readiness-operation span,
 .readiness-operation small,
 .readiness-gate span,
+.daily-domain span,
+.daily-domain small,
+.daily-command span,
+.daily-risk span,
+.daily-risk small,
 .approval-queue-item span,
 .approval-queue-item small,
 .approval-gate span,
@@ -1066,6 +1085,14 @@ h3 {
 
 .approval-queue-item {
   border-left: 4px solid #9b4d19;
+}
+
+.daily-risk.severity-high {
+  border-left: 4px solid #a53c3c;
+}
+
+.daily-command {
+  border-left: 4px solid #2d7668;
 }
 
 .factory-module,

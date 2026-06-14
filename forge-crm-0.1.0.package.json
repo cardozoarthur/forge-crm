@@ -6,9 +6,9 @@
   "addon_name": "Forge CRM",
   "addon_version": "0.1.0",
   "manifest_path": "addons/forge-crm.json",
-  "manifest_sha256": "db61afe236e1782c17f2a37b785aa8d05852f86932d307c5d3392d7745ebdb73",
-  "manifest_canonical_sha256": "b65ee0ab967593b72fe78b825df296d4b4413156db81423b8ce999cd6bb0bbb5",
-  "manifest_bytes": 175566,
+  "manifest_sha256": "956c4f01d7e9ce0cbd11c575eb72e43565604c467ef64111be622ddb176460bd",
+  "manifest_canonical_sha256": "11c5fdf5369ab3c67cbcb6bc1824d45431b302f5f9b402df83d0088b8740435d",
+  "manifest_bytes": 179005,
   "distribution": {
     "repository": "https://github.com/cardozoarthur/forge-crm",
     "channel": "stable",
@@ -23,15 +23,15 @@
     "scheme": "ed25519_detached",
     "signature": "",
     "public_key": "",
-    "payload_sha256": "337f0a60645e4f199ad829b7a2f9491c34d14868a1e0633f3affeb7d8aaf9e6a",
+    "payload_sha256": "a8ad70e5dee6fe5ba1de721517bf72822d75380b1cbeae7deb8acf4a13c3797a",
     "verification_note": "package records detached signature metadata; trust verification is a marketplace policy gate"
   },
   "summary": {
     "capability_count": 9,
     "dependency_count": 1,
     "permission_count": 5,
-    "workflow_extension_count": 34,
-    "runtime_contract_count": 43,
+    "workflow_extension_count": 35,
+    "runtime_contract_count": 44,
     "view_count": 12,
     "event_adapter_count": 3,
     "integration_count": 4,
@@ -65,6 +65,7 @@
       "crm.ai.operating_copilot.executor",
       "crm.ai.area_copilot.executor",
       "crm.queue.orchestrator.executor",
+      "crm.operating.daily_cycle.executor",
       "crm.design_system.executor",
       "crm.memory.promotion.executor",
       "crm.workflow.evolution.executor",
@@ -310,6 +311,7 @@
           "crm_subworkflow_orchestration",
           "crm_workflow_automation_designer",
           "crm_workflow_factory_blueprint",
+          "crm_daily_operating_cycle",
           "crm_approval_governance",
           "crm_workflow_evolution"
         ],
@@ -319,6 +321,7 @@
           "CRM subworkflow orchestration plan",
           "CRM workflow automation design",
           "CRM workflow-system factory blueprint",
+          "CRM daily operating cycle",
           "CRM approval governance workbench",
           "CRM operating readiness package",
           "Forge Core gap report"
@@ -355,6 +358,9 @@
           "crm_workflow_factory_blueprint",
           "crm_workflow_module_catalog",
           "crm_factory_portability_report",
+          "crm_daily_operating_cycle",
+          "crm_operating_command_brief",
+          "crm_operating_risk_register",
           "crm_workflow_evolution_plan",
           "crm_evolution_experiment",
           "crm_benchmark_report",
@@ -620,6 +626,7 @@
           "crm_document_approval",
           "crm_document_library",
           "crm_work_queue_orchestration",
+          "crm_daily_operating_cycle",
           "crm_approval_governance",
           "crm_subworkflow_orchestration"
         ],
@@ -629,6 +636,7 @@
           "Document audit trail",
           "Document library",
           "Cross-domain work queue",
+          "Daily operating cycle",
           "Approval governance queue",
           "Subworkflow orchestration"
         ],
@@ -649,6 +657,9 @@
           "crm_work_queue_snapshot",
           "crm_queue_assignment_plan",
           "crm_queue_sla_risk_report",
+          "crm_daily_operating_cycle",
+          "crm_operating_command_brief",
+          "crm_operating_risk_register",
           "crm_subworkflow_plan",
           "crm_subworkflow_lineage_map",
           "crm_subworkflow_validation_report"
@@ -972,6 +983,11 @@
         "description": "Export the CRM as a reusable Forge workflow-system blueprint with module templates, runtime contracts, portability gates and forge-core gap routing."
       },
       {
+        "id": "crm_daily_operating_cycle",
+        "kind": "operations_workflow",
+        "description": "Generate a daily Forge-owned command cycle across sales, marketing, support, documents and handoffs."
+      },
+      {
         "id": "crm_workflow_evolution",
         "kind": "agentic_workflow",
         "description": "Turn CRM observability bottlenecks into Forge improve experiments, benchmarks and governed promotion decisions."
@@ -1205,6 +1221,35 @@
           "work queue orchestration does not mutate CRM state directly",
           "queue assignments require Forge workflow approval before state mutation",
           "every queue item must cite Forge artifact and event evidence"
+        ]
+      },
+      {
+        "id": "crm.operating.daily_cycle.executor",
+        "title": "CRM daily operating cycle",
+        "contract_type": "executor",
+        "capability_id": "crm_internal_operations",
+        "workflow_extension_id": "crm_daily_operating_cycle",
+        "runtime": "external_api",
+        "entrypoint": "forge_crm.run_daily_operating_cycle",
+        "inputs": [
+          "operating_inputs",
+          "operating_policy",
+          "business_day",
+          "tenant_context"
+        ],
+        "outputs": [
+          "crm_daily_operating_cycle",
+          "crm_operating_command_brief",
+          "crm_operating_risk_register"
+        ],
+        "permissions": [
+          "crm.workflow.mutate",
+          "crm.observability.inspect"
+        ],
+        "constraints": [
+          "daily operating cycle does not persist CRM state outside Forge",
+          "daily command actions require Forge workflow approval before state mutation",
+          "sales, marketing, support, documents and handoffs must cite Forge workflow artifacts or events"
         ]
       },
       {
@@ -3940,6 +3985,50 @@
             ]
           },
           {
+            "id": "crm.tui.run-daily-operating-cycle",
+            "label": "Run daily cycle",
+            "description": "Generate the daily CRM command brief and risk register through Forge-owned workflow evidence.",
+            "palette_group": "CRM",
+            "source_panel": "crm.operational-cockpit",
+            "type": "command",
+            "target": "forge addons execute-executor",
+            "method": "CLI",
+            "permission": "crm.workflow.mutate",
+            "requires_confirmation": true,
+            "risk_level": "high",
+            "mutates_workflow": true,
+            "command_template": [
+              "addons",
+              "execute-executor",
+              "--addon",
+              "forge.addon.crm",
+              "--contract",
+              "crm.operating.daily_cycle.executor",
+              "--worker",
+              "<worker-id>",
+              "--task",
+              "<task-ref>",
+              "--input",
+              "<json>",
+              "--context",
+              "<json>",
+              "--output",
+              "json"
+            ],
+            "keywords": [
+              "crm",
+              "daily",
+              "operating",
+              "cycle"
+            ],
+            "payload_schema": [
+              "operating_inputs",
+              "operating_policy",
+              "business_day",
+              "tenant_context"
+            ]
+          },
+          {
             "id": "crm.tui.govern-approval-queue",
             "label": "Govern approval queue",
             "description": "Inspect approval artifacts, permission gates and rework decisions through Forge workflow governance.",
@@ -4784,6 +4873,21 @@
         "generic_kind": "report"
       },
       {
+        "id": "crm_daily_operating_cycle",
+        "title": "CRM daily operating cycle",
+        "generic_kind": "artifact"
+      },
+      {
+        "id": "crm_operating_command_brief",
+        "title": "CRM operating command brief",
+        "generic_kind": "report"
+      },
+      {
+        "id": "crm_operating_risk_register",
+        "title": "CRM operating risk register",
+        "generic_kind": "report"
+      },
+      {
         "id": "crm_entity_model",
         "title": "CRM workflow-backed entity model",
         "generic_kind": "artifact"
@@ -5253,6 +5357,11 @@
       {
         "id": "crm.factory",
         "title": "CRM factory event",
+        "transport": "crm"
+      },
+      {
+        "id": "crm.operating",
+        "title": "CRM operating event",
         "transport": "crm"
       },
       {
