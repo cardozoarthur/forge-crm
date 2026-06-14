@@ -10,6 +10,7 @@ import {
   buildDesignSystemResult,
   buildWorkQueueOrchestrationResult,
   buildLeadClassifierResult,
+  buildRelationshipLifecycleResult,
   buildRelationshipTimelineResult,
   buildOmnichannelHandoffResult,
   buildOperatingSnapshotResult,
@@ -125,6 +126,82 @@ test("lead classifier returns a Forge executor result without mutating CRM state
   assert.ok(result.outputs.score >= 80);
   assert.equal(result.outputs.mutates_crm_state, false);
   assert.equal(result.context_tenant, "test");
+});
+
+test("relationship lifecycle packages lead contact company and opportunity as Forge-owned workflow evidence", () => {
+  assert.equal(typeof buildRelationshipLifecycleResult, "function");
+
+  const result = buildRelationshipLifecycleResult(
+    workerRequest(
+      "forge_crm.run_relationship_lifecycle",
+      {
+        tenant_context: { tenant_id: "demo" },
+        lead: {
+          id: "lead-001",
+          name: "Mara Lopes",
+          email: "mara@example.com",
+          role: "COO",
+          budget: 220000,
+          company_size: 300,
+          timeline: "urgent",
+          pain: "Needs auditable sales and support workflows"
+        },
+        contact: {
+          id: "contact-001",
+          name: "Mara Lopes",
+          email: "mara@example.com",
+          company_id: "company-001"
+        },
+        company: {
+          id: "company-001",
+          name: "Acme Logistics",
+          industry: "logistics"
+        },
+        opportunity: {
+          id: "opp-001",
+          amount: 220000,
+          funnel_id: "enterprise",
+          stage: "discovery"
+        },
+        lifecycle_policy: {
+          require_approval_before_conversion: true,
+          next_workflows: ["crm.relationship.profile_enrichment", "crm.opportunity.pipeline", "crm.followup.forecast"]
+        }
+      },
+      { contract_id: "crm.relationship.lifecycle.executor", task_ref: "relationship-lifecycle-test" }
+    )
+  );
+
+  assert.equal(result.schema_version, "forge.addon_executor_result.v1");
+  assert.equal(result.status, "completed");
+  assert.equal(result.outputs.tenant_id, "demo");
+  assert.equal(result.outputs.workflow_id, "crm.lead.lifecycle");
+  assert.equal(result.outputs.lead_id, "lead-001");
+  assert.equal(result.outputs.contact_id, "contact-001");
+  assert.equal(result.outputs.company_id, "company-001");
+  assert.equal(result.outputs.opportunity_id, "opp-001");
+  assert.equal(result.outputs.lifecycle_state, "qualified_waiting_approval");
+  assert.equal(result.outputs.next_workflow_count, 3);
+  assert.equal(result.outputs.mutates_crm_state, false);
+  assert.equal(result.outputs.forge_event_sourced, true);
+
+  for (const artifactKind of [
+    "crm_relationship_lifecycle",
+    "crm_entity_model",
+    "crm_timeline_snapshot",
+    "crm_ai_recommendation"
+  ]) {
+    assert.ok(result.artifacts.some((artifact) => artifact.kind === artifactKind), `missing ${artifactKind}`);
+  }
+
+  for (const eventKind of [
+    "crm.lead.created",
+    "crm.relationship.lifecycle_packaged",
+    "crm.relationship.recorded",
+    "crm.lead.classified"
+  ]) {
+    assert.ok(result.events.some((event) => event.kind === eventKind), `missing ${eventKind}`);
+  }
 });
 
 test("relationship timeline records entity and pipeline events as Forge artifacts", () => {
@@ -2610,6 +2687,7 @@ test("HTTP worker dispatches Forge runtime requests", async () => {
     assert.ok(health.body.supported_entrypoints.includes("forge_crm.generate_design_system"));
     assert.ok(health.body.supported_entrypoints.includes("forge_crm.run_daily_operating_cycle"));
     assert.ok(health.body.supported_entrypoints.includes("forge_crm.generate_strategic_objective_audit"));
+    assert.ok(health.body.supported_entrypoints.includes("forge_crm.run_relationship_lifecycle"));
 
     const response = await postJson(
       port,

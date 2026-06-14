@@ -27,12 +27,13 @@ Forge CRM is a product proof for Forge as a factory/framework for agentic workfl
 
 No important CRM automation should bypass Forge. External tools may execute bounded work, but Forge owns the workflow, state transitions, approvals, memory scope, artifact attachment, event history and validation gates.
 
-The current CRM worker exposes forty-four Forge runtime entrypoints:
+The current CRM worker exposes forty-six Forge runtime entrypoints:
 
 - `forge_crm.plan_system` for CRM system planning;
 - `forge_crm.bootstrap_tenant` for a Forge-owned tenant workflow pack;
 - `forge_crm.operating_snapshot` for a Forge-owned business operating snapshot;
 - `forge_crm.classify_lead` for recommendation-only lead scoring;
+- `forge_crm.run_relationship_lifecycle` for packaging lead, contact, company and opportunity records into Forge-owned lifecycle artifacts;
 - `forge_crm.record_relationship_event` for entity relationships, unified timeline and pipeline stage events;
 - `forge_crm.enrich_relationship_profile` for contact and company profile enrichment with source lineage, relationship signals and approval gates;
 - `forge_crm.move_opportunity_stage` for Forge-owned Kanban movement across multiple funnels with board, stage-change and forecast artifacts;
@@ -78,7 +79,7 @@ The worker returns Forge Addon result schemas and does not persist CRM state dir
 
 ## Tenant Workflow Pack
 
-`scripts/crm-workflow-pack-lib.mjs` produces the first operational workflow model for a CRM tenant. It declares 34 Forge-owned workflows across relationship profile enrichment, commercial follow-up, goal and commission settlement, executive reporting, support channel intake, omnichannel message threads, unified omnichannel center, marketing segment building, campaigns, document library/versioning, operations, cross-domain work queues, daily operating cycle, subworkflow orchestration, workflow automation design, user experience/design system, AI automation, operational observability, enterprise readiness and end-to-end customer journey acceptance. Each workflow carries explicit states, transitions, object types, runtime contracts, artifact types, events, memory scopes, permissions, validation gates and mutation policy.
+`scripts/crm-workflow-pack-lib.mjs` produces the first operational workflow model for a CRM tenant. It declares 35 Forge-owned workflows across relationship lifecycle packaging, relationship profile enrichment, commercial follow-up, goal and commission settlement, executive reporting, support channel intake, omnichannel message threads, unified omnichannel center, marketing segment building, campaigns, document library/versioning, operations, cross-domain work queues, daily operating cycle, subworkflow orchestration, workflow automation design, user experience/design system, AI automation, operational observability, enterprise readiness and end-to-end customer journey acceptance. Each workflow carries explicit states, transitions, object types, runtime contracts, artifact types, events, memory scopes, permissions, validation gates and mutation policy.
 
 The pack uses `workflow_id`, `artifact_id` and `event_id` as durable identities. External primary keys and direct external persistence are explicitly disabled.
 
@@ -107,7 +108,7 @@ The first web surface lives in `web/` and is declared by `crm.system-map.props.w
 
 - `scripts/generate-crm-web-snapshot.mjs` writes `web/data/operating-snapshot.json`;
 - `web/index.html` loads the snapshot;
-- `web/app.js` renders workflow graph, knowledge graph, relationship profile enrichment, business modules, commercial goal and commission settlement, executive reporting, support channel intake, omnichannel message threads, unified omnichannel center, marketing segments and landing pages, document queue with library version records, cross-domain work queue, daily operating cycle workbench, subworkflow orchestration, workflow automation designer, benchmark evidence matrix, design system, enterprise journey workbench, operating copilot and area copilot actions, and Forge action templates;
+- `web/app.js` renders workflow graph, knowledge graph, relationship lifecycle packages, relationship profile enrichment, business modules, commercial goal and commission settlement, executive reporting, support channel intake, omnichannel message threads, unified omnichannel center, marketing segments and landing pages, document queue with library version records, cross-domain work queue, daily operating cycle workbench, subworkflow orchestration, workflow automation designer, benchmark evidence matrix, design system, enterprise journey workbench, operating copilot and area copilot actions, and Forge action templates;
 - `web/styles.css` carries compact operational styling and design tokens.
 
 This is a business-user view over Forge-owned state. It does not introduce browser persistence, a CRM-local database or a side automation engine. Any action shown in the UI is represented as a Forge command template that routes through Addon runtime contracts and permission gates.

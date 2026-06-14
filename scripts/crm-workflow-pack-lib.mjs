@@ -57,15 +57,25 @@ const WORKFLOWS = [
       ["captured", "disqualified", "fit rejected with reason"]
     ],
     runtime_contracts: [
+      "crm.relationship.lifecycle.executor",
       "crm.relationship.timeline.executor",
       "crm.relationship.profile_enrichment.executor",
       "crm.lead.classifier.executor",
       "crm.marketing.form_capture.executor"
     ],
-    artifacts: ["crm_timeline_snapshot", "crm_relationship_profile", "crm_enrichment_record", "crm_ai_recommendation", "crm_lead_capture"],
+    artifacts: [
+      "crm_relationship_lifecycle",
+      "crm_entity_model",
+      "crm_timeline_snapshot",
+      "crm_relationship_profile",
+      "crm_enrichment_record",
+      "crm_ai_recommendation",
+      "crm_lead_capture"
+    ],
     events: [
       "crm.lead.created",
       "crm.lead.classified",
+      "crm.relationship.lifecycle_packaged",
       "crm.contact.updated",
       "crm.contact.enriched",
       "crm.company.enriched",
@@ -75,7 +85,11 @@ const WORKFLOWS = [
     memory_scopes: ["organization", "project"],
     permissions: ["crm.workflow.mutate", "crm.ai.recommend"],
     views: ["crm.relationship-graph"],
-    validation_gates: ["classification evidence present", "state transition has owner and reason"]
+    validation_gates: [
+      "classification evidence present",
+      "state transition has owner and reason",
+      "lead conversion requires Forge workflow approval before CRM state mutation"
+    ]
   },
   {
     id: "crm.relationship.profile_enrichment",

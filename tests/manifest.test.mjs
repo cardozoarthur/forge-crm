@@ -163,6 +163,32 @@ test("manifest exposes CRM relationship timeline as a Forge-owned executor", () 
   assert.ok(contract.constraints.some((constraint) => constraint.includes("Forge workflow artifacts and events")));
 });
 
+test("manifest exposes relationship lifecycle packaging as a Forge-owned executor", () => {
+  const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.relationship.lifecycle.executor");
+  assert.ok(contract);
+  assert.equal(contract.contract_type, "executor");
+  assert.equal(contract.capability_id, "crm_relationship_management");
+  assert.equal(contract.workflow_extension_id, "crm_entity_lifecycle");
+  assert.equal(contract.entrypoint, "forge_crm.run_relationship_lifecycle");
+  assert.deepEqual(contract.permissions, ["crm.workflow.mutate", "crm.ai.recommend"]);
+
+  for (const input of ["lead", "contact", "company", "opportunity", "lifecycle_policy", "tenant_context"]) {
+    assert.ok(contract.inputs.includes(input), `missing lifecycle input ${input}`);
+  }
+  for (const output of ["crm_relationship_lifecycle", "crm_entity_model", "crm_timeline_snapshot", "crm_ai_recommendation"]) {
+    assert.ok(contract.outputs.includes(output), `missing lifecycle output ${output}`);
+  }
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("does not persist CRM state outside Forge")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("approval before conversion")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("lead, contact, company and opportunity")));
+
+  const artifactTypes = new Set(manifest.artifact_types.map((artifact) => artifact.id));
+  assert.ok(artifactTypes.has("crm_relationship_lifecycle"));
+
+  const eventTypes = new Set(manifest.event_types.map((event) => event.id));
+  assert.ok(eventTypes.has("crm.relationship"));
+});
+
 test("manifest exposes relationship profile enrichment as a Forge-owned executor", () => {
   const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.relationship.profile_enrichment.executor");
   assert.ok(contract);

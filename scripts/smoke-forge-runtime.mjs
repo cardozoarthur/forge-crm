@@ -91,6 +91,7 @@ try {
       "forge_crm.bootstrap_tenant",
       "forge_crm.operating_snapshot",
       "forge_crm.classify_lead",
+      "forge_crm.run_relationship_lifecycle",
       "forge_crm.record_relationship_event",
       "forge_crm.enrich_relationship_profile",
       "forge_crm.move_opportunity_stage",
@@ -138,6 +139,7 @@ try {
       "crm.tenant.bootstrap.executor",
       "crm.operating.snapshot.executor",
       "crm.lead.classifier.executor",
+      "crm.relationship.lifecycle.executor",
       "crm.relationship.timeline.executor",
       "crm.relationship.profile_enrichment.executor",
       "crm.pipeline.stage_move.executor",
@@ -1373,6 +1375,74 @@ try {
   if (strategicObjectiveAudit.executor_result.outputs.missing_requirement_count !== 0) {
     throw new Error(
       `expected zero strategic audit gaps, got ${strategicObjectiveAudit.executor_result.outputs.missing_requirement_count}`
+    );
+  }
+
+  const relationshipLifecycle = runForge([
+    "addons",
+    "execute-executor",
+    "--addon-dir",
+    "addons",
+    "--addon",
+    "forge.addon.crm",
+    "--contract",
+    "crm.relationship.lifecycle.executor",
+    "--worker",
+    workerId,
+    "--task",
+    "crm-smoke-relationship-lifecycle",
+    "--workflow",
+    workflowId,
+    "--input",
+    JSON.stringify({
+      tenant_context: { id: "smoke", tenant_id: "smoke" },
+      lead: {
+        id: "lead-smoke-001",
+        name: "Smoke Contact",
+        email: "smoke@example.com",
+        role: "COO",
+        budget: 180000,
+        company_size: 240,
+        timeline: "this quarter",
+        source: "inbound demo",
+        pain: "Needs audited sales and support workflows connected to operations."
+      },
+      contact: {
+        id: "contact-smoke",
+        name: "Smoke Contact",
+        email: "smoke@example.com",
+        company_id: "company-smoke"
+      },
+      company: {
+        id: "company-smoke",
+        name: "Example Logistics",
+        industry: "logistics"
+      },
+      opportunity: {
+        id: "opp-smoke-priority",
+        amount: 180000,
+        funnel_id: "enterprise",
+        stage: "discovery"
+      },
+      lifecycle_policy: {
+        require_approval_before_conversion: true,
+        next_workflows: ["crm.relationship.profile_enrichment", "crm.opportunity.pipeline", "crm.followup.forecast"]
+      }
+    }),
+    "--context",
+    JSON.stringify({ tenant: "smoke" }),
+    "--output",
+    "json"
+  ]);
+
+  if (relationshipLifecycle.promotion?.status !== "addon_executor_result_promoted") {
+    throw new Error(
+      `expected relationship lifecycle promotion, got ${relationshipLifecycle.promotion?.status || "missing"}`
+    );
+  }
+  if (relationshipLifecycle.executor_result.outputs.lifecycle_state !== "qualified_waiting_approval") {
+    throw new Error(
+      `expected relationship lifecycle qualified_waiting_approval, got ${relationshipLifecycle.executor_result.outputs.lifecycle_state}`
     );
   }
 
@@ -2786,6 +2856,8 @@ try {
   const readinessPromotedEventCount = operatingReadiness.promotion?.event_count ?? 0;
   const strategicAuditPromotedArtifactCount = strategicObjectiveAudit.promotion?.artifact_count ?? 0;
   const strategicAuditPromotedEventCount = strategicObjectiveAudit.promotion?.event_count ?? 0;
+  const relationshipLifecyclePromotedArtifactCount = relationshipLifecycle.promotion?.artifact_count ?? 0;
+  const relationshipLifecyclePromotedEventCount = relationshipLifecycle.promotion?.event_count ?? 0;
   const relationshipProfilePromotedArtifactCount = relationshipProfileEnrichment.promotion?.artifact_count ?? 0;
   const relationshipProfilePromotedEventCount = relationshipProfileEnrichment.promotion?.event_count ?? 0;
   const relationshipPromotedArtifactCount = relationshipTimeline.promotion?.artifact_count ?? 0;
@@ -3030,6 +3102,21 @@ try {
     "crm.strategic.objective_audited",
     "crm.requirement.coverage_reported",
     "crm.support.channel_coverage_reported"
+  ]) {
+    if (!workflowEventKinds.includes(eventKind)) {
+      throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
+    }
+  }
+  if (relationshipLifecyclePromotedArtifactCount < 4 || relationshipLifecyclePromotedEventCount < 4) {
+    throw new Error(
+      `expected promoted relationship lifecycle artifacts/events, got artifacts=${relationshipLifecyclePromotedArtifactCount} events=${relationshipLifecyclePromotedEventCount}`
+    );
+  }
+  for (const eventKind of [
+    "crm.lead.created",
+    "crm.relationship.lifecycle_packaged",
+    "crm.relationship.recorded",
+    "crm.lead.classified"
   ]) {
     if (!workflowEventKinds.includes(eventKind)) {
       throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
@@ -3505,6 +3592,12 @@ try {
       strategicObjectiveAudit.executor_result.outputs.support_channel_count,
     strategic_objective_audit_promoted_artifacts: strategicAuditPromotedArtifactCount,
     strategic_objective_audit_promoted_events: strategicAuditPromotedEventCount,
+    relationship_lifecycle_status: relationshipLifecycle.status,
+    relationship_lifecycle_promotion_status: relationshipLifecycle.promotion.status,
+    relationship_lifecycle_state: relationshipLifecycle.executor_result.outputs.lifecycle_state,
+    relationship_lifecycle_next_workflow_count: relationshipLifecycle.executor_result.outputs.next_workflow_count,
+    relationship_lifecycle_promoted_artifacts: relationshipLifecyclePromotedArtifactCount,
+    relationship_lifecycle_promoted_events: relationshipLifecyclePromotedEventCount,
     relationship_profile_status: relationshipProfileEnrichment.status,
     relationship_profile_promotion_status: relationshipProfileEnrichment.promotion.status,
     relationship_profile_enrichment_state: relationshipProfileEnrichment.executor_result.outputs.enrichment_state,

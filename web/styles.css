@@ -623,6 +623,11 @@ h3 {
   background: #fbfcf9;
 }
 
+.relationship-lifecycle {
+  border-color: #b9d4ca;
+  background: #f4fbf8;
+}
+
 .relationship-profile span {
   color: #607078;
   font-size: 0.82rem;

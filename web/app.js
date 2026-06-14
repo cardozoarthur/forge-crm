@@ -176,6 +176,22 @@ export function renderRelationshipProfiles(snapshot) {
     return section;
   }
 
+  const lifecycles = nodeElement("div", "relationship-profile-list");
+  for (const lifecycle of panel.lifecycle_packages || []) {
+    const item = nodeElement("article", "relationship-profile relationship-lifecycle");
+    item.append(nodeElement("strong", "", `${lifecycle.lead_id} · ${lifecycle.account}`));
+    item.append(
+      nodeElement(
+        "span",
+        "",
+        `${compactTitle(lifecycle.state)} · ${lifecycle.next_workflow_count} next workflows`
+      )
+    );
+    item.append(nodeElement("code", "", actionLabel(snapshot, lifecycle.action_id)));
+    item.title = lifecycle.contract_id;
+    lifecycles.append(item);
+  }
+
   const profiles = nodeElement("div", "relationship-profile-list");
   for (const profile of panel.profiles || []) {
     const item = nodeElement("article", "relationship-profile");
@@ -192,7 +208,7 @@ export function renderRelationshipProfiles(snapshot) {
     profiles.append(item);
   }
 
-  section.append(profiles);
+  section.append(lifecycles, profiles);
   return section;
 }
 

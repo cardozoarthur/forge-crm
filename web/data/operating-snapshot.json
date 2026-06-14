@@ -26,8 +26,8 @@
     "workflow_count": 35,
     "business_module_count": 7,
     "surface_count": 10,
-    "artifact_type_count": 97,
-    "event_type_count": 113,
+    "artifact_type_count": 99,
+    "event_type_count": 114,
     "complete_scope": true
   },
   "surfaces": [
@@ -244,7 +244,9 @@
       "artifact_types": [
         "crm_ai_recommendation",
         "crm_enrichment_record",
+        "crm_entity_model",
         "crm_lead_capture",
+        "crm_relationship_lifecycle",
         "crm_relationship_profile",
         "crm_timeline_snapshot"
       ],
@@ -254,6 +256,7 @@
         "crm.contact.updated",
         "crm.lead.classified",
         "crm.lead.created",
+        "crm.relationship.lifecycle_packaged",
         "crm.relationship.profile_updated",
         "crm.relationship.recorded"
       ],
@@ -1025,9 +1028,11 @@
         "crm_ai_recommendation",
         "crm_automation_plan",
         "crm_enrichment_record",
+        "crm_entity_model",
         "crm_forecast_report",
         "crm_lead_capture",
         "crm_pipeline_board",
+        "crm_relationship_lifecycle",
         "crm_relationship_profile",
         "crm_report",
         "crm_segment",
@@ -1044,6 +1049,7 @@
         "crm.lead.classified",
         "crm.lead.created",
         "crm.opportunity.stage_changed",
+        "crm.relationship.lifecycle_packaged",
         "crm.relationship.profile_updated",
         "crm.relationship.recorded",
         "crm.segment.audience_selected",
@@ -1055,6 +1061,7 @@
         "classification evidence present",
         "enrichment sources are attached as Forge artifacts",
         "forecast impact recorded",
+        "lead conversion requires Forge workflow approval before CRM state mutation",
         "profile changes require Forge workflow approval before promotion",
         "relationship signals cite source lineage",
         "segment definition cites Forge relationship and lead evidence",
@@ -1610,12 +1617,15 @@
           "enrichment_wait"
         ],
         "runtime_contracts": [
+          "crm.relationship.lifecycle.executor",
           "crm.relationship.timeline.executor",
           "crm.relationship.profile_enrichment.executor",
           "crm.lead.classifier.executor",
           "crm.marketing.form_capture.executor"
         ],
         "artifact_types": [
+          "crm_relationship_lifecycle",
+          "crm_entity_model",
           "crm_timeline_snapshot",
           "crm_relationship_profile",
           "crm_enrichment_record",
@@ -1625,6 +1635,7 @@
         "event_types": [
           "crm.lead.created",
           "crm.lead.classified",
+          "crm.relationship.lifecycle_packaged",
           "crm.contact.updated",
           "crm.contact.enriched",
           "crm.company.enriched",
@@ -1636,7 +1647,8 @@
         ],
         "validation_gates": [
           "classification evidence present",
-          "state transition has owner and reason"
+          "state transition has owner and reason",
+          "lead conversion requires Forge workflow approval before CRM state mutation"
         ]
       },
       {
@@ -3673,8 +3685,24 @@
           "crm.relationship.profile_enrichment"
         ],
         "action_ids": [
+          "crm.run-relationship-lifecycle",
           "crm.enrich-relationship-profile",
           "crm.record-relationship-event"
+        ],
+        "lifecycle_packages": [
+          {
+            "package_id": "relationship-lifecycle-lead-001",
+            "lead_id": "lead-001",
+            "contact_id": "contact-001",
+            "company_id": "company-acme-logistics",
+            "opportunity_id": "opp-fit-001",
+            "account": "Acme Logistics",
+            "state": "qualified_waiting_approval",
+            "state_owner": "forge_workflow_runtime",
+            "next_workflow_count": 3,
+            "contract_id": "crm.relationship.lifecycle.executor",
+            "action_id": "crm.run-relationship-lifecycle"
+          }
         ],
         "profiles": [
           {
@@ -5145,6 +5173,8 @@
           "crm_relationship_profile",
           "crm_enrichment_record",
           "crm_timeline_snapshot",
+          "crm_relationship_lifecycle",
+          "crm_entity_model",
           "crm_ai_recommendation",
           "crm_lead_capture",
           "crm_pipeline_board",
@@ -5158,6 +5188,7 @@
           "crm.relationship.profile_updated",
           "crm.lead.created",
           "crm.lead.classified",
+          "crm.relationship.lifecycle_packaged",
           "crm.contact.updated",
           "crm.relationship.recorded",
           "crm.opportunity.stage_changed",
@@ -5169,6 +5200,7 @@
           "profile changes require Forge workflow approval before promotion",
           "classification evidence present",
           "state transition has owner and reason",
+          "lead conversion requires Forge workflow approval before CRM state mutation",
           "stage movement is event-backed",
           "forecast impact recorded"
         ],
@@ -5560,13 +5592,15 @@
           "missing_workflow_ids": [],
           "artifact_evidence": [
             "crm_timeline_snapshot",
-            "crm_pipeline_board"
+            "crm_pipeline_board",
+            "crm_entity_model"
           ],
           "event_evidence": [
             "crm.relationship.recorded",
             "crm.opportunity.stage_changed"
           ],
           "runtime_contract_evidence": [
+            "crm.relationship.lifecycle.executor",
             "crm.relationship.timeline.executor",
             "crm.relationship.profile_enrichment.executor",
             "crm.lead.classifier.executor",
@@ -5578,6 +5612,7 @@
           "validation_gates": [
             "classification evidence present",
             "state transition has owner and reason",
+            "lead conversion requires Forge workflow approval before CRM state mutation",
             "stage movement is event-backed",
             "forecast impact recorded"
           ]
@@ -6866,12 +6901,15 @@
         ],
         "workflow_extension_id": "crm_entity_lifecycle",
         "runtime_contracts": [
+          "crm.relationship.lifecycle.executor",
           "crm.relationship.timeline.executor",
           "crm.relationship.profile_enrichment.executor",
           "crm.lead.classifier.executor",
           "crm.marketing.form_capture.executor"
         ],
         "artifact_types": [
+          "crm_relationship_lifecycle",
+          "crm_entity_model",
           "crm_timeline_snapshot",
           "crm_relationship_profile",
           "crm_enrichment_record",
@@ -6881,6 +6919,7 @@
         "event_types": [
           "crm.lead.created",
           "crm.lead.classified",
+          "crm.relationship.lifecycle_packaged",
           "crm.contact.updated",
           "crm.contact.enriched",
           "crm.company.enriched",
@@ -6892,7 +6931,8 @@
         ],
         "validation_gates": [
           "classification evidence present",
-          "state transition has owner and reason"
+          "state transition has owner and reason",
+          "lead conversion requires Forge workflow approval before CRM state mutation"
         ],
         "state_owner": "forge_workflow_runtime",
         "reuse_policy": "copy_as_forge_workflow_module_template"
@@ -9195,6 +9235,33 @@
       ]
     },
     {
+      "id": "crm.run-relationship-lifecycle",
+      "label": "Run relationship lifecycle",
+      "surface_id": "crm.relationship-graph",
+      "contract_id": "crm.relationship.lifecycle.executor",
+      "requires_permission": "crm.workflow.mutate",
+      "mutates_workflow": true,
+      "command_template": [
+        "forge",
+        "addons",
+        "execute-executor",
+        "--addon",
+        "forge.addon.crm",
+        "--contract",
+        "crm.relationship.lifecycle.executor",
+        "--worker",
+        "<worker-id>",
+        "--task",
+        "<task-ref>",
+        "--input",
+        "<json>",
+        "--context",
+        "<json>",
+        "--output",
+        "json"
+      ]
+    },
+    {
       "id": "crm.enrich-relationship-profile",
       "label": "Enrich relationship profile",
       "surface_id": "crm.relationship-graph",
@@ -10823,6 +10890,68 @@
             "title": "Execute runtime contract",
             "owner": "forge.addons.runtime",
             "evidence": "crm.relationship.timeline.executor"
+          },
+          {
+            "id": "promote_result_to_workflow",
+            "title": "Promote result to workflow",
+            "owner": "forge.workflow.runtime",
+            "evidence": "artifact and event promotion"
+          },
+          {
+            "id": "refresh_operating_snapshot",
+            "title": "Refresh operating snapshot",
+            "owner": "forge.addon.crm",
+            "evidence": "crm.operating.snapshot.executor"
+          }
+        ],
+        "output_policy": {
+          "promote_result_to_workflow": true,
+          "browser_local_state_write": false,
+          "refresh_source": "forge_workflow_artifacts_and_events"
+        }
+      },
+      {
+        "action_id": "crm.run-relationship-lifecycle",
+        "label": "Run relationship lifecycle",
+        "surface_id": "crm.relationship-graph",
+        "contract_id": "crm.relationship.lifecycle.executor",
+        "required_permission": "crm.workflow.mutate",
+        "selected_command": [
+          "forge",
+          "addons",
+          "execute-executor",
+          "--addon",
+          "forge.addon.crm",
+          "--contract",
+          "crm.relationship.lifecycle.executor",
+          "--worker",
+          "<worker-id>",
+          "--task",
+          "<task-ref>",
+          "--input",
+          "<json>",
+          "--context",
+          "<json>",
+          "--output",
+          "json"
+        ],
+        "permission_gate": {
+          "status": "requires_forge_permission",
+          "permission": "crm.workflow.mutate",
+          "approval_owner": "forge_permission_policy"
+        },
+        "operation_plan": [
+          {
+            "id": "check_addon_permission",
+            "title": "Check Addon permission",
+            "owner": "forge.permissions",
+            "evidence": "crm.workflow.mutate"
+          },
+          {
+            "id": "execute_runtime_contract",
+            "title": "Execute runtime contract",
+            "owner": "forge.addons.runtime",
+            "evidence": "crm.relationship.lifecycle.executor"
           },
           {
             "id": "promote_result_to_workflow",

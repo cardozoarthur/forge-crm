@@ -264,8 +264,27 @@ function buildOperationalWorkbench(workflows, actionList, documentQueueSnapshot)
       title: "Relationship graph",
       surface_id: "crm.relationship-graph",
       workflow_ids: workflowIdsForSurface(workflows, "crm.relationship-graph"),
-      action_ids: checkedActionIds(actionList, ["crm.enrich-relationship-profile", "crm.record-relationship-event"])
+      action_ids: checkedActionIds(actionList, [
+        "crm.run-relationship-lifecycle",
+        "crm.enrich-relationship-profile",
+        "crm.record-relationship-event"
+      ])
     }),
+    lifecycle_packages: [
+      {
+        package_id: "relationship-lifecycle-lead-001",
+        lead_id: "lead-001",
+        contact_id: "contact-001",
+        company_id: "company-acme-logistics",
+        opportunity_id: "opp-fit-001",
+        account: "Acme Logistics",
+        state: "qualified_waiting_approval",
+        state_owner: "forge_workflow_runtime",
+        next_workflow_count: 3,
+        contract_id: "crm.relationship.lifecycle.executor",
+        action_id: "crm.run-relationship-lifecycle"
+      }
+    ],
     profiles: [
       {
         profile_id: "profile-mara-lopes",
@@ -2315,6 +2334,15 @@ function actions() {
       requires_permission: "crm.workflow.mutate",
       mutates_workflow: true,
       command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.relationship.timeline.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
+    },
+    {
+      id: "crm.run-relationship-lifecycle",
+      label: "Run relationship lifecycle",
+      surface_id: "crm.relationship-graph",
+      contract_id: "crm.relationship.lifecycle.executor",
+      requires_permission: "crm.workflow.mutate",
+      mutates_workflow: true,
+      command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.relationship.lifecycle.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
     },
     {
       id: "crm.enrich-relationship-profile",

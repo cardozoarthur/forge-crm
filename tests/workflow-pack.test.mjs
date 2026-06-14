@@ -58,6 +58,27 @@ test("tenant bootstrap result returns Forge executor artifacts and events", () =
   assert.equal(result.events[0].kind, "crm.tenant.bootstrap_generated");
 });
 
+test("workflow pack includes an explicit relationship lifecycle executor", () => {
+  const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
+  const workflow = pack.workflows.find((candidate) => candidate.id === "crm.lead.lifecycle");
+
+  assert.ok(workflow);
+  assert.equal(workflow.workflow_extension_id, "crm_entity_lifecycle");
+  assert.ok(workflow.runtime_contracts.includes("crm.relationship.lifecycle.executor"));
+  assert.ok(pack.indexes.runtime_contracts.includes("crm.relationship.lifecycle.executor"));
+
+  for (const artifact of ["crm_relationship_lifecycle", "crm_entity_model", "crm_timeline_snapshot", "crm_ai_recommendation"]) {
+    assert.ok(workflow.artifacts.includes(artifact), `missing lifecycle artifact ${artifact}`);
+    assert.ok(pack.indexes.artifact_types.includes(artifact), `missing indexed lifecycle artifact ${artifact}`);
+  }
+
+  for (const event of ["crm.lead.created", "crm.relationship.lifecycle_packaged", "crm.relationship.recorded", "crm.lead.classified"]) {
+    assert.ok(workflow.events.includes(event), `missing lifecycle event ${event}`);
+  }
+
+  assert.ok(workflow.validation_gates.includes("lead conversion requires Forge workflow approval before CRM state mutation"));
+});
+
 test("workflow pack includes a Forge-owned operating model for business surfaces", () => {
   const pack = buildCrmWorkflowPack({ tenant_id: "acme" });
   const model = pack.operating_model;

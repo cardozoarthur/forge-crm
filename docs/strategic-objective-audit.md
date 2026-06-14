@@ -9,8 +9,8 @@ Status: covered_by_current_addon_evidence
 - Requirements: 50
 - Missing requirements: 0
 - Workflows: 35
-- Runtime contracts: 45
-- Artifact types: 102
+- Runtime contracts: 46
+- Artifact types: 103
 - Event types: 44
 - Views: 12
 
@@ -30,14 +30,14 @@ Missing: none
 Relationship: covered_by_current_addon_evidence
 Missing: none
 
-- leads: covered_by_forge_evidence; workflows=crm.lead.lifecycle; contracts=crm.lead.classifier.executor, crm.marketing.form_capture.executor, crm.relationship.profile_enrichment.executor, crm.relationship.timeline.executor
+- leads: covered_by_forge_evidence; workflows=crm.lead.lifecycle; contracts=crm.lead.classifier.executor, crm.marketing.form_capture.executor, crm.relationship.lifecycle.executor, crm.relationship.profile_enrichment.executor, crm.relationship.timeline.executor
 - contacts: covered_by_forge_evidence; workflows=crm.relationship.profile_enrichment; contracts=crm.relationship.profile_enrichment.executor, crm.relationship.timeline.executor
 - companies: covered_by_forge_evidence; workflows=crm.relationship.profile_enrichment; contracts=crm.relationship.profile_enrichment.executor, crm.relationship.timeline.executor
 - opportunities: covered_by_forge_evidence; workflows=crm.opportunity.pipeline; contracts=crm.ai.operating_copilot.executor, crm.lead.classifier.executor, crm.pipeline.stage_move.executor, crm.proposal.generator.executor, crm.relationship.timeline.executor
 - pipeline_kanban: covered_by_forge_evidence; workflows=crm.opportunity.pipeline; contracts=crm.ai.operating_copilot.executor, crm.lead.classifier.executor, crm.pipeline.stage_move.executor, crm.proposal.generator.executor, crm.relationship.timeline.executor
 - multiple_funnels: covered_by_forge_evidence; workflows=crm.opportunity.pipeline; contracts=crm.ai.operating_copilot.executor, crm.lead.classifier.executor, crm.pipeline.stage_move.executor, crm.proposal.generator.executor, crm.relationship.timeline.executor
-- complete_history: covered_by_forge_evidence; workflows=crm.lead.lifecycle, crm.relationship.profile_enrichment; contracts=crm.lead.classifier.executor, crm.marketing.form_capture.executor, crm.relationship.profile_enrichment.executor, crm.relationship.timeline.executor
-- unified_timeline: covered_by_forge_evidence; workflows=crm.lead.lifecycle, crm.relationship.profile_enrichment; contracts=crm.lead.classifier.executor, crm.marketing.form_capture.executor, crm.relationship.profile_enrichment.executor, crm.relationship.timeline.executor
+- complete_history: covered_by_forge_evidence; workflows=crm.lead.lifecycle, crm.relationship.profile_enrichment; contracts=crm.lead.classifier.executor, crm.marketing.form_capture.executor, crm.relationship.lifecycle.executor, crm.relationship.profile_enrichment.executor, crm.relationship.timeline.executor
+- unified_timeline: covered_by_forge_evidence; workflows=crm.lead.lifecycle, crm.relationship.profile_enrichment; contracts=crm.lead.classifier.executor, crm.marketing.form_capture.executor, crm.relationship.lifecycle.executor, crm.relationship.profile_enrichment.executor, crm.relationship.timeline.executor
 
 ### Commercial
 
@@ -93,7 +93,7 @@ Missing: none
 AI and Automation: covered_by_current_addon_evidence
 Missing: none
 
-- lead_classification: covered_by_forge_evidence; workflows=crm.ai.copilot.recommendation, crm.lead.lifecycle; contracts=crm.ai.area_copilot.executor, crm.ai.operating_copilot.executor, crm.lead.classifier.executor, crm.marketing.form_capture.executor, crm.memory.promotion.executor, crm.proposal.generator.executor, crm.relationship.profile_enrichment.executor, crm.relationship.timeline.executor
+- lead_classification: covered_by_forge_evidence; workflows=crm.ai.copilot.recommendation, crm.lead.lifecycle; contracts=crm.ai.area_copilot.executor, crm.ai.operating_copilot.executor, crm.lead.classifier.executor, crm.marketing.form_capture.executor, crm.memory.promotion.executor, crm.proposal.generator.executor, crm.relationship.lifecycle.executor, crm.relationship.profile_enrichment.executor, crm.relationship.timeline.executor
 - opportunity_prioritization: covered_by_forge_evidence; workflows=crm.ai.copilot.recommendation, crm.opportunity.pipeline; contracts=crm.ai.area_copilot.executor, crm.ai.operating_copilot.executor, crm.lead.classifier.executor, crm.memory.promotion.executor, crm.pipeline.stage_move.executor, crm.proposal.generator.executor, crm.relationship.timeline.executor
 - proposal_generation: covered_by_forge_evidence; workflows=crm.ai.copilot.recommendation, crm.proposal.approval; contracts=crm.ai.area_copilot.executor, crm.ai.operating_copilot.executor, crm.document.validator, crm.lead.classifier.executor, crm.memory.promotion.executor, crm.proposal.generator.executor
 - document_generation: covered_by_forge_evidence; workflows=crm.contract.signature, crm.proposal.approval; contracts=crm.commercial.contract_signature.executor, crm.commercial.goal_commission.executor, crm.document.generator.executor, crm.document.validator, crm.proposal.generator.executor

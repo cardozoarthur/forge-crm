@@ -6,9 +6,9 @@
   "addon_name": "Forge CRM",
   "addon_version": "0.1.0",
   "manifest_path": "addons/forge-crm.json",
-  "manifest_sha256": "22edbd9441475a871619fdc1fdad24fe26336f45292b5b356c27b8c1770121bd",
-  "manifest_canonical_sha256": "e705b277892de25df2d6acc30120f0e734f594a3b39e3b17eb9730f0b060fd5a",
-  "manifest_bytes": 182585,
+  "manifest_sha256": "6829ddd1c3e5a06ae1c7e9d7a49c93bb71c450d6f445176ec1bdf1b92b320fed",
+  "manifest_canonical_sha256": "fa5ee9c8a736df9290e9b72b3843e2ca8138e6a76d583aebf8b1862affd27c24",
+  "manifest_bytes": 185227,
   "distribution": {
     "repository": "https://github.com/cardozoarthur/forge-crm",
     "channel": "stable",
@@ -23,7 +23,7 @@
     "scheme": "ed25519_detached",
     "signature": "",
     "public_key": "",
-    "payload_sha256": "59ba868a8dcba1ac679eb259b0f3ee83d5ea66376e5e906ddb3b383d388d3faf",
+    "payload_sha256": "c017d486ede7d0d9d7b6364627d3c054b3a15bb4f7f765a823fcc812924b3cbd",
     "verification_note": "package records detached signature metadata; trust verification is a marketplace policy gate"
   },
   "summary": {
@@ -31,7 +31,7 @@
     "dependency_count": 1,
     "permission_count": 5,
     "workflow_extension_count": 36,
-    "runtime_contract_count": 45,
+    "runtime_contract_count": 46,
     "view_count": 12,
     "event_adapter_count": 3,
     "integration_count": 5,
@@ -59,6 +59,7 @@
     "runtime_contracts": [
       "crm.factory.planning",
       "crm.lead.classifier.executor",
+      "crm.relationship.lifecycle.executor",
       "crm.relationship.timeline.executor",
       "crm.relationship.profile_enrichment.executor",
       "crm.pipeline.stage_move.executor",
@@ -410,9 +411,11 @@
         "unknowns": [],
         "event_triggers": [],
         "artifact_types": [
+          "crm_relationship_lifecycle",
           "crm_relationship_profile",
           "crm_enrichment_record",
           "crm_timeline_snapshot",
+          "crm_entity_model",
           "crm_pipeline_board",
           "crm_stage_change",
           "crm_forecast_report"
@@ -1059,6 +1062,38 @@
         "constraints": [
           "classification must include evidence and confidence",
           "recommendations do not mutate customer state without workflow approval"
+        ]
+      },
+      {
+        "id": "crm.relationship.lifecycle.executor",
+        "title": "CRM relationship lifecycle packager",
+        "contract_type": "executor",
+        "capability_id": "crm_relationship_management",
+        "workflow_extension_id": "crm_entity_lifecycle",
+        "runtime": "external_api",
+        "entrypoint": "forge_crm.run_relationship_lifecycle",
+        "inputs": [
+          "lead",
+          "contact",
+          "company",
+          "opportunity",
+          "lifecycle_policy",
+          "tenant_context"
+        ],
+        "outputs": [
+          "crm_relationship_lifecycle",
+          "crm_entity_model",
+          "crm_timeline_snapshot",
+          "crm_ai_recommendation"
+        ],
+        "permissions": [
+          "crm.workflow.mutate",
+          "crm.ai.recommend"
+        ],
+        "constraints": [
+          "relationship lifecycle executor does not persist CRM state outside Forge",
+          "lead, contact, company and opportunity records are packaged as Forge artifacts and events",
+          "approval before conversion is required before CRM state mutation"
         ]
       },
       {
@@ -2749,6 +2784,52 @@
               "entity_profile",
               "enrichment_sources",
               "relationship_signals",
+              "tenant_context"
+            ]
+          },
+          {
+            "id": "crm.tui.run-relationship-lifecycle",
+            "label": "Run relationship lifecycle",
+            "description": "Package lead, contact, company and opportunity lifecycle evidence through Forge before conversion.",
+            "palette_group": "CRM",
+            "source_panel": "crm.operational-cockpit",
+            "type": "command",
+            "target": "forge addons execute-executor",
+            "method": "CLI",
+            "permission": "crm.workflow.mutate",
+            "requires_confirmation": true,
+            "risk_level": "high",
+            "mutates_workflow": true,
+            "command_template": [
+              "addons",
+              "execute-executor",
+              "--addon",
+              "forge.addon.crm",
+              "--contract",
+              "crm.relationship.lifecycle.executor",
+              "--worker",
+              "<worker-id>",
+              "--task",
+              "<task-ref>",
+              "--input",
+              "<json>",
+              "--context",
+              "<json>",
+              "--output",
+              "json"
+            ],
+            "keywords": [
+              "crm",
+              "lead",
+              "relationship",
+              "lifecycle"
+            ],
+            "payload_schema": [
+              "lead",
+              "contact",
+              "company",
+              "opportunity",
+              "lifecycle_policy",
               "tenant_context"
             ]
           },
@@ -4956,6 +5037,11 @@
       {
         "id": "crm_workflow_pack",
         "title": "CRM workflow pack",
+        "generic_kind": "artifact"
+      },
+      {
+        "id": "crm_relationship_lifecycle",
+        "title": "CRM relationship lifecycle",
         "generic_kind": "artifact"
       },
       {

@@ -201,6 +201,215 @@ export function buildLeadClassifierResult(request) {
   };
 }
 
+export function buildRelationshipLifecycleResult(request) {
+  const input = dispatchPayload(request);
+  const context = providedContext(request);
+  const tenantId = input.tenant_id || input.tenant_context?.tenant_id || input.tenant_context?.id || context.tenant || "default";
+  const lead = asObject(input.lead_profile ?? input.lead ?? input);
+  const contact = asObject(input.contact);
+  const company = asObject(input.company);
+  const opportunity = asObject(input.opportunity);
+  const lifecyclePolicy = asObject(input.lifecycle_policy);
+  const scoring = scoreLead(lead);
+  const id = leadId(lead);
+  const contactId = String(contact.id || contact.contact_id || lead.contact_id || lead.email || `${id}-contact`);
+  const companyId = String(company.id || company.company_id || contact.company_id || lead.company_id || lead.company || `${id}-company`);
+  const opportunityId = String(opportunity.id || opportunity.opportunity_id || lead.opportunity_id || `${id}-opportunity`);
+  const workflowId = String(input.workflow_id || "crm.lead.lifecycle");
+  const taskRef = dispatchEnvelope(request).task_ref || `relationship-lifecycle-${slug(id, "lead")}`;
+  const approvalRequired = lifecyclePolicy.require_approval_before_conversion !== false;
+  const lifecycleState = scoring.score >= 60
+    ? approvalRequired ? "qualified_waiting_approval" : "qualified_ready_for_conversion"
+    : "enrichment_wait";
+  const nextWorkflows = unique(
+    asArray(lifecyclePolicy.next_workflows).length > 0
+      ? asArray(lifecyclePolicy.next_workflows).map(String)
+      : ["crm.relationship.profile_enrichment", "crm.opportunity.pipeline", "crm.followup.forecast"]
+  );
+  const relationships = [
+    { from: id, to: contactId, relation: "represented_by_contact" },
+    { from: contactId, to: companyId, relation: "belongs_to_company" },
+    { from: companyId, to: opportunityId, relation: "owns_opportunity" }
+  ];
+  const timelineEvents = [
+    {
+      event_id: `lead-created-${slug(id, "lead")}`,
+      kind: "lead_created",
+      owner: input.owner || lead.owner || "forge",
+      workflow_id: workflowId
+    },
+    {
+      event_id: `relationship-lifecycle-${slug(id, "lead")}`,
+      kind: "relationship_lifecycle_packaged",
+      owner: input.owner || lead.owner || "forge",
+      workflow_id: workflowId,
+      lifecycle_state: lifecycleState
+    }
+  ];
+  const lineage = {
+    tenant_id: tenantId,
+    workflow_id: workflowId,
+    task_ref: taskRef,
+    source_contract: "crm.relationship.lifecycle.executor",
+    lead_id: id,
+    contact_id: contactId,
+    company_id: companyId,
+    opportunity_id: opportunityId
+  };
+
+  return {
+    schema_version: "forge.addon_executor_result.v1",
+    status: "completed",
+    task_ref: taskRef,
+    summary: `Relationship lifecycle for lead ${id} packaged as Forge workflow evidence`,
+    outputs: {
+      tenant_id: tenantId,
+      workflow_id: workflowId,
+      lead_id: id,
+      contact_id: contactId,
+      company_id: companyId,
+      opportunity_id: opportunityId,
+      lifecycle_state: lifecycleState,
+      lead_score: scoring.score,
+      lead_tier: scoring.tier,
+      next_workflow_count: nextWorkflows.length,
+      approval_required_before_conversion: approvalRequired,
+      mutates_crm_state: false,
+      forge_event_sourced: true
+    },
+    artifacts: [
+      {
+        kind: "crm_relationship_lifecycle",
+        id: `relationship-lifecycle-${slug(id, "lead")}`,
+        title: `Relationship lifecycle package for ${id}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          workflow_id: workflowId,
+          lifecycle_state: lifecycleState,
+          entities: {
+            lead: { ...lead, id },
+            contact: { ...contact, id: contactId, company_id: companyId },
+            company: { ...company, id: companyId },
+            opportunity: { ...opportunity, id: opportunityId, company_id: companyId, lead_id: id }
+          },
+          relationships,
+          scoring,
+          next_workflow_plan: nextWorkflows.map((nextWorkflowId) => ({
+            workflow_id: nextWorkflowId,
+            requires_forge_promotion: true
+          })),
+          approval_gate: {
+            required_before_conversion: approvalRequired,
+            permission: "crm.workflow.mutate"
+          },
+          lineage,
+          state_owner: "forge_workflow_runtime",
+          external_database_required: false
+        }
+      },
+      {
+        kind: "crm_entity_model",
+        id: `entity-lifecycle-${slug(id, "lead")}`,
+        title: `CRM relationship entity model for ${id}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          workflow_id: workflowId,
+          record_identity: {
+            primary: "workflow_id",
+            external_primary_key_allowed: false
+          },
+          entity_ids: {
+            lead_id: id,
+            contact_id: contactId,
+            company_id: companyId,
+            opportunity_id: opportunityId
+          },
+          relationships,
+          lifecycle_state: lifecycleState,
+          mutation_policy: "state_changes_must_be_promoted_by_forge_workflow",
+          lineage
+        }
+      },
+      {
+        kind: "crm_timeline_snapshot",
+        id: `timeline-lifecycle-${slug(id, "lead")}`,
+        title: `CRM lifecycle timeline for ${id}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          entity_id: id,
+          entity_kind: "lead",
+          workflow_id: workflowId,
+          relationships,
+          timeline_events: timelineEvents,
+          lineage,
+          state_owner: "forge_workflow_runtime",
+          external_database_required: false
+        }
+      },
+      {
+        kind: "crm_ai_recommendation",
+        id: `lead-lifecycle-recommendation-${slug(id, "lead")}`,
+        title: `Lead lifecycle recommendation for ${id}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          lead_id: id,
+          scoring,
+          lifecycle_state: lifecycleState,
+          next_best_actions: [
+            approvalRequired ? "request_forge_workflow_approval_before_conversion" : "promote_conversion_when_validation_passes",
+            "attach_relationship_lifecycle_to_unified_timeline",
+            "start_next_workflows_after_promotion"
+          ],
+          next_workflows: nextWorkflows,
+          policy: "recommendation_only_until_forge_workflow_approval",
+          lineage
+        }
+      }
+    ],
+    events: [
+      {
+        kind: "crm.lead.created",
+        tenant_id: tenantId,
+        lead_id: id,
+        workflow_id: workflowId
+      },
+      {
+        kind: "crm.relationship.lifecycle_packaged",
+        tenant_id: tenantId,
+        lead_id: id,
+        contact_id: contactId,
+        company_id: companyId,
+        opportunity_id: opportunityId,
+        workflow_id: workflowId,
+        lifecycle_state: lifecycleState
+      },
+      {
+        kind: "crm.relationship.recorded",
+        tenant_id: tenantId,
+        entity_id: id,
+        entity_kind: "lead",
+        workflow_id: workflowId,
+        relationship_count: relationships.length,
+        timeline_event_kind: "relationship_lifecycle_packaged"
+      },
+      {
+        kind: "crm.lead.classified",
+        tenant_id: tenantId,
+        lead_id: id,
+        workflow_id: workflowId,
+        score: scoring.score,
+        tier: scoring.tier,
+        recommended_stage: scoring.recommended_stage
+      }
+    ],
+    context_tenant: context.tenant || tenantId
+  };
+}
+
 function entityId(entity, fallback = "crm-entity") {
   return String(entity.id || entity.entity_id || entity.lead_id || entity.contact_id || entity.company_id || entity.opportunity_id || fallback);
 }
@@ -7211,6 +7420,8 @@ export function executeCrmRuntimeRequest(request) {
       return buildOperatingSnapshotResult(request);
     case "forge_crm.classify_lead":
       return buildLeadClassifierResult(request);
+    case "forge_crm.run_relationship_lifecycle":
+      return buildRelationshipLifecycleResult(request);
     case "forge_crm.record_relationship_event":
       return buildRelationshipTimelineResult(request);
     case "forge_crm.enrich_relationship_profile":

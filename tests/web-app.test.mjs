@@ -114,6 +114,7 @@ test("web app snapshot provides Forge command actions instead of local automatio
   assert.ok(snapshot.actions.every((action) => action.command_template[0] === "forge"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.operating.snapshot.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.lead.classifier.executor"));
+  assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.relationship.lifecycle.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.relationship.timeline.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.relationship.profile_enrichment.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.pipeline.stage_move.executor"));
@@ -164,6 +165,24 @@ test("web app snapshot exposes relationship profile enrichment in the relationsh
   assert.ok(snapshot.knowledge_graph.enrichment_profiles.every((profile) => profile.state_owner === "forge_workflow_runtime"));
   assert.ok(snapshot.knowledge_graph.enrichment_profiles.every((profile) => profile.contract_id === "crm.relationship.profile_enrichment.executor"));
   assert.ok(snapshot.knowledge_graph.nodes.some((node) => node.kind === "relationship_profile"));
+});
+
+test("web app snapshot exposes relationship lifecycle packaging in the relationship graph", () => {
+  const snapshot = buildCrmWebAppSnapshot({ tenant_id: "demo" });
+  const action = snapshot.actions.find((candidate) => candidate.id === "crm.run-relationship-lifecycle");
+  const panel = snapshot.operational_workbench.panels.find((candidate) => candidate.id === "relationship_graph");
+
+  assert.ok(action);
+  assert.equal(action.surface_id, "crm.relationship-graph");
+  assert.equal(action.contract_id, "crm.relationship.lifecycle.executor");
+  assert.equal(action.requires_permission, "crm.workflow.mutate");
+  assert.ok(action.command_template.includes("crm.relationship.lifecycle.executor"));
+
+  assert.ok(panel);
+  assert.ok(panel.action_ids.includes("crm.run-relationship-lifecycle"));
+  assert.ok(panel.lifecycle_packages.some((item) => item.action_id === "crm.run-relationship-lifecycle"));
+  assert.ok(panel.lifecycle_packages.every((item) => item.contract_id === "crm.relationship.lifecycle.executor"));
+  assert.ok(panel.lifecycle_packages.every((item) => item.state_owner === "forge_workflow_runtime"));
 });
 
 test("web app snapshot exposes auditable Forge action invocation plans", () => {

@@ -41,6 +41,7 @@ export function createCrmWorkerServer() {
             "forge_crm.bootstrap_tenant",
             "forge_crm.operating_snapshot",
             "forge_crm.classify_lead",
+            "forge_crm.run_relationship_lifecycle",
             "forge_crm.record_relationship_event",
             "forge_crm.enrich_relationship_profile",
             "forge_crm.move_opportunity_stage",
