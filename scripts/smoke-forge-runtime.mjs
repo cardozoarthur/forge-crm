@@ -83,6 +83,7 @@ try {
       "forge_crm.generate_proposal",
       "forge_crm.review_followup_forecast",
       "forge_crm.manage_account",
+      "forge_crm.manage_contract_signature",
       "forge_crm.generate_document",
       "forge_crm.validate_document",
       "forge_crm.automate_campaign",
@@ -100,6 +101,7 @@ try {
       "crm.proposal.generator.executor",
       "crm.commercial.followup_forecast.executor",
       "crm.commercial.account_management.executor",
+      "crm.commercial.contract_signature.executor",
       "crm.document.generator.executor",
       "crm.document.validator",
       "crm.marketing.campaign_automation.executor",
@@ -446,6 +448,61 @@ try {
     throw new Error(`expected account management success_plan_active, got ${accountManagement.executor_result.outputs.next_state}`);
   }
 
+  const contractSignature = runForge([
+    "addons",
+    "execute-executor",
+    "--addon-dir",
+    "addons",
+    "--addon",
+    "forge.addon.crm",
+    "--contract",
+    "crm.commercial.contract_signature.executor",
+    "--worker",
+    workerId,
+    "--task",
+    "crm-smoke-contract-signature",
+    "--workflow",
+    workflowId,
+    "--input",
+    JSON.stringify({
+      tenant_context: { id: "smoke", tenant_id: "smoke" },
+      contract: {
+        id: "contract-smoke",
+        account: "Example Logistics",
+        opportunity_id: "opp-smoke-priority",
+        amount: 180000,
+        status: "legal_review"
+      },
+      approval_policy: {
+        requires_human_approval: true,
+        approved: true,
+        approver: "legal-lead"
+      },
+      signature: {
+        provider: "docusign",
+        signer: "client-cfo",
+        signed_at: "2026-07-10T15:00:00Z",
+        receipt_id: "sig-smoke"
+      },
+      renewal_policy: {
+        renewal_at: "2027-07-10T00:00:00Z",
+        reminder_days_before: 60,
+        owner: "account-owner"
+      }
+    }),
+    "--context",
+    JSON.stringify({ tenant: "smoke" }),
+    "--output",
+    "json"
+  ]);
+
+  if (contractSignature.promotion?.status !== "addon_executor_result_promoted") {
+    throw new Error(`expected contract signature promotion, got ${contractSignature.promotion?.status || "missing"}`);
+  }
+  if (contractSignature.executor_result.outputs.contract_state !== "signed") {
+    throw new Error(`expected signed contract state, got ${contractSignature.executor_result.outputs.contract_state}`);
+  }
+
   const documentGenerator = runForge([
     "addons",
     "execute-executor",
@@ -671,6 +728,8 @@ try {
   const commercialPromotedEventCount = commercialFollowupForecast.promotion?.event_count ?? 0;
   const accountPromotedArtifactCount = accountManagement.promotion?.artifact_count ?? 0;
   const accountPromotedEventCount = accountManagement.promotion?.event_count ?? 0;
+  const contractSignaturePromotedArtifactCount = contractSignature.promotion?.artifact_count ?? 0;
+  const contractSignaturePromotedEventCount = contractSignature.promotion?.event_count ?? 0;
   const documentPromotedArtifactCount = documentGenerator.promotion?.artifact_count ?? 0;
   const documentPromotedEventCount = documentGenerator.promotion?.event_count ?? 0;
   const marketingPromotedArtifactCount = marketingAutomation.promotion?.artifact_count ?? 0;
@@ -752,6 +811,16 @@ try {
     "crm.account.expansion_identified",
     "crm.task.created"
   ]) {
+    if (!workflowEventKinds.includes(eventKind)) {
+      throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
+    }
+  }
+  if (contractSignaturePromotedArtifactCount < 4 || contractSignaturePromotedEventCount < 3) {
+    throw new Error(
+      `expected promoted contract signature artifacts/events, got artifacts=${contractSignaturePromotedArtifactCount} events=${contractSignaturePromotedEventCount}`
+    );
+  }
+  for (const eventKind of ["crm.contract.reviewed", "crm.contract.signed", "crm.contract.renewal_scheduled"]) {
     if (!workflowEventKinds.includes(eventKind)) {
       throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
     }
@@ -948,6 +1017,12 @@ try {
     account_management_expansion_forecast_amount: accountManagement.executor_result.outputs.expansion_forecast_amount,
     account_management_promoted_artifacts: accountPromotedArtifactCount,
     account_management_promoted_events: accountPromotedEventCount,
+    contract_signature_status: contractSignature.status,
+    contract_signature_promotion_status: contractSignature.promotion.status,
+    contract_signature_state: contractSignature.executor_result.outputs.contract_state,
+    contract_signature_renewal_state: contractSignature.executor_result.outputs.renewal_state,
+    contract_signature_promoted_artifacts: contractSignaturePromotedArtifactCount,
+    contract_signature_promoted_events: contractSignaturePromotedEventCount,
     document_generator_status: documentGenerator.status,
     document_generator_promotion_status: documentGenerator.promotion.status,
     document_generator_document_id: documentGenerator.executor_result.outputs.document_id,

@@ -973,6 +973,171 @@ export function buildCommercialAccountManagementResult(request) {
   };
 }
 
+export function buildCommercialContractSignatureResult(request) {
+  const input = dispatchPayload(request);
+  const context = providedContext(request);
+  const tenantId = input.tenant_id || input.tenant_context?.tenant_id || input.tenant_context?.id || context.tenant || "default";
+  const contract = asObject(input.contract ?? input.contract_context);
+  const approvalPolicy = asObject(input.approval_policy);
+  const signature = asObject(input.signature);
+  const renewalPolicy = asObject(input.renewal_policy);
+  const id = String(contract.id || contract.contract_id || dispatchEnvelope(request).task_ref || "contract");
+  const account = String(contract.account || contract.company || contract.account_name || contract.name || id);
+  const opportunityId = contract.opportunity_id || input.opportunity_id || null;
+  const amount = numberFrom(contract.amount ?? contract.value, 0);
+  const workflowId = String(input.workflow_id || contract.workflow_id || "crm.contract.signature");
+  const taskRef = dispatchEnvelope(request).task_ref || `contract-signature-${slug(id, "contract")}`;
+  const approved = approvalPolicy.approved === true || Boolean(approvalPolicy.approver);
+  const signed = signature.status === "signed" || Boolean(signature.signed_at || signature.receipt_id);
+  const renewalAt = renewalPolicy.renewal_at || renewalPolicy.renewal_date || null;
+  const approvalState = approved ? "approved" : "approval_wait";
+  const contractState = signed ? "signed" : approved ? "signature_wait" : "legal_review";
+  const signatureState = signed ? "signed" : "signature_wait";
+  const renewalState = renewalAt ? "renewal_wait" : "renewal_not_scheduled";
+  const receiptId = signature.receipt_id || (signed ? `signature-receipt-${slug(id, "contract")}` : null);
+  const owner = renewalPolicy.owner || contract.owner || approvalPolicy.approver || "commercial-operations";
+  const lineage = {
+    workflow_id: workflowId,
+    task_ref: taskRef,
+    source_contract: "crm.commercial.contract_signature.executor",
+    tenant_id: tenantId,
+    contract_id: id
+  };
+
+  return {
+    schema_version: "forge.addon_executor_result.v1",
+    status: "completed",
+    task_ref: taskRef,
+    summary: `Contract ${id} for ${account} moved to ${contractState} with ${renewalState} renewal state`,
+    outputs: {
+      tenant_id: tenantId,
+      contract_id: id,
+      opportunity_id: opportunityId,
+      workflow_id: workflowId,
+      account,
+      amount,
+      approval_state: approvalState,
+      contract_state: contractState,
+      signature_state: signatureState,
+      renewal_state: renewalState,
+      renewal_at: renewalAt,
+      external_signature_delivery_allowed: false,
+      mutates_crm_state: false,
+      forge_event_sourced: true
+    },
+    artifacts: [
+      {
+        kind: "crm_contract",
+        id: `contract-${slug(id, "contract")}`,
+        title: `Contract lifecycle for ${account}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          contract_id: id,
+          opportunity_id: opportunityId,
+          account,
+          amount,
+          contract,
+          approval_policy: approvalPolicy,
+          approval_state: approvalState,
+          contract_state: contractState,
+          lineage,
+          state_owner: "forge_workflow_runtime",
+          external_database_required: false
+        }
+      },
+      {
+        kind: "crm_signature_receipt",
+        id: receiptId || `signature-receipt-pending-${slug(id, "contract")}`,
+        title: `Signature receipt for ${account}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          contract_id: id,
+          signature_state: signatureState,
+          provider: signature.provider || "signature_provider_pending",
+          signer: signature.signer || signature.signer_email || null,
+          signed_at: signature.signed_at || null,
+          receipt_id: receiptId,
+          external_signature_delivery_allowed: false,
+          receipt_required_before_signed_state: true,
+          lineage
+        }
+      },
+      {
+        kind: "crm_renewal_plan",
+        id: `renewal-plan-${slug(id, "contract")}`,
+        title: `Renewal plan for ${account}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          contract_id: id,
+          account,
+          renewal_at: renewalAt,
+          reminder_days_before: numberFrom(renewalPolicy.reminder_days_before ?? renewalPolicy.reminder_days, 0),
+          owner,
+          next_wait_state: renewalState,
+          renewal_policy: renewalPolicy,
+          lineage
+        }
+      },
+      {
+        kind: "crm_report",
+        id: `contract-signature-report-${slug(id, "contract")}`,
+        title: `Contract signature report for ${account}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          contract_id: id,
+          workflow_id: workflowId,
+          account,
+          approval_state: approvalState,
+          contract_state: contractState,
+          signature_state: signatureState,
+          renewal_state: renewalState,
+          policy: "signature and renewal state must be promoted by Forge workflow events",
+          lineage
+        }
+      }
+    ],
+    events: [
+      {
+        kind: "crm.contract.reviewed",
+        tenant_id: tenantId,
+        contract_id: id,
+        workflow_id: workflowId,
+        approval_state: approvalState,
+        owner
+      },
+      ...(signed
+        ? [
+            {
+              kind: "crm.contract.signed",
+              tenant_id: tenantId,
+              contract_id: id,
+              workflow_id: workflowId,
+              signature_receipt_id: receiptId,
+              signed_at: signature.signed_at || null
+            }
+          ]
+        : []),
+      ...(renewalAt
+        ? [
+            {
+              kind: "crm.contract.renewal_scheduled",
+              tenant_id: tenantId,
+              contract_id: id,
+              workflow_id: workflowId,
+              renewal_at: renewalAt,
+              owner
+            }
+          ]
+        : [])
+    ],
+    context_tenant: context.tenant || tenantId
+  };
+}
+
 const DOCUMENT_ARTIFACT_KINDS = [
   "crm_document",
   "crm_contract",
@@ -1786,6 +1951,8 @@ export function executeCrmRuntimeRequest(request) {
       return buildCommercialFollowupForecastResult(request);
     case "forge_crm.manage_account":
       return buildCommercialAccountManagementResult(request);
+    case "forge_crm.manage_contract_signature":
+      return buildCommercialContractSignatureResult(request);
     case "forge_crm.generate_document":
       return buildDocumentGeneratorResult(request);
     case "forge_crm.validate_document":

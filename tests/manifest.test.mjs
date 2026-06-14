@@ -154,6 +154,27 @@ test("manifest exposes CRM account management as a Forge-owned commercial execut
   assert.ok(artifactTypes.has("crm_health_report"));
 });
 
+test("manifest exposes CRM contract signature as a Forge-owned commercial executor", () => {
+  const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.commercial.contract_signature.executor");
+  assert.ok(contract);
+  assert.equal(contract.contract_type, "executor");
+  assert.equal(contract.capability_id, "crm_commercial_operations");
+  assert.equal(contract.workflow_extension_id, "crm_contract_lifecycle");
+  assert.equal(contract.entrypoint, "forge_crm.manage_contract_signature");
+  assert.deepEqual(contract.permissions, ["crm.workflow.mutate", "crm.document.generate"]);
+  assert.ok(contract.outputs.includes("crm_contract"));
+  assert.ok(contract.outputs.includes("crm_signature_receipt"));
+  assert.ok(contract.outputs.includes("crm_renewal_plan"));
+  assert.ok(contract.outputs.includes("crm_report"));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("does not persist")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("signature receipt")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("renewal")));
+
+  const artifactTypes = new Set(manifest.artifact_types.map((artifact) => artifact.id));
+  assert.ok(artifactTypes.has("crm_signature_receipt"));
+  assert.ok(artifactTypes.has("crm_renewal_plan"));
+});
+
 test("manifest exposes CRM ticket SLA triage as a Forge-owned executor", () => {
   const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.support.ticket_sla.executor");
   assert.ok(contract);

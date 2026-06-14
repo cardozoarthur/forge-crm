@@ -154,6 +154,21 @@ test("commercial account workflow routes health, renewal and expansion through F
   assert.ok(pack.indexes.runtime_contracts.includes("crm.commercial.account_management.executor"));
 });
 
+test("commercial contract workflow routes signature and renewal through Forge", () => {
+  const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
+  const workflow = pack.workflows.find((candidate) => candidate.id === "crm.contract.signature");
+
+  assert.ok(workflow);
+  assert.ok(workflow.runtime_contracts.includes("crm.commercial.contract_signature.executor"));
+  assert.ok(workflow.artifacts.includes("crm_contract"));
+  assert.ok(workflow.artifacts.includes("crm_signature_receipt"));
+  assert.ok(workflow.artifacts.includes("crm_renewal_plan"));
+  assert.ok(workflow.events.includes("crm.contract.reviewed"));
+  assert.ok(workflow.events.includes("crm.contract.signed"));
+  assert.ok(workflow.events.includes("crm.contract.renewal_scheduled"));
+  assert.ok(pack.indexes.runtime_contracts.includes("crm.commercial.contract_signature.executor"));
+});
+
 test("support workflow routes ticket SLA triage through Forge", () => {
   const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
   const workflow = pack.workflows.find((candidate) => candidate.id === "crm.ticket.sla");

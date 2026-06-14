@@ -363,6 +363,63 @@ test("commercial account management executor produces account health and expansi
   assert.ok(result.events.some((event) => event.kind === "crm.task.created"));
 });
 
+test("commercial contract signature executor records signature receipt and renewal plan as Forge artifacts", () => {
+  assert.equal(typeof runtime.buildCommercialContractSignatureResult, "function");
+
+  const result = runtime.buildCommercialContractSignatureResult(
+    workerRequest(
+      "forge_crm.manage_contract_signature",
+      {
+        tenant_context: { tenant_id: "demo" },
+        contract: {
+          id: "contract-001",
+          account: "Acme Logistics",
+          opportunity_id: "opp-001",
+          amount: 180000,
+          status: "legal_review"
+        },
+        approval_policy: {
+          requires_human_approval: true,
+          approved: true,
+          approver: "legal-lead"
+        },
+        signature: {
+          provider: "docusign",
+          signer: "client-cfo",
+          signed_at: "2026-07-10T15:00:00Z",
+          receipt_id: "sig-001"
+        },
+        renewal_policy: {
+          renewal_at: "2027-07-10T00:00:00Z",
+          reminder_days_before: 60,
+          owner: "account-owner"
+        }
+      },
+      { contract_id: "crm.commercial.contract_signature.executor", task_ref: "contract-signature-test" }
+    )
+  );
+
+  assert.equal(result.schema_version, "forge.addon_executor_result.v1");
+  assert.equal(result.status, "completed");
+  assert.equal(result.outputs.tenant_id, "demo");
+  assert.equal(result.outputs.contract_id, "contract-001");
+  assert.equal(result.outputs.workflow_id, "crm.contract.signature");
+  assert.equal(result.outputs.contract_state, "signed");
+  assert.equal(result.outputs.signature_state, "signed");
+  assert.equal(result.outputs.renewal_state, "renewal_wait");
+  assert.equal(result.outputs.external_signature_delivery_allowed, false);
+  assert.equal(result.outputs.mutates_crm_state, false);
+  assert.equal(result.outputs.forge_event_sourced, true);
+
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_contract"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_signature_receipt"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_renewal_plan"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_report"));
+  assert.ok(result.events.some((event) => event.kind === "crm.contract.reviewed"));
+  assert.ok(result.events.some((event) => event.kind === "crm.contract.signed"));
+  assert.ok(result.events.some((event) => event.kind === "crm.contract.renewal_scheduled"));
+});
+
 test("document generator emits Forge-gated CRM document artifacts without state mutation", () => {
   const result = buildDocumentGeneratorResult(
     workerRequest(

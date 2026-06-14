@@ -66,6 +66,7 @@ test("web app snapshot provides Forge command actions instead of local automatio
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.relationship.timeline.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.commercial.followup_forecast.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.commercial.account_management.executor"));
+  assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.commercial.contract_signature.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.support.ticket_sla.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.operations.project_handoff.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.marketing.campaign_automation.executor"));

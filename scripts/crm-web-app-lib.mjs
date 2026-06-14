@@ -214,6 +214,15 @@ function actions() {
       command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.commercial.account_management.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
     },
     {
+      id: "crm.manage-contract-signature",
+      label: "Manage contract signature",
+      surface_id: "crm.commercial-command",
+      contract_id: "crm.commercial.contract_signature.executor",
+      requires_permission: "crm.workflow.mutate",
+      mutates_workflow: true,
+      command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.commercial.contract_signature.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
+    },
+    {
       id: "crm.plan-project-handoff",
       label: "Plan project handoff",
       surface_id: "crm.commercial-command",

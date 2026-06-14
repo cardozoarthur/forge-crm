@@ -230,6 +230,8 @@
         "crm_followup_plan",
         "crm_forecast_report",
         "crm_commission_record",
+        "crm_signature_receipt",
+        "crm_renewal_plan",
         "crm_account_plan",
         "crm_health_report",
         "crm_report"
@@ -731,6 +733,37 @@
       ]
     },
     {
+      "id": "crm.commercial.contract_signature.executor",
+      "title": "CRM contract signature lifecycle",
+      "contract_type": "executor",
+      "capability_id": "crm_commercial_operations",
+      "workflow_extension_id": "crm_contract_lifecycle",
+      "runtime": "external_api",
+      "entrypoint": "forge_crm.manage_contract_signature",
+      "inputs": [
+        "contract",
+        "approval_policy",
+        "signature",
+        "renewal_policy",
+        "tenant_context"
+      ],
+      "outputs": [
+        "crm_contract",
+        "crm_signature_receipt",
+        "crm_renewal_plan",
+        "crm_report"
+      ],
+      "permissions": [
+        "crm.workflow.mutate",
+        "crm.document.generate"
+      ],
+      "constraints": [
+        "contract signature lifecycle does not persist CRM state outside Forge",
+        "signature receipt must be attached as a Forge artifact before signed state",
+        "renewal schedule must be represented as Forge workflow events"
+      ]
+    },
+    {
       "id": "crm.document.generator.executor",
       "title": "CRM document generator",
       "contract_type": "executor",
@@ -1173,6 +1206,16 @@
       "generic_kind": "document"
     },
     {
+      "id": "crm_signature_receipt",
+      "title": "CRM signature receipt",
+      "generic_kind": "artifact"
+    },
+    {
+      "id": "crm_renewal_plan",
+      "title": "CRM renewal plan",
+      "generic_kind": "artifact"
+    },
+    {
       "id": "crm_followup_plan",
       "title": "CRM follow-up plan",
       "generic_kind": "artifact"
@@ -1305,6 +1348,11 @@
       "transport": "crm"
     },
     {
+      "id": "crm.contract",
+      "title": "CRM contract event",
+      "transport": "crm"
+    },
+    {
       "id": "crm.relationship",
       "title": "CRM relationship event",
       "transport": "crm"
@@ -1372,6 +1420,7 @@
         "crm.forecast",
         "crm.goal",
         "crm.commission",
+        "crm.contract",
         "crm.relationship",
         "crm.project",
         "crm.task",
@@ -1429,6 +1478,7 @@
         "crm.forecast",
         "crm.goal",
         "crm.commission",
+        "crm.contract",
         "crm.campaign",
         "crm.nurture",
         "crm.ticket",
@@ -1580,6 +1630,7 @@
         "crm.forecast",
         "crm.goal",
         "crm.commission",
+        "crm.contract",
         "crm.relationship",
         "crm.document",
         "crm.campaign",

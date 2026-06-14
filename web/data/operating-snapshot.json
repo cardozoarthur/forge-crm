@@ -26,8 +26,8 @@
     "workflow_count": 12,
     "business_module_count": 6,
     "surface_count": 8,
-    "artifact_type_count": 22,
-    "event_type_count": 38,
+    "artifact_type_count": 24,
+    "event_type_count": 39,
     "complete_scope": true
   },
   "surfaces": [
@@ -286,9 +286,12 @@
         "crm_document",
         "crm_handoff_record",
         "crm_presentation",
-        "crm_proposal"
+        "crm_proposal",
+        "crm_renewal_plan",
+        "crm_signature_receipt"
       ],
       "event_types": [
+        "crm.contract.renewal_scheduled",
         "crm.contract.reviewed",
         "crm.contract.signed",
         "crm.document.approval_requested",
@@ -385,7 +388,9 @@
         "crm_health_report",
         "crm_project_plan",
         "crm_proposal",
+        "crm_renewal_plan",
         "crm_report",
+        "crm_signature_receipt",
         "crm_task_plan",
         "crm_timeline_snapshot"
       ],
@@ -394,6 +399,7 @@
         "crm.account.health_reviewed",
         "crm.account.renewal_planned",
         "crm.commission.accrued",
+        "crm.contract.renewal_scheduled",
         "crm.contract.reviewed",
         "crm.contract.signed",
         "crm.document.approval_requested",
@@ -501,13 +507,16 @@
         "crm_health_report",
         "crm_presentation",
         "crm_project_plan",
+        "crm_renewal_plan",
         "crm_report",
+        "crm_signature_receipt",
         "crm_task_plan"
       ],
       "event_types": [
         "crm.account.expansion_identified",
         "crm.account.health_reviewed",
         "crm.account.renewal_planned",
+        "crm.contract.renewal_scheduled",
         "crm.contract.reviewed",
         "crm.contract.signed",
         "crm.document.approved",
@@ -691,16 +700,20 @@
         ],
         "runtime_contracts": [
           "crm.document.generator.executor",
-          "crm.document.validator"
+          "crm.document.validator",
+          "crm.commercial.contract_signature.executor"
         ],
         "artifact_types": [
           "crm_contract",
-          "crm_document"
+          "crm_document",
+          "crm_signature_receipt",
+          "crm_renewal_plan"
         ],
         "event_types": [
           "crm.document.generated",
           "crm.contract.reviewed",
-          "crm.contract.signed"
+          "crm.contract.signed",
+          "crm.contract.renewal_scheduled"
         ],
         "surface_ids": [
           "crm.document-queue"
@@ -1284,7 +1297,9 @@
       "crm_document",
       "crm_handoff_record",
       "crm_presentation",
-      "crm_proposal"
+      "crm_proposal",
+      "crm_renewal_plan",
+      "crm_signature_receipt"
     ],
     "approval_required": true,
     "rework_policy": "failed validation returns the owning workflow to work with a reason"
@@ -1440,6 +1455,33 @@
         "forge.addon.crm",
         "--contract",
         "crm.commercial.account_management.executor",
+        "--worker",
+        "<worker-id>",
+        "--task",
+        "<task-ref>",
+        "--input",
+        "<json>",
+        "--context",
+        "<json>",
+        "--output",
+        "json"
+      ]
+    },
+    {
+      "id": "crm.manage-contract-signature",
+      "label": "Manage contract signature",
+      "surface_id": "crm.commercial-command",
+      "contract_id": "crm.commercial.contract_signature.executor",
+      "requires_permission": "crm.workflow.mutate",
+      "mutates_workflow": true,
+      "command_template": [
+        "forge",
+        "addons",
+        "execute-executor",
+        "--addon",
+        "forge.addon.crm",
+        "--contract",
+        "crm.commercial.contract_signature.executor",
         "--worker",
         "<worker-id>",
         "--task",

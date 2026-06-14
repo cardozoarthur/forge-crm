@@ -101,9 +101,9 @@ const WORKFLOWS = [
       ["signature_wait", "signed", "signature receipt attached"],
       ["signed", "renewal_wait", "renewal schedule created"]
     ],
-    runtime_contracts: ["crm.document.generator.executor", "crm.document.validator"],
-    artifacts: ["crm_contract", "crm_document"],
-    events: ["crm.document.generated", "crm.contract.reviewed", "crm.contract.signed"],
+    runtime_contracts: ["crm.document.generator.executor", "crm.document.validator", "crm.commercial.contract_signature.executor"],
+    artifacts: ["crm_contract", "crm_document", "crm_signature_receipt", "crm_renewal_plan"],
+    events: ["crm.document.generated", "crm.contract.reviewed", "crm.contract.signed", "crm.contract.renewal_scheduled"],
     memory_scopes: ["organization", "project"],
     permissions: ["crm.document.generate"],
     views: ["crm.document-queue"],
