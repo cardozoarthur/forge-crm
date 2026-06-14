@@ -12,7 +12,8 @@ test("planner result has Forge Addon planning strategy shape", () => {
   const ids = new Set(result.tasks.map((task) => task.id));
   for (const task of result.tasks) {
     assert.ok(task.title);
-    assert.ok(task.expected_output.expected_output);
+    assert.equal(typeof task.expected_output, "string");
+    assert.ok(task.expected_output.length > 0);
     assert.ok(task.validation_rules.length > 0);
     for (const dependency of task.dependencies) {
       assert.ok(ids.has(dependency), `${task.id} has unknown dependency ${dependency}`);

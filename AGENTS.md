@@ -21,5 +21,5 @@ npm test
 forge addons validate --addon-dir addons --output json
 forge addons catalog --addon-dir addons --output json
 forge addons package --manifest addons/forge-crm.json --repository https://github.com/cardozoarthur/forge-crm --channel stable --package-path /tmp/forge-crm.package.json --output json
+FORGE_BIN=/path/to/forge npm run smoke:forge
 ```
-

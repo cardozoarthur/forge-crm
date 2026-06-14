@@ -10,7 +10,8 @@ This repository starts the CRM as a verifiable Forge Addon:
 
 - `addons/forge-crm.json` declares CRM capabilities, workflows, permissions, event adapters, memory/context providers, artifact types and runtime contracts.
 - `scripts/generate-crm-plan.mjs` emits a deterministic Forge-compatible planning result for CRM system creation.
-- `runtime/crm-planner-worker.mjs` exposes the same planner over a local HTTP worker shape for Forge external runtime experiments.
+- `runtime/crm-worker.mjs` exposes planner, executor, validator and handoff contracts over a local Forge `external_api` worker.
+- `scripts/smoke-forge-runtime.mjs` registers the worker in Forge and executes planner, lead classification, proposal generation, document validation and omnichannel handoff contracts.
 - `workflows/crm-system-template.json` maps the enterprise CRM domains into workflow-backed modules.
 - `docs/` records the architecture boundary between `forge-core` and this Addon.
 
@@ -29,6 +30,12 @@ forge addons catalog --addon-dir addons --output json
 node scripts/generate-crm-plan.mjs "Create a workflow-first CRM tenant"
 ```
 
+Run the runtime smoke against a Forge binary:
+
+```bash
+FORGE_BIN=/path/to/forge npm run smoke:forge
+```
+
 Package the Addon:
 
 ```bash
@@ -40,13 +47,14 @@ forge addons package \
   --output json
 ```
 
-Run the local planner worker:
+Run the local CRM runtime worker:
 
 ```bash
-PORT=8787 node runtime/crm-planner-worker.mjs
+PORT=8787 npm run worker
 ```
+
+`runtime/crm-planner-worker.mjs` remains as a compatibility wrapper around the multi-contract worker.
 
 ## Success Direction
 
 A company should be able to operate sales, marketing, support, documents, automation and internal collaboration through CRM workflows powered by Forge, without parallel automation outside the Forge runtime for the main flows.
-

@@ -1,0 +1,186 @@
+import assert from "node:assert/strict";
+import http from "node:http";
+import test from "node:test";
+import {
+  buildDocumentValidatorResult,
+  buildLeadClassifierResult,
+  buildOmnichannelHandoffResult,
+  buildProposalGeneratorResult
+} from "../scripts/crm-runtime-lib.mjs";
+import { createCrmWorkerServer } from "../runtime/crm-worker.mjs";
+
+function workerRequest(entrypoint, input, extra = {}) {
+  return {
+    schema_version: "forge.addon_runtime_worker_request.v1",
+    worker_id: "test-worker",
+    dispatch_id: "dispatch-test",
+    runtime: "external_api",
+    contract_id: extra.contract_id || "crm.test",
+    contract_type: extra.contract_type || "executor",
+    entrypoint,
+    input: {
+      schema_version: extra.input_schema || "forge.addon_executor_dispatch_input.v1",
+      task_ref: extra.task_ref || "task-test",
+      subject: extra.subject,
+      handoff_ref: extra.handoff_ref,
+      input,
+      context: {
+        provided_context: {
+          tenant: "test"
+        }
+      }
+    }
+  };
+}
+
+function postJson(port, path, payload) {
+  return new Promise((resolve, reject) => {
+    const body = JSON.stringify(payload);
+    const request = http.request(
+      {
+        hostname: "127.0.0.1",
+        port,
+        path,
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "content-length": Buffer.byteLength(body)
+        }
+      },
+      (response) => {
+        let raw = "";
+        response.setEncoding("utf8");
+        response.on("data", (chunk) => {
+          raw += chunk;
+        });
+        response.on("end", () => {
+          resolve({
+            statusCode: response.statusCode,
+            body: JSON.parse(raw)
+          });
+        });
+      }
+    );
+    request.on("error", reject);
+    request.end(body);
+  });
+}
+
+test("lead classifier returns a Forge executor result without mutating CRM state", () => {
+  const result = buildLeadClassifierResult(
+    workerRequest("forge_crm.classify_lead", {
+      lead_profile: {
+        id: "lead-001",
+        budget: 250000,
+        company_size: 320,
+        timeline: "urgent",
+        role: "COO",
+        source: "inbound demo",
+        pain: "Needs auditable commercial workflows across sales and support."
+      }
+    })
+  );
+
+  assert.equal(result.schema_version, "forge.addon_executor_result.v1");
+  assert.equal(result.status, "completed");
+  assert.equal(result.outputs.lead_id, "lead-001");
+  assert.ok(result.outputs.score >= 80);
+  assert.equal(result.outputs.mutates_crm_state, false);
+  assert.equal(result.context_tenant, "test");
+});
+
+test("proposal generator emits a draft proposal artifact gated by Forge approval", () => {
+  const result = buildProposalGeneratorResult(
+    workerRequest("forge_crm.generate_proposal", {
+      opportunity: { id: "opp-001", amount: 125000, company: "Acme" },
+      account_context: { name: "Acme" },
+      approved_offer_terms: { amount: 125000, currency: "USD" }
+    })
+  );
+
+  assert.equal(result.schema_version, "forge.addon_executor_result.v1");
+  assert.equal(result.outputs.proposal_id, "proposal-opp-001");
+  assert.equal(result.outputs.external_delivery_allowed, false);
+  assert.equal(result.artifacts[0].kind, "crm_proposal");
+});
+
+test("document validator fails missing lineage and passes approved Forge artifacts", () => {
+  const failed = buildDocumentValidatorResult(
+    workerRequest("forge_crm.validate_document", {
+      artifact_ref: { id: "proposal-001" },
+      approval_policy: { requires_human_approval: true, approved: true }
+    })
+  );
+  assert.equal(failed.decision, "failed");
+  assert.ok(failed.issues.some((issue) => issue.code === "missing_lineage"));
+
+  const passed = buildDocumentValidatorResult(
+    workerRequest(
+      "forge_crm.validate_document",
+      {
+        artifact_ref: { id: "proposal-001", sha256: "abc" },
+        approval_policy: { requires_human_approval: true, approved: true },
+        lineage: { workflow_id: "wf-001", artifact_id: "proposal-001" }
+      },
+      { subject: "proposal-001" }
+    )
+  );
+  assert.equal(passed.decision, "passed");
+});
+
+test("omnichannel handoff requires approval before delivery", () => {
+  const review = buildOmnichannelHandoffResult(
+    workerRequest("forge_crm.deliver_handoff", {
+      ticket_context: { id: "ticket-001" },
+      channel: "email",
+      approved_message: { summary: "Needs review" }
+    })
+  );
+  assert.equal(review.status, "review_required");
+
+  const delivered = buildOmnichannelHandoffResult(
+    workerRequest(
+      "forge_crm.deliver_handoff",
+      {
+        ticket_context: { id: "ticket-001" },
+        channel: "email",
+        approved_message: { approved: true, summary: "Approved reply" },
+        integration_policy: { approved: true }
+      },
+      { handoff_ref: "ticket-001" }
+    )
+  );
+  assert.equal(delivered.status, "delivered");
+  assert.equal(delivered.receipt.ticket_id, "ticket-001");
+});
+
+test("HTTP worker dispatches Forge runtime requests", async () => {
+  const server = createCrmWorkerServer();
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const port = server.address().port;
+    const response = await postJson(
+      port,
+      "/runtime/execute",
+      workerRequest("forge_crm.classify_lead", {
+        lead_profile: {
+          id: "lead-http-001",
+          budget: 150000,
+          company_size: 180,
+          timeline: "this quarter",
+          role: "Director",
+          source: "partner"
+        }
+      })
+    );
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.body.status, "completed");
+    assert.equal(response.body.result.schema_version, "forge.addon_executor_result.v1");
+    assert.equal(response.body.attestation.execution_mode, "external_api");
+    assert.equal(response.body.attestation.worker_id, "test-worker");
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+

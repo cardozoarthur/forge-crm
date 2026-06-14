@@ -8,7 +8,8 @@
   "scripts": {
     "test": "node --test",
     "plan": "node scripts/generate-crm-plan.mjs",
-    "worker": "node runtime/crm-planner-worker.mjs",
+    "worker": "node runtime/crm-worker.mjs",
+    "smoke:forge": "node scripts/smoke-forge-runtime.mjs",
     "forge:catalog": "forge addons catalog --addon-dir addons --output json",
     "forge:validate": "forge addons validate --addon-dir addons --output json",
     "forge:package": "forge addons package --manifest addons/forge-crm.json --repository https://github.com/cardozoarthur/forge-crm --channel stable --package-path forge-crm-0.1.0.package.json --output json"
@@ -28,4 +29,3 @@
     "agentic-systems"
   ]
 }
-
