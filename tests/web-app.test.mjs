@@ -545,6 +545,53 @@ test("web app snapshot exposes an enterprise journey workbench for end-to-end CR
   assert.equal(action.contract_id, "crm.enterprise.journey.executor");
 });
 
+test("web app snapshot exposes operating readiness workbench for company operation", () => {
+  const snapshot = buildCrmWebAppSnapshot({ tenant_id: "demo" });
+  const workbench = snapshot.operating_readiness_workbench;
+
+  assert.ok(workbench);
+  assert.equal(workbench.schema_version, "forge.crm_operating_readiness_workbench.v1");
+  assert.equal(workbench.state_owner, "forge_workflow_runtime");
+  assert.equal(workbench.local_state_allowed, false);
+  assert.equal(workbench.workflow_id, "crm.enterprise.readiness");
+  assert.equal(workbench.contract_id, "crm.operating.readiness.executor");
+  assert.equal(workbench.action_id, "crm.generate-readiness-package");
+  assert.equal(workbench.success_criteria_status, "operable_with_evidence");
+  assert.equal(workbench.forge_only_operations, true);
+  assert.equal(workbench.main_flow_dependency_external, false);
+
+  assert.equal(workbench.domain_coverage.complete, true);
+  assert.equal(workbench.domain_coverage.domains.length, 13);
+  assert.ok(workbench.domain_coverage.domains.every((domain) => domain.ready === true));
+  assert.ok(workbench.domain_coverage.domains.every((domain) => domain.workflow_ids.length > 0));
+  assert.ok(workbench.domain_coverage.domains.every((domain) => domain.artifact_evidence.length > 0));
+  assert.ok(workbench.domain_coverage.domains.every((domain) => domain.event_evidence.length > 0));
+  assert.ok(workbench.domain_coverage.domains.every((domain) => domain.runtime_contract_evidence.length > 0));
+
+  assert.equal(workbench.user_outcomes.length, 13);
+  assert.ok(workbench.user_outcomes.some((outcome) => outcome.deliverable === "commercial command center"));
+  assert.ok(workbench.user_outcomes.some((outcome) => outcome.deliverable === "support inbox"));
+  assert.ok(workbench.user_outcomes.some((outcome) => outcome.deliverable === "omnichannel conversation threads"));
+  assert.ok(workbench.user_outcomes.some((outcome) => outcome.deliverable === "enterprise customer journey"));
+  assert.ok(workbench.daily_operations.every((operation) => operation.command_owner === "forge"));
+  assert.ok(
+    workbench.daily_operations.every(
+      (operation) => operation.rework_path === "return incomplete goals to Forge workflow tasks with reason"
+    )
+  );
+
+  assert.deepEqual(
+    workbench.operation_plan.map((step) => step.id),
+    ["collect_domain_evidence", "generate_readiness_package", "promote_business_runbook", "return_rework_to_forge"]
+  );
+  assert.ok(workbench.readiness_gates.every((gate) => gate.owner === "Forge validation"));
+  assert.ok(workbench.readiness_gates.every((gate) => gate.required === true));
+
+  const action = snapshot.actions.find((candidate) => candidate.id === "crm.generate-readiness-package");
+  assert.ok(action);
+  assert.equal(action.contract_id, "crm.operating.readiness.executor");
+});
+
 test("web app snapshot exposes CRM subworkflow orchestration through Forge child workflow bindings", () => {
   const snapshot = buildCrmWebAppSnapshot({ tenant_id: "demo" });
   const workbench = snapshot.subworkflow_orchestration_workbench;
@@ -617,6 +664,7 @@ test("web assets mount the generated CRM snapshot without a build step", async (
   assert.match(app, /renderWorkflowEvolutionWorkbench/);
   assert.match(app, /renderBenchmarkEvidenceMatrix/);
   assert.match(app, /renderEnterpriseJourneyWorkbench/);
+  assert.match(app, /renderOperatingReadinessWorkbench/);
   assert.match(app, /renderSubworkflowOrchestrationWorkbench/);
   assert.match(app, /renderWorkflowAutomationDesignerWorkbench/);
   assert.match(app, /renderGoalCommissionWorkbench/);
@@ -636,6 +684,7 @@ test("web assets mount the generated CRM snapshot without a build step", async (
   assert.match(styles, /\.evolution-workbench/);
   assert.match(styles, /\.benchmark-evidence/);
   assert.match(styles, /\.journey-workbench/);
+  assert.match(styles, /\.readiness-workbench/);
   assert.match(styles, /\.subworkflow-workbench/);
   assert.match(styles, /\.automation-designer/);
   assert.match(styles, /\.goal-commission/);

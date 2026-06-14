@@ -1,3 +1,4 @@
+import { buildOperatingReadinessResult } from "./crm-runtime-lib.mjs";
 import { buildCrmOperatingModel, buildCrmWorkflowPack } from "./crm-workflow-pack-lib.mjs";
 
 const SURFACE_ROUTES = {
@@ -1298,6 +1299,150 @@ function enterpriseJourneyWorkbench(workflows, actionList) {
   };
 }
 
+function readinessDispatchRequest({ tenantId, pack, model }) {
+  return {
+    schema_version: "forge.addon_runtime_worker_request.v1",
+    worker_id: "crm-web-snapshot",
+    dispatch_id: `readiness-web-${slug(tenantId, "tenant")}`,
+    runtime: "external_api",
+    contract_id: "crm.operating.readiness.executor",
+    contract_type: "executor",
+    entrypoint: "forge_crm.generate_operating_readiness",
+    input: {
+      schema_version: "forge.addon_executor_dispatch_input.v1",
+      task_ref: `readiness-web-${slug(tenantId, "tenant")}`,
+      input: {
+        tenant_context: { tenant_id: tenantId },
+        workflow_pack: pack,
+        operating_snapshot: {
+          external_database_required: model.external_database_required,
+          direct_browser_persistence: false
+        },
+        validation_evidence: {
+          workflow_artifact_count: pack.summary.artifact_type_count,
+          runtime_contract_count: pack.summary.runtime_contract_count
+        },
+        success_criteria: {
+          required_deliverables: [
+            "sales pipeline",
+            "commercial operations",
+            "omnichannel support",
+            "marketing automation",
+            "document management",
+            "internal operations",
+            "AI recommendations",
+            "enterprise customer journey"
+          ]
+        }
+      },
+      context: {
+        provided_context: {
+          tenant: tenantId
+        }
+      }
+    }
+  };
+}
+
+function artifactData(result, kind, fallback) {
+  return result.artifacts.find((artifact) => artifact.kind === kind)?.data || fallback;
+}
+
+function operatingReadinessWorkbench({ tenantId, pack, model, actionList }) {
+  const actionById = new Map(actionList.map((action) => [action.id, action]));
+  const action = actionById.get("crm.generate-readiness-package");
+  const result = buildOperatingReadinessResult(readinessDispatchRequest({ tenantId, pack, model }));
+  const readinessReport = artifactData(result, "crm_operating_readiness_report", {});
+  const userOutcomeManifest = artifactData(result, "crm_user_outcome_manifest", { outcomes: [] });
+  const domainCoverage = artifactData(result, "crm_domain_coverage_matrix", { complete: false, domains: [] });
+  const businessRunbook = artifactData(result, "crm_business_runbook", { daily_operations: [] });
+
+  return {
+    schema_version: "forge.crm_operating_readiness_workbench.v1",
+    workflow_id: result.outputs.workflow_id,
+    workflow_extension_id: "crm_enterprise_readiness",
+    state_owner: "forge_workflow_runtime",
+    local_state_allowed: false,
+    action_id: action?.id || "crm.generate-readiness-package",
+    contract_id: action?.contract_id || "crm.operating.readiness.executor",
+    success_criteria_status: result.outputs.success_criteria_status,
+    forge_only_operations: result.outputs.forge_only_operations,
+    main_flow_dependency_external: result.outputs.main_flow_dependency_external,
+    ready_domain_count: result.outputs.ready_domain_count,
+    user_facing_deliverable_count: result.outputs.user_facing_deliverable_count,
+    generated_artifact_types: result.artifacts.map((artifact) => artifact.kind),
+    readiness_report: {
+      artifact_id: result.artifacts.find((artifact) => artifact.kind === "crm_operating_readiness_report")?.id,
+      status: readinessReport.status,
+      state_owner: readinessReport.state_owner,
+      external_database_required: readinessReport.external_database_required,
+      lineage: readinessReport.lineage
+    },
+    domain_coverage: {
+      artifact_id: result.artifacts.find((artifact) => artifact.kind === "crm_domain_coverage_matrix")?.id,
+      complete: domainCoverage.complete,
+      domains: domainCoverage.domains
+    },
+    user_outcomes: userOutcomeManifest.outcomes,
+    daily_operations: businessRunbook.daily_operations,
+    escalation_policy: businessRunbook.escalation_policy,
+    readiness_gates: [
+      {
+        id: "domain_artifact_evidence",
+        title: "Every business domain exposes Forge artifact evidence",
+        owner: "Forge validation",
+        required: true
+      },
+      {
+        id: "domain_event_evidence",
+        title: "Every business domain exposes Forge event evidence",
+        owner: "Forge validation",
+        required: true
+      },
+      {
+        id: "runtime_contract_evidence",
+        title: "Every business domain is backed by Forge runtime contracts",
+        owner: "Forge validation",
+        required: true
+      },
+      {
+        id: "no_external_main_flow_dependency",
+        title: "Main CRM operation does not depend on external CRM infrastructure",
+        owner: "Forge validation",
+        required: true
+      },
+      {
+        id: "rework_reason_recorded",
+        title: "Incomplete deliverables return to Forge workflow work with a reason",
+        owner: "Forge validation",
+        required: true
+      }
+    ],
+    operation_plan: [
+      {
+        id: "collect_domain_evidence",
+        title: "Collect workflow, artifact, event and runtime-contract evidence for each CRM business domain",
+        owner: "forge.workflow.artifacts and forge.events.timeline"
+      },
+      {
+        id: "generate_readiness_package",
+        title: "Generate the operating readiness package through the CRM readiness executor",
+        owner: "crm.operating.readiness.executor"
+      },
+      {
+        id: "promote_business_runbook",
+        title: "Promote the user outcome manifest, domain coverage matrix and business runbook",
+        owner: "forge.addon_runtime"
+      },
+      {
+        id: "return_rework_to_forge",
+        title: "Return incomplete domains to Forge workflow tasks with explicit rework reasons",
+        owner: "forge.validation"
+      }
+    ]
+  };
+}
+
 function subworkflowOrchestrationWorkbench(workflows, actionList) {
   const actionById = new Map(actionList.map((action) => [action.id, action]));
   const action = actionById.get("crm.orchestrate-subworkflows");
@@ -2432,6 +2577,7 @@ export function buildCrmWebAppSnapshot(options = {}) {
     workflow_evolution_workbench: workflowEvolutionWorkbench(workflows, actionList),
     benchmark_evidence_matrix: benchmarkEvidenceMatrix(workflows, actionList, documentQueueSnapshot),
     enterprise_journey_workbench: enterpriseJourneyWorkbench(workflows, actionList),
+    operating_readiness_workbench: operatingReadinessWorkbench({ tenantId, pack, model, actionList }),
     subworkflow_orchestration_workbench: subworkflowOrchestrationWorkbench(workflows, actionList),
     workflow_automation_designer_workbench: workflowAutomationDesignerWorkbench(workflows, actionList),
     executive_reporting_workbench: executiveReportingWorkbench(workflows, actionList),

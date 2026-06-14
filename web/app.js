@@ -685,6 +685,56 @@ export function renderEnterpriseJourneyWorkbench(snapshot) {
   return section;
 }
 
+export function renderOperatingReadinessWorkbench(snapshot) {
+  const workbench = snapshot.operating_readiness_workbench;
+  const section = nodeElement("section", "panel readiness-workbench");
+  section.dataset.surfacePanel = "crm.system-map";
+  section.append(nodeElement("h2", "", "Operating Readiness"));
+  if (!workbench) {
+    section.append(nodeElement("p", "muted-copy", "Operating readiness workbench unavailable in this snapshot."));
+    return section;
+  }
+
+  section.append(nodeElement("p", "panel-source", `${workbench.workflow_id} · ${workbench.contract_id}`));
+  section.append(nodeElement("code", "", actionLabel(snapshot, workbench.action_id)));
+
+  const summary = nodeElement("div", "readiness-summary");
+  summary.append(metric("Status", compactTitle(workbench.success_criteria_status)));
+  summary.append(metric("Domains", `${workbench.ready_domain_count}/${workbench.domain_coverage.domains.length}`));
+  summary.append(metric("Outcomes", workbench.user_facing_deliverable_count));
+  summary.append(metric("Forge only", workbench.forge_only_operations ? "Yes" : "No"));
+
+  const domains = nodeElement("div", "readiness-domain-grid");
+  for (const domain of workbench.domain_coverage.domains || []) {
+    const item = nodeElement("article", `readiness-domain ${domain.ready ? "ready" : "needs-rework"}`);
+    item.append(nodeElement("strong", "", domain.title));
+    item.append(nodeElement("span", "", domain.user_facing_deliverable));
+    item.append(nodeElement("small", "", `${domain.workflow_ids.length} workflows · ${domain.runtime_contract_evidence.length} contracts`));
+    item.title = `${domain.artifact_evidence.join(", ")} · ${domain.event_evidence.join(", ")}`;
+    domains.append(item);
+  }
+
+  const operations = nodeElement("div", "readiness-operation-list");
+  for (const operation of workbench.daily_operations || []) {
+    const item = nodeElement("article", "readiness-operation");
+    item.append(nodeElement("strong", "", operation.deliverable));
+    item.append(nodeElement("span", "", `${operation.command_owner} · ${operation.workflow_ids.length} workflows`));
+    item.append(nodeElement("small", "", operation.rework_path));
+    operations.append(item);
+  }
+
+  const gates = nodeElement("div", "readiness-gates");
+  for (const gate of workbench.readiness_gates || []) {
+    const item = nodeElement("article", "readiness-gate");
+    item.append(nodeElement("strong", "", gate.title));
+    item.append(nodeElement("span", "", gate.owner));
+    gates.append(item);
+  }
+
+  section.append(summary, domains, operations, gates);
+  return section;
+}
+
 export function renderSubworkflowOrchestrationWorkbench(snapshot) {
   const workbench = snapshot.subworkflow_orchestration_workbench;
   const section = nodeElement("section", "panel subworkflow-workbench");
@@ -972,6 +1022,7 @@ function render(snapshot) {
   workspace.append(renderWorkflowEvolutionWorkbench(snapshot));
   workspace.append(renderBenchmarkEvidenceMatrix(snapshot));
   workspace.append(renderEnterpriseJourneyWorkbench(snapshot));
+  workspace.append(renderOperatingReadinessWorkbench(snapshot));
   workspace.append(renderSubworkflowOrchestrationWorkbench(snapshot));
   workspace.append(renderWorkflowAutomationDesignerWorkbench(snapshot));
   workspace.append(renderExecutiveReportingWorkbench(snapshot));

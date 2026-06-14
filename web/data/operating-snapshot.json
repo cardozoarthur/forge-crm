@@ -4821,6 +4821,796 @@
       }
     ]
   },
+  "operating_readiness_workbench": {
+    "schema_version": "forge.crm_operating_readiness_workbench.v1",
+    "workflow_id": "crm.enterprise.readiness",
+    "workflow_extension_id": "crm_enterprise_readiness",
+    "state_owner": "forge_workflow_runtime",
+    "local_state_allowed": false,
+    "action_id": "crm.generate-readiness-package",
+    "contract_id": "crm.operating.readiness.executor",
+    "success_criteria_status": "operable_with_evidence",
+    "forge_only_operations": true,
+    "main_flow_dependency_external": false,
+    "ready_domain_count": 13,
+    "user_facing_deliverable_count": 13,
+    "generated_artifact_types": [
+      "crm_operating_readiness_report",
+      "crm_user_outcome_manifest",
+      "crm_domain_coverage_matrix",
+      "crm_business_runbook"
+    ],
+    "readiness_report": {
+      "artifact_id": "crm-operating-readiness-default",
+      "status": "operable_with_evidence",
+      "state_owner": "forge_workflow_runtime",
+      "external_database_required": false,
+      "lineage": {
+        "workflow_id": "crm.enterprise.readiness",
+        "task_ref": "readiness-web-default",
+        "source_contract": "crm.operating.readiness.executor",
+        "tenant_id": "default"
+      }
+    },
+    "domain_coverage": {
+      "artifact_id": "crm-domain-coverage-default",
+      "complete": true,
+      "domains": [
+        {
+          "domain": "relationship",
+          "title": "Relationship workspace",
+          "user_facing_deliverable": "relationship workspace",
+          "ready": true,
+          "workflow_ids": [
+            "crm.lead.lifecycle",
+            "crm.opportunity.pipeline"
+          ],
+          "missing_workflow_ids": [],
+          "artifact_evidence": [
+            "crm_timeline_snapshot",
+            "crm_pipeline_board"
+          ],
+          "event_evidence": [
+            "crm.relationship.recorded",
+            "crm.opportunity.stage_changed"
+          ],
+          "runtime_contract_evidence": [
+            "crm.relationship.timeline.executor",
+            "crm.relationship.profile_enrichment.executor",
+            "crm.lead.classifier.executor",
+            "crm.marketing.form_capture.executor",
+            "crm.pipeline.stage_move.executor",
+            "crm.ai.operating_copilot.executor",
+            "crm.proposal.generator.executor"
+          ],
+          "validation_gates": [
+            "classification evidence present",
+            "state transition has owner and reason",
+            "stage movement is event-backed",
+            "forecast impact recorded"
+          ]
+        },
+        {
+          "domain": "commercial",
+          "title": "Commercial command center",
+          "user_facing_deliverable": "commercial command center",
+          "ready": true,
+          "workflow_ids": [
+            "crm.proposal.approval",
+            "crm.contract.signature",
+            "crm.followup.forecast",
+            "crm.account.management"
+          ],
+          "missing_workflow_ids": [],
+          "artifact_evidence": [
+            "crm_proposal",
+            "crm_contract",
+            "crm_forecast_report",
+            "crm_health_report"
+          ],
+          "event_evidence": [
+            "crm.proposal.generated",
+            "crm.contract.signed",
+            "crm.forecast.updated"
+          ],
+          "runtime_contract_evidence": [
+            "crm.proposal.generator.executor",
+            "crm.document.validator",
+            "crm.document.generator.executor",
+            "crm.commercial.contract_signature.executor",
+            "crm.commercial.goal_commission.executor",
+            "crm.commercial.followup_forecast.executor",
+            "crm.commercial.account_management.executor"
+          ],
+          "validation_gates": [
+            "artifact lineage present",
+            "external delivery blocked until approval",
+            "contract approval lineage present",
+            "signature receipt attached",
+            "scheduled wait visible",
+            "forecast and commission evidence attached",
+            "account owner visible",
+            "renewal state explicit",
+            "expansion forecast event-backed"
+          ]
+        },
+        {
+          "domain": "support",
+          "title": "Support inbox and SLA lane",
+          "user_facing_deliverable": "support inbox",
+          "ready": true,
+          "workflow_ids": [
+            "crm.ticket.sla"
+          ],
+          "missing_workflow_ids": [],
+          "artifact_evidence": [
+            "crm_message_thread",
+            "crm_channel_receipt",
+            "crm_support_summary"
+          ],
+          "event_evidence": [
+            "crm.message.received",
+            "crm.ticket.created",
+            "crm.sla.escalated"
+          ],
+          "runtime_contract_evidence": [
+            "crm.support.omnichannel_center.executor",
+            "crm.support.omnichannel_message.executor",
+            "crm.support.reply_composer.executor",
+            "crm.support.ticket_sla.executor",
+            "crm.omnichannel.handoff"
+          ],
+          "validation_gates": [
+            "channel receipt attached",
+            "SLA wait state explicit",
+            "handoff receipt attached"
+          ]
+        },
+        {
+          "domain": "omnichannel_conversation_threads",
+          "title": "Omnichannel conversation threads",
+          "user_facing_deliverable": "omnichannel conversation threads",
+          "ready": true,
+          "workflow_ids": [
+            "crm.omnichannel.message",
+            "crm.omnichannel.center",
+            "crm.ticket.sla"
+          ],
+          "missing_workflow_ids": [],
+          "artifact_evidence": [
+            "crm_message_thread",
+            "crm_channel_receipt",
+            "crm_unified_conversation"
+          ],
+          "event_evidence": [
+            "crm.message.received",
+            "crm.conversation.unified",
+            "crm.ticket.created"
+          ],
+          "runtime_contract_evidence": [
+            "crm.support.omnichannel_message.executor",
+            "crm.support.reply_composer.executor",
+            "crm.omnichannel.handoff",
+            "crm.support.omnichannel_center.executor",
+            "crm.support.channel_intake.executor",
+            "crm.support.ticket_sla.executor"
+          ],
+          "validation_gates": [
+            "message thread and channel receipt artifacts exist before SLA triage",
+            "ticket creation targets the Forge SLA workflow",
+            "external replies require approved omnichannel handoff",
+            "omnichannel center state is sourced from Forge artifacts and events",
+            "approved channel intake is required before conversation unification",
+            "conversation lineage cites channel receipts and identity evidence",
+            "channel receipt attached",
+            "SLA wait state explicit",
+            "handoff receipt attached"
+          ]
+        },
+        {
+          "domain": "marketing",
+          "title": "Marketing automation and capture",
+          "user_facing_deliverable": "marketing automation",
+          "ready": true,
+          "workflow_ids": [
+            "crm.campaign.lifecycle",
+            "crm.lead.nurture"
+          ],
+          "missing_workflow_ids": [],
+          "artifact_evidence": [
+            "crm_campaign",
+            "crm_segment",
+            "crm_form_submission",
+            "crm_automation_plan"
+          ],
+          "event_evidence": [
+            "crm.campaign.scheduled",
+            "crm.form.submitted"
+          ],
+          "runtime_contract_evidence": [
+            "crm.marketing.campaign_automation.executor",
+            "crm.marketing.segment_builder.executor",
+            "crm.marketing.landing_page.executor",
+            "crm.marketing.form_capture.executor",
+            "crm.document.generator.executor",
+            "crm.document.validator",
+            "crm.marketing.lead_nurture.executor",
+            "crm.lead.classifier.executor",
+            "crm.omnichannel.handoff"
+          ],
+          "validation_gates": [
+            "campaign artifacts approved",
+            "schedule state visible",
+            "scheduled wait visible",
+            "external message approval present"
+          ]
+        },
+        {
+          "domain": "documents",
+          "title": "Document generation and approvals",
+          "user_facing_deliverable": "document approvals",
+          "ready": true,
+          "workflow_ids": [
+            "crm.document.approval",
+            "crm.proposal.approval",
+            "crm.contract.signature"
+          ],
+          "missing_workflow_ids": [],
+          "artifact_evidence": [
+            "crm_document",
+            "crm_presentation",
+            "crm_approval_record"
+          ],
+          "event_evidence": [
+            "crm.document.generated",
+            "crm.document.approved"
+          ],
+          "runtime_contract_evidence": [
+            "crm.document.generator.executor",
+            "crm.document.validator",
+            "crm.document.approval.executor",
+            "crm.document.library.executor",
+            "crm.proposal.generator.executor",
+            "crm.commercial.contract_signature.executor",
+            "crm.commercial.goal_commission.executor"
+          ],
+          "validation_gates": [
+            "approval actor recorded",
+            "approval decision lineage recorded",
+            "lineage points to Forge artifact",
+            "artifact lineage present",
+            "external delivery blocked until approval",
+            "contract approval lineage present",
+            "signature receipt attached"
+          ]
+        },
+        {
+          "domain": "operations",
+          "title": "Project handoff and internal operations",
+          "user_facing_deliverable": "project handoff",
+          "ready": true,
+          "workflow_ids": [
+            "crm.project.handoff",
+            "crm.operational.observability"
+          ],
+          "missing_workflow_ids": [],
+          "artifact_evidence": [
+            "crm_project_plan",
+            "crm_task_plan",
+            "crm_handoff_record",
+            "crm_audit_report"
+          ],
+          "event_evidence": [
+            "crm.project.handoff_requested",
+            "crm.task.created",
+            "crm.observability.inspected"
+          ],
+          "runtime_contract_evidence": [
+            "crm.operations.project_handoff.executor",
+            "crm.omnichannel.handoff",
+            "crm.observability.inspector.executor",
+            "crm.analytics.executive_report.executor"
+          ],
+          "validation_gates": [
+            "owner visible",
+            "blocked reason explicit",
+            "audit lineage cost metrics and logs sourced from Forge",
+            "inspection does not create CRM-local observability state",
+            "remediation requires Forge workflow mutation"
+          ]
+        },
+        {
+          "domain": "enterprise_journey",
+          "title": "Enterprise customer journey",
+          "user_facing_deliverable": "enterprise customer journey",
+          "ready": true,
+          "workflow_ids": [
+            "crm.enterprise.customer_journey"
+          ],
+          "missing_workflow_ids": [],
+          "artifact_evidence": [
+            "crm_enterprise_journey_map",
+            "crm_operating_acceptance_evidence",
+            "crm_cross_domain_handoff_map"
+          ],
+          "event_evidence": [
+            "crm.journey.started",
+            "crm.journey.acceptance_reported"
+          ],
+          "runtime_contract_evidence": [
+            "crm.enterprise.journey.executor",
+            "crm.workflow.subworkflow_orchestrator.executor",
+            "crm.marketing.form_capture.executor",
+            "crm.pipeline.stage_move.executor",
+            "crm.proposal.generator.executor",
+            "crm.commercial.contract_signature.executor",
+            "crm.commercial.account_management.executor",
+            "crm.support.ticket_sla.executor",
+            "crm.operations.project_handoff.executor"
+          ],
+          "validation_gates": [
+            "all required customer lifecycle stages have Forge artifact and event evidence",
+            "main CRM flow has no external system dependency",
+            "cross-domain handoffs preserve workflow and artifact lineage"
+          ]
+        },
+        {
+          "domain": "subworkflow_orchestration",
+          "title": "Subworkflow orchestration",
+          "user_facing_deliverable": "subworkflow orchestration",
+          "ready": true,
+          "workflow_ids": [
+            "crm.subworkflow.orchestration",
+            "crm.enterprise.customer_journey"
+          ],
+          "missing_workflow_ids": [],
+          "artifact_evidence": [
+            "crm_subworkflow_plan",
+            "crm_subworkflow_lineage_map",
+            "crm_subworkflow_validation_report"
+          ],
+          "event_evidence": [
+            "crm.subworkflow.bound",
+            "crm.subworkflow.validated",
+            "crm.subworkflow.promoted"
+          ],
+          "runtime_contract_evidence": [
+            "crm.workflow.subworkflow_orchestrator.executor",
+            "crm.observability.inspector.executor",
+            "crm.enterprise.journey.executor",
+            "crm.marketing.form_capture.executor",
+            "crm.pipeline.stage_move.executor",
+            "crm.proposal.generator.executor",
+            "crm.commercial.contract_signature.executor",
+            "crm.commercial.account_management.executor",
+            "crm.support.ticket_sla.executor",
+            "crm.operations.project_handoff.executor"
+          ],
+          "validation_gates": [
+            "child subworkflows are validated before parent journey promotion",
+            "subworkflow lineage cites child workflow artifacts and events",
+            "parent workflow promotion is blocked while any child validation gate fails",
+            "all required customer lifecycle stages have Forge artifact and event evidence",
+            "main CRM flow has no external system dependency",
+            "cross-domain handoffs preserve workflow and artifact lineage"
+          ]
+        },
+        {
+          "domain": "workflow_automation_designer",
+          "title": "Workflow automation designer",
+          "user_facing_deliverable": "workflow automation designer",
+          "ready": true,
+          "workflow_ids": [
+            "crm.workflow.automation_design"
+          ],
+          "missing_workflow_ids": [],
+          "artifact_evidence": [
+            "crm_workflow_automation_spec",
+            "crm_trigger_condition_map",
+            "crm_automation_validation_report"
+          ],
+          "event_evidence": [
+            "crm.automation.designed",
+            "crm.automation.validated",
+            "crm.automation.queued"
+          ],
+          "runtime_contract_evidence": [
+            "crm.workflow.automation_designer.executor",
+            "crm.observability.inspector.executor"
+          ],
+          "validation_gates": [
+            "automation design validates trigger condition action graph before activation",
+            "automation execution remains inside Forge workflows",
+            "activation is blocked until validation evidence and permission gates pass"
+          ]
+        },
+        {
+          "domain": "goal_commission_settlement",
+          "title": "Goal and commission settlement",
+          "user_facing_deliverable": "goal and commission settlement",
+          "ready": true,
+          "workflow_ids": [
+            "crm.goal.commission"
+          ],
+          "missing_workflow_ids": [],
+          "artifact_evidence": [
+            "crm_goal_scorecard",
+            "crm_commission_statement",
+            "crm_compensation_audit_report"
+          ],
+          "event_evidence": [
+            "crm.goal.target_set",
+            "crm.goal.attainment_reviewed",
+            "crm.commission.statement_generated"
+          ],
+          "runtime_contract_evidence": [
+            "crm.commercial.goal_commission.executor"
+          ],
+          "validation_gates": [
+            "goal attainment and commission settlement require revenue event lineage",
+            "commission payout remains blocked until Forge approval"
+          ]
+        },
+        {
+          "domain": "executive_reporting",
+          "title": "Executive reporting",
+          "user_facing_deliverable": "executive reporting",
+          "ready": true,
+          "workflow_ids": [
+            "crm.executive.reporting"
+          ],
+          "missing_workflow_ids": [],
+          "artifact_evidence": [
+            "crm_executive_summary",
+            "crm_kpi_dashboard",
+            "crm_business_review_report"
+          ],
+          "event_evidence": [
+            "crm.executive.summary_generated",
+            "crm.kpi.dashboard_generated",
+            "crm.risk.reviewed"
+          ],
+          "runtime_contract_evidence": [
+            "crm.analytics.executive_report.executor"
+          ],
+          "validation_gates": [
+            "executive KPIs are derived from Forge workflow artifacts and events",
+            "business review risk items cite workflow lineage",
+            "recommended decisions remain advisory until Forge approval"
+          ]
+        },
+        {
+          "domain": "user_experience",
+          "title": "Forge CRM design system",
+          "user_facing_deliverable": "design system",
+          "ready": true,
+          "workflow_ids": [
+            "crm.design.system"
+          ],
+          "missing_workflow_ids": [],
+          "artifact_evidence": [
+            "crm_design_system",
+            "crm_design_token_manifest",
+            "crm_ui_component_catalog"
+          ],
+          "event_evidence": [
+            "crm.design.system_generated",
+            "crm.design.tokens_published"
+          ],
+          "runtime_contract_evidence": [
+            "crm.design_system.executor"
+          ],
+          "validation_gates": [
+            "design tokens are published as Forge artifacts before UI consumption",
+            "components cite workflow artifact state sources",
+            "browser rendering does not create CRM-local design state"
+          ]
+        }
+      ]
+    },
+    "user_outcomes": [
+      {
+        "deliverable": "relationship workspace",
+        "domain": "relationship",
+        "workflow_ids": [
+          "crm.lead.lifecycle",
+          "crm.opportunity.pipeline"
+        ],
+        "acceptance": "delivered when Forge workflow artifacts, events and validation gates are present",
+        "requested_by_success_criteria": false
+      },
+      {
+        "deliverable": "commercial command center",
+        "domain": "commercial",
+        "workflow_ids": [
+          "crm.proposal.approval",
+          "crm.contract.signature",
+          "crm.followup.forecast",
+          "crm.account.management"
+        ],
+        "acceptance": "delivered when Forge workflow artifacts, events and validation gates are present",
+        "requested_by_success_criteria": false
+      },
+      {
+        "deliverable": "support inbox",
+        "domain": "support",
+        "workflow_ids": [
+          "crm.ticket.sla"
+        ],
+        "acceptance": "delivered when Forge workflow artifacts, events and validation gates are present",
+        "requested_by_success_criteria": false
+      },
+      {
+        "deliverable": "omnichannel conversation threads",
+        "domain": "omnichannel_conversation_threads",
+        "workflow_ids": [
+          "crm.omnichannel.message",
+          "crm.omnichannel.center",
+          "crm.ticket.sla"
+        ],
+        "acceptance": "delivered when Forge workflow artifacts, events and validation gates are present",
+        "requested_by_success_criteria": false
+      },
+      {
+        "deliverable": "marketing automation",
+        "domain": "marketing",
+        "workflow_ids": [
+          "crm.campaign.lifecycle",
+          "crm.lead.nurture"
+        ],
+        "acceptance": "delivered when Forge workflow artifacts, events and validation gates are present",
+        "requested_by_success_criteria": true
+      },
+      {
+        "deliverable": "document approvals",
+        "domain": "documents",
+        "workflow_ids": [
+          "crm.document.approval",
+          "crm.proposal.approval",
+          "crm.contract.signature"
+        ],
+        "acceptance": "delivered when Forge workflow artifacts, events and validation gates are present",
+        "requested_by_success_criteria": false
+      },
+      {
+        "deliverable": "project handoff",
+        "domain": "operations",
+        "workflow_ids": [
+          "crm.project.handoff",
+          "crm.operational.observability"
+        ],
+        "acceptance": "delivered when Forge workflow artifacts, events and validation gates are present",
+        "requested_by_success_criteria": false
+      },
+      {
+        "deliverable": "enterprise customer journey",
+        "domain": "enterprise_journey",
+        "workflow_ids": [
+          "crm.enterprise.customer_journey"
+        ],
+        "acceptance": "delivered when Forge workflow artifacts, events and validation gates are present",
+        "requested_by_success_criteria": true
+      },
+      {
+        "deliverable": "subworkflow orchestration",
+        "domain": "subworkflow_orchestration",
+        "workflow_ids": [
+          "crm.subworkflow.orchestration",
+          "crm.enterprise.customer_journey"
+        ],
+        "acceptance": "delivered when Forge workflow artifacts, events and validation gates are present",
+        "requested_by_success_criteria": false
+      },
+      {
+        "deliverable": "workflow automation designer",
+        "domain": "workflow_automation_designer",
+        "workflow_ids": [
+          "crm.workflow.automation_design"
+        ],
+        "acceptance": "delivered when Forge workflow artifacts, events and validation gates are present",
+        "requested_by_success_criteria": false
+      },
+      {
+        "deliverable": "goal and commission settlement",
+        "domain": "goal_commission_settlement",
+        "workflow_ids": [
+          "crm.goal.commission"
+        ],
+        "acceptance": "delivered when Forge workflow artifacts, events and validation gates are present",
+        "requested_by_success_criteria": false
+      },
+      {
+        "deliverable": "executive reporting",
+        "domain": "executive_reporting",
+        "workflow_ids": [
+          "crm.executive.reporting"
+        ],
+        "acceptance": "delivered when Forge workflow artifacts, events and validation gates are present",
+        "requested_by_success_criteria": false
+      },
+      {
+        "deliverable": "design system",
+        "domain": "user_experience",
+        "workflow_ids": [
+          "crm.design.system"
+        ],
+        "acceptance": "delivered when Forge workflow artifacts, events and validation gates are present",
+        "requested_by_success_criteria": false
+      }
+    ],
+    "daily_operations": [
+      {
+        "deliverable": "relationship workspace",
+        "command_owner": "forge",
+        "workflow_ids": [
+          "crm.lead.lifecycle",
+          "crm.opportunity.pipeline"
+        ],
+        "rework_path": "return incomplete goals to Forge workflow tasks with reason"
+      },
+      {
+        "deliverable": "commercial command center",
+        "command_owner": "forge",
+        "workflow_ids": [
+          "crm.proposal.approval",
+          "crm.contract.signature",
+          "crm.followup.forecast",
+          "crm.account.management"
+        ],
+        "rework_path": "return incomplete goals to Forge workflow tasks with reason"
+      },
+      {
+        "deliverable": "support inbox",
+        "command_owner": "forge",
+        "workflow_ids": [
+          "crm.ticket.sla"
+        ],
+        "rework_path": "return incomplete goals to Forge workflow tasks with reason"
+      },
+      {
+        "deliverable": "omnichannel conversation threads",
+        "command_owner": "forge",
+        "workflow_ids": [
+          "crm.omnichannel.message",
+          "crm.omnichannel.center",
+          "crm.ticket.sla"
+        ],
+        "rework_path": "return incomplete goals to Forge workflow tasks with reason"
+      },
+      {
+        "deliverable": "marketing automation",
+        "command_owner": "forge",
+        "workflow_ids": [
+          "crm.campaign.lifecycle",
+          "crm.lead.nurture"
+        ],
+        "rework_path": "return incomplete goals to Forge workflow tasks with reason"
+      },
+      {
+        "deliverable": "document approvals",
+        "command_owner": "forge",
+        "workflow_ids": [
+          "crm.document.approval",
+          "crm.proposal.approval",
+          "crm.contract.signature"
+        ],
+        "rework_path": "return incomplete goals to Forge workflow tasks with reason"
+      },
+      {
+        "deliverable": "project handoff",
+        "command_owner": "forge",
+        "workflow_ids": [
+          "crm.project.handoff",
+          "crm.operational.observability"
+        ],
+        "rework_path": "return incomplete goals to Forge workflow tasks with reason"
+      },
+      {
+        "deliverable": "enterprise customer journey",
+        "command_owner": "forge",
+        "workflow_ids": [
+          "crm.enterprise.customer_journey"
+        ],
+        "rework_path": "return incomplete goals to Forge workflow tasks with reason"
+      },
+      {
+        "deliverable": "subworkflow orchestration",
+        "command_owner": "forge",
+        "workflow_ids": [
+          "crm.subworkflow.orchestration",
+          "crm.enterprise.customer_journey"
+        ],
+        "rework_path": "return incomplete goals to Forge workflow tasks with reason"
+      },
+      {
+        "deliverable": "workflow automation designer",
+        "command_owner": "forge",
+        "workflow_ids": [
+          "crm.workflow.automation_design"
+        ],
+        "rework_path": "return incomplete goals to Forge workflow tasks with reason"
+      },
+      {
+        "deliverable": "goal and commission settlement",
+        "command_owner": "forge",
+        "workflow_ids": [
+          "crm.goal.commission"
+        ],
+        "rework_path": "return incomplete goals to Forge workflow tasks with reason"
+      },
+      {
+        "deliverable": "executive reporting",
+        "command_owner": "forge",
+        "workflow_ids": [
+          "crm.executive.reporting"
+        ],
+        "rework_path": "return incomplete goals to Forge workflow tasks with reason"
+      },
+      {
+        "deliverable": "design system",
+        "command_owner": "forge",
+        "workflow_ids": [
+          "crm.design.system"
+        ],
+        "rework_path": "return incomplete goals to Forge workflow tasks with reason"
+      }
+    ],
+    "escalation_policy": "readiness gaps require Forge workflow mutation, validation evidence and artifact lineage",
+    "readiness_gates": [
+      {
+        "id": "domain_artifact_evidence",
+        "title": "Every business domain exposes Forge artifact evidence",
+        "owner": "Forge validation",
+        "required": true
+      },
+      {
+        "id": "domain_event_evidence",
+        "title": "Every business domain exposes Forge event evidence",
+        "owner": "Forge validation",
+        "required": true
+      },
+      {
+        "id": "runtime_contract_evidence",
+        "title": "Every business domain is backed by Forge runtime contracts",
+        "owner": "Forge validation",
+        "required": true
+      },
+      {
+        "id": "no_external_main_flow_dependency",
+        "title": "Main CRM operation does not depend on external CRM infrastructure",
+        "owner": "Forge validation",
+        "required": true
+      },
+      {
+        "id": "rework_reason_recorded",
+        "title": "Incomplete deliverables return to Forge workflow work with a reason",
+        "owner": "Forge validation",
+        "required": true
+      }
+    ],
+    "operation_plan": [
+      {
+        "id": "collect_domain_evidence",
+        "title": "Collect workflow, artifact, event and runtime-contract evidence for each CRM business domain",
+        "owner": "forge.workflow.artifacts and forge.events.timeline"
+      },
+      {
+        "id": "generate_readiness_package",
+        "title": "Generate the operating readiness package through the CRM readiness executor",
+        "owner": "crm.operating.readiness.executor"
+      },
+      {
+        "id": "promote_business_runbook",
+        "title": "Promote the user outcome manifest, domain coverage matrix and business runbook",
+        "owner": "forge.addon_runtime"
+      },
+      {
+        "id": "return_rework_to_forge",
+        "title": "Return incomplete domains to Forge workflow tasks with explicit rework reasons",
+        "owner": "forge.validation"
+      }
+    ]
+  },
   "subworkflow_orchestration_workbench": {
     "schema_version": "forge.crm_subworkflow_orchestration_workbench.v1",
     "workflow_id": "crm.subworkflow.orchestration",

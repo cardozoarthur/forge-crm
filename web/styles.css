@@ -880,6 +880,11 @@ h3 {
   border-left: 4px solid #126c55;
 }
 
+.readiness-workbench {
+  grid-column: 1 / -1;
+  border-left: 4px solid #2d7668;
+}
+
 .subworkflow-workbench {
   border-left: 4px solid #285f9d;
 }
@@ -898,6 +903,10 @@ h3 {
 
 .journey-lanes,
 .journey-gates,
+.readiness-summary,
+.readiness-domain-grid,
+.readiness-operation-list,
+.readiness-gates,
 .subworkflow-bindings,
 .subworkflow-gates,
 .automation-graph,
@@ -913,6 +922,9 @@ h3 {
 
 .journey-lane,
 .journey-gate,
+.readiness-domain,
+.readiness-operation,
+.readiness-gate,
 .subworkflow-binding,
 .subworkflow-gate,
 .automation-node,
@@ -937,6 +949,9 @@ h3 {
 
 .journey-lane strong,
 .journey-gate strong,
+.readiness-domain strong,
+.readiness-operation strong,
+.readiness-gate strong,
 .subworkflow-binding strong,
 .subworkflow-gate strong,
 .automation-node strong,
@@ -963,6 +978,11 @@ h3 {
 
 .journey-lane span,
 .journey-gate span,
+.readiness-domain span,
+.readiness-domain small,
+.readiness-operation span,
+.readiness-operation small,
+.readiness-gate span,
 .automation-node span,
 .automation-node small,
 .automation-palette span,
@@ -983,6 +1003,7 @@ h3 {
 }
 
 .automation-gates,
+.readiness-gates,
 .executive-reporting-gates,
 .goal-commission-gates {
   display: grid;
@@ -997,6 +1018,22 @@ h3 {
   font-size: 0.74rem;
   line-height: 1.35;
   overflow-wrap: anywhere;
+}
+
+.readiness-workbench > code {
+  display: inline-block;
+  margin-top: 8px;
+  color: #126c55;
+  font-size: 0.74rem;
+  overflow-wrap: anywhere;
+}
+
+.readiness-domain.ready {
+  border-left: 4px solid #126c55;
+}
+
+.readiness-domain.needs-rework {
+  border-left: 4px solid #a53c3c;
 }
 
 @media (max-width: 1040px) {
@@ -1049,6 +1086,10 @@ h3 {
 	  .benchmark-entry-grid,
 	  .journey-lanes,
 	  .journey-gates,
+	  .readiness-summary,
+	  .readiness-domain-grid,
+	  .readiness-operation-list,
+	  .readiness-gates,
 	  .automation-graph,
 	  .automation-palettes,
 	  .executive-kpi-grid,

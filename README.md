@@ -163,6 +163,7 @@ The first business user surface is a static Addon asset:
 - design system view for Penpot/Open Design-inspired tokens and UI component catalog artifacts;
 - workflow cadence view for follow-ups, renewals, SLA clocks, campaign launches, nurture waits and project handoff reviews sourced from Forge schedule events;
 - enterprise journey workbench for lead capture, opportunity, proposal, contract, account, support and handoff acceptance evidence;
+- operating readiness workbench for domain coverage, user-facing outcomes, daily operations, readiness gates and rework paths backed by `crm.operating.readiness.executor`;
 - subworkflow orchestration workbench for Forge child workflow bindings, lineage mapping and parent promotion gates;
 - workflow automation designer workbench for Forge-owned trigger, condition and action graphs with activation gates;
 - executive reporting workbench for KPI dashboards, business review artifacts and advisory recommendations from Forge workflow evidence;
