@@ -259,6 +259,15 @@ function actions() {
       command_template: ["forge", "addons", "execute-validator", "--addon", "forge.addon.crm", "--contract", "crm.document.validator", "--worker", "<worker-id>", "--subject", "<artifact-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
     },
     {
+      id: "crm.record-document-approval",
+      label: "Record approval",
+      surface_id: "crm.document-queue",
+      contract_id: "crm.document.approval.executor",
+      requires_permission: "crm.workflow.mutate",
+      mutates_workflow: true,
+      command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.document.approval.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
+    },
+    {
       id: "crm.run-operating-copilot",
       label: "Run operating copilot",
       surface_id: "crm.ai-workbench",

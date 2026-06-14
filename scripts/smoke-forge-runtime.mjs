@@ -87,6 +87,7 @@ try {
       "forge_crm.manage_contract_signature",
       "forge_crm.generate_document",
       "forge_crm.validate_document",
+      "forge_crm.record_document_approval",
       "forge_crm.automate_campaign",
       "forge_crm.capture_form_submission",
       "forge_crm.ingest_omnichannel_message",
@@ -108,6 +109,7 @@ try {
       "crm.commercial.contract_signature.executor",
       "crm.document.generator.executor",
       "crm.document.validator",
+      "crm.document.approval.executor",
       "crm.marketing.campaign_automation.executor",
       "crm.marketing.form_capture.executor",
       "crm.support.omnichannel_message.executor",
@@ -602,6 +604,58 @@ try {
     throw new Error("expected generated documents to block external delivery before approval");
   }
 
+  const documentApproval = runForge([
+    "addons",
+    "execute-executor",
+    "--addon-dir",
+    "addons",
+    "--addon",
+    "forge.addon.crm",
+    "--contract",
+    "crm.document.approval.executor",
+    "--worker",
+    workerId,
+    "--task",
+    "crm-smoke-document-approval",
+    "--workflow",
+    workflowId,
+    "--input",
+    JSON.stringify({
+      tenant_context: { id: "smoke", tenant_id: "smoke" },
+      document: {
+        id: documentGenerator.executor_result.outputs.document_id,
+        kind: "crm_campaign",
+        title: "Smoke campaign pack",
+        workflow_id: "crm.document.approval",
+        artifact_id: documentGenerator.executor_result.outputs.document_id
+      },
+      approval_decision: {
+        decision: "approved",
+        approver: "forge-crm-smoke",
+        reason: "smoke document pack approved"
+      },
+      validation_report: {
+        decision: "passed",
+        issues: []
+      },
+      delivery_policy: {
+        external_delivery_requested: true,
+        channel: "email"
+      }
+    }),
+    "--context",
+    JSON.stringify({ tenant: "smoke" }),
+    "--output",
+    "json"
+  ]);
+
+  if (documentApproval.promotion?.status !== "addon_executor_result_promoted") {
+    throw new Error(`expected document approval promotion, got ${documentApproval.promotion?.status || "missing"}`);
+  }
+  if (documentApproval.executor_result.outputs.external_delivery_allowed !== true) {
+    throw new Error("expected document approval to unblock external delivery");
+  }
+
   const marketingAutomation = runForge([
     "addons",
     "execute-executor",
@@ -910,6 +964,8 @@ try {
   const contractSignaturePromotedEventCount = contractSignature.promotion?.event_count ?? 0;
   const documentPromotedArtifactCount = documentGenerator.promotion?.artifact_count ?? 0;
   const documentPromotedEventCount = documentGenerator.promotion?.event_count ?? 0;
+  const documentApprovalPromotedArtifactCount = documentApproval.promotion?.artifact_count ?? 0;
+  const documentApprovalPromotedEventCount = documentApproval.promotion?.event_count ?? 0;
   const marketingPromotedArtifactCount = marketingAutomation.promotion?.artifact_count ?? 0;
   const marketingPromotedEventCount = marketingAutomation.promotion?.event_count ?? 0;
   const marketingFormPromotedArtifactCount = marketingFormCapture.promotion?.artifact_count ?? 0;
@@ -1024,6 +1080,16 @@ try {
   }
   if (!workflowEventKinds.includes("crm.document.generated")) {
     throw new Error(`expected document generation event in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
+  }
+  if (documentApprovalPromotedArtifactCount < 2 || documentApprovalPromotedEventCount < 2) {
+    throw new Error(
+      `expected promoted document approval artifacts/events, got artifacts=${documentApprovalPromotedArtifactCount} events=${documentApprovalPromotedEventCount}`
+    );
+  }
+  for (const eventKind of ["crm.document.approved", "crm.document.delivery_unblocked"]) {
+    if (!workflowEventKinds.includes(eventKind)) {
+      throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
+    }
   }
   if (marketingPromotedArtifactCount < 4 || marketingPromotedEventCount < 3) {
     throw new Error(
@@ -1245,6 +1311,12 @@ try {
     document_generator_document_id: documentGenerator.executor_result.outputs.document_id,
     document_generator_promoted_artifacts: documentPromotedArtifactCount,
     document_generator_promoted_events: documentPromotedEventCount,
+    document_approval_status: documentApproval.status,
+    document_approval_promotion_status: documentApproval.promotion.status,
+    document_approval_state: documentApproval.executor_result.outputs.approval_state,
+    document_approval_external_delivery_allowed: documentApproval.executor_result.outputs.external_delivery_allowed,
+    document_approval_promoted_artifacts: documentApprovalPromotedArtifactCount,
+    document_approval_promoted_events: documentApprovalPromotedEventCount,
     marketing_automation_status: marketingAutomation.status,
     marketing_automation_promotion_status: marketingAutomation.promotion.status,
     marketing_automation_scheduled_state: marketingAutomation.executor_result.outputs.scheduled_state,

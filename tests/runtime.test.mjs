@@ -549,6 +549,55 @@ test("document validator fails missing lineage and passes approved Forge artifac
   assert.equal(passed.decision, "passed");
 });
 
+test("document approval executor records approved decisions as Forge artifacts and events", () => {
+  assert.equal(typeof runtime.buildDocumentApprovalDecisionResult, "function");
+
+  const result = runtime.buildDocumentApprovalDecisionResult(
+    workerRequest(
+      "forge_crm.record_document_approval",
+      {
+        tenant_context: { tenant_id: "demo" },
+        document: {
+          id: "proposal-001",
+          kind: "crm_proposal",
+          title: "Enterprise proposal",
+          workflow_id: "crm.document.approval",
+          artifact_id: "artifact-proposal-001"
+        },
+        approval_decision: {
+          decision: "approved",
+          approver: "revenue-lead",
+          reason: "Offer and legal language approved",
+          approved_at: "2026-07-21T12:00:00Z"
+        },
+        validation_report: {
+          decision: "passed",
+          issues: []
+        },
+        delivery_policy: {
+          external_delivery_requested: true,
+          channel: "email"
+        }
+      },
+      { contract_id: "crm.document.approval.executor", task_ref: "document-approval-test" }
+    )
+  );
+
+  assert.equal(result.schema_version, "forge.addon_executor_result.v1");
+  assert.equal(result.status, "completed");
+  assert.equal(result.outputs.tenant_id, "demo");
+  assert.equal(result.outputs.document_id, "proposal-001");
+  assert.equal(result.outputs.workflow_id, "crm.document.approval");
+  assert.equal(result.outputs.approval_state, "approved");
+  assert.equal(result.outputs.external_delivery_allowed, true);
+  assert.equal(result.outputs.mutates_crm_state, false);
+  assert.equal(result.outputs.forge_event_sourced, true);
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_approval_record"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_handoff_record"));
+  assert.ok(result.events.some((event) => event.kind === "crm.document.approved"));
+  assert.ok(result.events.some((event) => event.kind === "crm.document.delivery_unblocked"));
+});
+
 test("ticket SLA executor triages omnichannel tickets as Forge workflow artifacts", () => {
   const result = buildTicketSlaResult(
     workerRequest(

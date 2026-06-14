@@ -860,6 +860,35 @@
       ]
     },
     {
+      "id": "crm.document.approval.executor",
+      "title": "CRM document approval decision",
+      "contract_type": "executor",
+      "capability_id": "crm_internal_operations",
+      "workflow_extension_id": "crm_document_approval",
+      "runtime": "external_api",
+      "entrypoint": "forge_crm.record_document_approval",
+      "inputs": [
+        "document",
+        "approval_decision",
+        "validation_report",
+        "delivery_policy",
+        "tenant_context"
+      ],
+      "outputs": [
+        "crm_approval_record",
+        "crm_handoff_record"
+      ],
+      "permissions": [
+        "crm.workflow.mutate",
+        "crm.document.generate"
+      ],
+      "constraints": [
+        "approval decisions do not persist CRM state outside Forge",
+        "approved and rework states must be represented as Forge workflow events",
+        "external delivery is only unblocked after a recorded approval decision"
+      ]
+    },
+    {
       "id": "crm.operations.project_handoff.executor",
       "title": "CRM project handoff planner",
       "contract_type": "executor",
@@ -1427,6 +1456,11 @@
       "id": "crm_document",
       "title": "CRM document",
       "generic_kind": "document"
+    },
+    {
+      "id": "crm_approval_record",
+      "title": "CRM approval record",
+      "generic_kind": "artifact"
     },
     {
       "id": "crm_handoff_record",

@@ -42,6 +42,7 @@ The current CRM worker exposes seventeen Forge runtime entrypoints:
 - `forge_crm.manage_contract_signature` for contract review, signature receipts and renewal scheduling;
 - `forge_crm.generate_document` for contract, campaign, email, landing page, report and presentation drafts;
 - `forge_crm.validate_document` for approval and lineage checks;
+- `forge_crm.record_document_approval` for approval/rework decisions, handoff records and external-delivery unblock events;
 - `forge_crm.automate_campaign` for segment-backed campaign scheduling and lead nurture workflow events;
 - `forge_crm.capture_form_submission` for landing-page form submissions, consent records and lead lifecycle intake;
 - `forge_crm.ingest_omnichannel_message` for channel receipts, message threads and Forge event intake before SLA or handoff;

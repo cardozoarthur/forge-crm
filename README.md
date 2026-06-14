@@ -15,7 +15,7 @@ This repository starts the CRM as a verifiable Forge Addon:
 - `scripts/generate-crm-operating-model.mjs` emits the Forge-owned operating model for pipeline, support, marketing, documents, commercial command and AI workbench surfaces.
 - `scripts/generate-crm-web-snapshot.mjs` emits the static web app snapshot derived from the operating model.
 - `web/` contains a no-build business CRM web surface that renders workflows, knowledge relationships, document queues and Forge actions from `web/data/operating-snapshot.json`.
-- `scripts/smoke-forge-runtime.mjs` registers the worker in Forge and executes planner, tenant bootstrap, operating snapshot, relationship timeline, pipeline stage movement, operating copilot, lead classification, proposal generation, commercial follow-up forecast, account management, contract signature, document generation, document validation, marketing campaign automation, marketing form capture, omnichannel message ingestion, ticket SLA triage, project handoff planning and omnichannel handoff contracts.
+- `scripts/smoke-forge-runtime.mjs` registers the worker in Forge and executes planner, tenant bootstrap, operating snapshot, relationship timeline, pipeline stage movement, operating copilot, lead classification, proposal generation, commercial follow-up forecast, account management, contract signature, document generation, document validation, document approval, marketing campaign automation, marketing form capture, omnichannel message ingestion, ticket SLA triage, project handoff planning and omnichannel handoff contracts.
 - `workflows/crm-system-template.json` maps the enterprise CRM domains into workflow-backed modules.
 - `docs/` records the architecture boundary between `forge-core` and this Addon.
 

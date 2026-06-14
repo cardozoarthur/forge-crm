@@ -136,6 +136,18 @@ test("document workflows route draft generation through a Forge runtime contract
   assert.ok(pack.indexes.runtime_contracts.includes("crm.document.generator.executor"));
 });
 
+test("document approval workflow records approval decisions through Forge", () => {
+  const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
+  const workflow = pack.workflows.find((candidate) => candidate.id === "crm.document.approval");
+
+  assert.ok(workflow);
+  assert.ok(workflow.runtime_contracts.includes("crm.document.approval.executor"));
+  assert.ok(workflow.artifacts.includes("crm_approval_record"));
+  assert.ok(workflow.events.includes("crm.document.approved"));
+  assert.ok(workflow.events.includes("crm.document.rework_required"));
+  assert.ok(pack.indexes.runtime_contracts.includes("crm.document.approval.executor"));
+});
+
 test("commercial follow-up workflow routes forecast, goals and commission through Forge", () => {
   const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
   const workflow = pack.workflows.find((candidate) => candidate.id === "crm.followup.forecast");

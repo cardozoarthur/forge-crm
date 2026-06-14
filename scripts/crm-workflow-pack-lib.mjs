@@ -284,13 +284,20 @@ const WORKFLOWS = [
       ["validation", "rework_required", "validator issue recorded"],
       ["approved", "archived", "final artifact attached"]
     ],
-    runtime_contracts: ["crm.document.generator.executor", "crm.document.validator"],
-    artifacts: ["crm_document", "crm_presentation", "crm_handoff_record"],
-    events: ["crm.document.generated", "crm.document.submitted", "crm.document.validated", "crm.document.approved"],
+    runtime_contracts: ["crm.document.generator.executor", "crm.document.validator", "crm.document.approval.executor"],
+    artifacts: ["crm_document", "crm_presentation", "crm_approval_record", "crm_handoff_record"],
+    events: [
+      "crm.document.generated",
+      "crm.document.submitted",
+      "crm.document.validated",
+      "crm.document.approved",
+      "crm.document.rework_required",
+      "crm.document.delivery_unblocked"
+    ],
     memory_scopes: ["project", "processing"],
     permissions: ["crm.document.generate"],
     views: ["crm.document-queue"],
-    validation_gates: ["approval actor recorded", "lineage points to Forge artifact"]
+    validation_gates: ["approval actor recorded", "approval decision lineage recorded", "lineage points to Forge artifact"]
   },
   {
     id: "crm.ai.copilot.recommendation",

@@ -1508,6 +1508,141 @@ export function buildDocumentValidatorResult(request) {
   };
 }
 
+function documentId(document, fallback = "crm-document") {
+  return String(document.id || document.document_id || document.artifact_id || document.path || fallback);
+}
+
+function approvalDecisionKind(decision) {
+  const raw = String(decision.decision || decision.status || decision.state || (decision.approved === true ? "approved" : ""))
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  if (["approved", "approve", "accepted", "passed"].includes(raw)) {
+    return "approved";
+  }
+  if (["rework_required", "changes_requested", "rejected", "declined", "failed"].includes(raw)) {
+    return "rework_required";
+  }
+  return decision.approver ? "approved" : "rework_required";
+}
+
+export function buildDocumentApprovalDecisionResult(request) {
+  const input = dispatchPayload(request);
+  const context = providedContext(request);
+  const tenantId = input.tenant_id || input.tenant_context?.tenant_id || input.tenant_context?.id || context.tenant || "default";
+  const document = asObject(input.document ?? input.artifact_ref ?? input.artifact);
+  const decision = asObject(input.approval_decision ?? input.decision ?? input.approval);
+  const validationReport = asObject(input.validation_report ?? input.validation);
+  const deliveryPolicy = asObject(input.delivery_policy);
+  const id = documentId(document, dispatchEnvelope(request).subject || dispatchEnvelope(request).task_ref || "crm-document");
+  const workflowId = String(input.workflow_id || document.workflow_id || input.lineage?.workflow_id || "crm.document.approval");
+  const taskRef = dispatchEnvelope(request).task_ref || `document-approval-${slug(id, "document")}`;
+  const approvalState = approvalDecisionKind(decision);
+  const approved = approvalState === "approved";
+  const approver = decision.approver || decision.approved_by || decision.owner || "approval-operator";
+  const reason = decision.reason || decision.summary || (approved ? "Forge approval recorded" : "Forge rework required");
+  const approvedAt = decision.approved_at || decision.decided_at || null;
+  const externalDeliveryRequested = deliveryPolicy.external_delivery_requested === true || Boolean(deliveryPolicy.channel);
+  const externalDeliveryAllowed = approved && externalDeliveryRequested;
+  const validationDecision = validationReport.decision || validationReport.status || (approved ? "passed" : "review_required");
+  const reworkReasons = asArray(decision.rework_reasons ?? decision.issues)
+    .concat(asArray(validationReport.issues).map((issue) => asObject(issue).code || asObject(issue).message || issue))
+    .filter(Boolean);
+  const lineage = {
+    workflow_id: workflowId,
+    task_ref: taskRef,
+    source_contract: "crm.document.approval.executor",
+    tenant_id: tenantId,
+    document_id: id,
+    artifact_id: document.artifact_id || document.id || null
+  };
+
+  const events = [
+    {
+      kind: approved ? "crm.document.approved" : "crm.document.rework_required",
+      tenant_id: tenantId,
+      document_id: id,
+      workflow_id: workflowId,
+      approver,
+      reason,
+      approval_state: approvalState
+    }
+  ];
+
+  if (externalDeliveryAllowed) {
+    events.push({
+      kind: "crm.document.delivery_unblocked",
+      tenant_id: tenantId,
+      document_id: id,
+      workflow_id: workflowId,
+      channel: deliveryPolicy.channel || "external",
+      approver
+    });
+  }
+
+  return {
+    schema_version: "forge.addon_executor_result.v1",
+    status: "completed",
+    task_ref: taskRef,
+    summary: approved ? `Document ${id} approved by ${approver}` : `Document ${id} returned for rework`,
+    outputs: {
+      tenant_id: tenantId,
+      document_id: id,
+      workflow_id: workflowId,
+      approval_state: approvalState,
+      approver,
+      validation_decision: validationDecision,
+      external_delivery_allowed: externalDeliveryAllowed,
+      mutates_crm_state: false,
+      forge_event_sourced: true
+    },
+    artifacts: [
+      {
+        kind: "crm_approval_record",
+        id: `approval-record-${slug(id, "document")}`,
+        title: `Approval record for ${document.title || id}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          document,
+          approval_decision: {
+            ...decision,
+            decision: approvalState,
+            approver,
+            reason,
+            approved_at: approvedAt
+          },
+          validation_report: validationReport,
+          delivery_policy: deliveryPolicy,
+          external_delivery_allowed: externalDeliveryAllowed,
+          rework_reasons: reworkReasons,
+          lineage,
+          state_owner: "forge_workflow_runtime"
+        }
+      },
+      {
+        kind: "crm_handoff_record",
+        id: `document-approval-handoff-${slug(id, "document")}`,
+        title: `Document approval handoff for ${document.title || id}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          document_id: id,
+          workflow_id: workflowId,
+          approval_state: approvalState,
+          next_queue: approved ? "delivery_or_archive" : "document_rework",
+          external_delivery_allowed: externalDeliveryAllowed,
+          rework_reasons: reworkReasons,
+          lineage
+        }
+      }
+    ],
+    events,
+    context_tenant: context.tenant || tenantId
+  };
+}
+
 function campaignId(campaign, fallback = "crm-campaign") {
   return String(campaign.id || campaign.campaign_id || campaign.name || fallback);
 }
@@ -2423,6 +2558,8 @@ export function executeCrmRuntimeRequest(request) {
       return buildDocumentGeneratorResult(request);
     case "forge_crm.validate_document":
       return buildDocumentValidatorResult(request);
+    case "forge_crm.record_document_approval":
+      return buildDocumentApprovalDecisionResult(request);
     case "forge_crm.automate_campaign":
       return buildMarketingCampaignAutomationResult(request);
     case "forge_crm.capture_form_submission":

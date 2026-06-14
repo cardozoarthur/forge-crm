@@ -50,6 +50,7 @@ export function createCrmWorkerServer() {
             "forge_crm.manage_contract_signature",
             "forge_crm.generate_document",
             "forge_crm.validate_document",
+            "forge_crm.record_document_approval",
             "forge_crm.automate_campaign",
             "forge_crm.capture_form_submission",
             "forge_crm.plan_project_handoff",
