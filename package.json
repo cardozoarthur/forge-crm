@@ -1,0 +1,31 @@
+{
+  "name": "forge-crm",
+  "version": "0.1.0",
+  "private": false,
+  "description": "Forge CRM is a workflow-first enterprise CRM Addon built on Forge as a factory for agentic workflow systems.",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "test": "node --test",
+    "plan": "node scripts/generate-crm-plan.mjs",
+    "worker": "node runtime/crm-planner-worker.mjs",
+    "forge:catalog": "forge addons catalog --addon-dir addons --output json",
+    "forge:validate": "forge addons validate --addon-dir addons --output json",
+    "forge:package": "forge addons package --manifest addons/forge-crm.json --repository https://github.com/cardozoarthur/forge-crm --channel stable --package-path forge-crm-0.1.0.package.json --output json"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cardozoarthur/forge-crm.git"
+  },
+  "keywords": [
+    "forge",
+    "crm",
+    "workflow",
+    "addon",
+    "agentic-systems"
+  ]
+}
+

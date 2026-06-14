@@ -1,0 +1,153 @@
+{
+  "schema_version": "forge.crm_system_template.v1",
+  "id": "forge-crm-enterprise-template",
+  "title": "Forge CRM Enterprise Template",
+  "principle": "Forge is the workflow system factory; CRM modules are Addon-defined workflow applications.",
+  "modules": [
+    {
+      "id": "relationship",
+      "title": "Relationship",
+      "workflow_extensions": [
+        "crm_entity_lifecycle",
+        "crm_pipeline_kanban"
+      ],
+      "objects": [
+        "lead",
+        "contact",
+        "company",
+        "opportunity",
+        "funnel",
+        "timeline_event"
+      ],
+      "forge_requirements": [
+        "workflow-backed state",
+        "scoped memory",
+        "observable timeline"
+      ]
+    },
+    {
+      "id": "commercial",
+      "title": "Commercial",
+      "workflow_extensions": [
+        "crm_proposal_generation",
+        "crm_contract_lifecycle",
+        "crm_followup_sequence",
+        "crm_forecast_review"
+      ],
+      "objects": [
+        "proposal",
+        "contract",
+        "signature",
+        "forecast",
+        "target",
+        "commission",
+        "account_plan"
+      ],
+      "forge_requirements": [
+        "artifact lineage",
+        "approval gates",
+        "scheduled follow-up"
+      ]
+    },
+    {
+      "id": "support",
+      "title": "Support",
+      "workflow_extensions": [
+        "crm_ticket_sla",
+        "crm_omnichannel_message"
+      ],
+      "objects": [
+        "ticket",
+        "sla_policy",
+        "message",
+        "conversation",
+        "handoff"
+      ],
+      "forge_requirements": [
+        "event inbox",
+        "waiting states",
+        "ownership and escalation"
+      ]
+    },
+    {
+      "id": "marketing",
+      "title": "Marketing",
+      "workflow_extensions": [
+        "crm_campaign_lifecycle",
+        "crm_lead_nurture"
+      ],
+      "objects": [
+        "campaign",
+        "segment",
+        "automation",
+        "landing_page",
+        "form",
+        "nurture_step"
+      ],
+      "forge_requirements": [
+        "triggered workflows",
+        "schedule loops",
+        "campaign artifacts"
+      ]
+    },
+    {
+      "id": "operations",
+      "title": "Operations",
+      "workflow_extensions": [
+        "crm_project_handoff",
+        "crm_document_approval"
+      ],
+      "objects": [
+        "project",
+        "task",
+        "approval",
+        "document",
+        "internal_flow"
+      ],
+      "forge_requirements": [
+        "handoff visibility",
+        "approval audit",
+        "document queues"
+      ]
+    },
+    {
+      "id": "ai_automation",
+      "title": "AI and Automation",
+      "workflow_extensions": [
+        "crm_ai_copilot_recommendation"
+      ],
+      "objects": [
+        "lead_score",
+        "opportunity_priority",
+        "executive_summary",
+        "risk_analysis",
+        "next_best_action"
+      ],
+      "forge_requirements": [
+        "bounded context",
+        "executor policy",
+        "cost and evidence observability"
+      ]
+    }
+  ],
+  "core_gap_policy": {
+    "repository": "forge-core",
+    "gap_categories": [
+      "durable workflows",
+      "interrupt/resume",
+      "checkpoints",
+      "ownership",
+      "waiting states",
+      "approvals",
+      "subworkflows",
+      "schedules",
+      "triggers",
+      "graph execution",
+      "memory promotion",
+      "artifact lineage",
+      "observability"
+    ],
+    "rule": "Do not patch these categories locally in the CRM Addon. Promote them to forge-core implementation work."
+  }
+}
+
