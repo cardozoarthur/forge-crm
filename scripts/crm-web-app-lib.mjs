@@ -1613,6 +1613,15 @@ function actions() {
       command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.tenant.bootstrap.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
     },
     {
+      id: "crm.classify-lead",
+      label: "Classify lead",
+      surface_id: "crm.relationship-graph",
+      contract_id: "crm.lead.classifier.executor",
+      requires_permission: "crm.ai.recommend",
+      mutates_workflow: true,
+      command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.lead.classifier.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
+    },
+    {
       id: "crm.inspect-observability",
       label: "Inspect observability",
       surface_id: "crm.system-map",

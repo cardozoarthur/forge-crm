@@ -6,9 +6,9 @@
   "addon_name": "Forge CRM",
   "addon_version": "0.1.0",
   "manifest_path": "addons/forge-crm.json",
-  "manifest_sha256": "69bb826570ff84eeadc4f3983803e663fd9e29daee81ef279f994074b7de2735",
-  "manifest_canonical_sha256": "0d616248aeebdfa980fc194b5b65d00f5ef8ad6e0f3f57315d8dd0d41c299653",
-  "manifest_bytes": 140184,
+  "manifest_sha256": "8f00fa5bedc295d4988e4b983f4e571b524f86325b61e4849f4aded55fd5c909",
+  "manifest_canonical_sha256": "f57306aa084dd58023af7e262d8aaebfe787a8e16924ac949cbaacfd8aa56266",
+  "manifest_bytes": 141509,
   "distribution": {
     "repository": "https://github.com/cardozoarthur/forge-crm",
     "channel": "stable",
@@ -23,7 +23,7 @@
     "scheme": "ed25519_detached",
     "signature": "",
     "public_key": "",
-    "payload_sha256": "0638c4473a4cb615ad1d92cf07fa31cb1751dc00e581f42649073cc935226342",
+    "payload_sha256": "6ec5c7c4870c04299a66211e35c7c16a321687f941ecf1f306c1be97f6dd4b2f",
     "verification_note": "package records detached signature metadata; trust verification is a marketplace policy gate"
   },
   "summary": {
@@ -2386,6 +2386,50 @@
               "cost_entries",
               "metric_samples",
               "log_entries",
+              "tenant_context"
+            ]
+          },
+          {
+            "id": "crm.tui.classify-lead",
+            "label": "Classify lead",
+            "description": "Run automatic lead classification through Forge AI recommendation artifacts before pipeline routing.",
+            "palette_group": "CRM",
+            "source_panel": "crm.operational-cockpit",
+            "type": "command",
+            "target": "forge addons execute-executor",
+            "method": "CLI",
+            "permission": "crm.ai.recommend",
+            "requires_confirmation": false,
+            "risk_level": "medium",
+            "mutates_workflow": true,
+            "command_template": [
+              "addons",
+              "execute-executor",
+              "--addon",
+              "forge.addon.crm",
+              "--contract",
+              "crm.lead.classifier.executor",
+              "--worker",
+              "<worker-id>",
+              "--task",
+              "<task-ref>",
+              "--input",
+              "<json>",
+              "--context",
+              "<json>",
+              "--output",
+              "json"
+            ],
+            "keywords": [
+              "crm",
+              "lead",
+              "classification",
+              "ai"
+            ],
+            "payload_schema": [
+              "lead_profile",
+              "organization_memory",
+              "pipeline_context",
               "tenant_context"
             ]
           },

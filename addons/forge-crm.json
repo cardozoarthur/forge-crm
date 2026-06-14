@@ -2192,6 +2192,50 @@
           ]
         },
         {
+          "id": "crm.tui.classify-lead",
+          "label": "Classify lead",
+          "description": "Run automatic lead classification through Forge AI recommendation artifacts before pipeline routing.",
+          "palette_group": "CRM",
+          "source_panel": "crm.operational-cockpit",
+          "type": "command",
+          "target": "forge addons execute-executor",
+          "method": "CLI",
+          "permission": "crm.ai.recommend",
+          "requires_confirmation": false,
+          "risk_level": "medium",
+          "mutates_workflow": true,
+          "command_template": [
+            "addons",
+            "execute-executor",
+            "--addon",
+            "forge.addon.crm",
+            "--contract",
+            "crm.lead.classifier.executor",
+            "--worker",
+            "<worker-id>",
+            "--task",
+            "<task-ref>",
+            "--input",
+            "<json>",
+            "--context",
+            "<json>",
+            "--output",
+            "json"
+          ],
+          "keywords": [
+            "crm",
+            "lead",
+            "classification",
+            "ai"
+          ],
+          "payload_schema": [
+            "lead_profile",
+            "organization_memory",
+            "pipeline_context",
+            "tenant_context"
+          ]
+        },
+        {
           "id": "crm.tui.enrich-relationship-profile",
           "label": "Enrich relationship profile",
           "description": "Prepare contact or company enrichment artifacts and timeline evidence through Forge.",

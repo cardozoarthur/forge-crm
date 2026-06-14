@@ -934,6 +934,7 @@ test("manifest exposes a Forge TUI operational cockpit with permission-gated CRM
   const actionIds = new Set(cockpit.actions.map((action) => action.id));
   for (const actionId of [
     "crm.tui.refresh-operating-snapshot",
+    "crm.tui.classify-lead",
     "crm.tui.enrich-relationship-profile",
     "crm.tui.review-followup-forecast",
     "crm.tui.normalize-channel-intake",
@@ -974,6 +975,17 @@ test("manifest exposes a Forge TUI operational cockpit with permission-gated CRM
   assert.ok(formCapture.keywords.includes("lead"));
   assert.ok(formCapture.payload_schema.includes("form_submission"));
   assert.ok(formCapture.payload_schema.includes("consent_policy"));
+
+  const leadClassifier = cockpit.actions.find((action) => action.id === "crm.tui.classify-lead");
+  assert.ok(leadClassifier);
+  assert.equal(leadClassifier.permission, "crm.ai.recommend");
+  assert.equal(leadClassifier.mutates_workflow, true);
+  assert.equal(leadClassifier.requires_confirmation, false);
+  assert.ok(leadClassifier.command_template.includes("crm.lead.classifier.executor"));
+  assert.ok(leadClassifier.keywords.includes("lead"));
+  assert.ok(leadClassifier.keywords.includes("classification"));
+  assert.ok(leadClassifier.payload_schema.includes("lead_profile"));
+  assert.ok(leadClassifier.payload_schema.includes("organization_memory"));
 
   for (const action of cockpit.actions) {
     assert.equal(action.palette_group, "CRM");
