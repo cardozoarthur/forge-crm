@@ -6,9 +6,9 @@
   "addon_name": "Forge CRM",
   "addon_version": "0.1.0",
   "manifest_path": "addons/forge-crm.json",
-  "manifest_sha256": "bcf8d56e6b7ecac531b19dc0fbbcd654d16484c9bc10fa8c5fef2410610fc267",
-  "manifest_canonical_sha256": "34bd67d799d83fc9deb3a815f741fd4d592fe9c65e49d3766c6eb882e4ff132c",
-  "manifest_bytes": 91431,
+  "manifest_sha256": "9642cce840e953c03aceb3eb7587ad5373721f842d84d8ba488c8d76323d1876",
+  "manifest_canonical_sha256": "696dbf7ee078104efb72c7644965530b8e5982d092d8a34b896db99b95f54910",
+  "manifest_bytes": 94117,
   "distribution": {
     "repository": "https://github.com/cardozoarthur/forge-crm",
     "channel": "stable",
@@ -23,15 +23,15 @@
     "scheme": "ed25519_detached",
     "signature": "",
     "public_key": "",
-    "payload_sha256": "ba40210a7f6468c77dda9a1f2966ed20b253711eced58b7e988b0e053b7f4209",
+    "payload_sha256": "3db23627a470bdc7c7084bda8881e0657abf33666a97ddac50756b72827757ca",
     "verification_note": "package records detached signature metadata; trust verification is a marketplace policy gate"
   },
   "summary": {
     "capability_count": 9,
     "dependency_count": 1,
     "permission_count": 5,
-    "workflow_extension_count": 22,
-    "runtime_contract_count": 29,
+    "workflow_extension_count": 23,
+    "runtime_contract_count": 30,
     "view_count": 11,
     "event_adapter_count": 2,
     "integration_count": 4,
@@ -83,6 +83,7 @@
       "crm.marketing.campaign_automation.executor",
       "crm.marketing.landing_page.executor",
       "crm.marketing.form_capture.executor",
+      "crm.support.channel_intake.executor",
       "crm.support.omnichannel_message.executor",
       "crm.support.ticket_sla.executor",
       "crm.omnichannel.handoff"
@@ -457,6 +458,7 @@
           "observability"
         ],
         "workflow_extensions": [
+          "crm_omnichannel_channel_intake",
           "crm_ticket_sla",
           "crm_omnichannel_message"
         ],
@@ -474,6 +476,7 @@
           "crm.ticket.created"
         ],
         "artifact_types": [
+          "crm_channel_intake",
           "crm_support_summary",
           "crm_message_thread",
           "crm_channel_receipt"
@@ -770,6 +773,11 @@
         "id": "crm_ticket_sla",
         "kind": "support_workflow",
         "description": "Run ticket and SLA workflows with ownership, waiting states and escalation."
+      },
+      {
+        "id": "crm_omnichannel_channel_intake",
+        "kind": "event_workflow",
+        "description": "Normalize approved chat, WhatsApp, Telegram and email adapter events before ticket creation."
       },
       {
         "id": "crm_omnichannel_message",
@@ -1592,6 +1600,35 @@
         ]
       },
       {
+        "id": "crm.support.channel_intake.executor",
+        "title": "CRM channel intake normalization",
+        "contract_type": "executor",
+        "capability_id": "crm_support_omnichannel",
+        "workflow_extension_id": "crm_omnichannel_channel_intake",
+        "runtime": "external_api",
+        "entrypoint": "forge_crm.normalize_channel_intake",
+        "inputs": [
+          "channel",
+          "provider_event",
+          "channel_policy",
+          "routing_policy",
+          "tenant_context"
+        ],
+        "outputs": [
+          "crm_channel_intake",
+          "crm_channel_receipt",
+          "crm_message_thread"
+        ],
+        "permissions": [
+          "crm.omnichannel.ingest"
+        ],
+        "constraints": [
+          "channel intake normalization does not persist CRM state outside Forge",
+          "approved channel adapter must be verified before ticket creation",
+          "normalized channel message artifacts must exist before ticket SLA triage"
+        ]
+      },
+      {
         "id": "crm.support.omnichannel_message.executor",
         "title": "CRM omnichannel message ingestion",
         "contract_type": "executor",
@@ -1962,6 +1999,50 @@
               "opportunity",
               "followup_policy",
               "forecast_policy"
+            ]
+          },
+          {
+            "id": "crm.tui.normalize-channel-intake",
+            "label": "Normalize channel intake",
+            "description": "Normalize and authorize an approved support channel event before ticket creation.",
+            "palette_group": "CRM",
+            "source_panel": "crm.operational-cockpit",
+            "type": "command",
+            "target": "forge addons execute-executor",
+            "method": "CLI",
+            "permission": "crm.omnichannel.ingest",
+            "requires_confirmation": true,
+            "risk_level": "high",
+            "mutates_workflow": true,
+            "command_template": [
+              "addons",
+              "execute-executor",
+              "--addon",
+              "forge.addon.crm",
+              "--contract",
+              "crm.support.channel_intake.executor",
+              "--worker",
+              "<worker-id>",
+              "--task",
+              "<task-ref>",
+              "--input",
+              "<json>",
+              "--context",
+              "<json>",
+              "--output",
+              "json"
+            ],
+            "keywords": [
+              "crm",
+              "support",
+              "channel",
+              "omnichannel"
+            ],
+            "payload_schema": [
+              "channel",
+              "provider_event",
+              "channel_policy",
+              "routing_policy"
             ]
           },
           {
@@ -2722,6 +2803,11 @@
         "id": "crm_message_thread",
         "title": "CRM message thread",
         "generic_kind": "message"
+      },
+      {
+        "id": "crm_channel_intake",
+        "title": "CRM channel intake",
+        "generic_kind": "artifact"
       },
       {
         "id": "crm_channel_receipt",

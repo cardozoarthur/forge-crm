@@ -99,6 +99,7 @@ try {
       "forge_crm.automate_campaign",
       "forge_crm.publish_landing_page",
       "forge_crm.capture_form_submission",
+      "forge_crm.normalize_channel_intake",
       "forge_crm.ingest_omnichannel_message",
       "forge_crm.triage_ticket_sla",
       "forge_crm.plan_project_handoff",
@@ -130,6 +131,7 @@ try {
       "crm.marketing.campaign_automation.executor",
       "crm.marketing.landing_page.executor",
       "crm.marketing.form_capture.executor",
+      "crm.support.channel_intake.executor",
       "crm.support.omnichannel_message.executor",
       "crm.support.ticket_sla.executor",
       "crm.operations.project_handoff.executor",
@@ -1322,6 +1324,61 @@ try {
     throw new Error(`expected marketing form capture lead state captured, got ${marketingFormCapture.executor_result.outputs.lead_state}`);
   }
 
+  const channelIntake = runForge([
+    "addons",
+    "execute-executor",
+    "--addon-dir",
+    "addons",
+    "--addon",
+    "forge.addon.crm",
+    "--contract",
+    "crm.support.channel_intake.executor",
+    "--worker",
+    workerId,
+    "--task",
+    "crm-smoke-channel-intake",
+    "--workflow",
+    workflowId,
+    "--input",
+    JSON.stringify({
+      tenant_context: { id: "smoke", tenant_id: "smoke" },
+      channel: "telegram",
+      provider_event: {
+        id: "tg-smoke-001",
+        provider: "telegram-bot-api",
+        received_at: "2026-07-04T11:20:00Z",
+        payload: {
+          chat_id: "chat-smoke",
+          from: "@opslead",
+          text: "Operations are blocked and need support."
+        }
+      },
+      channel_policy: {
+        allowed_channels: ["email", "whatsapp", "telegram", "chat"],
+        approved_adapters: ["telegram-bot-api"],
+        require_human_authorization: true
+      },
+      routing_policy: {
+        default_queue: "support",
+        create_ticket: true
+      }
+    }),
+    "--context",
+    JSON.stringify({ tenant: "smoke" }),
+    "--output",
+    "json"
+  ]);
+
+  if (channelIntake.promotion?.status !== "addon_executor_result_promoted") {
+    throw new Error(`expected channel intake promotion, got ${channelIntake.promotion?.status || "missing"}`);
+  }
+  if (channelIntake.executor_result.outputs.intake_state !== "authorized") {
+    throw new Error(`expected channel intake authorized state, got ${channelIntake.executor_result.outputs.intake_state}`);
+  }
+  if (channelIntake.executor_result.outputs.ticket_creation_allowed !== true) {
+    throw new Error("expected channel intake to allow ticket creation for approved adapter");
+  }
+
   const omnichannelIngestion = runForge([
     "addons",
     "execute-executor",
@@ -1631,6 +1688,8 @@ try {
   const landingPagePromotedEventCount = marketingLandingPage.promotion?.event_count ?? 0;
   const marketingFormPromotedArtifactCount = marketingFormCapture.promotion?.artifact_count ?? 0;
   const marketingFormPromotedEventCount = marketingFormCapture.promotion?.event_count ?? 0;
+  const channelIntakePromotedArtifactCount = channelIntake.promotion?.artifact_count ?? 0;
+  const channelIntakePromotedEventCount = channelIntake.promotion?.event_count ?? 0;
   const omnichannelIngestionPromotedArtifactCount = omnichannelIngestion.promotion?.artifact_count ?? 0;
   const omnichannelIngestionPromotedEventCount = omnichannelIngestion.promotion?.event_count ?? 0;
   const ticketSlaPromotedArtifactCount = ticketSla.promotion?.artifact_count ?? 0;
@@ -1862,6 +1921,16 @@ try {
     );
   }
   for (const eventKind of ["crm.form.submitted", "crm.lead.created", "crm.nurture.step_due"]) {
+    if (!workflowEventKinds.includes(eventKind)) {
+      throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
+    }
+  }
+  if (channelIntakePromotedArtifactCount < 3 || channelIntakePromotedEventCount < 2) {
+    throw new Error(
+      `expected promoted channel intake artifacts/events, got artifacts=${channelIntakePromotedArtifactCount} events=${channelIntakePromotedEventCount}`
+    );
+  }
+  for (const eventKind of ["crm.channel.authorized", "crm.message.normalized"]) {
     if (!workflowEventKinds.includes(eventKind)) {
       throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
     }
@@ -2144,6 +2213,12 @@ try {
     marketing_form_capture_consent_state: marketingFormCapture.executor_result.outputs.consent_state,
     marketing_form_capture_promoted_artifacts: marketingFormPromotedArtifactCount,
     marketing_form_capture_promoted_events: marketingFormPromotedEventCount,
+    channel_intake_status: channelIntake.status,
+    channel_intake_promotion_status: channelIntake.promotion.status,
+    channel_intake_state: channelIntake.executor_result.outputs.intake_state,
+    channel_intake_ticket_creation_allowed: channelIntake.executor_result.outputs.ticket_creation_allowed,
+    channel_intake_promoted_artifacts: channelIntakePromotedArtifactCount,
+    channel_intake_promoted_events: channelIntakePromotedEventCount,
     omnichannel_ingestion_status: omnichannelIngestion.status,
     omnichannel_ingestion_promotion_status: omnichannelIngestion.promotion.status,
     omnichannel_ingestion_ticket_state: omnichannelIngestion.executor_result.outputs.ticket_state,

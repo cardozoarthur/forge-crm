@@ -36,6 +36,7 @@ const WORKFLOW_EDGES = [
   ["crm.marketing.landing_page", "crm.lead.lifecycle", "published form schema routes captured leads"],
   ["crm.marketing.landing_page", "crm.lead.nurture", "landing page routing prepares nurture entry"],
   ["crm.lead.nurture", "crm.lead.lifecycle", "response classification updates lead lifecycle"],
+  ["crm.omnichannel.channel_intake", "crm.ticket.sla", "approved channel intake creates SLA-ready support work"],
   ["crm.ticket.sla", "crm.project.handoff", "resolved support issue can create internal handoff"],
   ["crm.project.handoff", "crm.document.approval", "handoff deliverables enter document queue"],
   ["crm.document.approval", "crm.proposal.approval", "document validation gates proposal delivery"],
@@ -336,9 +337,31 @@ function buildOperationalWorkbench(workflows, actionList, documentQueueSnapshot)
       title: "Support queue",
       surface_id: "crm.support-queue",
       workflow_ids: workflowIdsForSurface(workflows, "crm.support-queue"),
-      action_ids: checkedActionIds(actionList, ["crm.ingest-omnichannel-message", "crm.triage-ticket-sla", "crm.deliver-handoff"])
+      action_ids: checkedActionIds(actionList, ["crm.normalize-channel-intake", "crm.ingest-omnichannel-message", "crm.triage-ticket-sla", "crm.deliver-handoff"])
     }),
     channels: ["chat", "whatsapp", "telegram", "email"],
+    channel_intake: [
+      {
+        intake_id: "intake-telegram-implantacao",
+        channel: "telegram",
+        provider: "telegram-bot-api",
+        workflow_id: "crm.omnichannel.channel_intake",
+        contract_id: "crm.support.channel_intake.executor",
+        intake_state: "authorized",
+        ticket_creation_allowed: true,
+        action_id: "crm.normalize-channel-intake"
+      },
+      {
+        intake_id: "intake-whatsapp-policy",
+        channel: "whatsapp",
+        provider: "whatsapp-cloud",
+        workflow_id: "crm.omnichannel.channel_intake",
+        contract_id: "crm.support.channel_intake.executor",
+        intake_state: "authorization_check",
+        ticket_creation_allowed: false,
+        action_id: "crm.normalize-channel-intake"
+      }
+    ],
     sla_targets: [
       { priority: "p1", first_response_minutes: 15, resolution_hours: 4 },
       { priority: "p2", first_response_minutes: 60, resolution_hours: 12 }
@@ -1153,6 +1176,15 @@ function actions() {
       requires_permission: "crm.workflow.mutate",
       mutates_workflow: true,
       command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.workflow.evolution.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
+    },
+    {
+      id: "crm.normalize-channel-intake",
+      label: "Normalize channel intake",
+      surface_id: "crm.support-queue",
+      contract_id: "crm.support.channel_intake.executor",
+      requires_permission: "crm.omnichannel.ingest",
+      mutates_workflow: true,
+      command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.support.channel_intake.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
     },
     {
       id: "crm.ingest-omnichannel-message",

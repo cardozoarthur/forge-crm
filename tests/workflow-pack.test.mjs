@@ -315,6 +315,25 @@ test("support workflow ingests omnichannel messages before ticket SLA and handof
   assert.ok(pack.indexes.runtime_contracts.includes("crm.support.omnichannel_message.executor"));
 });
 
+test("support channel intake normalizes approved adapters before ticket SLA", () => {
+  const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
+  const intakeWorkflow = pack.workflows.find((candidate) => candidate.id === "crm.omnichannel.channel_intake");
+  const ticketWorkflow = pack.workflows.find((candidate) => candidate.id === "crm.ticket.sla");
+
+  assert.ok(intakeWorkflow);
+  assert.ok(ticketWorkflow);
+  assert.equal(intakeWorkflow.domain, "support");
+  assert.ok(intakeWorkflow.runtime_contracts.includes("crm.support.channel_intake.executor"));
+  assert.ok(intakeWorkflow.artifacts.includes("crm_channel_intake"));
+  assert.ok(intakeWorkflow.artifacts.includes("crm_channel_receipt"));
+  assert.ok(intakeWorkflow.events.includes("crm.channel.authorized"));
+  assert.ok(intakeWorkflow.events.includes("crm.message.normalized"));
+  assert.ok(intakeWorkflow.validation_gates.includes("approved channel adapter required before ticket creation"));
+  assert.ok(ticketWorkflow.depends_on_workflows.includes("crm.omnichannel.channel_intake"));
+  assert.ok(pack.indexes.runtime_contracts.includes("crm.support.channel_intake.executor"));
+  assert.ok(pack.indexes.artifact_types.includes("crm_channel_intake"));
+});
+
 test("marketing workflows route campaign automation and nurture through Forge", () => {
   const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
 

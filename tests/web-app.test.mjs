@@ -70,6 +70,7 @@ test("web app snapshot provides Forge command actions instead of local automatio
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.commercial.followup_forecast.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.commercial.account_management.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.commercial.contract_signature.executor"));
+  assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.support.channel_intake.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.support.omnichannel_message.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.support.ticket_sla.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.operations.project_handoff.executor"));
@@ -194,6 +195,8 @@ test("web app snapshot exposes an operational workbench backed by Forge artifact
   assert.ok(panels.get("commercial_command").commission.plan_action_id === "crm.review-followup-forecast");
   assert.ok(panels.get("support_queue").tickets.some((ticket) => ticket.sla_status === "at_risk"));
   assert.ok(panels.get("support_queue").channels.includes("whatsapp"));
+  assert.ok(panels.get("support_queue").channel_intake.some((intake) => intake.action_id === "crm.normalize-channel-intake"));
+  assert.ok(panels.get("support_queue").channel_intake.every((intake) => intake.contract_id === "crm.support.channel_intake.executor"));
   assert.ok(panels.get("marketing_calendar").campaigns.some((campaign) => campaign.next_action_id === "crm.automate-campaign"));
   assert.ok(panels.get("marketing_calendar").landing_pages.some((page) => page.publish_action_id === "crm.publish-landing-page"));
   assert.ok(panels.get("marketing_calendar").landing_pages.every((page) => page.contract_id === "crm.marketing.landing_page.executor"));

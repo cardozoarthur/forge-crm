@@ -1334,6 +1334,58 @@ test("omnichannel message ingestion records channel intake before SLA or handoff
   assert.ok(result.events.some((event) => event.kind === "crm.ticket.created"));
 });
 
+test("channel intake executor normalizes approved provider events before ticket creation", () => {
+  assert.equal(typeof runtime.buildChannelIntakeNormalizationResult, "function");
+
+  const result = runtime.buildChannelIntakeNormalizationResult(
+    workerRequest(
+      "forge_crm.normalize_channel_intake",
+      {
+        tenant_context: { tenant_id: "demo" },
+        channel: "telegram",
+        provider_event: {
+          id: "tg-update-001",
+          provider: "telegram-bot-api",
+          received_at: "2026-07-21T12:10:00Z",
+          payload: {
+            chat_id: "chat-42",
+            from: "@arthur",
+            text: "Contrato aprovado, preciso abrir suporte para implantação."
+          }
+        },
+        channel_policy: {
+          allowed_channels: ["email", "whatsapp", "telegram", "chat"],
+          approved_adapters: ["telegram-bot-api"],
+          require_human_authorization: true
+        },
+        routing_policy: {
+          default_queue: "support",
+          create_ticket: true
+        }
+      },
+      { contract_id: "crm.support.channel_intake.executor", task_ref: "channel-intake-test" }
+    )
+  );
+
+  assert.equal(result.schema_version, "forge.addon_executor_result.v1");
+  assert.equal(result.status, "completed");
+  assert.equal(result.outputs.tenant_id, "demo");
+  assert.equal(result.outputs.channel, "telegram");
+  assert.equal(result.outputs.provider, "telegram-bot-api");
+  assert.equal(result.outputs.intake_state, "authorized");
+  assert.equal(result.outputs.ticket_creation_allowed, true);
+  assert.equal(result.outputs.workflow_id, "crm.omnichannel.channel_intake");
+  assert.equal(result.outputs.next_workflow_id, "crm.ticket.sla");
+  assert.equal(result.outputs.mutates_crm_state, false);
+  assert.equal(result.outputs.forge_event_sourced, true);
+
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_channel_intake"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_channel_receipt"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_message_thread"));
+  assert.ok(result.events.some((event) => event.kind === "crm.channel.authorized"));
+  assert.ok(result.events.some((event) => event.kind === "crm.message.normalized"));
+});
+
 test("marketing campaign automation executor schedules nurture workflows as Forge artifacts", () => {
   assert.equal(typeof runtime.buildMarketingCampaignAutomationResult, "function");
 

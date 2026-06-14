@@ -507,6 +507,27 @@ test("manifest exposes CRM omnichannel message ingestion as a Forge-owned execut
   assert.equal(messageListener.runtime_contract_id, "crm.support.omnichannel_message.executor");
 });
 
+test("manifest exposes CRM channel intake normalization as a Forge-owned executor", () => {
+  const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.support.channel_intake.executor");
+  assert.ok(contract);
+  assert.equal(contract.contract_type, "executor");
+  assert.equal(contract.capability_id, "crm_support_omnichannel");
+  assert.equal(contract.workflow_extension_id, "crm_omnichannel_channel_intake");
+  assert.equal(contract.entrypoint, "forge_crm.normalize_channel_intake");
+  assert.deepEqual(contract.permissions, ["crm.omnichannel.ingest"]);
+  for (const input of ["channel", "provider_event", "channel_policy", "routing_policy", "tenant_context"]) {
+    assert.ok(contract.inputs.includes(input), `missing channel intake input ${input}`);
+  }
+  assert.ok(contract.outputs.includes("crm_channel_intake"));
+  assert.ok(contract.outputs.includes("crm_channel_receipt"));
+  assert.ok(contract.outputs.includes("crm_message_thread"));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("approved channel adapter")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("before ticket creation")));
+
+  const artifactTypes = new Set(manifest.artifact_types.map((artifact) => artifact.id));
+  assert.ok(artifactTypes.has("crm_channel_intake"));
+});
+
 test("manifest exposes CRM marketing campaign automation as a Forge-owned executor", () => {
   const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.marketing.campaign_automation.executor");
   assert.ok(contract);
@@ -657,6 +678,7 @@ test("manifest exposes a Forge TUI operational cockpit with permission-gated CRM
   for (const actionId of [
     "crm.tui.refresh-operating-snapshot",
     "crm.tui.review-followup-forecast",
+    "crm.tui.normalize-channel-intake",
     "crm.tui.triage-ticket-sla",
     "crm.tui.automate-campaign",
     "crm.tui.publish-landing-page",

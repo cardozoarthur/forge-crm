@@ -23,11 +23,11 @@
     "external_delivery_requires_approval": true
   },
   "metrics": {
-    "workflow_count": 19,
+    "workflow_count": 20,
     "business_module_count": 7,
     "surface_count": 10,
-    "artifact_type_count": 58,
-    "event_type_count": 68,
+    "artifact_type_count": 59,
+    "event_type_count": 71,
     "complete_scope": true
   },
   "surfaces": [
@@ -291,11 +291,17 @@
       "permission": "crm.omnichannel.ingest",
       "state_source": "forge_workflow_artifacts_and_events",
       "workflow_ids": [
+        "crm.omnichannel.channel_intake",
         "crm.ticket.sla",
         "crm.work.queue.orchestration",
         "crm.enterprise.customer_journey"
       ],
       "lanes": [
+        "adapter_event_received",
+        "authorization_check",
+        "normalized",
+        "authorization_blocked",
+        "ready_for_ticket",
         "received",
         "triage",
         "owner_assigned",
@@ -321,6 +327,7 @@
       ],
       "artifact_types": [
         "crm_business_runbook",
+        "crm_channel_intake",
         "crm_channel_receipt",
         "crm_cross_domain_handoff_map",
         "crm_enterprise_journey_map",
@@ -333,10 +340,13 @@
         "crm_work_queue_snapshot"
       ],
       "event_types": [
+        "crm.channel.authorization_blocked",
+        "crm.channel.authorized",
         "crm.handoff.delivered",
         "crm.journey.acceptance_reported",
         "crm.journey.stage_completed",
         "crm.journey.started",
+        "crm.message.normalized",
         "crm.message.received",
         "crm.queue.assignment_planned",
         "crm.queue.risk_flagged",
@@ -717,10 +727,12 @@
       "id": "support",
       "complete": true,
       "workflow_ids": [
+        "crm.omnichannel.channel_intake",
         "crm.ticket.sla",
         "crm.work.queue.orchestration"
       ],
       "artifact_types": [
+        "crm_channel_intake",
         "crm_channel_receipt",
         "crm_handoff_record",
         "crm_message_thread",
@@ -730,7 +742,10 @@
         "crm_work_queue_snapshot"
       ],
       "event_types": [
+        "crm.channel.authorization_blocked",
+        "crm.channel.authorized",
         "crm.handoff.delivered",
+        "crm.message.normalized",
         "crm.message.received",
         "crm.queue.assignment_planned",
         "crm.queue.risk_flagged",
@@ -740,9 +755,12 @@
       ],
       "validation_gates": [
         "SLA wait state explicit",
+        "approved channel adapter required before ticket creation",
+        "channel intake must not persist CRM state outside Forge",
         "channel receipt attached",
         "every queue item cites artifact or event evidence",
         "handoff receipt attached",
+        "normalized message artifact required before SLA workflow",
         "ownership gaps and SLA risks are returned to work before closure",
         "queue actions require Forge workflow approval before mutation"
       ]
@@ -1219,6 +1237,41 @@
           "account owner visible",
           "renewal state explicit",
           "expansion forecast event-backed"
+        ]
+      },
+      {
+        "id": "crm.omnichannel.channel_intake",
+        "title": "Approved omnichannel channel intake",
+        "domain": "support",
+        "state_count": 5,
+        "states": [
+          "adapter_event_received",
+          "authorization_check",
+          "normalized",
+          "authorization_blocked",
+          "ready_for_ticket"
+        ],
+        "wait_states": [],
+        "runtime_contracts": [
+          "crm.support.channel_intake.executor"
+        ],
+        "artifact_types": [
+          "crm_channel_intake",
+          "crm_channel_receipt",
+          "crm_message_thread"
+        ],
+        "event_types": [
+          "crm.channel.authorized",
+          "crm.channel.authorization_blocked",
+          "crm.message.normalized"
+        ],
+        "surface_ids": [
+          "crm.support-queue"
+        ],
+        "validation_gates": [
+          "approved channel adapter required before ticket creation",
+          "normalized message artifact required before SLA workflow",
+          "channel intake must not persist CRM state outside Forge"
         ]
       },
       {
@@ -1841,6 +1894,12 @@
         "state_owner": "forge_workflow_runtime"
       },
       {
+        "from": "crm.omnichannel.channel_intake",
+        "to": "crm.ticket.sla",
+        "reason": "approved channel intake creates SLA-ready support work",
+        "state_owner": "forge_workflow_runtime"
+      },
+      {
         "from": "crm.ticket.sla",
         "to": "crm.project.handoff",
         "reason": "resolved support issue can create internal handoff",
@@ -2327,11 +2386,13 @@
         "state_source": "forge_workflow_artifacts_and_events",
         "mutation_requires_forge": true,
         "workflow_ids": [
+          "crm.omnichannel.channel_intake",
           "crm.ticket.sla",
           "crm.work.queue.orchestration",
           "crm.enterprise.customer_journey"
         ],
         "action_ids": [
+          "crm.normalize-channel-intake",
           "crm.ingest-omnichannel-message",
           "crm.triage-ticket-sla",
           "crm.deliver-handoff"
@@ -2341,6 +2402,28 @@
           "whatsapp",
           "telegram",
           "email"
+        ],
+        "channel_intake": [
+          {
+            "intake_id": "intake-telegram-implantacao",
+            "channel": "telegram",
+            "provider": "telegram-bot-api",
+            "workflow_id": "crm.omnichannel.channel_intake",
+            "contract_id": "crm.support.channel_intake.executor",
+            "intake_state": "authorized",
+            "ticket_creation_allowed": true,
+            "action_id": "crm.normalize-channel-intake"
+          },
+          {
+            "intake_id": "intake-whatsapp-policy",
+            "channel": "whatsapp",
+            "provider": "whatsapp-cloud",
+            "workflow_id": "crm.omnichannel.channel_intake",
+            "contract_id": "crm.support.channel_intake.executor",
+            "intake_state": "authorization_check",
+            "ticket_creation_allowed": false,
+            "action_id": "crm.normalize-channel-intake"
+          }
         ],
         "sla_targets": [
           {
@@ -3690,6 +3773,33 @@
         "forge.addon.crm",
         "--contract",
         "crm.workflow.evolution.executor",
+        "--worker",
+        "<worker-id>",
+        "--task",
+        "<task-ref>",
+        "--input",
+        "<json>",
+        "--context",
+        "<json>",
+        "--output",
+        "json"
+      ]
+    },
+    {
+      "id": "crm.normalize-channel-intake",
+      "label": "Normalize channel intake",
+      "surface_id": "crm.support-queue",
+      "contract_id": "crm.support.channel_intake.executor",
+      "requires_permission": "crm.omnichannel.ingest",
+      "mutates_workflow": true,
+      "command_template": [
+        "forge",
+        "addons",
+        "execute-executor",
+        "--addon",
+        "forge.addon.crm",
+        "--contract",
+        "crm.support.channel_intake.executor",
         "--worker",
         "<worker-id>",
         "--task",
@@ -5152,6 +5262,68 @@
             "title": "Execute runtime contract",
             "owner": "forge.addons.runtime",
             "evidence": "crm.workflow.evolution.executor"
+          },
+          {
+            "id": "promote_result_to_workflow",
+            "title": "Promote result to workflow",
+            "owner": "forge.workflow.runtime",
+            "evidence": "artifact and event promotion"
+          },
+          {
+            "id": "refresh_operating_snapshot",
+            "title": "Refresh operating snapshot",
+            "owner": "forge.addon.crm",
+            "evidence": "crm.operating.snapshot.executor"
+          }
+        ],
+        "output_policy": {
+          "promote_result_to_workflow": true,
+          "browser_local_state_write": false,
+          "refresh_source": "forge_workflow_artifacts_and_events"
+        }
+      },
+      {
+        "action_id": "crm.normalize-channel-intake",
+        "label": "Normalize channel intake",
+        "surface_id": "crm.support-queue",
+        "contract_id": "crm.support.channel_intake.executor",
+        "required_permission": "crm.omnichannel.ingest",
+        "selected_command": [
+          "forge",
+          "addons",
+          "execute-executor",
+          "--addon",
+          "forge.addon.crm",
+          "--contract",
+          "crm.support.channel_intake.executor",
+          "--worker",
+          "<worker-id>",
+          "--task",
+          "<task-ref>",
+          "--input",
+          "<json>",
+          "--context",
+          "<json>",
+          "--output",
+          "json"
+        ],
+        "permission_gate": {
+          "status": "requires_forge_permission",
+          "permission": "crm.omnichannel.ingest",
+          "approval_owner": "forge_permission_policy"
+        },
+        "operation_plan": [
+          {
+            "id": "check_addon_permission",
+            "title": "Check Addon permission",
+            "owner": "forge.permissions",
+            "evidence": "crm.omnichannel.ingest"
+          },
+          {
+            "id": "execute_runtime_contract",
+            "title": "Execute runtime contract",
+            "owner": "forge.addons.runtime",
+            "evidence": "crm.support.channel_intake.executor"
           },
           {
             "id": "promote_result_to_workflow",

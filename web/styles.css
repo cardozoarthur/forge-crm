@@ -386,6 +386,7 @@ h3 {
 
 .commercial-list,
 .support-ticket-list,
+.channel-intake-list,
 .campaign-grid,
 .landing-page-list,
 .form-list,
@@ -413,6 +414,15 @@ h3 {
 
 .support-ticket {
   border-left: 4px solid #126c55;
+}
+
+.channel-intake {
+  border-left: 4px solid #285f9d;
+}
+
+.channel-intake.state-authorization_check,
+.channel-intake.state-authorization_blocked {
+  border-left-color: #9b4d19;
 }
 
 .support-ticket.status-at_risk {

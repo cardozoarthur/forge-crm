@@ -1,7 +1,7 @@
 const REQUIRED_SCOPE = {
   relationship: ["lead", "contact", "company", "opportunity", "pipeline_kanban", "multiple_funnels", "complete_history", "unified_timeline"],
   commercial: ["proposal", "contract", "signature", "follow_up", "forecast", "goal", "commission", "account_management"],
-  support: ["ticket", "sla", "chat", "whatsapp", "telegram", "email", "omnichannel_center"],
+  support: ["ticket", "sla", "chat", "whatsapp", "telegram", "email", "omnichannel_center", "approved_channel_adapter", "message_normalization"],
   marketing: ["campaign", "segmentation", "automation", "landing_page", "form", "lead_nurturing"],
   operations: ["project", "task", "approval", "document", "internal_flow", "team_handoff", "work_queue", "ownership", "waiting_state"],
   user_experience: ["tui", "web_interface", "workflow_visualization", "knowledge_graph", "document_management", "design_system", "design_tokens"],
@@ -156,6 +156,31 @@ const WORKFLOWS = [
     validation_gates: ["account owner visible", "renewal state explicit", "expansion forecast event-backed"]
   },
   {
+    id: "crm.omnichannel.channel_intake",
+    title: "Approved omnichannel channel intake",
+    domain: "support",
+    workflow_extension_id: "crm_omnichannel_channel_intake",
+    object_types: ["approved_channel_adapter", "message_normalization", "chat", "whatsapp", "telegram", "email", "omnichannel_center"],
+    states: ["adapter_event_received", "authorization_check", "normalized", "authorization_blocked", "ready_for_ticket"],
+    transitions: [
+      ["adapter_event_received", "authorization_check", "channel and provider identified"],
+      ["authorization_check", "normalized", "approved adapter policy matched"],
+      ["authorization_check", "authorization_blocked", "adapter missing approval"],
+      ["normalized", "ready_for_ticket", "normalized message artifact attached"]
+    ],
+    runtime_contracts: ["crm.support.channel_intake.executor"],
+    artifacts: ["crm_channel_intake", "crm_channel_receipt", "crm_message_thread"],
+    events: ["crm.channel.authorized", "crm.channel.authorization_blocked", "crm.message.normalized"],
+    memory_scopes: ["organization", "project"],
+    permissions: ["crm.omnichannel.ingest"],
+    views: ["crm.support-queue"],
+    validation_gates: [
+      "approved channel adapter required before ticket creation",
+      "normalized message artifact required before SLA workflow",
+      "channel intake must not persist CRM state outside Forge"
+    ]
+  },
+  {
     id: "crm.ticket.sla",
     title: "Ticket, SLA and omnichannel support",
     domain: "support",
@@ -179,7 +204,8 @@ const WORKFLOWS = [
     memory_scopes: ["organization", "project"],
     permissions: ["crm.omnichannel.ingest"],
     views: ["crm.support-queue"],
-    validation_gates: ["channel receipt attached", "SLA wait state explicit", "handoff receipt attached"]
+    validation_gates: ["channel receipt attached", "SLA wait state explicit", "handoff receipt attached"],
+    depends_on_workflows: ["crm.omnichannel.channel_intake"]
   },
   {
     id: "crm.campaign.lifecycle",

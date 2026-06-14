@@ -24,7 +24,7 @@ const USER_FACING_DELIVERABLES = [
     title: "Support inbox",
     domain: "support",
     surface_id: "crm.support-queue",
-    workflow_ids: ["crm.ticket.sla"]
+    workflow_ids: ["crm.omnichannel.channel_intake", "crm.ticket.sla"]
   },
   {
     id: "marketing_automation",

@@ -3956,6 +3956,173 @@ function ticketSeverity(ticket) {
   return "normal";
 }
 
+export function buildChannelIntakeNormalizationResult(request) {
+  const input = dispatchPayload(request);
+  const context = providedContext(request);
+  const envelope = dispatchEnvelope(request);
+  const tenantId = input.tenant_id || input.tenant_context?.tenant_id || input.tenant_context?.id || context.tenant || "default";
+  const providerEvent = asObject(input.provider_event ?? input.adapter_event ?? input.channel_event ?? input.event);
+  const payload = asObject(providerEvent.payload ?? providerEvent.message ?? input.payload);
+  const channelPolicy = asObject(input.channel_policy ?? input.adapter_policy);
+  const routingPolicy = asObject(input.routing_policy);
+  const channel = String(input.channel || providerEvent.channel || payload.channel || "unknown").toLowerCase();
+  const provider = String(input.provider || providerEvent.provider || providerEvent.adapter || "unknown-provider");
+  const allowedChannels = asArray(channelPolicy.allowed_channels).map((item) => String(item).toLowerCase());
+  const approvedAdapters = asArray(channelPolicy.approved_adapters).map((item) => String(item));
+  const channelAllowed = allowedChannels.length === 0 || allowedChannels.includes(channel);
+  const adapterApproved = approvedAdapters.length === 0 || approvedAdapters.includes(provider);
+  const authorized = channelAllowed && adapterApproved;
+  const createTicketRequested = routingPolicy.create_ticket !== false;
+  const ticketCreationAllowed = authorized && createTicketRequested;
+  const taskRef = envelope.task_ref || `channel-intake-${slug(providerEvent.id || channel, "event")}`;
+  const workflowId = String(input.workflow_id || "crm.omnichannel.channel_intake");
+  const nextWorkflowId = String(input.next_workflow_id || "crm.ticket.sla");
+  const eventId = String(providerEvent.id || providerEvent.event_id || envelope.dispatch_id || taskRef);
+  const messageId = String(input.message_id || payload.id || payload.message_id || providerEvent.message_id || eventId);
+  const threadId = String(input.thread_id || payload.thread_id || payload.chat_id || providerEvent.thread_id || `thread-${slug(channel, "channel")}-${slug(messageId, "message")}`);
+  const normalizedText = String(payload.text || payload.body || payload.summary || providerEvent.text || providerEvent.body || "");
+  const receivedAt = providerEvent.received_at || input.received_at || null;
+  const ownerQueue = routingPolicy.default_queue || routingPolicy.queue || "support";
+  const intakeState = authorized ? "authorized" : "authorization_blocked";
+  const lineage = {
+    workflow_id: workflowId,
+    next_workflow_id: nextWorkflowId,
+    task_ref: taskRef,
+    source_contract: "crm.support.channel_intake.executor",
+    tenant_id: tenantId,
+    channel,
+    provider,
+    provider_event_id: eventId,
+    message_id: messageId,
+    ticket_creation_allowed: ticketCreationAllowed
+  };
+
+  return {
+    schema_version: "forge.addon_executor_result.v1",
+    status: "completed",
+    task_ref: taskRef,
+    summary: `Channel ${channel} event ${eventId} normalized with intake state ${intakeState}`,
+    outputs: {
+      tenant_id: tenantId,
+      channel,
+      provider,
+      provider_event_id: eventId,
+      message_id: messageId,
+      thread_id: threadId,
+      workflow_id: workflowId,
+      next_workflow_id: nextWorkflowId,
+      owner_queue: ownerQueue,
+      intake_state: intakeState,
+      channel_allowed: channelAllowed,
+      adapter_approved: adapterApproved,
+      ticket_creation_allowed: ticketCreationAllowed,
+      mutates_crm_state: false,
+      forge_event_sourced: true
+    },
+    artifacts: [
+      {
+        kind: "crm_channel_intake",
+        id: `channel-intake-${slug(eventId, "event")}`,
+        title: `Channel intake for ${channel}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          channel,
+          provider,
+          provider_event_id: eventId,
+          intake_state: intakeState,
+          channel_allowed: channelAllowed,
+          adapter_approved: adapterApproved,
+          ticket_creation_allowed: ticketCreationAllowed,
+          channel_policy: channelPolicy,
+          routing_policy: routingPolicy,
+          normalized_message: {
+            id: messageId,
+            thread_id: threadId,
+            channel,
+            provider,
+            from: payload.from || payload.sender || providerEvent.from || null,
+            subject: payload.subject || providerEvent.subject || null,
+            text: normalizedText,
+            received_at: receivedAt
+          },
+          lineage,
+          state_owner: "forge_workflow_runtime",
+          external_database_required: false
+        }
+      },
+      {
+        kind: "crm_channel_receipt",
+        id: `channel-receipt-${slug(eventId, "event")}`,
+        title: `Channel receipt for ${eventId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          channel,
+          provider,
+          adapter_event_id: eventId,
+          message_id: messageId,
+          received_at: receivedAt,
+          delivery_state: authorized ? "authorized" : "blocked",
+          lineage,
+          state_owner: "forge_workflow_runtime",
+          external_database_required: false
+        }
+      },
+      {
+        kind: "crm_message_thread",
+        id: `message-thread-${slug(threadId, "thread")}`,
+        title: `Normalized ${channel} thread`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          thread_id: threadId,
+          channel,
+          provider,
+          messages: [
+            {
+              id: messageId,
+              from: payload.from || payload.sender || providerEvent.from || null,
+              subject: payload.subject || providerEvent.subject || null,
+              text: normalizedText,
+              received_at: receivedAt
+            }
+          ],
+          lineage,
+          state_owner: "forge_workflow_runtime",
+          external_database_required: false
+        }
+      }
+    ],
+    events: [
+      {
+        kind: authorized ? "crm.channel.authorized" : "crm.channel.authorization_blocked",
+        tenant_id: tenantId,
+        channel,
+        provider,
+        provider_event_id: eventId,
+        workflow_id: workflowId,
+        ticket_creation_allowed: ticketCreationAllowed
+      },
+      ...(authorized
+        ? [
+            {
+              kind: "crm.message.normalized",
+              tenant_id: tenantId,
+              message_id: messageId,
+              thread_id: threadId,
+              channel,
+              provider,
+              workflow_id: workflowId,
+              target_workflow_id: ticketCreationAllowed ? nextWorkflowId : null
+            }
+          ]
+        : [])
+    ],
+    context_tenant: context.tenant || tenantId
+  };
+}
+
 export function buildOmnichannelMessageIngestionResult(request) {
   const input = dispatchPayload(request);
   const context = providedContext(request);
@@ -4381,6 +4548,8 @@ export function executeCrmRuntimeRequest(request) {
       return buildMarketingFormCaptureResult(request);
     case "forge_crm.plan_project_handoff":
       return buildOperationsProjectHandoffResult(request);
+    case "forge_crm.normalize_channel_intake":
+      return buildChannelIntakeNormalizationResult(request);
     case "forge_crm.ingest_omnichannel_message":
       return buildOmnichannelMessageIngestionResult(request);
     case "forge_crm.triage_ticket_sla":

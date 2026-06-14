@@ -231,6 +231,15 @@ export function renderSupportQueue(snapshot) {
     channels.append(nodeElement("span", "channel-chip", channel));
   }
 
+  const intakes = nodeElement("div", "channel-intake-list");
+  for (const intake of panel.channel_intake || []) {
+    const item = nodeElement("article", `channel-intake state-${intake.intake_state}`);
+    item.append(nodeElement("strong", "", `${intake.channel} · ${intake.provider}`));
+    item.append(nodeElement("span", "", `${compactTitle(intake.intake_state)} · ${intake.ticket_creation_allowed ? "ticket ready" : "authorization wait"}`));
+    item.append(nodeElement("code", "", actionLabel(snapshot, intake.action_id)));
+    intakes.append(item);
+  }
+
   const tickets = nodeElement("div", "support-ticket-list");
   for (const ticket of panel.tickets) {
     const item = nodeElement("article", `support-ticket status-${ticket.sla_status}`);
@@ -240,7 +249,7 @@ export function renderSupportQueue(snapshot) {
     tickets.append(item);
   }
 
-  section.append(channels, tickets);
+  section.append(channels, intakes, tickets);
   return section;
 }
 
