@@ -5,6 +5,9 @@ import test from "node:test";
 test("public CI validates Forge CRM against a real Forge Core binary", async () => {
   const ci = await readFile(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8");
 
+  assert.match(ci, /uses:\s*actions\/checkout@v6/);
+  assert.match(ci, /uses:\s*actions\/setup-node@v6/);
+  assert.doesNotMatch(ci, /actions\/(?:checkout|setup-node)@v4/);
   assert.match(ci, /repository:\s*cardozoarthur\/forge-core/);
   assert.match(ci, /path:\s*forge-core/);
   assert.match(ci, /cargo build --release --manifest-path forge-core\/Cargo\.toml/);
