@@ -35,10 +35,10 @@ const USER_FACING_DELIVERABLES = [
   },
   {
     id: "document_approvals",
-    title: "Document approvals",
+    title: "Document approvals and library",
     domain: "operations",
     surface_id: "crm.document-queue",
-    workflow_ids: ["crm.document.approval", "crm.proposal.approval", "crm.contract.signature"]
+    workflow_ids: ["crm.document.approval", "crm.document.library", "crm.proposal.approval", "crm.contract.signature"]
   },
   {
     id: "project_handoff",

@@ -686,6 +686,38 @@ test("manifest exposes CRM document approval decisions as a Forge-owned executor
   assert.ok(artifactTypes.has("crm_approval_record"));
 });
 
+test("manifest exposes CRM document library management as a Forge-owned executor", () => {
+  const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.document.library.executor");
+  assert.ok(contract);
+  assert.equal(contract.contract_type, "executor");
+  assert.equal(contract.capability_id, "crm_internal_operations");
+  assert.equal(contract.workflow_extension_id, "crm_document_library");
+  assert.equal(contract.entrypoint, "forge_crm.manage_document_library");
+  assert.deepEqual(contract.permissions, ["crm.workflow.mutate", "crm.document.generate"]);
+
+  for (const input of ["document_request", "file_record", "version_policy", "tenant_context"]) {
+    assert.ok(contract.inputs.includes(input), `missing document library input ${input}`);
+  }
+  for (const output of ["crm_file_record", "crm_document_version", "crm_document_collection", "crm_approval_record"]) {
+    assert.ok(contract.outputs.includes(output), `missing document library output ${output}`);
+  }
+
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("does not persist CRM state outside Forge")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("Forge artifact lineage")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("version promotion")));
+
+  const workflowExtensionIds = new Set(manifest.workflows.map((extension) => extension.id));
+  assert.ok(workflowExtensionIds.has("crm_document_library"));
+
+  const artifactTypes = new Set(manifest.artifact_types.map((artifact) => artifact.id));
+  assert.ok(artifactTypes.has("crm_file_record"));
+  assert.ok(artifactTypes.has("crm_document_version"));
+  assert.ok(artifactTypes.has("crm_document_collection"));
+
+  const eventTypes = new Set(manifest.event_types.map((event) => event.id));
+  assert.ok(eventTypes.has("crm.file"));
+});
+
 test("manifest declares the CRM web application entrypoint as an Addon view asset", () => {
   const systemMap = manifest.views.find((view) => view.id === "crm.system-map");
   assert.ok(systemMap);
@@ -737,6 +769,7 @@ test("manifest exposes a Forge TUI operational cockpit with permission-gated CRM
     "crm.tui.automate-campaign",
     "crm.tui.publish-landing-page",
     "crm.tui.generate-document",
+    "crm.tui.manage-document-library",
     "crm.tui.run-operating-copilot",
     "crm.tui.run-area-copilot",
     "crm.tui.run-work-queue",
@@ -775,6 +808,7 @@ test("CRM scope is workflow-backed across core business areas", () => {
     "crm_campaign_lifecycle",
     "crm_project_handoff",
     "crm_document_approval",
+    "crm_document_library",
     "crm_ai_copilot_recommendation"
   ]) {
     assert.ok(workflowIds.has(workflowId), `missing workflow ${workflowId}`);

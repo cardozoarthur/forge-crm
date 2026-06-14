@@ -59,6 +59,7 @@ export function createCrmWorkerServer() {
             "forge_crm.generate_document",
             "forge_crm.validate_document",
             "forge_crm.record_document_approval",
+            "forge_crm.manage_document_library",
             "forge_crm.automate_campaign",
             "forge_crm.build_marketing_segment",
             "forge_crm.publish_landing_page",

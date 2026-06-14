@@ -23,11 +23,11 @@
     "external_delivery_requires_approval": true
   },
   "metrics": {
-    "workflow_count": 22,
+    "workflow_count": 23,
     "business_module_count": 7,
     "surface_count": 10,
-    "artifact_type_count": 63,
-    "event_type_count": 77,
+    "artifact_type_count": 66,
+    "event_type_count": 80,
     "complete_scope": true
   },
   "surfaces": [
@@ -451,6 +451,7 @@
         "crm.proposal.approval",
         "crm.contract.signature",
         "crm.document.approval",
+        "crm.document.library",
         "crm.work.queue.orchestration",
         "crm.enterprise.customer_journey"
       ],
@@ -469,6 +470,10 @@
         "submitted",
         "validation",
         "archived",
+        "file_received",
+        "lineage_attached",
+        "version_recorded",
+        "promoted",
         "queue_snapshot_requested",
         "queue_snapshot_ready",
         "assignment_planned",
@@ -490,7 +495,10 @@
         "crm_contract",
         "crm_cross_domain_handoff_map",
         "crm_document",
+        "crm_document_collection",
+        "crm_document_version",
         "crm_enterprise_journey_map",
+        "crm_file_record",
         "crm_handoff_record",
         "crm_operating_acceptance_evidence",
         "crm_presentation",
@@ -507,11 +515,14 @@
         "crm.contract.signed",
         "crm.document.approval_requested",
         "crm.document.approved",
+        "crm.document.collection_updated",
         "crm.document.delivery_unblocked",
         "crm.document.generated",
         "crm.document.rework_required",
         "crm.document.submitted",
         "crm.document.validated",
+        "crm.document.versioned",
+        "crm.file.recorded",
         "crm.journey.acceptance_reported",
         "crm.journey.stage_completed",
         "crm.journey.started",
@@ -880,6 +891,7 @@
         "crm.account.management",
         "crm.project.handoff",
         "crm.document.approval",
+        "crm.document.library",
         "crm.work.queue.orchestration",
         "crm.operational.observability",
         "crm.enterprise.readiness",
@@ -894,8 +906,11 @@
         "crm_cost_report",
         "crm_cross_domain_handoff_map",
         "crm_document",
+        "crm_document_collection",
+        "crm_document_version",
         "crm_domain_coverage_matrix",
         "crm_enterprise_journey_map",
+        "crm_file_record",
         "crm_forecast_report",
         "crm_handoff_record",
         "crm_health_report",
@@ -924,11 +939,14 @@
         "crm.contract.signed",
         "crm.cost.reviewed",
         "crm.document.approved",
+        "crm.document.collection_updated",
         "crm.document.delivery_unblocked",
         "crm.document.generated",
         "crm.document.rework_required",
         "crm.document.submitted",
         "crm.document.validated",
+        "crm.document.versioned",
+        "crm.file.recorded",
         "crm.journey.acceptance_reported",
         "crm.journey.stage_completed",
         "crm.journey.started",
@@ -953,6 +971,8 @@
         "blocked reason explicit",
         "contract approval lineage present",
         "cross-domain handoffs preserve workflow and artifact lineage",
+        "document library state is represented by Forge artifacts and events",
+        "document versions require Forge artifact lineage before promotion",
         "every queue item cites artifact or event evidence",
         "expansion forecast event-backed",
         "inspection does not create CRM-local observability state",
@@ -966,28 +986,40 @@
         "renewal state explicit",
         "rework reason recorded before any operable claim",
         "signature receipt attached",
-        "success criteria mapped to user-facing deliverables"
+        "success criteria mapped to user-facing deliverables",
+        "version promotion waits for Forge approval evidence"
       ]
     },
     {
       "id": "user_experience",
       "complete": true,
       "workflow_ids": [
+        "crm.document.library",
         "crm.design.system"
       ],
       "artifact_types": [
+        "crm_approval_record",
         "crm_design_system",
         "crm_design_token_manifest",
+        "crm_document_collection",
+        "crm_document_version",
+        "crm_file_record",
         "crm_ui_component_catalog"
       ],
       "event_types": [
         "crm.design.system_generated",
-        "crm.design.tokens_published"
+        "crm.design.tokens_published",
+        "crm.document.collection_updated",
+        "crm.document.versioned",
+        "crm.file.recorded"
       ],
       "validation_gates": [
         "browser rendering does not create CRM-local design state",
         "components cite workflow artifact state sources",
-        "design tokens are published as Forge artifacts before UI consumption"
+        "design tokens are published as Forge artifacts before UI consumption",
+        "document library state is represented by Forge artifacts and events",
+        "document versions require Forge artifact lineage before promotion",
+        "version promotion waits for Forge approval evidence"
       ]
     },
     {
@@ -1655,7 +1687,8 @@
         "runtime_contracts": [
           "crm.document.generator.executor",
           "crm.document.validator",
-          "crm.document.approval.executor"
+          "crm.document.approval.executor",
+          "crm.document.library.executor"
         ],
         "artifact_types": [
           "crm_document",
@@ -1678,6 +1711,48 @@
           "approval actor recorded",
           "approval decision lineage recorded",
           "lineage points to Forge artifact"
+        ]
+      },
+      {
+        "id": "crm.document.library",
+        "title": "Document library and version lineage",
+        "domain": "operations",
+        "state_count": 7,
+        "states": [
+          "file_received",
+          "lineage_attached",
+          "version_recorded",
+          "approval_wait",
+          "promoted",
+          "rework_required",
+          "archived"
+        ],
+        "wait_states": [
+          "approval_wait"
+        ],
+        "runtime_contracts": [
+          "crm.document.library.executor",
+          "crm.document.validator",
+          "crm.document.approval.executor"
+        ],
+        "artifact_types": [
+          "crm_file_record",
+          "crm_document_version",
+          "crm_document_collection",
+          "crm_approval_record"
+        ],
+        "event_types": [
+          "crm.file.recorded",
+          "crm.document.versioned",
+          "crm.document.collection_updated"
+        ],
+        "surface_ids": [
+          "crm.document-queue"
+        ],
+        "validation_gates": [
+          "document versions require Forge artifact lineage before promotion",
+          "version promotion waits for Forge approval evidence",
+          "document library state is represented by Forge artifacts and events"
         ]
       },
       {
@@ -2083,6 +2158,18 @@
       },
       {
         "from": "crm.document.approval",
+        "to": "crm.document.library",
+        "reason": "approved document artifacts enter versioned library",
+        "state_owner": "forge_workflow_runtime"
+      },
+      {
+        "from": "crm.document.library",
+        "to": "crm.work.queue.orchestration",
+        "reason": "library approval waits can enter cross-domain work queues",
+        "state_owner": "forge_workflow_runtime"
+      },
+      {
+        "from": "crm.document.approval",
         "to": "crm.proposal.approval",
         "reason": "document validation gates proposal delivery",
         "state_owner": "forge_workflow_runtime"
@@ -2343,6 +2430,7 @@
         "workflow_ids": [
           "crm.proposal.approval",
           "crm.document.approval",
+          "crm.document.library",
           "crm.work.queue.orchestration"
         ]
       },
@@ -2360,6 +2448,7 @@
         "workflow_ids": [
           "crm.proposal.approval",
           "crm.document.approval",
+          "crm.document.library",
           "crm.enterprise.customer_journey"
         ]
       },
@@ -2374,7 +2463,8 @@
         "id": "archived",
         "title": "archived",
         "workflow_ids": [
-          "crm.document.approval"
+          "crm.document.approval",
+          "crm.document.library"
         ]
       },
       {
@@ -2391,7 +2481,10 @@
       "crm_contract",
       "crm_cross_domain_handoff_map",
       "crm_document",
+      "crm_document_collection",
+      "crm_document_version",
       "crm_enterprise_journey_map",
+      "crm_file_record",
       "crm_handoff_record",
       "crm_operating_acceptance_evidence",
       "crm_presentation",
@@ -2849,6 +2942,7 @@
           "crm.proposal.approval",
           "crm.contract.signature",
           "crm.document.approval",
+          "crm.document.library",
           "crm.work.queue.orchestration",
           "crm.enterprise.customer_journey"
         ],
@@ -2857,6 +2951,7 @@
           "crm.generate-document",
           "crm.validate-document",
           "crm.record-document-approval",
+          "crm.manage-document-library",
           "crm.manage-contract-signature"
         ],
         "lanes": [
@@ -2894,6 +2989,7 @@
             "workflow_ids": [
               "crm.proposal.approval",
               "crm.document.approval",
+              "crm.document.library",
               "crm.work.queue.orchestration"
             ]
           },
@@ -2911,6 +3007,7 @@
             "workflow_ids": [
               "crm.proposal.approval",
               "crm.document.approval",
+              "crm.document.library",
               "crm.enterprise.customer_journey"
             ]
           },
@@ -2925,7 +3022,8 @@
             "id": "archived",
             "title": "archived",
             "workflow_ids": [
-              "crm.document.approval"
+              "crm.document.approval",
+              "crm.document.library"
             ]
           },
           {
@@ -2942,7 +3040,10 @@
           "crm_contract",
           "crm_cross_domain_handoff_map",
           "crm_document",
+          "crm_document_collection",
+          "crm_document_version",
           "crm_enterprise_journey_map",
+          "crm_file_record",
           "crm_handoff_record",
           "crm_operating_acceptance_evidence",
           "crm_presentation",
@@ -2983,6 +3084,34 @@
             "artifact_ref": "forge://artifact/crm_presentation/doc-board-006",
             "validation_action_id": "crm.validate-document",
             "approval_action_id": "crm.record-document-approval"
+          }
+        ],
+        "library_records": [
+          {
+            "file_id": "file-prop-022",
+            "document_id": "doc-prop-022",
+            "version_id": "doc-prop-022-v2",
+            "collection_id": "collection-commercial-proposals",
+            "workflow_id": "crm.document.library",
+            "contract_id": "crm.document.library.executor",
+            "version_state": "approval_wait",
+            "state_owner": "forge_workflow_runtime",
+            "artifact_ref": "forge://artifact/crm_document_version/doc-prop-022-v2",
+            "lineage_artifact_ref": "forge://artifact/crm_file_record/file-prop-022",
+            "action_id": "crm.manage-document-library"
+          },
+          {
+            "file_id": "file-contract-031",
+            "document_id": "doc-contract-031",
+            "version_id": "doc-contract-031-v1",
+            "collection_id": "collection-contracts",
+            "workflow_id": "crm.document.library",
+            "contract_id": "crm.document.library.executor",
+            "version_state": "promoted",
+            "state_owner": "forge_workflow_runtime",
+            "artifact_ref": "forge://artifact/crm_document_version/doc-contract-031-v1",
+            "lineage_artifact_ref": "forge://artifact/crm_file_record/file-contract-031",
+            "action_id": "crm.manage-document-library"
           }
         ]
       },
@@ -3941,6 +4070,33 @@
         "forge.addon.crm",
         "--contract",
         "crm.document.approval.executor",
+        "--worker",
+        "<worker-id>",
+        "--task",
+        "<task-ref>",
+        "--input",
+        "<json>",
+        "--context",
+        "<json>",
+        "--output",
+        "json"
+      ]
+    },
+    {
+      "id": "crm.manage-document-library",
+      "label": "Manage document library",
+      "surface_id": "crm.document-queue",
+      "contract_id": "crm.document.library.executor",
+      "requires_permission": "crm.workflow.mutate",
+      "mutates_workflow": true,
+      "command_template": [
+        "forge",
+        "addons",
+        "execute-executor",
+        "--addon",
+        "forge.addon.crm",
+        "--contract",
+        "crm.document.library.executor",
         "--worker",
         "<worker-id>",
         "--task",
@@ -5309,6 +5465,68 @@
             "title": "Execute runtime contract",
             "owner": "forge.addons.runtime",
             "evidence": "crm.document.approval.executor"
+          },
+          {
+            "id": "promote_result_to_workflow",
+            "title": "Promote result to workflow",
+            "owner": "forge.workflow.runtime",
+            "evidence": "artifact and event promotion"
+          },
+          {
+            "id": "refresh_operating_snapshot",
+            "title": "Refresh operating snapshot",
+            "owner": "forge.addon.crm",
+            "evidence": "crm.operating.snapshot.executor"
+          }
+        ],
+        "output_policy": {
+          "promote_result_to_workflow": true,
+          "browser_local_state_write": false,
+          "refresh_source": "forge_workflow_artifacts_and_events"
+        }
+      },
+      {
+        "action_id": "crm.manage-document-library",
+        "label": "Manage document library",
+        "surface_id": "crm.document-queue",
+        "contract_id": "crm.document.library.executor",
+        "required_permission": "crm.workflow.mutate",
+        "selected_command": [
+          "forge",
+          "addons",
+          "execute-executor",
+          "--addon",
+          "forge.addon.crm",
+          "--contract",
+          "crm.document.library.executor",
+          "--worker",
+          "<worker-id>",
+          "--task",
+          "<task-ref>",
+          "--input",
+          "<json>",
+          "--context",
+          "<json>",
+          "--output",
+          "json"
+        ],
+        "permission_gate": {
+          "status": "requires_forge_permission",
+          "permission": "crm.workflow.mutate",
+          "approval_owner": "forge_permission_policy"
+        },
+        "operation_plan": [
+          {
+            "id": "check_addon_permission",
+            "title": "Check Addon permission",
+            "owner": "forge.permissions",
+            "evidence": "crm.workflow.mutate"
+          },
+          {
+            "id": "execute_runtime_contract",
+            "title": "Execute runtime contract",
+            "owner": "forge.addons.runtime",
+            "evidence": "crm.document.library.executor"
           },
           {
             "id": "promote_result_to_workflow",

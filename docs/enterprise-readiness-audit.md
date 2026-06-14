@@ -6,10 +6,10 @@ Repository: https://github.com/cardozoarthur/forge-crm.git
 
 ## Summary
 
-- Workflows: 22
-- Runtime contracts: 32
-- Artifact types: 68
-- Event types: 32
+- Workflows: 23
+- Runtime contracts: 33
+- Artifact types: 71
+- Event types: 33
 - User-facing deliverables ready: 8/8
 - Missing objective items: 0
 
@@ -19,7 +19,7 @@ Repository: https://github.com/cardozoarthur/forge-crm.git
 - Commercial command center: ready; workflows=crm.account.management, crm.contract.signature, crm.followup.forecast, crm.opportunity.pipeline, crm.proposal.approval; surface=crm.commercial-command
 - Support inbox: ready; workflows=crm.omnichannel.channel_intake, crm.ticket.sla; surface=crm.support-queue
 - Marketing automation: ready; workflows=crm.campaign.lifecycle, crm.lead.nurture, crm.marketing.landing_page, crm.marketing.segment_builder; surface=crm.marketing-calendar
-- Document approvals: ready; workflows=crm.contract.signature, crm.document.approval, crm.proposal.approval; surface=crm.document-queue
+- Document approvals and library: ready; workflows=crm.contract.signature, crm.document.approval, crm.document.library, crm.proposal.approval; surface=crm.document-queue
 - Project handoff: ready; workflows=crm.project.handoff; surface=crm.commercial-command
 - Enterprise customer journey: ready; workflows=crm.enterprise.customer_journey; surface=crm.system-map
 - Design system: ready; workflows=crm.design.system; surface=crm.design-system

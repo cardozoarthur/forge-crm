@@ -97,6 +97,7 @@ try {
       "forge_crm.generate_document",
       "forge_crm.validate_document",
       "forge_crm.record_document_approval",
+      "forge_crm.manage_document_library",
       "forge_crm.automate_campaign",
       "forge_crm.build_marketing_segment",
       "forge_crm.publish_landing_page",
@@ -131,6 +132,7 @@ try {
       "crm.document.generator.executor",
       "crm.document.validator",
       "crm.document.approval.executor",
+      "crm.document.library.executor",
       "crm.marketing.campaign_automation.executor",
       "crm.marketing.segment_builder.executor",
       "crm.marketing.landing_page.executor",
@@ -1209,6 +1211,65 @@ try {
     throw new Error("expected document approval to unblock external delivery");
   }
 
+  const documentLibrary = runForge([
+    "addons",
+    "execute-executor",
+    "--addon-dir",
+    "addons",
+    "--addon",
+    "forge.addon.crm",
+    "--contract",
+    "crm.document.library.executor",
+    "--worker",
+    workerId,
+    "--task",
+    "crm-smoke-document-library",
+    "--workflow",
+    workflowId,
+    "--input",
+    JSON.stringify({
+      tenant_context: { id: "smoke", tenant_id: "smoke" },
+      document_request: {
+        id: "doc-smoke-campaign-pack",
+        title: "Smoke campaign pack library record",
+        workflow_id: "crm.document.library",
+        collection_id: "collection-smoke-campaigns",
+        requested_by: "forge-crm-smoke"
+      },
+      file_record: {
+        id: "file-smoke-campaign-pack",
+        artifact_id: documentGenerator.executor_result.outputs.document_id,
+        document_id: documentGenerator.executor_result.outputs.document_id,
+        kind: "crm_campaign",
+        filename: "smoke-campaign-pack-v2.json",
+        checksum: "sha256:smoke-campaign-pack",
+        approval_state: documentApproval.executor_result.outputs.approval_state
+      },
+      version_policy: {
+        current_version: 1,
+        next_version: 2,
+        promotion_requires_approval: true,
+        approver_role: "forge-crm-smoke"
+      },
+      approval_decision: {
+        decision: "approval_wait",
+        approver: "forge-crm-smoke",
+        reason: "smoke version waits for final promotion"
+      }
+    }),
+    "--context",
+    JSON.stringify({ tenant: "smoke" }),
+    "--output",
+    "json"
+  ]);
+
+  if (documentLibrary.promotion?.status !== "addon_executor_result_promoted") {
+    throw new Error(`expected document library promotion, got ${documentLibrary.promotion?.status || "missing"}`);
+  }
+  if (documentLibrary.executor_result.outputs.version_state !== "approval_wait") {
+    throw new Error(`expected document library approval_wait, got ${documentLibrary.executor_result.outputs.version_state}`);
+  }
+
   const marketingSegment = runForge([
     "addons",
     "execute-executor",
@@ -1802,6 +1863,8 @@ try {
   const documentPromotedEventCount = documentGenerator.promotion?.event_count ?? 0;
   const documentApprovalPromotedArtifactCount = documentApproval.promotion?.artifact_count ?? 0;
   const documentApprovalPromotedEventCount = documentApproval.promotion?.event_count ?? 0;
+  const documentLibraryPromotedArtifactCount = documentLibrary.promotion?.artifact_count ?? 0;
+  const documentLibraryPromotedEventCount = documentLibrary.promotion?.event_count ?? 0;
   const marketingSegmentPromotedArtifactCount = marketingSegment.promotion?.artifact_count ?? 0;
   const marketingSegmentPromotedEventCount = marketingSegment.promotion?.event_count ?? 0;
   const marketingPromotedArtifactCount = marketingAutomation.promotion?.artifact_count ?? 0;
@@ -2019,6 +2082,16 @@ try {
     );
   }
   for (const eventKind of ["crm.document.approved", "crm.document.delivery_unblocked"]) {
+    if (!workflowEventKinds.includes(eventKind)) {
+      throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
+    }
+  }
+  if (documentLibraryPromotedArtifactCount < 4 || documentLibraryPromotedEventCount < 3) {
+    throw new Error(
+      `expected promoted document library artifacts/events, got artifacts=${documentLibraryPromotedArtifactCount} events=${documentLibraryPromotedEventCount}`
+    );
+  }
+  for (const eventKind of ["crm.file.recorded", "crm.document.versioned", "crm.document.collection_updated"]) {
     if (!workflowEventKinds.includes(eventKind)) {
       throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
     }
@@ -2343,6 +2416,12 @@ try {
     document_approval_external_delivery_allowed: documentApproval.executor_result.outputs.external_delivery_allowed,
     document_approval_promoted_artifacts: documentApprovalPromotedArtifactCount,
     document_approval_promoted_events: documentApprovalPromotedEventCount,
+    document_library_status: documentLibrary.status,
+    document_library_promotion_status: documentLibrary.promotion.status,
+    document_library_version_id: documentLibrary.executor_result.outputs.version_id,
+    document_library_version_state: documentLibrary.executor_result.outputs.version_state,
+    document_library_promoted_artifacts: documentLibraryPromotedArtifactCount,
+    document_library_promoted_events: documentLibraryPromotedEventCount,
     marketing_segment_status: marketingSegment.status,
     marketing_segment_promotion_status: marketingSegment.promotion.status,
     marketing_segment_approval_state: marketingSegment.executor_result.outputs.approval_state,

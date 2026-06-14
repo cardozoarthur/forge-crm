@@ -44,6 +44,8 @@ const WORKFLOW_EDGES = [
   ["crm.omnichannel.channel_intake", "crm.ticket.sla", "approved channel intake creates SLA-ready support work"],
   ["crm.ticket.sla", "crm.project.handoff", "resolved support issue can create internal handoff"],
   ["crm.project.handoff", "crm.document.approval", "handoff deliverables enter document queue"],
+  ["crm.document.approval", "crm.document.library", "approved document artifacts enter versioned library"],
+  ["crm.document.library", "crm.work.queue.orchestration", "library approval waits can enter cross-domain work queues"],
   ["crm.document.approval", "crm.proposal.approval", "document validation gates proposal delivery"],
   ["crm.ai.copilot.recommendation", "crm.opportunity.pipeline", "approved recommendation mutates pipeline state"],
   ["crm.work.queue.orchestration", "crm.ticket.sla", "queue risk can return SLA work to support"],
@@ -574,6 +576,7 @@ function buildOperationalWorkbench(workflows, actionList, documentQueueSnapshot)
         "crm.generate-document",
         "crm.validate-document",
         "crm.record-document-approval",
+        "crm.manage-document-library",
         "crm.manage-contract-signature"
       ])
     }),
@@ -609,6 +612,34 @@ function buildOperationalWorkbench(workflows, actionList, documentQueueSnapshot)
         artifact_ref: "forge://artifact/crm_presentation/doc-board-006",
         validation_action_id: "crm.validate-document",
         approval_action_id: "crm.record-document-approval"
+      }
+    ],
+    library_records: [
+      {
+        file_id: "file-prop-022",
+        document_id: "doc-prop-022",
+        version_id: "doc-prop-022-v2",
+        collection_id: "collection-commercial-proposals",
+        workflow_id: "crm.document.library",
+        contract_id: "crm.document.library.executor",
+        version_state: "approval_wait",
+        state_owner: "forge_workflow_runtime",
+        artifact_ref: "forge://artifact/crm_document_version/doc-prop-022-v2",
+        lineage_artifact_ref: "forge://artifact/crm_file_record/file-prop-022",
+        action_id: "crm.manage-document-library"
+      },
+      {
+        file_id: "file-contract-031",
+        document_id: "doc-contract-031",
+        version_id: "doc-contract-031-v1",
+        collection_id: "collection-contracts",
+        workflow_id: "crm.document.library",
+        contract_id: "crm.document.library.executor",
+        version_state: "promoted",
+        state_owner: "forge_workflow_runtime",
+        artifact_ref: "forge://artifact/crm_document_version/doc-contract-031-v1",
+        lineage_artifact_ref: "forge://artifact/crm_file_record/file-contract-031",
+        action_id: "crm.manage-document-library"
       }
     ]
   };
@@ -1231,6 +1262,15 @@ function actions() {
       requires_permission: "crm.workflow.mutate",
       mutates_workflow: true,
       command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.document.approval.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
+    },
+    {
+      id: "crm.manage-document-library",
+      label: "Manage document library",
+      surface_id: "crm.document-queue",
+      contract_id: "crm.document.library.executor",
+      requires_permission: "crm.workflow.mutate",
+      mutates_workflow: true,
+      command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.document.library.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
     },
     {
       id: "crm.run-operating-copilot",

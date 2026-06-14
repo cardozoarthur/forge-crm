@@ -217,6 +217,7 @@ h3 {
 .workflow-node,
 .knowledge-node,
 .module-card,
+.document-library-record,
 .document-row,
 .action-row {
   min-width: 0;
@@ -625,7 +626,12 @@ h3 {
   grid-template-columns: minmax(0, 0.8fr) minmax(0, 1fr);
 }
 
-.document-item code {
+.document-library-record {
+  grid-template-columns: minmax(0, 0.75fr) minmax(0, 1fr);
+}
+
+.document-item code,
+.document-library-record code {
   grid-column: 1 / -1;
 }
 

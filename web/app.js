@@ -364,6 +364,20 @@ export function renderDocumentQueue(snapshot) {
     section.append(documents);
   }
 
+  if (panel?.library_records?.length) {
+    const records = nodeElement("div", "document-library-list");
+    for (const record of panel.library_records) {
+      const item = nodeElement("article", "document-library-record document-row");
+      item.append(nodeElement("strong", "", record.version_id));
+      item.append(nodeElement("span", "", `${record.collection_id} · ${compactTitle(record.version_state)}`));
+      item.append(nodeElement("code", "", actionLabel(snapshot, record.action_id)));
+      item.title = record.artifact_ref;
+      records.append(item);
+    }
+    section.dataset.surfacePanel = panel.surface_id;
+    section.append(records);
+  }
+
   return section;
 }
 

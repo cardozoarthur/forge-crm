@@ -272,6 +272,35 @@ test("document approval workflow records approval decisions through Forge", () =
   assert.ok(pack.indexes.runtime_contracts.includes("crm.document.approval.executor"));
 });
 
+test("document library workflow versions files through Forge artifact lineage", () => {
+  const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
+  const workflow = pack.workflows.find((candidate) => candidate.id === "crm.document.library");
+  const documentApproval = pack.workflows.find((candidate) => candidate.id === "crm.document.approval");
+
+  assert.ok(workflow);
+  assert.ok(documentApproval);
+  assert.equal(workflow.domain, "operations");
+  assert.equal(workflow.workflow_extension_id, "crm_document_library");
+  assert.ok(workflow.runtime_contracts.includes("crm.document.library.executor"));
+  assert.ok(workflow.depends_on_workflows.includes("crm.document.approval"));
+  assert.ok(workflow.object_types.includes("file"));
+  assert.ok(workflow.object_types.includes("document"));
+  assert.ok(workflow.object_types.includes("version"));
+  assert.ok(workflow.object_types.includes("document_management"));
+
+  for (const artifact of ["crm_file_record", "crm_document_version", "crm_document_collection", "crm_approval_record"]) {
+    assert.ok(workflow.artifacts.includes(artifact), `missing document library artifact ${artifact}`);
+    assert.ok(pack.indexes.artifact_types.includes(artifact), `missing indexed document library artifact ${artifact}`);
+  }
+  for (const event of ["crm.file.recorded", "crm.document.versioned", "crm.document.collection_updated"]) {
+    assert.ok(workflow.events.includes(event), `missing document library event ${event}`);
+  }
+
+  assert.ok(workflow.validation_gates.includes("document versions require Forge artifact lineage before promotion"));
+  assert.ok(documentApproval.runtime_contracts.includes("crm.document.library.executor"));
+  assert.ok(pack.indexes.runtime_contracts.includes("crm.document.library.executor"));
+});
+
 test("commercial follow-up workflow routes forecast, goals and commission through Forge", () => {
   const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
   const workflow = pack.workflows.find((candidate) => candidate.id === "crm.followup.forecast");

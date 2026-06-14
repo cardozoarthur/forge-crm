@@ -3423,6 +3423,174 @@ export function buildDocumentApprovalDecisionResult(request) {
   };
 }
 
+function documentLibraryVersionState(versionPolicy, approvalDecision) {
+  const raw = String(approvalDecision.decision || approvalDecision.state || versionPolicy.version_state || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  if (["approved", "promoted"].includes(raw)) {
+    return "promoted";
+  }
+  if (["rework_required", "changes_requested", "rejected", "blocked"].includes(raw)) {
+    return "rework_required";
+  }
+  if (["approval_wait", "pending_approval", "review_wait"].includes(raw)) {
+    return "approval_wait";
+  }
+  return versionPolicy.promotion_requires_approval === false ? "promoted" : "approval_wait";
+}
+
+export function buildDocumentLibraryResult(request) {
+  const input = dispatchPayload(request);
+  const context = providedContext(request);
+  const tenantId = input.tenant_id || input.tenant_context?.tenant_id || input.tenant_context?.id || context.tenant || "default";
+  const documentRequest = asObject(input.document_request ?? input.request);
+  const fileRecord = asObject(input.file_record ?? input.file ?? input.document);
+  const versionPolicy = asObject(input.version_policy ?? input.policy);
+  const approvalDecision = asObject(input.approval_decision ?? input.approval);
+  const documentIdValue = String(fileRecord.document_id || documentRequest.document_id || documentRequest.id || fileRecord.id || "crm-document");
+  const fileId = String(fileRecord.id || fileRecord.file_id || fileRecord.artifact_id || `file-${slug(documentIdValue, "document")}`);
+  const collectionId = String(documentRequest.collection_id || fileRecord.collection_id || input.collection_id || "crm-document-library");
+  const workflowId = String(input.workflow_id || documentRequest.workflow_id || "crm.document.library");
+  const taskRef = dispatchEnvelope(request).task_ref || `document-library-${slug(documentIdValue, "document")}`;
+  const nextVersion = Math.max(1, numberFrom(versionPolicy.next_version ?? versionPolicy.version ?? fileRecord.version, 1));
+  const currentVersion = Math.max(0, numberFrom(versionPolicy.current_version, Math.max(0, nextVersion - 1)));
+  const versionId = String(versionPolicy.version_id || fileRecord.version_id || `${documentIdValue}-v${nextVersion}`);
+  const versionState = documentLibraryVersionState(versionPolicy, approvalDecision);
+  const approver = approvalDecision.approver || approvalDecision.approved_by || versionPolicy.approver_role || "document.owner";
+  const lineage = {
+    workflow_id: workflowId,
+    approval_workflow_id: "crm.document.approval",
+    task_ref: taskRef,
+    source_contract: "crm.document.library.executor",
+    tenant_id: tenantId,
+    document_id: documentIdValue,
+    file_id: fileId,
+    artifact_id: fileRecord.artifact_id || fileRecord.id || null,
+    version_id: versionId,
+    collection_id: collectionId
+  };
+
+  return {
+    schema_version: "forge.addon_executor_result.v1",
+    status: "completed",
+    task_ref: taskRef,
+    summary: `Document ${documentIdValue} recorded as ${versionId} in Forge document library`,
+    outputs: {
+      tenant_id: tenantId,
+      document_id: documentIdValue,
+      file_id: fileId,
+      version_id: versionId,
+      collection_id: collectionId,
+      workflow_id: workflowId,
+      version_state: versionState,
+      current_version: currentVersion,
+      next_version: nextVersion,
+      mutates_crm_state: false,
+      forge_event_sourced: true
+    },
+    artifacts: [
+      {
+        kind: "crm_file_record",
+        id: `file-record-${slug(fileId, "file")}`,
+        title: `File record for ${fileRecord.filename || documentRequest.title || documentIdValue}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          document_id: documentIdValue,
+          file_id: fileId,
+          file_record: fileRecord,
+          checksum: fileRecord.checksum || null,
+          artifact_ref: fileRecord.artifact_ref || fileRecord.artifact_id || null,
+          lineage,
+          state_owner: "forge_workflow_runtime",
+          external_database_required: false
+        }
+      },
+      {
+        kind: "crm_document_version",
+        id: `document-version-${slug(versionId, "version")}`,
+        title: `Document version ${versionId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          document_id: documentIdValue,
+          version_id: versionId,
+          current_version: currentVersion,
+          next_version: nextVersion,
+          version_state: versionState,
+          promotion_requires_approval: versionPolicy.promotion_requires_approval !== false,
+          approver,
+          lineage,
+          mutation_policy: "version promotion must be recorded by Forge workflow events"
+        }
+      },
+      {
+        kind: "crm_document_collection",
+        id: `document-collection-${slug(collectionId, "collection")}`,
+        title: `Document collection ${collectionId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          collection_id: collectionId,
+          document_ids: unique([documentIdValue]),
+          version_ids: unique([versionId]),
+          update_state: versionState === "promoted" ? "collection_updated" : "approval_wait",
+          lineage,
+          state_owner: "forge_workflow_runtime"
+        }
+      },
+      {
+        kind: "crm_approval_record",
+        id: `document-library-approval-${slug(versionId, "version")}`,
+        title: `Version promotion approval for ${versionId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          document_id: documentIdValue,
+          version_id: versionId,
+          approval_decision: {
+            ...approvalDecision,
+            decision: versionState,
+            approver,
+            reason: approvalDecision.reason || "Version promotion waits for Forge approval"
+          },
+          version_policy: versionPolicy,
+          lineage,
+          state_owner: "forge_workflow_runtime"
+        }
+      }
+    ],
+    events: [
+      {
+        kind: "crm.file.recorded",
+        tenant_id: tenantId,
+        document_id: documentIdValue,
+        file_id: fileId,
+        workflow_id: workflowId
+      },
+      {
+        kind: "crm.document.versioned",
+        tenant_id: tenantId,
+        document_id: documentIdValue,
+        version_id: versionId,
+        version_state: versionState,
+        workflow_id: workflowId
+      },
+      {
+        kind: "crm.document.collection_updated",
+        tenant_id: tenantId,
+        collection_id: collectionId,
+        document_id: documentIdValue,
+        version_id: versionId,
+        workflow_id: workflowId
+      }
+    ],
+    context_tenant: context.tenant || tenantId
+  };
+}
+
 function campaignId(campaign, fallback = "crm-campaign") {
   return String(campaign.id || campaign.campaign_id || campaign.name || fallback);
 }
@@ -4870,6 +5038,8 @@ export function executeCrmRuntimeRequest(request) {
       return buildDocumentValidatorResult(request);
     case "forge_crm.record_document_approval":
       return buildDocumentApprovalDecisionResult(request);
+    case "forge_crm.manage_document_library":
+      return buildDocumentLibraryResult(request);
     case "forge_crm.automate_campaign":
       return buildMarketingCampaignAutomationResult(request);
     case "forge_crm.build_marketing_segment":

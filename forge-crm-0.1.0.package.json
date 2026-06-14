@@ -6,9 +6,9 @@
   "addon_name": "Forge CRM",
   "addon_version": "0.1.0",
   "manifest_path": "addons/forge-crm.json",
-  "manifest_sha256": "ca5e032062aa5230f0e9125242ce8dca4076698c2ac78b3c85daa37858bf3c59",
-  "manifest_canonical_sha256": "b30f0eca726270b5cfd0cce4d17d0e0d436ccfaed1a3d690f1029f0aae8a490d",
-  "manifest_bytes": 100132,
+  "manifest_sha256": "c163e7739c0b5faaa665c9e4f976502b516b8912817522109122e5c86198225b",
+  "manifest_canonical_sha256": "f06a76be423d9053f2e880d7f048f394a89d98eef72ba27fccde534d2ef63211",
+  "manifest_bytes": 103319,
   "distribution": {
     "repository": "https://github.com/cardozoarthur/forge-crm",
     "channel": "stable",
@@ -23,15 +23,15 @@
     "scheme": "ed25519_detached",
     "signature": "",
     "public_key": "",
-    "payload_sha256": "b8eafe419fa9a40e2526331dc06016dcec9124d1f4952f6f373b5d17b133f4e6",
+    "payload_sha256": "127078fcc38b2e09644434b8fafa0536063f74314822b4971c7a963ff9ced899",
     "verification_note": "package records detached signature metadata; trust verification is a marketplace policy gate"
   },
   "summary": {
     "capability_count": 9,
     "dependency_count": 1,
     "permission_count": 5,
-    "workflow_extension_count": 25,
-    "runtime_contract_count": 32,
+    "workflow_extension_count": 26,
+    "runtime_contract_count": 33,
     "view_count": 11,
     "event_adapter_count": 2,
     "integration_count": 4,
@@ -80,6 +80,7 @@
       "crm.document.generator.executor",
       "crm.document.validator",
       "crm.document.approval.executor",
+      "crm.document.library.executor",
       "crm.operations.project_handoff.executor",
       "crm.marketing.campaign_automation.executor",
       "crm.marketing.segment_builder.executor",
@@ -571,12 +572,14 @@
         "workflow_extensions": [
           "crm_project_handoff",
           "crm_document_approval",
+          "crm_document_library",
           "crm_work_queue_orchestration"
         ],
         "deliverables": [
           "Handoff workflow",
           "Approval queue",
           "Document audit trail",
+          "Document library",
           "Cross-domain work queue"
         ],
         "constraints": [],
@@ -588,6 +591,10 @@
           "crm_task_plan",
           "crm_document",
           "crm_presentation",
+          "crm_file_record",
+          "crm_document_version",
+          "crm_document_collection",
+          "crm_approval_record",
           "crm_handoff_record",
           "crm_work_queue_snapshot",
           "crm_queue_assignment_plan",
@@ -827,6 +834,11 @@
         "id": "crm_document_approval",
         "kind": "approval_workflow",
         "description": "Manage CRM document queues, approvals and audit trail."
+      },
+      {
+        "id": "crm_document_library",
+        "kind": "document_workflow",
+        "description": "Record files, versions and collections as Forge artifacts before document promotion."
       },
       {
         "id": "crm_work_queue_orchestration",
@@ -1523,6 +1535,37 @@
           "approval decisions do not persist CRM state outside Forge",
           "approved and rework states must be represented as Forge workflow events",
           "external delivery is only unblocked after a recorded approval decision"
+        ]
+      },
+      {
+        "id": "crm.document.library.executor",
+        "title": "CRM document library manager",
+        "contract_type": "executor",
+        "capability_id": "crm_internal_operations",
+        "workflow_extension_id": "crm_document_library",
+        "runtime": "external_api",
+        "entrypoint": "forge_crm.manage_document_library",
+        "inputs": [
+          "document_request",
+          "file_record",
+          "version_policy",
+          "approval_decision",
+          "tenant_context"
+        ],
+        "outputs": [
+          "crm_file_record",
+          "crm_document_version",
+          "crm_document_collection",
+          "crm_approval_record"
+        ],
+        "permissions": [
+          "crm.workflow.mutate",
+          "crm.document.generate"
+        ],
+        "constraints": [
+          "document library executor does not persist CRM state outside Forge",
+          "file and version promotion require Forge artifact lineage",
+          "version promotion is blocked until approval evidence is attached"
         ]
       },
       {
@@ -2381,6 +2424,50 @@
             ]
           },
           {
+            "id": "crm.tui.manage-document-library",
+            "label": "Manage document library",
+            "description": "Record CRM file versions, collections and promotion approval state through Forge.",
+            "palette_group": "CRM",
+            "source_panel": "crm.operational-cockpit",
+            "type": "command",
+            "target": "forge addons execute-executor",
+            "method": "CLI",
+            "permission": "crm.workflow.mutate",
+            "requires_confirmation": true,
+            "risk_level": "high",
+            "mutates_workflow": true,
+            "command_template": [
+              "addons",
+              "execute-executor",
+              "--addon",
+              "forge.addon.crm",
+              "--contract",
+              "crm.document.library.executor",
+              "--worker",
+              "<worker-id>",
+              "--task",
+              "<task-ref>",
+              "--input",
+              "<json>",
+              "--context",
+              "<json>",
+              "--output",
+              "json"
+            ],
+            "keywords": [
+              "crm",
+              "document",
+              "library",
+              "version"
+            ],
+            "payload_schema": [
+              "document_request",
+              "file_record",
+              "version_policy",
+              "tenant_context"
+            ]
+          },
+          {
             "id": "crm.tui.run-operating-copilot",
             "label": "Run operating copilot",
             "description": "Generate bounded CRM recommendations, risk analysis and next actions through Forge.",
@@ -3026,6 +3113,21 @@
         "generic_kind": "document"
       },
       {
+        "id": "crm_file_record",
+        "title": "CRM file record",
+        "generic_kind": "artifact"
+      },
+      {
+        "id": "crm_document_version",
+        "title": "CRM document version",
+        "generic_kind": "document"
+      },
+      {
+        "id": "crm_document_collection",
+        "title": "CRM document collection",
+        "generic_kind": "artifact"
+      },
+      {
         "id": "crm_approval_record",
         "title": "CRM approval record",
         "generic_kind": "artifact"
@@ -3248,6 +3350,11 @@
         "transport": "crm"
       },
       {
+        "id": "crm.file",
+        "title": "CRM file event",
+        "transport": "crm"
+      },
+      {
         "id": "crm.queue",
         "title": "CRM queue event",
         "transport": "crm"
@@ -3355,6 +3462,7 @@
           "crm.project",
           "crm.task",
           "crm.document",
+          "crm.file",
           "crm.campaign",
           "crm.form",
           "crm.nurture"
@@ -3564,6 +3672,7 @@
           "crm.contract",
           "crm.relationship",
           "crm.document",
+          "crm.file",
           "crm.campaign",
           "crm.form",
           "crm.nurture",

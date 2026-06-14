@@ -1282,6 +1282,67 @@ test("document approval executor records approved decisions as Forge artifacts a
   assert.ok(result.events.some((event) => event.kind === "crm.document.delivery_unblocked"));
 });
 
+test("document library executor records file versions as Forge artifacts without local state", () => {
+  assert.equal(typeof runtime.buildDocumentLibraryResult, "function");
+
+  const result = runtime.buildDocumentLibraryResult(
+    workerRequest(
+      "forge_crm.manage_document_library",
+      {
+        tenant_context: { tenant_id: "demo" },
+        document_request: {
+          id: "library-request-001",
+          title: "Enterprise proposal library record",
+          workflow_id: "crm.document.library",
+          collection_id: "collection-enterprise-sales",
+          requested_by: "revenue-ops"
+        },
+        file_record: {
+          id: "file-proposal-001",
+          artifact_id: "artifact-proposal-001",
+          document_id: "proposal-001",
+          kind: "crm_proposal",
+          filename: "enterprise-proposal-v2.pdf",
+          checksum: "sha256:proposal-v2",
+          approval_state: "approved"
+        },
+        version_policy: {
+          current_version: 1,
+          next_version: 2,
+          promotion_requires_approval: true,
+          approver_role: "commercial.director"
+        },
+        approval_decision: {
+          decision: "approval_wait",
+          approver: "commercial.director",
+          reason: "Version needs approval before external use"
+        }
+      },
+      { contract_id: "crm.document.library.executor", task_ref: "document-library-test" }
+    )
+  );
+
+  assert.equal(result.schema_version, "forge.addon_executor_result.v1");
+  assert.equal(result.status, "completed");
+  assert.equal(result.outputs.tenant_id, "demo");
+  assert.equal(result.outputs.document_id, "proposal-001");
+  assert.equal(result.outputs.file_id, "file-proposal-001");
+  assert.equal(result.outputs.version_id, "proposal-001-v2");
+  assert.equal(result.outputs.collection_id, "collection-enterprise-sales");
+  assert.equal(result.outputs.workflow_id, "crm.document.library");
+  assert.equal(result.outputs.version_state, "approval_wait");
+  assert.equal(result.outputs.mutates_crm_state, false);
+  assert.equal(result.outputs.forge_event_sourced, true);
+
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_file_record"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_document_version"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_document_collection"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_approval_record"));
+  assert.ok(result.events.some((event) => event.kind === "crm.file.recorded"));
+  assert.ok(result.events.some((event) => event.kind === "crm.document.versioned"));
+  assert.ok(result.events.some((event) => event.kind === "crm.document.collection_updated"));
+});
+
 test("ticket SLA executor triages omnichannel tickets as Forge workflow artifacts", () => {
   const result = buildTicketSlaResult(
     workerRequest(

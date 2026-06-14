@@ -428,7 +428,12 @@ const WORKFLOWS = [
       ["validation", "rework_required", "validator issue recorded"],
       ["approved", "archived", "final artifact attached"]
     ],
-    runtime_contracts: ["crm.document.generator.executor", "crm.document.validator", "crm.document.approval.executor"],
+    runtime_contracts: [
+      "crm.document.generator.executor",
+      "crm.document.validator",
+      "crm.document.approval.executor",
+      "crm.document.library.executor"
+    ],
     artifacts: ["crm_document", "crm_presentation", "crm_approval_record", "crm_handoff_record"],
     events: [
       "crm.document.generated",
@@ -442,6 +447,34 @@ const WORKFLOWS = [
     permissions: ["crm.document.generate"],
     views: ["crm.document-queue"],
     validation_gates: ["approval actor recorded", "approval decision lineage recorded", "lineage points to Forge artifact"]
+  },
+  {
+    id: "crm.document.library",
+    title: "Document library and version lineage",
+    domain: "operations",
+    workflow_extension_id: "crm_document_library",
+    object_types: ["file", "document", "version", "document_management", "approval"],
+    states: ["file_received", "lineage_attached", "version_recorded", "approval_wait", "promoted", "rework_required", "archived"],
+    transitions: [
+      ["file_received", "lineage_attached", "Forge artifact reference attached"],
+      ["lineage_attached", "version_recorded", "version policy evaluated"],
+      ["version_recorded", "approval_wait", "promotion requires approval"],
+      ["approval_wait", "promoted", "approval record attached"],
+      ["approval_wait", "rework_required", "missing approval or lineage"],
+      ["promoted", "archived", "collection index updated"]
+    ],
+    runtime_contracts: ["crm.document.library.executor", "crm.document.validator", "crm.document.approval.executor"],
+    depends_on_workflows: ["crm.document.approval"],
+    artifacts: ["crm_file_record", "crm_document_version", "crm_document_collection", "crm_approval_record"],
+    events: ["crm.file.recorded", "crm.document.versioned", "crm.document.collection_updated"],
+    memory_scopes: ["project", "processing"],
+    permissions: ["crm.workflow.mutate", "crm.document.generate"],
+    views: ["crm.document-queue"],
+    validation_gates: [
+      "document versions require Forge artifact lineage before promotion",
+      "version promotion waits for Forge approval evidence",
+      "document library state is represented by Forge artifacts and events"
+    ]
   },
   {
     id: "crm.work.queue.orchestration",
