@@ -848,6 +848,42 @@ test("operations workflow routes project handoff and task planning through Forge
   assert.ok(pack.indexes.runtime_contracts.includes("crm.operations.project_handoff.executor"));
 });
 
+test("operations internal collaboration workflow routes notes decisions mentions and tasks through Forge", () => {
+  const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
+  const workflow = pack.workflows.find((candidate) => candidate.id === "crm.internal.collaboration");
+
+  assert.ok(workflow);
+  assert.equal(workflow.domain, "operations");
+  assert.equal(workflow.workflow_extension_id, "crm_internal_collaboration");
+  assert.ok(workflow.runtime_contracts.includes("crm.operations.internal_collaboration.executor"));
+  for (const objectType of ["collaboration_thread", "internal_note", "decision", "mention", "participant", "task"]) {
+    assert.ok(workflow.object_types.includes(objectType), `missing internal collaboration object type ${objectType}`);
+  }
+  for (const artifact of [
+    "crm_collaboration_thread",
+    "crm_internal_note",
+    "crm_decision_record",
+    "crm_mention_map",
+    "crm_task_plan"
+  ]) {
+    assert.ok(workflow.artifacts.includes(artifact), `missing internal collaboration artifact ${artifact}`);
+    assert.ok(pack.indexes.artifact_types.includes(artifact), `missing indexed internal collaboration artifact ${artifact}`);
+  }
+  for (const event of [
+    "crm.collaboration.thread_created",
+    "crm.collaboration.note_recorded",
+    "crm.collaboration.decision_recorded",
+    "crm.collaboration.mention_routed",
+    "crm.task.created"
+  ]) {
+    assert.ok(workflow.events.includes(event), `missing internal collaboration event ${event}`);
+  }
+  assert.ok(workflow.depends_on_workflows.includes("crm.work.queue.orchestration"));
+  assert.ok(workflow.validation_gates.includes("internal notes and decisions are Forge artifacts before promotion"));
+  assert.ok(workflow.validation_gates.includes("mentions create routed Forge task evidence with owner lineage"));
+  assert.ok(pack.indexes.runtime_contracts.includes("crm.operations.internal_collaboration.executor"));
+});
+
 test("enterprise readiness workflow maps success criteria to user-facing deliverables", () => {
   const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
   const workflow = pack.workflows.find((candidate) => candidate.id === "crm.enterprise.readiness");

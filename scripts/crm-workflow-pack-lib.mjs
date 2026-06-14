@@ -33,6 +33,7 @@ const REQUIRED_SCOPE = {
     "document",
     "internal_flow",
     "team_handoff",
+    "internal_collaboration",
     "work_queue",
     "ownership",
     "waiting_state",
@@ -663,6 +664,54 @@ const WORKFLOWS = [
     permissions: ["crm.workflow.mutate"],
     views: ["crm.commercial-command"],
     validation_gates: ["owner visible", "blocked reason explicit"]
+  },
+  {
+    id: "crm.internal.collaboration",
+    title: "Internal collaboration thread, decisions and mentions",
+    domain: "operations",
+    workflow_extension_id: "crm_internal_collaboration",
+    object_types: ["internal_collaboration", "collaboration_thread", "internal_note", "decision", "mention", "participant", "task"],
+    states: [
+      "thread_requested",
+      "notes_recorded",
+      "decisions_recorded",
+      "mentions_routed",
+      "approval_wait",
+      "collaboration_active",
+      "closed"
+    ],
+    transitions: [
+      ["thread_requested", "notes_recorded", "internal notes attached as Forge artifacts"],
+      ["notes_recorded", "decisions_recorded", "decisions recorded with owner lineage"],
+      ["decisions_recorded", "mentions_routed", "mentions routed to Forge task evidence"],
+      ["mentions_routed", "approval_wait", "mutating collaboration follow-ups require approval"],
+      ["approval_wait", "collaboration_active", "approved follow-up tasks are active"],
+      ["collaboration_active", "closed", "collaboration outcomes promoted with artifacts and events"]
+    ],
+    runtime_contracts: ["crm.operations.internal_collaboration.executor", "crm.queue.orchestrator.executor"],
+    depends_on_workflows: ["crm.work.queue.orchestration", "crm.project.handoff"],
+    artifacts: [
+      "crm_collaboration_thread",
+      "crm_internal_note",
+      "crm_decision_record",
+      "crm_mention_map",
+      "crm_task_plan"
+    ],
+    events: [
+      "crm.collaboration.thread_created",
+      "crm.collaboration.note_recorded",
+      "crm.collaboration.decision_recorded",
+      "crm.collaboration.mention_routed",
+      "crm.task.created"
+    ],
+    memory_scopes: ["organization", "project", "processing"],
+    permissions: ["crm.workflow.mutate", "crm.observability.inspect"],
+    views: ["crm.work-queue", "crm.system-map"],
+    validation_gates: [
+      "internal notes and decisions are Forge artifacts before promotion",
+      "mentions create routed Forge task evidence with owner lineage",
+      "collaboration state is represented by Forge artifacts and events"
+    ]
   },
   {
     id: "crm.document.approval",

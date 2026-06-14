@@ -79,6 +79,7 @@ export function createCrmWorkerServer() {
             "forge_crm.publish_landing_page",
             "forge_crm.capture_form_submission",
             "forge_crm.plan_project_handoff",
+            "forge_crm.record_internal_collaboration",
             "forge_crm.normalize_channel_intake",
             "forge_crm.unify_omnichannel_center",
             "forge_crm.ingest_omnichannel_message",

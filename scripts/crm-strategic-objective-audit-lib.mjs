@@ -42,6 +42,7 @@ const DOMAIN_REQUIREMENTS = {
     ["approvals", "Approvals", ["crm.document.approval", "crm.approval.governance"]],
     ["documents", "Documents", ["crm.document.approval", "crm.document.library"]],
     ["internal_flows", "Internal flows", ["crm.work.queue.orchestration", "crm.daily.operating_cycle"]],
+    ["internal_collaboration", "Internal collaboration", ["crm.internal.collaboration"]],
     ["team_handoffs", "Team handoffs", ["crm.project.handoff", "crm.enterprise.customer_journey"]],
     ["daily_operating_cycle", "Daily operating cycle", ["crm.daily.operating_cycle"]]
   ],

@@ -1219,6 +1219,45 @@ test("manifest exposes CRM project handoff operations as a Forge-owned executor"
   assert.ok(artifactTypes.has("crm_task_plan"));
 });
 
+test("manifest exposes CRM internal collaboration as a Forge-owned operations executor", () => {
+  const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.operations.internal_collaboration.executor");
+  assert.ok(contract);
+  assert.equal(contract.contract_type, "executor");
+  assert.equal(contract.capability_id, "crm_internal_operations");
+  assert.equal(contract.workflow_extension_id, "crm_internal_collaboration");
+  assert.equal(contract.entrypoint, "forge_crm.record_internal_collaboration");
+  assert.deepEqual(contract.permissions, ["crm.workflow.mutate", "crm.observability.inspect"]);
+  for (const input of ["collaboration_context", "participants", "notes", "decisions", "mentions", "followups", "tenant_context"]) {
+    assert.ok(contract.inputs.includes(input), `missing internal collaboration input ${input}`);
+  }
+  for (const output of [
+    "crm_collaboration_thread",
+    "crm_internal_note",
+    "crm_decision_record",
+    "crm_mention_map",
+    "crm_task_plan"
+  ]) {
+    assert.ok(contract.outputs.includes(output), `missing internal collaboration output ${output}`);
+  }
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("does not persist CRM state outside Forge")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("mentions")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("decisions")));
+
+  const capability = manifest.capabilities.find((candidate) => candidate.id === "crm_internal_operations");
+  assert.ok(capability.workflow_extensions.includes("crm_internal_collaboration"));
+
+  const workflowExtensionIds = new Set(manifest.workflows.map((extension) => extension.id));
+  assert.ok(workflowExtensionIds.has("crm_internal_collaboration"));
+
+  const artifactTypes = new Set(manifest.artifact_types.map((artifact) => artifact.id));
+  for (const artifactType of ["crm_collaboration_thread", "crm_internal_note", "crm_decision_record", "crm_mention_map"]) {
+    assert.ok(artifactTypes.has(artifactType), `missing artifact type ${artifactType}`);
+  }
+
+  const eventTypes = new Set(manifest.event_types.map((event) => event.id));
+  assert.ok(eventTypes.has("crm.collaboration"));
+});
+
 test("manifest exposes CRM document approval decisions as a Forge-owned executor", () => {
   const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.document.approval.executor");
   assert.ok(contract);

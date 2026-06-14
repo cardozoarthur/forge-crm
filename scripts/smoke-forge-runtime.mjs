@@ -134,6 +134,7 @@ try {
       "forge_crm.compose_support_reply",
       "forge_crm.triage_ticket_sla",
       "forge_crm.plan_project_handoff",
+      "forge_crm.record_internal_collaboration",
       "forge_crm.deliver_handoff"
     ],
     allowed_contracts: [
@@ -184,6 +185,7 @@ try {
       "crm.support.reply_composer.executor",
       "crm.support.ticket_sla.executor",
       "crm.operations.project_handoff.executor",
+      "crm.operations.internal_collaboration.executor",
       "crm.omnichannel.handoff"
     ],
     timeout_seconds: 5,
@@ -2883,6 +2885,80 @@ try {
     throw new Error(`expected project handoff blocked_wait, got ${operationsProjectHandoff.executor_result.outputs.next_state}`);
   }
 
+  const internalCollaboration = runForge([
+    "addons",
+    "execute-executor",
+    "--addon-dir",
+    "addons",
+    "--addon",
+    "forge.addon.crm",
+    "--contract",
+    "crm.operations.internal_collaboration.executor",
+    "--worker",
+    workerId,
+    "--task",
+    "crm-smoke-internal-collaboration",
+    "--workflow",
+    workflowId,
+    "--input",
+    JSON.stringify({
+      tenant_context: { id: "smoke", tenant_id: "smoke" },
+      collaboration_context: {
+        id: "collab-smoke-renewal-risk",
+        title: "Example Logistics renewal risk review",
+        source_workflow_id: "crm.customer_success.plan",
+        owner: "success-manager"
+      },
+      participants: [
+        { id: "success-manager", role: "customer_success" },
+        { id: "support-lead", role: "support" },
+        { id: "sales-director", role: "commercial" }
+      ],
+      notes: [
+        {
+          id: "note-smoke-renewal",
+          body: "Customer needs integration unblock before renewal committee.",
+          author: "success-manager"
+        }
+      ],
+      decisions: [
+        {
+          id: "decision-smoke-escalate",
+          summary: "Escalate integration blocker into the operating queue.",
+          owner: "support-lead"
+        }
+      ],
+      mentions: [
+        {
+          target: "ops-engineer",
+          reason: "Need WhatsApp adapter policy review",
+          workflow_id: "crm.project.handoff"
+        }
+      ],
+      followups: [
+        {
+          id: "task-smoke-integration-policy",
+          title: "Review WhatsApp adapter policy",
+          owner: "ops-engineer",
+          due_at: "2026-07-18T12:00:00Z"
+        }
+      ]
+    }),
+    "--context",
+    JSON.stringify({ tenant: "smoke" }),
+    "--output",
+    "json"
+  ]);
+
+  if (internalCollaboration.promotion?.status !== "addon_executor_result_promoted") {
+    throw new Error(
+      `expected internal collaboration promotion, got ${internalCollaboration.promotion?.status || "missing"}`
+    );
+  }
+  if (internalCollaboration.executor_result.outputs.next_state !== "collaboration_active") {
+    throw new Error(`expected internal collaboration active state, got ${internalCollaboration.executor_result.outputs.next_state}`);
+  }
+
   const enterpriseJourney = runForge([
     "addons",
     "execute-executor",
@@ -3078,6 +3154,8 @@ try {
   const ticketSlaPromotedEventCount = ticketSla.promotion?.event_count ?? 0;
   const operationsPromotedArtifactCount = operationsProjectHandoff.promotion?.artifact_count ?? 0;
   const operationsPromotedEventCount = operationsProjectHandoff.promotion?.event_count ?? 0;
+  const internalCollaborationPromotedArtifactCount = internalCollaboration.promotion?.artifact_count ?? 0;
+  const internalCollaborationPromotedEventCount = internalCollaboration.promotion?.event_count ?? 0;
   const enterpriseJourneyPromotedArtifactCount = enterpriseJourney.promotion?.artifact_count ?? 0;
   const enterpriseJourneyPromotedEventCount = enterpriseJourney.promotion?.event_count ?? 0;
   const workflowArtifactCount = workflowArtifacts.artifacts?.length ?? 0;
@@ -3559,6 +3637,21 @@ try {
       throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
     }
   }
+  if (internalCollaborationPromotedArtifactCount < 5 || internalCollaborationPromotedEventCount < 5) {
+    throw new Error(
+      `expected promoted internal collaboration artifacts/events, got artifacts=${internalCollaborationPromotedArtifactCount} events=${internalCollaborationPromotedEventCount}`
+    );
+  }
+  for (const eventKind of [
+    "crm.collaboration.thread_created",
+    "crm.collaboration.note_recorded",
+    "crm.collaboration.decision_recorded",
+    "crm.collaboration.mention_routed"
+  ]) {
+    if (!workflowEventKinds.includes(eventKind)) {
+      throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
+    }
+  }
   if (enterpriseJourneyPromotedArtifactCount < 3 || enterpriseJourneyPromotedEventCount < 3) {
     throw new Error(
       `expected promoted enterprise journey artifacts/events, got artifacts=${enterpriseJourneyPromotedArtifactCount} events=${enterpriseJourneyPromotedEventCount}`
@@ -3944,6 +4037,14 @@ try {
     operations_project_handoff_next_state: operationsProjectHandoff.executor_result.outputs.next_state,
     operations_project_handoff_promoted_artifacts: operationsPromotedArtifactCount,
     operations_project_handoff_promoted_events: operationsPromotedEventCount,
+    internal_collaboration_status: internalCollaboration.status,
+    internal_collaboration_promotion_status: internalCollaboration.promotion.status,
+    internal_collaboration_next_state: internalCollaboration.executor_result.outputs.next_state,
+    internal_collaboration_note_count: internalCollaboration.executor_result.outputs.note_count,
+    internal_collaboration_decision_count: internalCollaboration.executor_result.outputs.decision_count,
+    internal_collaboration_mention_count: internalCollaboration.executor_result.outputs.mention_count,
+    internal_collaboration_promoted_artifacts: internalCollaborationPromotedArtifactCount,
+    internal_collaboration_promoted_events: internalCollaborationPromotedEventCount,
     enterprise_journey_status: enterpriseJourney.status,
     enterprise_journey_promotion_status: enterpriseJourney.promotion.status,
     enterprise_journey_acceptance_status: enterpriseJourney.executor_result.outputs.acceptance_status,

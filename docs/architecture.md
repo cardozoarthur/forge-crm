@@ -27,7 +27,7 @@ Forge CRM is a product proof for Forge as a factory/framework for agentic workfl
 
 No important CRM automation should bypass Forge. External tools may execute bounded work, but Forge owns the workflow, state transitions, approvals, memory scope, artifact attachment, event history and validation gates.
 
-The current CRM worker exposes forty-six Forge runtime entrypoints:
+The current CRM worker exposes forty-nine Forge runtime entrypoints:
 
 - `forge_crm.plan_system` for CRM system planning;
 - `forge_crm.bootstrap_tenant` for a Forge-owned tenant workflow pack;
@@ -53,6 +53,7 @@ The current CRM worker exposes forty-six Forge runtime entrypoints:
 - `forge_crm.inspect_observability` for CRM audit reports, lineage maps, cost reports, metrics, logs and state inspection from Forge-owned evidence;
 - `forge_crm.generate_executive_report` for executive summaries, KPI dashboards and business reviews derived from Forge workflow artifacts and events;
 - `forge_crm.generate_operating_readiness` for mapping CRM success criteria to user-facing deliverables backed by Forge workflows, artifacts, events and validation evidence;
+- `forge_crm.generate_strategic_objective_audit` for requirement-level proof across CRM scope, Core gaps and Forge-owned evidence;
 - `forge_crm.generate_proposal` for draft proposal artifacts;
 - `forge_crm.review_followup_forecast` for follow-up scheduling, forecast, goal progress and commission evidence;
 - `forge_crm.review_commercial_forecast` for advisory forecast review without sending follow-ups;
@@ -75,13 +76,14 @@ The current CRM worker exposes forty-six Forge runtime entrypoints:
 - `forge_crm.compose_support_reply` for approval-gated support reply drafts without direct external sending;
 - `forge_crm.triage_ticket_sla` for ticket intake, SLA state and support routing artifacts;
 - `forge_crm.plan_project_handoff` for project, task, blocked-wait and acceptance handoff planning;
+- `forge_crm.record_internal_collaboration` for internal notes, decisions, mentions and follow-up tasks as Forge artifacts and events;
 - `forge_crm.deliver_handoff` for approved omnichannel handoff receipts.
 
 The worker returns Forge Addon result schemas and does not persist CRM state directly. State changes remain Forge workflow mutations or artifacts.
 
 ## Tenant Workflow Pack
 
-`scripts/crm-workflow-pack-lib.mjs` produces the first operational workflow model for a CRM tenant. It declares 37 Forge-owned workflows across relationship lifecycle packaging, relationship profile enrichment, commercial follow-up, account management, customer success planning, goal and commission settlement, executive reporting, support channel intake, omnichannel message threads, unified omnichannel center, marketing segment building, campaigns, document library/versioning, operations, cross-domain work queues, daily operating cycle, subworkflow orchestration, workflow automation design, workflow automation execution trace, user experience/design system, AI automation, operational observability, enterprise readiness and end-to-end customer journey acceptance. Each workflow carries explicit states, transitions, object types, runtime contracts, artifact types, events, memory scopes, permissions, validation gates and mutation policy.
+`scripts/crm-workflow-pack-lib.mjs` produces the first operational workflow model for a CRM tenant. It declares 38 Forge-owned workflows across relationship lifecycle packaging, relationship profile enrichment, commercial follow-up, account management, customer success planning, goal and commission settlement, executive reporting, support channel intake, omnichannel message threads, unified omnichannel center, marketing segment building, campaigns, document library/versioning, operations, internal collaboration, cross-domain work queues, daily operating cycle, subworkflow orchestration, workflow automation design, workflow automation execution trace, user experience/design system, AI automation, operational observability, enterprise readiness and end-to-end customer journey acceptance. Each workflow carries explicit states, transitions, object types, runtime contracts, artifact types, events, memory scopes, permissions, validation gates and mutation policy.
 
 The pack uses `workflow_id`, `artifact_id` and `event_id` as durable identities. External primary keys and direct external persistence are explicitly disabled.
 

@@ -58,15 +58,16 @@ test("enterprise readiness audit keeps CRM as a public Forge Addon and maps benc
     assert.ok(track.evidence.event_types.length > 0, `${trackId} needs event evidence`);
   }
 
-  assert.equal(audit.user_facing_deliverables.length, 15);
+  assert.equal(audit.user_facing_deliverables.length, 16);
   assert.ok(audit.user_facing_deliverables.some((deliverable) => deliverable.id === "goal_commission_settlement"));
   assert.ok(audit.user_facing_deliverables.some((deliverable) => deliverable.id === "executive_reporting"));
   assert.ok(audit.user_facing_deliverables.some((deliverable) => deliverable.id === "omnichannel_conversation_threads"));
   assert.ok(audit.user_facing_deliverables.some((deliverable) => deliverable.id === "workflow_system_factory_blueprint"));
   assert.ok(audit.user_facing_deliverables.some((deliverable) => deliverable.id === "daily_operating_cycle"));
+  assert.ok(audit.user_facing_deliverables.some((deliverable) => deliverable.id === "internal_collaboration"));
   assert.ok(audit.user_facing_deliverables.every((deliverable) => deliverable.ready === true));
   assert.equal(audit.summary.missing_objective_item_count, 0);
-  assert.equal(audit.summary.ready_user_facing_deliverable_count, 15);
+  assert.equal(audit.summary.ready_user_facing_deliverable_count, audit.user_facing_deliverables.length);
   assert.deepEqual(
     audit.forge_core_requirements
       .filter((requirement) => requirement.status === "requires_forge_core_gap_review")
@@ -140,7 +141,7 @@ test("enterprise readiness Markdown report is generated from current audit evide
 
   assert.match(markdown, new RegExp(`- Workflows: ${audit.summary.workflow_count}`));
   assert.match(markdown, new RegExp(`- Runtime contracts: ${audit.summary.runtime_contract_count}`));
-  assert.match(markdown, /- User-facing deliverables ready: 15\/15/);
+  assert.match(markdown, new RegExp(`- User-facing deliverables ready: ${audit.summary.ready_user_facing_deliverable_count}/${audit.user_facing_deliverables.length}`));
   assert.match(markdown, /## Forge Core Requirements/);
   assert.match(markdown, /## Distribution Evidence/);
   assert.match(markdown, /Distribution status: ready_for_public_addon_distribution/);

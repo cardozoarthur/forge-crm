@@ -23,11 +23,11 @@
     "external_delivery_requires_approval": true
   },
   "metrics": {
-    "workflow_count": 37,
+    "workflow_count": 38,
     "business_module_count": 7,
     "surface_count": 10,
-    "artifact_type_count": 106,
-    "event_type_count": 122,
+    "artifact_type_count": 110,
+    "event_type_count": 126,
     "complete_scope": true
   },
   "surfaces": [
@@ -40,6 +40,7 @@
       "permission": "crm.workflow.mutate",
       "state_source": "forge_workflow_artifacts_and_events",
       "workflow_ids": [
+        "crm.internal.collaboration",
         "crm.work.queue.orchestration",
         "crm.daily.operating_cycle",
         "crm.design.system",
@@ -56,13 +57,18 @@
         "crm.workflow.automation_execution"
       ],
       "lanes": [
+        "thread_requested",
+        "notes_recorded",
+        "decisions_recorded",
+        "mentions_routed",
+        "approval_wait",
+        "collaboration_active",
+        "closed",
         "queue_snapshot_requested",
         "queue_snapshot_ready",
         "assignment_planned",
-        "approval_wait",
         "work_in_progress",
         "risk_review_wait",
-        "closed",
         "cycle_requested",
         "evidence_collected",
         "command_brief_generated",
@@ -141,10 +147,12 @@
         "crm_benchmark_report",
         "crm_business_review_report",
         "crm_business_runbook",
+        "crm_collaboration_thread",
         "crm_core_gap_report",
         "crm_cost_report",
         "crm_cross_domain_handoff_map",
         "crm_daily_operating_cycle",
+        "crm_decision_record",
         "crm_design_system",
         "crm_design_token_manifest",
         "crm_domain_coverage_matrix",
@@ -152,8 +160,10 @@
         "crm_evolution_experiment",
         "crm_executive_summary",
         "crm_factory_portability_report",
+        "crm_internal_note",
         "crm_kpi_dashboard",
         "crm_lineage_map",
+        "crm_mention_map",
         "crm_metric_snapshot",
         "crm_operating_acceptance_evidence",
         "crm_operating_command_brief",
@@ -169,6 +179,7 @@
         "crm_subworkflow_plan",
         "crm_subworkflow_validation_report",
         "crm_support_channel_coverage_report",
+        "crm_task_plan",
         "crm_trigger_condition_map",
         "crm_ui_component_catalog",
         "crm_user_outcome_manifest",
@@ -192,6 +203,10 @@
         "crm.automation.rework_required",
         "crm.automation.trigger_received",
         "crm.automation.validated",
+        "crm.collaboration.decision_recorded",
+        "crm.collaboration.mention_routed",
+        "crm.collaboration.note_recorded",
+        "crm.collaboration.thread_created",
         "crm.core_gap.reported",
         "crm.cost.reviewed",
         "crm.design.system_generated",
@@ -224,7 +239,8 @@
         "crm.subworkflow.bound",
         "crm.subworkflow.promoted",
         "crm.subworkflow.validated",
-        "crm.support.channel_coverage_reported"
+        "crm.support.channel_coverage_reported",
+        "crm.task.created"
       ],
       "mutation_requires_forge": true
     },
@@ -817,6 +833,7 @@
       "permission": "crm.workflow.mutate",
       "state_source": "forge_workflow_artifacts_and_events",
       "workflow_ids": [
+        "crm.internal.collaboration",
         "crm.work.queue.orchestration",
         "crm.daily.operating_cycle",
         "crm.approval.governance",
@@ -825,13 +842,18 @@
         "crm.workflow.automation_execution"
       ],
       "lanes": [
+        "thread_requested",
+        "notes_recorded",
+        "decisions_recorded",
+        "mentions_routed",
+        "approval_wait",
+        "collaboration_active",
+        "closed",
         "queue_snapshot_requested",
         "queue_snapshot_ready",
         "assignment_planned",
-        "approval_wait",
         "work_in_progress",
         "risk_review_wait",
-        "closed",
         "cycle_requested",
         "evidence_collected",
         "command_brief_generated",
@@ -865,7 +887,11 @@
         "crm_automation_rework_report",
         "crm_automation_run_receipt",
         "crm_automation_validation_report",
+        "crm_collaboration_thread",
         "crm_daily_operating_cycle",
+        "crm_decision_record",
+        "crm_internal_note",
+        "crm_mention_map",
         "crm_operating_command_brief",
         "crm_operating_risk_register",
         "crm_permission_gate_report",
@@ -874,6 +900,7 @@
         "crm_subworkflow_lineage_map",
         "crm_subworkflow_plan",
         "crm_subworkflow_validation_report",
+        "crm_task_plan",
         "crm_trigger_condition_map",
         "crm_work_queue_snapshot",
         "crm_workflow_automation_spec"
@@ -891,6 +918,10 @@
         "crm.automation.rework_required",
         "crm.automation.trigger_received",
         "crm.automation.validated",
+        "crm.collaboration.decision_recorded",
+        "crm.collaboration.mention_routed",
+        "crm.collaboration.note_recorded",
+        "crm.collaboration.thread_created",
         "crm.operating.command_brief_generated",
         "crm.operating.daily_cycle_generated",
         "crm.operating.risk_registered",
@@ -899,7 +930,8 @@
         "crm.queue.snapshot_generated",
         "crm.subworkflow.bound",
         "crm.subworkflow.promoted",
-        "crm.subworkflow.validated"
+        "crm.subworkflow.validated",
+        "crm.task.created"
       ],
       "mutation_requires_forge": true
     },
@@ -1353,6 +1385,7 @@
         "crm.customer_success.plan",
         "crm.omnichannel.reply",
         "crm.project.handoff",
+        "crm.internal.collaboration",
         "crm.document.approval",
         "crm.document.library",
         "crm.work.queue.orchestration",
@@ -1377,12 +1410,14 @@
         "crm_business_review_report",
         "crm_business_runbook",
         "crm_channel_response",
+        "crm_collaboration_thread",
         "crm_contract",
         "crm_core_gap_report",
         "crm_cost_report",
         "crm_cross_domain_handoff_map",
         "crm_customer_success_plan",
         "crm_daily_operating_cycle",
+        "crm_decision_record",
         "crm_document",
         "crm_document_collection",
         "crm_document_version",
@@ -1395,8 +1430,10 @@
         "crm_forecast_report",
         "crm_handoff_record",
         "crm_health_report",
+        "crm_internal_note",
         "crm_kpi_dashboard",
         "crm_lineage_map",
+        "crm_mention_map",
         "crm_metric_snapshot",
         "crm_operating_acceptance_evidence",
         "crm_operating_command_brief",
@@ -1435,6 +1472,10 @@
         "crm.approval.queue_inspected",
         "crm.approval.rework_returned",
         "crm.audit.reported",
+        "crm.collaboration.decision_recorded",
+        "crm.collaboration.mention_routed",
+        "crm.collaboration.note_recorded",
+        "crm.collaboration.thread_created",
         "crm.contract.renewal_scheduled",
         "crm.contract.reviewed",
         "crm.contract.signed",
@@ -1501,6 +1542,7 @@
         "blueprint export remains an artifact and does not create CRM-local state",
         "business review risk items cite workflow lineage",
         "child subworkflows are validated before parent journey promotion",
+        "collaboration state is represented by Forge artifacts and events",
         "contract approval lineage present",
         "cross-domain handoffs preserve workflow and artifact lineage",
         "customer replies are drafted as Forge artifacts before external send",
@@ -1520,8 +1562,10 @@
         "forecast snapshot lineage present",
         "incomplete approvals return to source workflow tasks with explicit rework reason",
         "inspection does not create CRM-local observability state",
+        "internal notes and decisions are Forge artifacts before promotion",
         "lineage points to Forge artifact",
         "main CRM flow has no external system dependency",
+        "mentions create routed Forge task evidence with owner lineage",
         "owner visible",
         "ownership gaps and SLA risks are returned to work before closure",
         "parent workflow promotion is blocked while any child validation gate fails",
@@ -2505,6 +2549,51 @@
         "validation_gates": [
           "owner visible",
           "blocked reason explicit"
+        ]
+      },
+      {
+        "id": "crm.internal.collaboration",
+        "title": "Internal collaboration thread, decisions and mentions",
+        "domain": "operations",
+        "state_count": 7,
+        "states": [
+          "thread_requested",
+          "notes_recorded",
+          "decisions_recorded",
+          "mentions_routed",
+          "approval_wait",
+          "collaboration_active",
+          "closed"
+        ],
+        "wait_states": [
+          "approval_wait"
+        ],
+        "runtime_contracts": [
+          "crm.operations.internal_collaboration.executor",
+          "crm.queue.orchestrator.executor"
+        ],
+        "artifact_types": [
+          "crm_collaboration_thread",
+          "crm_internal_note",
+          "crm_decision_record",
+          "crm_mention_map",
+          "crm_task_plan"
+        ],
+        "event_types": [
+          "crm.collaboration.thread_created",
+          "crm.collaboration.note_recorded",
+          "crm.collaboration.decision_recorded",
+          "crm.collaboration.mention_routed",
+          "crm.task.created"
+        ],
+        "surface_ids": [
+          "crm.work-queue",
+          "crm.system-map"
+        ],
+        "validation_gates": [
+          "internal notes and decisions are Forge artifacts before promotion",
+          "mentions create routed Forge task evidence with owner lineage",
+          "collaboration state is represented by Forge artifacts and events"
         ]
       },
       {
@@ -4670,6 +4759,7 @@
         "state_source": "forge_workflow_artifacts_and_events",
         "mutation_requires_forge": true,
         "workflow_ids": [
+          "crm.internal.collaboration",
           "crm.work.queue.orchestration",
           "crm.daily.operating_cycle",
           "crm.approval.governance",
@@ -4679,6 +4769,7 @@
         ],
         "action_ids": [
           "crm.run-work-queue",
+          "crm.record-internal-collaboration",
           "crm.inspect-observability",
           "crm.run-area-copilot"
         ],
@@ -4743,7 +4834,8 @@
             "title": "Handoffs",
             "workflow_ids": [
               "crm.project.handoff",
-              "crm.account.management"
+              "crm.account.management",
+              "crm.internal.collaboration"
             ],
             "item_count": 2,
             "risk_item_count": 1,
@@ -4811,7 +4903,32 @@
           "ownership_gap_count": 1,
           "evidence_artifact_type": "crm_queue_sla_risk_report",
           "closure_policy": "risk closure requires Forge workflow evidence"
-        }
+        },
+        "internal_collaboration_threads": [
+          {
+            "thread_id": "collab-acme-renewal-risk",
+            "workflow_id": "crm.internal.collaboration",
+            "contract_id": "crm.operations.internal_collaboration.executor",
+            "state_owner": "forge_workflow_runtime",
+            "local_state_allowed": false,
+            "title": "Acme renewal risk review",
+            "owner": "success-manager",
+            "participant_count": 3,
+            "note_count": 2,
+            "decision_count": 1,
+            "mention_count": 1,
+            "task_count": 1,
+            "next_state": "collaboration_active",
+            "artifact_types": [
+              "crm_collaboration_thread",
+              "crm_internal_note",
+              "crm_decision_record",
+              "crm_mention_map",
+              "crm_task_plan"
+            ],
+            "action_id": "crm.record-internal-collaboration"
+          }
+        ]
       },
       {
         "id": "ai_workbench",
@@ -5725,8 +5842,8 @@
     "success_criteria_status": "operable_with_evidence",
     "forge_only_operations": true,
     "main_flow_dependency_external": false,
-    "ready_domain_count": 15,
-    "user_facing_deliverable_count": 15,
+    "ready_domain_count": 16,
+    "user_facing_deliverable_count": 16,
     "generated_artifact_types": [
       "crm_operating_readiness_report",
       "crm_user_outcome_manifest",
@@ -6013,6 +6130,43 @@
             "audit lineage cost metrics and logs sourced from Forge",
             "inspection does not create CRM-local observability state",
             "remediation requires Forge workflow mutation"
+          ]
+        },
+        {
+          "domain": "internal_collaboration",
+          "title": "Internal collaboration",
+          "user_facing_deliverable": "internal collaboration",
+          "ready": true,
+          "workflow_ids": [
+            "crm.internal.collaboration",
+            "crm.work.queue.orchestration"
+          ],
+          "missing_workflow_ids": [],
+          "artifact_evidence": [
+            "crm_collaboration_thread",
+            "crm_internal_note",
+            "crm_decision_record",
+            "crm_mention_map",
+            "crm_task_plan"
+          ],
+          "event_evidence": [
+            "crm.collaboration.thread_created",
+            "crm.collaboration.note_recorded",
+            "crm.collaboration.decision_recorded",
+            "crm.collaboration.mention_routed"
+          ],
+          "runtime_contract_evidence": [
+            "crm.operations.internal_collaboration.executor",
+            "crm.queue.orchestrator.executor",
+            "crm.observability.inspector.executor"
+          ],
+          "validation_gates": [
+            "internal notes and decisions are Forge artifacts before promotion",
+            "mentions create routed Forge task evidence with owner lineage",
+            "collaboration state is represented by Forge artifacts and events",
+            "queue actions require Forge workflow approval before mutation",
+            "every queue item cites artifact or event evidence",
+            "ownership gaps and SLA risks are returned to work before closure"
           ]
         },
         {
@@ -6339,6 +6493,16 @@
         "requested_by_success_criteria": false
       },
       {
+        "deliverable": "internal collaboration",
+        "domain": "internal_collaboration",
+        "workflow_ids": [
+          "crm.internal.collaboration",
+          "crm.work.queue.orchestration"
+        ],
+        "acceptance": "delivered when Forge workflow artifacts, events and validation gates are present",
+        "requested_by_success_criteria": false
+      },
+      {
         "deliverable": "daily operating cycle",
         "domain": "daily_operating_cycle",
         "workflow_ids": [
@@ -6476,6 +6640,15 @@
         "workflow_ids": [
           "crm.project.handoff",
           "crm.operational.observability"
+        ],
+        "rework_path": "return incomplete goals to Forge workflow tasks with reason"
+      },
+      {
+        "deliverable": "internal collaboration",
+        "command_owner": "forge",
+        "workflow_ids": [
+          "crm.internal.collaboration",
+          "crm.work.queue.orchestration"
         ],
         "rework_path": "return incomplete goals to Forge workflow tasks with reason"
       },
@@ -7781,6 +7954,44 @@
         "reuse_policy": "copy_as_forge_workflow_module_template"
       },
       {
+        "id": "module.crm_internal_collaboration",
+        "title": "Internal collaboration thread, decisions and mentions",
+        "domain": "operations",
+        "workflow_ids": [
+          "crm.internal.collaboration"
+        ],
+        "workflow_extension_id": "crm_internal_collaboration",
+        "runtime_contracts": [
+          "crm.operations.internal_collaboration.executor",
+          "crm.queue.orchestrator.executor"
+        ],
+        "artifact_types": [
+          "crm_collaboration_thread",
+          "crm_internal_note",
+          "crm_decision_record",
+          "crm_mention_map",
+          "crm_task_plan"
+        ],
+        "event_types": [
+          "crm.collaboration.thread_created",
+          "crm.collaboration.note_recorded",
+          "crm.collaboration.decision_recorded",
+          "crm.collaboration.mention_routed",
+          "crm.task.created"
+        ],
+        "surface_ids": [
+          "crm.work-queue",
+          "crm.system-map"
+        ],
+        "validation_gates": [
+          "internal notes and decisions are Forge artifacts before promotion",
+          "mentions create routed Forge task evidence with owner lineage",
+          "collaboration state is represented by Forge artifacts and events"
+        ],
+        "state_owner": "forge_workflow_runtime",
+        "reuse_policy": "copy_as_forge_workflow_module_template"
+      },
+      {
         "id": "module.crm_document_approval",
         "title": "Document queue and approvals",
         "domain": "operations",
@@ -8525,7 +8736,7 @@
     ],
     "portability_report": {
       "state": "ready_for_reuse",
-      "module_count": 37,
+      "module_count": 38,
       "missing_runtime_contract_modules": [],
       "target_repository_for_core_gaps": "forge-core",
       "local_state_allowed": false
@@ -8547,7 +8758,7 @@
     "contract_id": "crm.strategic.objective_audit.executor",
     "audit_status": "covered_by_current_addon_evidence",
     "section_count": 9,
-    "requirement_count": 50,
+    "requirement_count": 51,
     "missing_requirement_count": 0,
     "section_coverage": [
       {
@@ -8589,7 +8800,7 @@
         "section_id": "operations",
         "title": "Operations",
         "status": "covered_by_current_addon_evidence",
-        "requirement_count": 7,
+        "requirement_count": 8,
         "missing_requirements": 0
       },
       {
@@ -9835,6 +10046,33 @@
         "forge.addon.crm",
         "--contract",
         "crm.operations.project_handoff.executor",
+        "--worker",
+        "<worker-id>",
+        "--task",
+        "<task-ref>",
+        "--input",
+        "<json>",
+        "--context",
+        "<json>",
+        "--output",
+        "json"
+      ]
+    },
+    {
+      "id": "crm.record-internal-collaboration",
+      "label": "Record collaboration",
+      "surface_id": "crm.work-queue",
+      "contract_id": "crm.operations.internal_collaboration.executor",
+      "requires_permission": "crm.workflow.mutate",
+      "mutates_workflow": true,
+      "command_template": [
+        "forge",
+        "addons",
+        "execute-executor",
+        "--addon",
+        "forge.addon.crm",
+        "--contract",
+        "crm.operations.internal_collaboration.executor",
         "--worker",
         "<worker-id>",
         "--task",
@@ -11977,6 +12215,68 @@
             "title": "Execute runtime contract",
             "owner": "forge.addons.runtime",
             "evidence": "crm.operations.project_handoff.executor"
+          },
+          {
+            "id": "promote_result_to_workflow",
+            "title": "Promote result to workflow",
+            "owner": "forge.workflow.runtime",
+            "evidence": "artifact and event promotion"
+          },
+          {
+            "id": "refresh_operating_snapshot",
+            "title": "Refresh operating snapshot",
+            "owner": "forge.addon.crm",
+            "evidence": "crm.operating.snapshot.executor"
+          }
+        ],
+        "output_policy": {
+          "promote_result_to_workflow": true,
+          "browser_local_state_write": false,
+          "refresh_source": "forge_workflow_artifacts_and_events"
+        }
+      },
+      {
+        "action_id": "crm.record-internal-collaboration",
+        "label": "Record collaboration",
+        "surface_id": "crm.work-queue",
+        "contract_id": "crm.operations.internal_collaboration.executor",
+        "required_permission": "crm.workflow.mutate",
+        "selected_command": [
+          "forge",
+          "addons",
+          "execute-executor",
+          "--addon",
+          "forge.addon.crm",
+          "--contract",
+          "crm.operations.internal_collaboration.executor",
+          "--worker",
+          "<worker-id>",
+          "--task",
+          "<task-ref>",
+          "--input",
+          "<json>",
+          "--context",
+          "<json>",
+          "--output",
+          "json"
+        ],
+        "permission_gate": {
+          "status": "requires_forge_permission",
+          "permission": "crm.workflow.mutate",
+          "approval_owner": "forge_permission_policy"
+        },
+        "operation_plan": [
+          {
+            "id": "check_addon_permission",
+            "title": "Check Addon permission",
+            "owner": "forge.permissions",
+            "evidence": "crm.workflow.mutate"
+          },
+          {
+            "id": "execute_runtime_contract",
+            "title": "Execute runtime contract",
+            "owner": "forge.addons.runtime",
+            "evidence": "crm.operations.internal_collaboration.executor"
           },
           {
             "id": "promote_result_to_workflow",

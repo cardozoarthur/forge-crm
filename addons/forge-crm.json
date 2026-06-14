@@ -436,7 +436,7 @@
     {
       "id": "crm_internal_operations",
       "title": "CRM internal operations",
-      "description": "Projects, tasks, approvals, documents, internal flows and team handoffs.",
+      "description": "Projects, tasks, approvals, documents, internal collaboration, internal flows and team handoffs.",
       "domains": [
         "crm",
         "operations"
@@ -446,6 +446,9 @@
         "task",
         "approval",
         "document",
+        "collaboration",
+        "mention",
+        "decision",
         "handoff",
         "queue",
         "ownership"
@@ -460,6 +463,7 @@
         "crm_document_approval",
         "crm_document_library",
         "crm_work_queue_orchestration",
+        "crm_internal_collaboration",
         "crm_daily_operating_cycle",
         "crm_approval_governance",
         "crm_subworkflow_orchestration"
@@ -470,6 +474,7 @@
         "Document audit trail",
         "Document library",
         "Cross-domain work queue",
+        "Internal collaboration thread",
         "Daily operating cycle",
         "Approval governance queue",
         "Subworkflow orchestration"
@@ -487,6 +492,10 @@
         "crm_work_queue_snapshot",
         "crm_queue_assignment_plan",
         "crm_queue_sla_risk_report",
+        "crm_collaboration_thread",
+        "crm_internal_note",
+        "crm_decision_record",
+        "crm_mention_map",
         "crm_daily_operating_cycle",
         "crm_operating_command_brief",
         "crm_operating_risk_register",
@@ -754,6 +763,11 @@
       "id": "crm_project_handoff",
       "kind": "operations_workflow",
       "description": "Coordinate post-sale projects, tasks and team handoffs."
+    },
+    {
+      "id": "crm_internal_collaboration",
+      "kind": "operations_workflow",
+      "description": "Record internal notes, decisions, mentions and follow-up tasks as Forge workflow artifacts."
     },
     {
       "id": "crm_document_approval",
@@ -1925,6 +1939,40 @@
         "project handoff planning does not persist CRM state outside Forge",
         "tasks must include owner, workflow lineage and blocked reason when blocked",
         "handoff acceptance must be represented as Forge workflow events"
+      ]
+    },
+    {
+      "id": "crm.operations.internal_collaboration.executor",
+      "title": "CRM internal collaboration recorder",
+      "contract_type": "executor",
+      "capability_id": "crm_internal_operations",
+      "workflow_extension_id": "crm_internal_collaboration",
+      "runtime": "external_api",
+      "entrypoint": "forge_crm.record_internal_collaboration",
+      "inputs": [
+        "collaboration_context",
+        "participants",
+        "notes",
+        "decisions",
+        "mentions",
+        "followups",
+        "tenant_context"
+      ],
+      "outputs": [
+        "crm_collaboration_thread",
+        "crm_internal_note",
+        "crm_decision_record",
+        "crm_mention_map",
+        "crm_task_plan"
+      ],
+      "permissions": [
+        "crm.workflow.mutate",
+        "crm.observability.inspect"
+      ],
+      "constraints": [
+        "internal collaboration executor does not persist CRM state outside Forge",
+        "mentions must route to Forge task evidence before external notification",
+        "decisions must include owner lineage before workflow promotion"
       ]
     },
     {
@@ -3114,6 +3162,54 @@
             "project",
             "tasks",
             "acceptance_policy",
+            "tenant_context"
+          ]
+        },
+        {
+          "id": "crm.tui.record-internal-collaboration",
+          "label": "Record internal collaboration",
+          "description": "Record internal notes, decisions, mentions and follow-up tasks as Forge-owned collaboration evidence.",
+          "palette_group": "CRM",
+          "source_panel": "crm.operational-cockpit",
+          "type": "command",
+          "target": "forge addons execute-executor",
+          "method": "CLI",
+          "permission": "crm.workflow.mutate",
+          "requires_confirmation": true,
+          "risk_level": "high",
+          "mutates_workflow": true,
+          "command_template": [
+            "addons",
+            "execute-executor",
+            "--addon",
+            "forge.addon.crm",
+            "--contract",
+            "crm.operations.internal_collaboration.executor",
+            "--worker",
+            "<worker-id>",
+            "--task",
+            "<task-ref>",
+            "--input",
+            "<json>",
+            "--context",
+            "<json>",
+            "--output",
+            "json"
+          ],
+          "keywords": [
+            "crm",
+            "collaboration",
+            "mentions",
+            "decisions",
+            "operations"
+          ],
+          "payload_schema": [
+            "collaboration_context",
+            "participants",
+            "notes",
+            "decisions",
+            "mentions",
+            "followups",
             "tenant_context"
           ]
         },
@@ -5359,6 +5455,26 @@
       "generic_kind": "artifact"
     },
     {
+      "id": "crm_collaboration_thread",
+      "title": "CRM collaboration thread",
+      "generic_kind": "artifact"
+    },
+    {
+      "id": "crm_internal_note",
+      "title": "CRM internal note",
+      "generic_kind": "artifact"
+    },
+    {
+      "id": "crm_decision_record",
+      "title": "CRM decision record",
+      "generic_kind": "artifact"
+    },
+    {
+      "id": "crm_mention_map",
+      "title": "CRM mention routing map",
+      "generic_kind": "artifact"
+    },
+    {
       "id": "crm_knowledge_summary",
       "title": "CRM knowledge summary",
       "generic_kind": "artifact"
@@ -5578,6 +5694,11 @@
     {
       "id": "crm.task",
       "title": "CRM task event",
+      "transport": "crm"
+    },
+    {
+      "id": "crm.collaboration",
+      "title": "CRM collaboration event",
       "transport": "crm"
     },
     {

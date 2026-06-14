@@ -881,6 +881,7 @@ function buildOperationalWorkbench(workflows, actionList, documentQueueSnapshot)
       workflow_ids: workflowIdsForSurface(workflows, "crm.work-queue"),
       action_ids: checkedActionIds(actionList, [
         "crm.run-work-queue",
+        "crm.record-internal-collaboration",
         "crm.inspect-observability",
         "crm.run-area-copilot"
       ])
@@ -924,7 +925,7 @@ function buildOperationalWorkbench(workflows, actionList, documentQueueSnapshot)
       {
         id: "handoffs",
         title: "Handoffs",
-        workflow_ids: ["crm.project.handoff", "crm.account.management"],
+        workflow_ids: ["crm.project.handoff", "crm.account.management", "crm.internal.collaboration"],
         item_count: 2,
         risk_item_count: 1,
         action_id: "crm.run-work-queue"
@@ -987,7 +988,26 @@ function buildOperationalWorkbench(workflows, actionList, documentQueueSnapshot)
       ownership_gap_count: 1,
       evidence_artifact_type: "crm_queue_sla_risk_report",
       closure_policy: "risk closure requires Forge workflow evidence"
-    }
+    },
+    internal_collaboration_threads: [
+      {
+        thread_id: "collab-acme-renewal-risk",
+        workflow_id: "crm.internal.collaboration",
+        contract_id: "crm.operations.internal_collaboration.executor",
+        state_owner: "forge_workflow_runtime",
+        local_state_allowed: false,
+        title: "Acme renewal risk review",
+        owner: "success-manager",
+        participant_count: 3,
+        note_count: 2,
+        decision_count: 1,
+        mention_count: 1,
+        task_count: 1,
+        next_state: "collaboration_active",
+        artifact_types: ["crm_collaboration_thread", "crm_internal_note", "crm_decision_record", "crm_mention_map", "crm_task_plan"],
+        action_id: "crm.record-internal-collaboration"
+      }
+    ]
   };
 
   const aiPanel = {
@@ -2490,6 +2510,15 @@ function actions() {
       requires_permission: "crm.workflow.mutate",
       mutates_workflow: true,
       command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.operations.project_handoff.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
+    },
+    {
+      id: "crm.record-internal-collaboration",
+      label: "Record collaboration",
+      surface_id: "crm.work-queue",
+      contract_id: "crm.operations.internal_collaboration.executor",
+      requires_permission: "crm.workflow.mutate",
+      mutates_workflow: true,
+      command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.operations.internal_collaboration.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
     },
     {
       id: "crm.generate-document",

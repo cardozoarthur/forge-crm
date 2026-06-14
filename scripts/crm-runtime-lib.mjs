@@ -3889,6 +3889,19 @@ const READINESS_OUTCOME_DOMAINS = [
     required_events: ["crm.project.handoff_requested", "crm.task.created", "crm.observability.inspected"]
   },
   {
+    id: "internal_collaboration",
+    title: "Internal collaboration",
+    deliverable: "internal collaboration",
+    workflow_ids: ["crm.internal.collaboration", "crm.work.queue.orchestration"],
+    required_artifacts: ["crm_collaboration_thread", "crm_internal_note", "crm_decision_record", "crm_mention_map", "crm_task_plan"],
+    required_events: [
+      "crm.collaboration.thread_created",
+      "crm.collaboration.note_recorded",
+      "crm.collaboration.decision_recorded",
+      "crm.collaboration.mention_routed"
+    ]
+  },
+  {
     id: "daily_operating_cycle",
     title: "Daily operating cycle",
     deliverable: "daily operating cycle",
@@ -6974,6 +6987,226 @@ export function buildOperationsProjectHandoffResult(request) {
   };
 }
 
+export function buildInternalCollaborationResult(request) {
+  const input = dispatchPayload(request);
+  const context = providedContext(request);
+  const envelope = dispatchEnvelope(request);
+  const tenantId = input.tenant_id || input.tenant_context?.tenant_id || input.tenant_context?.id || context.tenant || "default";
+  const collaborationContext = asObject(input.collaboration_context ?? input.thread);
+  const participants = asArray(input.participants).map((participant, index) => {
+    const record = asObject(participant);
+    return {
+      id: String(record.id || record.user_id || record.name || `participant-${index + 1}`),
+      role: record.role || "participant",
+      team: record.team || record.area || null
+    };
+  });
+  const notes = asArray(input.notes).map((note, index) => {
+    const record = asObject(note);
+    return {
+      id: String(record.id || record.note_id || `note-${index + 1}`),
+      body: String(record.body || record.text || record.summary || ""),
+      author: record.author || record.owner || "unknown",
+      created_at: record.created_at || null
+    };
+  });
+  const decisions = asArray(input.decisions).map((decision, index) => {
+    const record = asObject(decision);
+    return {
+      id: String(record.id || record.decision_id || `decision-${index + 1}`),
+      summary: String(record.summary || record.title || record.body || ""),
+      owner: record.owner || collaborationContext.owner || "operations",
+      status: record.status || "recorded"
+    };
+  });
+  const mentions = asArray(input.mentions).map((mention, index) => {
+    const record = asObject(mention);
+    return {
+      id: String(record.id || record.mention_id || `mention-${index + 1}`),
+      target: record.target || record.user || record.owner || "unassigned",
+      reason: record.reason || "Internal collaboration mention",
+      workflow_id: record.workflow_id || collaborationContext.source_workflow_id || "crm.work.queue.orchestration"
+    };
+  });
+  const followups = asArray(input.followups ?? input.tasks).map((followup, index) => {
+    const record = asObject(followup);
+    return {
+      id: String(record.id || record.task_id || `collab-task-${index + 1}`),
+      title: record.title || record.name || `Collaboration follow-up ${index + 1}`,
+      owner: record.owner || mentions[index]?.target || collaborationContext.owner || "operations",
+      due_at: record.due_at || record.due || null,
+      workflow_id: record.workflow_id || "crm.internal.collaboration",
+      source: "internal_collaboration"
+    };
+  });
+  const collaborationId = String(collaborationContext.id || collaborationContext.thread_id || envelope.task_ref || "crm-collaboration");
+  const owner = collaborationContext.owner || participants[0]?.id || followups[0]?.owner || "operations";
+  const workflowId = String(input.workflow_id || "crm.internal.collaboration");
+  const taskRef = envelope.task_ref || `internal-collaboration-${slug(collaborationId, "collaboration")}`;
+  const nextState = followups.length > 0 || mentions.length > 0 ? "collaboration_active" : "collaboration_recorded";
+  const lineage = {
+    workflow_id: workflowId,
+    task_ref: taskRef,
+    source_contract: "crm.operations.internal_collaboration.executor",
+    tenant_id: tenantId,
+    collaboration_id: collaborationId,
+    source_workflow_id: collaborationContext.source_workflow_id || null
+  };
+  const mentionMap = mentions.map((mention) => ({
+    ...mention,
+    routed_task_owner: mention.target,
+    routing_policy: "mentions route to Forge-owned task evidence before external notification"
+  }));
+
+  return {
+    schema_version: "forge.addon_executor_result.v1",
+    status: "completed",
+    task_ref: taskRef,
+    summary: `Internal collaboration ${collaborationId} recorded with ${notes.length} notes, ${decisions.length} decisions and ${mentions.length} mentions`,
+    outputs: {
+      tenant_id: tenantId,
+      workflow_id: workflowId,
+      collaboration_id: collaborationId,
+      owner,
+      participant_count: participants.length,
+      note_count: notes.length,
+      decision_count: decisions.length,
+      mention_count: mentions.length,
+      task_count: followups.length,
+      next_state: nextState,
+      mutates_crm_state: false,
+      forge_event_sourced: true
+    },
+    artifacts: [
+      {
+        kind: "crm_collaboration_thread",
+        id: `collaboration-thread-${slug(collaborationId, "collaboration")}`,
+        title: collaborationContext.title || `Internal collaboration ${collaborationId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          collaboration_id: collaborationId,
+          title: collaborationContext.title || null,
+          owner,
+          participants,
+          source_workflow_id: lineage.source_workflow_id,
+          next_state: nextState,
+          state_owner: "forge_workflow_runtime",
+          external_database_required: false,
+          lineage
+        }
+      },
+      {
+        kind: "crm_internal_note",
+        id: `internal-notes-${slug(collaborationId, "collaboration")}`,
+        title: `Internal notes for ${collaborationId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          collaboration_id: collaborationId,
+          notes,
+          note_policy: "internal notes are promoted as Forge artifacts before they can affect CRM workflow state",
+          lineage
+        }
+      },
+      {
+        kind: "crm_decision_record",
+        id: `decision-record-${slug(collaborationId, "collaboration")}`,
+        title: `Decision record for ${collaborationId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          collaboration_id: collaborationId,
+          decisions,
+          decision_policy: "decisions require owner lineage before workflow promotion",
+          lineage
+        }
+      },
+      {
+        kind: "crm_mention_map",
+        id: `mention-map-${slug(collaborationId, "collaboration")}`,
+        title: `Mention routing map for ${collaborationId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          collaboration_id: collaborationId,
+          mentions: mentionMap,
+          routing_policy: "mentions create routed Forge task evidence and do not send external notifications directly",
+          lineage
+        }
+      },
+      {
+        kind: "crm_task_plan",
+        id: `collaboration-task-plan-${slug(collaborationId, "collaboration")}`,
+        title: `Collaboration task plan for ${collaborationId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          collaboration_id: collaborationId,
+          tasks: followups,
+          task_policy: "follow-ups are Forge workflow tasks with owner and lineage",
+          lineage
+        }
+      }
+    ],
+    events: [
+      {
+        kind: "crm.collaboration.thread_created",
+        tenant_id: tenantId,
+        collaboration_id: collaborationId,
+        workflow_id: workflowId,
+        owner
+      },
+      ...(notes.length > 0
+        ? [
+            {
+              kind: "crm.collaboration.note_recorded",
+              tenant_id: tenantId,
+              collaboration_id: collaborationId,
+              workflow_id: workflowId,
+              note_count: notes.length
+            }
+          ]
+        : []),
+      ...(decisions.length > 0
+        ? [
+            {
+              kind: "crm.collaboration.decision_recorded",
+              tenant_id: tenantId,
+              collaboration_id: collaborationId,
+              workflow_id: workflowId,
+              decision_count: decisions.length
+            }
+          ]
+        : []),
+      ...(mentions.length > 0
+        ? [
+            {
+              kind: "crm.collaboration.mention_routed",
+              tenant_id: tenantId,
+              collaboration_id: collaborationId,
+              workflow_id: workflowId,
+              mention_count: mentions.length,
+              targets: mentions.map((mention) => mention.target)
+            }
+          ]
+        : []),
+      ...(followups.length > 0
+        ? [
+            {
+              kind: "crm.task.created",
+              tenant_id: tenantId,
+              collaboration_id: collaborationId,
+              workflow_id: workflowId,
+              task_count: followups.length
+            }
+          ]
+        : [])
+    ],
+    context_tenant: context.tenant || tenantId
+  };
+}
+
 function ticketId(ticket, fallback = "crm-ticket") {
   return String(ticket.id || ticket.ticket_id || fallback);
 }
@@ -7975,6 +8208,8 @@ export function executeCrmRuntimeRequest(request) {
       return buildMarketingFormCaptureResult(request);
     case "forge_crm.plan_project_handoff":
       return buildOperationsProjectHandoffResult(request);
+    case "forge_crm.record_internal_collaboration":
+      return buildInternalCollaborationResult(request);
     case "forge_crm.normalize_channel_intake":
       return buildChannelIntakeNormalizationResult(request);
     case "forge_crm.unify_omnichannel_center":

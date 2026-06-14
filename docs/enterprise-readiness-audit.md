@@ -6,12 +6,12 @@ Repository: https://github.com/cardozoarthur/forge-crm.git
 
 ## Summary
 
-- Workflows: 37
-- Runtime contracts: 48
-- Artifact types: 110
-- Event types: 45
+- Workflows: 38
+- Runtime contracts: 49
+- Artifact types: 114
+- Event types: 46
 - Views: 12
-- User-facing deliverables ready: 15/15
+- User-facing deliverables ready: 16/16
 - Missing objective items: 0
 - Complete scope: true
 
@@ -20,9 +20,9 @@ Repository: https://github.com/cardozoarthur/forge-crm.git
 - Addon: forge.addon.crm (enabled)
 - Core dependency: forge.core.kernel
 - Capabilities: 9
-- Runtime contracts: 48
-- Artifact types: 110
-- Event types: 45
+- Runtime contracts: 49
+- Artifact types: 114
+- Event types: 46
 - Views: 12
 - Public repository declared: true
 
@@ -39,7 +39,7 @@ Repository: https://github.com/cardozoarthur/forge-crm.git
 - commercial: complete; required=9; missing=none
 - support: complete; required=10; missing=none
 - marketing: complete; required=6; missing=none
-- operations: complete; required=10; missing=none
+- operations: complete; required=11; missing=none
 - user_experience: complete; required=7; missing=none
 - ai_automation: complete; required=9; missing=none
 
@@ -52,6 +52,7 @@ Repository: https://github.com/cardozoarthur/forge-crm.git
 - Marketing automation: ready; workflows=crm.campaign.lifecycle, crm.lead.nurture, crm.marketing.landing_page, crm.marketing.segment_builder; surface=crm.marketing-calendar
 - Document approvals and library: ready; workflows=crm.contract.signature, crm.document.approval, crm.document.library, crm.proposal.approval; surface=crm.document-queue
 - Project handoff: ready; workflows=crm.project.handoff; surface=crm.commercial-command
+- Internal collaboration: ready; workflows=crm.internal.collaboration, crm.work.queue.orchestration; surface=crm.work-queue
 - Daily operating cycle: ready; workflows=crm.daily.operating_cycle; surface=crm.work-queue
 - Enterprise customer journey: ready; workflows=crm.enterprise.customer_journey; surface=crm.system-map
 - Subworkflow orchestration: ready; workflows=crm.enterprise.customer_journey, crm.subworkflow.orchestration; surface=crm.system-map

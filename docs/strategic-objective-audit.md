@@ -6,12 +6,12 @@ Status: covered_by_current_addon_evidence
 ## Summary
 
 - Sections: 9
-- Requirements: 50
+- Requirements: 51
 - Missing requirements: 0
-- Workflows: 37
-- Runtime contracts: 48
-- Artifact types: 110
-- Event types: 45
+- Workflows: 38
+- Runtime contracts: 49
+- Artifact types: 114
+- Event types: 46
 - Views: 12
 
 ## Sections
@@ -85,6 +85,7 @@ Missing: none
 - approvals: covered_by_forge_evidence; workflows=crm.approval.governance, crm.document.approval; contracts=crm.document.approval.executor, crm.document.generator.executor, crm.document.library.executor, crm.document.validator, crm.observability.inspector.executor, crm.workflow.approval_governance.executor
 - documents: covered_by_forge_evidence; workflows=crm.document.approval, crm.document.library; contracts=crm.document.approval.executor, crm.document.generator.executor, crm.document.library.executor, crm.document.validator
 - internal_flows: covered_by_forge_evidence; workflows=crm.daily.operating_cycle, crm.work.queue.orchestration; contracts=crm.analytics.executive_report.executor, crm.observability.inspector.executor, crm.operating.daily_cycle.executor, crm.queue.orchestrator.executor
+- internal_collaboration: covered_by_forge_evidence; workflows=crm.internal.collaboration; contracts=crm.operations.internal_collaboration.executor, crm.queue.orchestrator.executor
 - team_handoffs: covered_by_forge_evidence; workflows=crm.enterprise.customer_journey, crm.project.handoff; contracts=crm.commercial.account_management.executor, crm.commercial.contract_signature.executor, crm.enterprise.journey.executor, crm.marketing.form_capture.executor, crm.omnichannel.handoff, crm.operations.project_handoff.executor, crm.pipeline.stage_move.executor, crm.proposal.generator.executor, crm.support.ticket_sla.executor, crm.workflow.subworkflow_orchestrator.executor
 - daily_operating_cycle: covered_by_forge_evidence; workflows=crm.daily.operating_cycle; contracts=crm.analytics.executive_report.executor, crm.observability.inspector.executor, crm.operating.daily_cycle.executor, crm.queue.orchestrator.executor
 

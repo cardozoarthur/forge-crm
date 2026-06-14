@@ -490,7 +490,16 @@ export function renderWorkQueue(snapshot) {
     assignments.append(item);
   }
 
-  section.append(summary, queues, assignments);
+  const collaboration = nodeElement("div", "assignment-list");
+  for (const thread of panel.internal_collaboration_threads || []) {
+    const item = nodeElement("article", "assignment-row");
+    item.append(nodeElement("strong", "", thread.title));
+    item.append(nodeElement("span", "", `${thread.participant_count} people · ${thread.decision_count} decisions · ${thread.task_count} tasks`));
+    item.append(nodeElement("code", "", actionLabel(snapshot, thread.action_id)));
+    collaboration.append(item);
+  }
+
+  section.append(summary, queues, assignments, collaboration);
   return section;
 }
 

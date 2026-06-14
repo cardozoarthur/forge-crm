@@ -522,6 +522,26 @@ test("web app snapshot exposes cross-domain work queues as Forge command surface
   assert.ok(snapshot.actions.some((action) => action.id === "crm.run-work-queue" && action.contract_id === "crm.queue.orchestrator.executor"));
 });
 
+test("web app snapshot exposes internal collaboration as a Forge work queue surface", () => {
+  const snapshot = buildCrmWebAppSnapshot({ tenant_id: "demo" });
+  const workQueue = snapshot.operational_workbench.panels.find((panel) => panel.id === "work_queue");
+  const action = snapshot.actions.find((candidate) => candidate.id === "crm.record-internal-collaboration");
+
+  assert.ok(action);
+  assert.equal(action.surface_id, "crm.work-queue");
+  assert.equal(action.contract_id, "crm.operations.internal_collaboration.executor");
+  assert.equal(action.requires_permission, "crm.workflow.mutate");
+  assert.deepEqual(action.command_template.slice(0, 3), ["forge", "addons", "execute-executor"]);
+
+  assert.ok(workQueue);
+  assert.ok(workQueue.workflow_ids.includes("crm.internal.collaboration"));
+  assert.ok(workQueue.action_ids.includes("crm.record-internal-collaboration"));
+  assert.ok(workQueue.internal_collaboration_threads.length > 0);
+  assert.ok(workQueue.internal_collaboration_threads.every((thread) => thread.contract_id === "crm.operations.internal_collaboration.executor"));
+  assert.ok(workQueue.internal_collaboration_threads.every((thread) => thread.state_owner === "forge_workflow_runtime"));
+  assert.ok(workQueue.internal_collaboration_threads.every((thread) => thread.local_state_allowed === false));
+});
+
 test("web app snapshot exposes Forge-owned design system tokens and components", () => {
   const snapshot = buildCrmWebAppSnapshot({ tenant_id: "demo" });
   const designSystem = snapshot.design_system;
@@ -645,19 +665,20 @@ test("web app snapshot exposes operating readiness workbench for company operati
   assert.equal(workbench.main_flow_dependency_external, false);
 
   assert.equal(workbench.domain_coverage.complete, true);
-  assert.equal(workbench.domain_coverage.domains.length, 15);
+  assert.equal(workbench.domain_coverage.domains.length, 16);
   assert.ok(workbench.domain_coverage.domains.every((domain) => domain.ready === true));
   assert.ok(workbench.domain_coverage.domains.every((domain) => domain.workflow_ids.length > 0));
   assert.ok(workbench.domain_coverage.domains.every((domain) => domain.artifact_evidence.length > 0));
   assert.ok(workbench.domain_coverage.domains.every((domain) => domain.event_evidence.length > 0));
   assert.ok(workbench.domain_coverage.domains.every((domain) => domain.runtime_contract_evidence.length > 0));
 
-  assert.equal(workbench.user_outcomes.length, 15);
+  assert.equal(workbench.user_outcomes.length, 16);
   assert.ok(workbench.user_outcomes.some((outcome) => outcome.deliverable === "commercial command center"));
   assert.ok(workbench.user_outcomes.some((outcome) => outcome.deliverable === "support inbox"));
   assert.ok(workbench.user_outcomes.some((outcome) => outcome.deliverable === "omnichannel conversation threads"));
   assert.ok(workbench.user_outcomes.some((outcome) => outcome.deliverable === "enterprise customer journey"));
   assert.ok(workbench.user_outcomes.some((outcome) => outcome.deliverable === "workflow-system factory blueprint"));
+  assert.ok(workbench.user_outcomes.some((outcome) => outcome.deliverable === "internal collaboration"));
   assert.ok(workbench.daily_operations.every((operation) => operation.command_owner === "forge"));
   assert.ok(
     workbench.daily_operations.every(

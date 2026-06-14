@@ -442,8 +442,8 @@ test("operating readiness maps Forge evidence into user-facing CRM deliverables"
   assert.equal(result.status, "completed");
   assert.equal(result.outputs.tenant_id, "demo");
   assert.equal(result.outputs.success_criteria_status, "operable_with_evidence");
-  assert.equal(result.outputs.user_facing_deliverable_count, 15);
-  assert.equal(result.outputs.ready_domain_count, 15);
+  assert.equal(result.outputs.user_facing_deliverable_count, 16);
+  assert.equal(result.outputs.ready_domain_count, 16);
   assert.equal(result.outputs.forge_only_operations, true);
   assert.equal(result.outputs.main_flow_dependency_external, false);
   assert.equal(result.outputs.mutates_crm_state, false);
@@ -474,6 +474,10 @@ test("operating readiness maps Forge evidence into user-facing CRM deliverables"
   assert.ok(
     outcomeManifest.data.outcomes.some((outcome) => outcome.deliverable === "executive reporting"),
     "missing executive reporting user outcome"
+  );
+  assert.ok(
+    outcomeManifest.data.outcomes.some((outcome) => outcome.deliverable === "internal collaboration"),
+    "missing internal collaboration user outcome"
   );
   assert.ok(result.events.some((event) => event.kind === "crm.operating.readiness_reported"));
   assert.ok(result.events.some((event) => event.kind === "crm.outcome.deliverables_mapped"));
@@ -2807,6 +2811,94 @@ test("operations project handoff executor plans project tasks as Forge workflow 
   assert.ok(result.events.some((event) => event.kind === "crm.task.created"));
   assert.ok(result.events.some((event) => event.kind === "crm.task.blocked"));
   assert.ok(result.events.some((event) => event.kind === "crm.project.accepted"));
+});
+
+test("internal collaboration executor records notes decisions mentions and tasks through Forge", () => {
+  assert.equal(typeof runtime.buildInternalCollaborationResult, "function");
+
+  const result = runtime.buildInternalCollaborationResult(
+    workerRequest(
+      "forge_crm.record_internal_collaboration",
+      {
+        tenant_context: { tenant_id: "demo" },
+        collaboration_context: {
+          id: "collab-001",
+          title: "Acme renewal risk review",
+          source_workflow_id: "crm.customer_success.plan",
+          owner: "success-manager"
+        },
+        participants: [
+          { id: "success-manager", role: "customer_success" },
+          { id: "support-lead", role: "support" },
+          { id: "sales-director", role: "commercial" }
+        ],
+        notes: [
+          {
+            id: "note-001",
+            body: "Customer needs integration unblock before renewal committee.",
+            author: "success-manager"
+          }
+        ],
+        decisions: [
+          {
+            id: "decision-001",
+            summary: "Escalate integration blocker into the operating queue.",
+            owner: "support-lead"
+          }
+        ],
+        mentions: [
+          {
+            target: "ops-engineer",
+            reason: "Need WhatsApp adapter policy review",
+            workflow_id: "crm.project.handoff"
+          }
+        ],
+        followups: [
+          {
+            id: "task-integration-policy",
+            title: "Review WhatsApp adapter policy",
+            owner: "ops-engineer",
+            due_at: "2026-07-18T12:00:00Z"
+          }
+        ]
+      },
+      { contract_id: "crm.operations.internal_collaboration.executor", task_ref: "internal-collaboration-test" }
+    )
+  );
+
+  assert.equal(result.schema_version, "forge.addon_executor_result.v1");
+  assert.equal(result.status, "completed");
+  assert.equal(result.outputs.tenant_id, "demo");
+  assert.equal(result.outputs.workflow_id, "crm.internal.collaboration");
+  assert.equal(result.outputs.collaboration_id, "collab-001");
+  assert.equal(result.outputs.owner, "success-manager");
+  assert.equal(result.outputs.participant_count, 3);
+  assert.equal(result.outputs.note_count, 1);
+  assert.equal(result.outputs.decision_count, 1);
+  assert.equal(result.outputs.mention_count, 1);
+  assert.equal(result.outputs.task_count, 1);
+  assert.equal(result.outputs.next_state, "collaboration_active");
+  assert.equal(result.outputs.mutates_crm_state, false);
+  assert.equal(result.outputs.forge_event_sourced, true);
+
+  for (const kind of [
+    "crm_collaboration_thread",
+    "crm_internal_note",
+    "crm_decision_record",
+    "crm_mention_map",
+    "crm_task_plan"
+  ]) {
+    assert.ok(result.artifacts.some((artifact) => artifact.kind === kind), `missing collaboration artifact ${kind}`);
+  }
+  for (const kind of [
+    "crm.collaboration.thread_created",
+    "crm.collaboration.note_recorded",
+    "crm.collaboration.decision_recorded",
+    "crm.collaboration.mention_routed",
+    "crm.task.created"
+  ]) {
+    assert.ok(result.events.some((event) => event.kind === kind), `missing collaboration event ${kind}`);
+  }
 });
 
 test("omnichannel handoff requires approval before delivery", () => {

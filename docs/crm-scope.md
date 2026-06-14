@@ -49,6 +49,9 @@
 - Approvals
 - Documents
 - Internal flows
+- Internal collaboration
+- Notes and decisions
+- Mentions
 - Team handoffs
 
 ## AI and Automation
