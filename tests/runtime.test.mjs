@@ -3,6 +3,7 @@ import http from "node:http";
 import test from "node:test";
 import {
   buildTenantBootstrapResult,
+  buildDocumentGeneratorResult,
   buildDocumentValidatorResult,
   buildOperatingCopilotResult,
   buildLeadClassifierResult,
@@ -185,6 +186,57 @@ test("proposal generator emits a draft proposal artifact gated by Forge approval
   assert.equal(result.outputs.proposal_id, "proposal-opp-001");
   assert.equal(result.outputs.external_delivery_allowed, false);
   assert.equal(result.artifacts[0].kind, "crm_proposal");
+});
+
+test("document generator emits Forge-gated CRM document artifacts without state mutation", () => {
+  const result = buildDocumentGeneratorResult(
+    workerRequest(
+      "forge_crm.generate_document",
+      {
+        tenant_context: { tenant_id: "demo" },
+        workflow_id: "crm.campaign.lifecycle",
+        document_kind: "campaign_asset_pack",
+        subject: { id: "campaign-q3", account: "Acme Logistics" },
+        requested_artifacts: [
+          "crm_contract",
+          "crm_campaign",
+          "crm_email",
+          "crm_landing_page",
+          "crm_report",
+          "crm_presentation"
+        ],
+        brief: {
+          goal: "Launch an enterprise operations campaign",
+          audience: "COO and operations leaders",
+          approved_claims: ["workflow-first CRM", "Forge-owned approval gates"]
+        }
+      },
+      { contract_id: "crm.document.generator.executor" }
+    )
+  );
+
+  assert.equal(result.schema_version, "forge.addon_executor_result.v1");
+  assert.equal(result.status, "completed");
+  assert.equal(result.outputs.tenant_id, "demo");
+  assert.equal(result.outputs.document_kind, "campaign_asset_pack");
+  assert.equal(result.outputs.approval_state, "draft_requires_forge_approval");
+  assert.equal(result.outputs.external_delivery_allowed, false);
+  assert.equal(result.outputs.mutates_crm_state, false);
+
+  const artifactKinds = result.artifacts.map((artifact) => artifact.kind);
+  for (const kind of [
+    "crm_document",
+    "crm_contract",
+    "crm_campaign",
+    "crm_email",
+    "crm_landing_page",
+    "crm_report",
+    "crm_presentation"
+  ]) {
+    assert.ok(artifactKinds.includes(kind), `missing generated artifact ${kind}`);
+  }
+  assert.ok(result.artifacts.every((artifact) => artifact.data.lineage.workflow_id === "crm.campaign.lifecycle"));
+  assert.ok(result.events.some((event) => event.kind === "crm.document.generated"));
 });
 
 test("document validator fails missing lineage and passes approved Forge artifacts", () => {

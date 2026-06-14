@@ -13,6 +13,10 @@ function asArray(value) {
   return Array.isArray(value) ? value : [];
 }
 
+function unique(items) {
+  return [...new Set(items)];
+}
+
 function dispatchEnvelope(request) {
   return asObject(request?.input);
 }
@@ -431,6 +435,151 @@ export function buildProposalGeneratorResult(request) {
   };
 }
 
+const DOCUMENT_ARTIFACT_KINDS = [
+  "crm_document",
+  "crm_contract",
+  "crm_report",
+  "crm_email",
+  "crm_campaign",
+  "crm_landing_page",
+  "crm_presentation"
+];
+
+const DEFAULT_DOCUMENT_ARTIFACTS = {
+  contract: ["crm_contract", "crm_document"],
+  contract_pack: ["crm_contract", "crm_document", "crm_report"],
+  campaign: ["crm_campaign", "crm_email", "crm_landing_page", "crm_report"],
+  campaign_asset_pack: ["crm_campaign", "crm_email", "crm_landing_page", "crm_report", "crm_presentation"],
+  report: ["crm_report", "crm_document"],
+  presentation: ["crm_presentation", "crm_document"],
+  landing_page: ["crm_landing_page", "crm_email", "crm_document"],
+  email: ["crm_email", "crm_document"],
+  document: ["crm_document"]
+};
+
+function documentArtifactKinds(input, documentKind) {
+  const requested = asArray(input.requested_artifacts)
+    .map((kind) => String(kind))
+    .filter((kind) => DOCUMENT_ARTIFACT_KINDS.includes(kind));
+  const defaults = DEFAULT_DOCUMENT_ARTIFACTS[documentKind] || DEFAULT_DOCUMENT_ARTIFACTS.document;
+  return unique(["crm_document", ...defaults, ...requested]);
+}
+
+function artifactTitle(kind, subjectName) {
+  const labels = {
+    crm_document: "Document",
+    crm_contract: "Contract",
+    crm_report: "Report",
+    crm_email: "Email",
+    crm_campaign: "Campaign",
+    crm_landing_page: "Landing page",
+    crm_presentation: "Presentation"
+  };
+  return `${labels[kind] || "Document"} draft for ${subjectName}`;
+}
+
+function artifactOutline(kind) {
+  const outlines = {
+    crm_contract: ["parties", "scope", "commercial_terms", "approval_and_signature_steps"],
+    crm_report: ["executive_summary", "evidence", "risks", "next_steps"],
+    crm_email: ["subject_line", "personalized_body", "call_to_action", "approval_note"],
+    crm_campaign: ["campaign_goal", "target_segment", "message_pillars", "automation_steps"],
+    crm_landing_page: ["headline", "offer", "proof_points", "form_fields"],
+    crm_presentation: ["context", "problem", "solution", "workflow_plan", "decision_slide"],
+    crm_document: ["context", "draft_content", "lineage", "approval_policy"]
+  };
+  return outlines[kind] || outlines.crm_document;
+}
+
+function documentKindKey(value, fallback = "document") {
+  const normalized = String(value || fallback)
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  return normalized || fallback;
+}
+
+export function buildDocumentGeneratorResult(request) {
+  const input = dispatchPayload(request);
+  const context = providedContext(request);
+  const tenantId = input.tenant_id || input.tenant_context?.tenant_id || input.tenant_context?.id || context.tenant || "default";
+  const documentKind = documentKindKey(input.document_kind || input.kind || "document");
+  const subject = asObject(input.subject ?? input.account_context ?? input.opportunity ?? input.campaign);
+  const subjectId = String(subject.id || subject.opportunity_id || subject.campaign_id || input.subject_id || dispatchEnvelope(request).task_ref || "crm-document");
+  const subjectName = subject.account || subject.company || subject.name || subject.title || subjectId;
+  const workflowId = String(input.workflow_id || input.lineage?.workflow_id || dispatchEnvelope(request).workflow_id || "crm.document.approval");
+  const taskRef = dispatchEnvelope(request).task_ref || `generate-document-${slug(subjectId, "subject")}`;
+  const brief = asObject(input.brief);
+  const artifactKinds = documentArtifactKinds(input, documentKind);
+  const documentId = `document-${slug(documentKind, "document")}-${slug(subjectId, "subject")}`;
+  const lineage = {
+    workflow_id: workflowId,
+    task_ref: taskRef,
+    source_contract: "crm.document.generator.executor",
+    subject_id: subjectId,
+    tenant_id: tenantId
+  };
+  const approvalPolicy = {
+    approval_state: "draft_requires_forge_approval",
+    external_delivery_allowed: false,
+    validation_contract: "crm.document.validator"
+  };
+
+  const artifacts = artifactKinds.map((kind) => ({
+    kind,
+    id: kind === "crm_document" ? documentId : `${documentId}-${kind.replace(/^crm_/, "")}`,
+    title: artifactTitle(kind, subjectName),
+    content_type: "application/json",
+    data: {
+      tenant_id: tenantId,
+      document_kind: documentKind,
+      subject,
+      brief,
+      sections: artifactOutline(kind),
+      lineage,
+      approval_policy: approvalPolicy,
+      delivery_policy: "attach_to_workflow_and_request_approval_before_external_delivery"
+    }
+  }));
+
+  return {
+    schema_version: "forge.addon_executor_result.v1",
+    status: "completed",
+    task_ref: taskRef,
+    summary: `Generated ${artifactKinds.length} CRM document artifacts for ${subjectName}`,
+    outputs: {
+      tenant_id: tenantId,
+      document_id: documentId,
+      document_kind: documentKind,
+      workflow_id: workflowId,
+      generated_artifact_kinds: artifactKinds,
+      approval_state: "draft_requires_forge_approval",
+      external_delivery_allowed: false,
+      mutates_crm_state: false
+    },
+    artifacts,
+    events: [
+      {
+        kind: "crm.document.generated",
+        tenant_id: tenantId,
+        document_id: documentId,
+        document_kind: documentKind,
+        workflow_id: workflowId,
+        artifact_count: artifactKinds.length,
+        approval_state: "draft_requires_forge_approval"
+      },
+      {
+        kind: "crm.document.approval_requested",
+        tenant_id: tenantId,
+        document_id: documentId,
+        workflow_id: workflowId
+      }
+    ],
+    context_tenant: context.tenant || tenantId
+  };
+}
+
 export function buildOperatingSnapshotResult(request) {
   const input = dispatchPayload(request);
   const context = providedContext(request);
@@ -610,6 +759,8 @@ export function executeCrmRuntimeRequest(request) {
       return buildOperatingCopilotResult(request);
     case "forge_crm.generate_proposal":
       return buildProposalGeneratorResult(request);
+    case "forge_crm.generate_document":
+      return buildDocumentGeneratorResult(request);
     case "forge_crm.validate_document":
       return buildDocumentValidatorResult(request);
     case "forge_crm.deliver_handoff":

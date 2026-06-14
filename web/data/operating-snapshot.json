@@ -26,8 +26,8 @@
     "workflow_count": 11,
     "business_module_count": 6,
     "surface_count": 8,
-    "artifact_type_count": 12,
-    "event_type_count": 30,
+    "artifact_type_count": 13,
+    "event_type_count": 31,
     "complete_scope": true
   },
   "surfaces": [
@@ -215,12 +215,14 @@
         "crm_campaign",
         "crm_email",
         "crm_landing_page",
+        "crm_presentation",
         "crm_report"
       ],
       "event_types": [
         "crm.campaign.created",
         "crm.campaign.reported",
         "crm.campaign.scheduled",
+        "crm.document.generated",
         "crm.lead.requalified",
         "crm.nurture.message_sent",
         "crm.nurture.step_due"
@@ -260,6 +262,7 @@
         "crm_contract",
         "crm_document",
         "crm_handoff_record",
+        "crm_presentation",
         "crm_proposal"
       ],
       "event_types": [
@@ -267,6 +270,7 @@
         "crm.contract.signed",
         "crm.document.approval_requested",
         "crm.document.approved",
+        "crm.document.generated",
         "crm.document.submitted",
         "crm.document.validated",
         "crm.proposal.generated"
@@ -357,6 +361,7 @@
         "crm.contract.reviewed",
         "crm.contract.signed",
         "crm.document.approval_requested",
+        "crm.document.generated",
         "crm.followup.scheduled",
         "crm.forecast.reviewed",
         "crm.forecast.updated",
@@ -415,12 +420,14 @@
         "crm_campaign",
         "crm_email",
         "crm_landing_page",
+        "crm_presentation",
         "crm_report"
       ],
       "event_types": [
         "crm.campaign.created",
         "crm.campaign.reported",
         "crm.campaign.scheduled",
+        "crm.document.generated",
         "crm.lead.requalified",
         "crm.nurture.message_sent",
         "crm.nurture.step_due"
@@ -444,12 +451,14 @@
         "crm_contract",
         "crm_document",
         "crm_handoff_record",
+        "crm_presentation",
         "crm_report"
       ],
       "event_types": [
         "crm.contract.reviewed",
         "crm.contract.signed",
         "crm.document.approved",
+        "crm.document.generated",
         "crm.document.submitted",
         "crm.document.validated",
         "crm.project.accepted",
@@ -621,6 +630,7 @@
           "renewal_wait"
         ],
         "runtime_contracts": [
+          "crm.document.generator.executor",
           "crm.document.validator"
         ],
         "artifact_types": [
@@ -628,6 +638,7 @@
           "crm_document"
         ],
         "event_types": [
+          "crm.document.generated",
           "crm.contract.reviewed",
           "crm.contract.signed"
         ],
@@ -728,15 +739,18 @@
           "approval_wait"
         ],
         "runtime_contracts": [
+          "crm.document.generator.executor",
           "crm.document.validator"
         ],
         "artifact_types": [
           "crm_campaign",
           "crm_email",
           "crm_landing_page",
+          "crm_presentation",
           "crm_report"
         ],
         "event_types": [
+          "crm.document.generated",
           "crm.campaign.created",
           "crm.campaign.scheduled",
           "crm.campaign.reported"
@@ -840,13 +854,16 @@
           "approval_wait"
         ],
         "runtime_contracts": [
+          "crm.document.generator.executor",
           "crm.document.validator"
         ],
         "artifact_types": [
           "crm_document",
+          "crm_presentation",
           "crm_handoff_record"
         ],
         "event_types": [
+          "crm.document.generated",
           "crm.document.submitted",
           "crm.document.validated",
           "crm.document.approved"
@@ -1150,6 +1167,7 @@
       "crm_contract",
       "crm_document",
       "crm_handoff_record",
+      "crm_presentation",
       "crm_proposal"
     ],
     "approval_required": true,
@@ -1225,6 +1243,33 @@
         "forge.addon.crm",
         "--contract",
         "crm.proposal.generator.executor",
+        "--worker",
+        "<worker-id>",
+        "--task",
+        "<task-ref>",
+        "--input",
+        "<json>",
+        "--context",
+        "<json>",
+        "--output",
+        "json"
+      ]
+    },
+    {
+      "id": "crm.generate-document",
+      "label": "Generate document",
+      "surface_id": "crm.document-queue",
+      "contract_id": "crm.document.generator.executor",
+      "requires_permission": "crm.document.generate",
+      "mutates_workflow": true,
+      "command_template": [
+        "forge",
+        "addons",
+        "execute-executor",
+        "--addon",
+        "forge.addon.crm",
+        "--contract",
+        "crm.document.generator.executor",
         "--worker",
         "<worker-id>",
         "--task",

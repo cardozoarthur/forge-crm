@@ -187,6 +187,15 @@ function actions() {
       command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.proposal.generator.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
     },
     {
+      id: "crm.generate-document",
+      label: "Generate document",
+      surface_id: "crm.document-queue",
+      contract_id: "crm.document.generator.executor",
+      requires_permission: "crm.document.generate",
+      mutates_workflow: true,
+      command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.document.generator.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
+    },
+    {
       id: "crm.validate-document",
       label: "Validate document",
       surface_id: "crm.document-queue",

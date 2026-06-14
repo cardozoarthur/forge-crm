@@ -307,7 +307,8 @@
       "artifact_types": [
         "crm_campaign",
         "crm_email",
-        "crm_landing_page"
+        "crm_landing_page",
+        "crm_presentation"
       ],
       "view_ids": [
         "crm.marketing-calendar"
@@ -344,6 +345,7 @@
       ],
       "artifact_types": [
         "crm_document",
+        "crm_presentation",
         "crm_handoff_record"
       ],
       "view_ids": [
@@ -621,6 +623,40 @@
       "constraints": [
         "proposal artifact must be attached to a workflow",
         "approval is required before external delivery"
+      ]
+    },
+    {
+      "id": "crm.document.generator.executor",
+      "title": "CRM document generator",
+      "contract_type": "executor",
+      "capability_id": "crm_internal_operations",
+      "workflow_extension_id": "crm_document_approval",
+      "runtime": "external_api",
+      "entrypoint": "forge_crm.generate_document",
+      "inputs": [
+        "document_kind",
+        "subject",
+        "brief",
+        "requested_artifacts",
+        "workflow_id",
+        "tenant_context"
+      ],
+      "outputs": [
+        "crm_document",
+        "crm_contract",
+        "crm_report",
+        "crm_email",
+        "crm_campaign",
+        "crm_landing_page",
+        "crm_presentation"
+      ],
+      "permissions": [
+        "crm.document.generate"
+      ],
+      "constraints": [
+        "generated artifacts must be attached to a Forge workflow",
+        "approval is required before external delivery or signature",
+        "document generator must not deliver externally or mutate CRM state directly"
       ]
     },
     {
@@ -966,6 +1002,11 @@
       "id": "crm_landing_page",
       "title": "CRM landing page",
       "generic_kind": "document"
+    },
+    {
+      "id": "crm_presentation",
+      "title": "CRM presentation",
+      "generic_kind": "presentation"
     },
     {
       "id": "crm_document",

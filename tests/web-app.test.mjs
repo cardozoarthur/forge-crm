@@ -52,6 +52,7 @@ test("web app snapshot models workflow graph, knowledge graph and document queue
   assert.ok(snapshot.document_queue.lanes.some((lane) => lane.id === "approval_wait"));
   assert.ok(snapshot.document_queue.artifact_types.includes("crm_proposal"));
   assert.ok(snapshot.document_queue.artifact_types.includes("crm_contract"));
+  assert.ok(snapshot.document_queue.artifact_types.includes("crm_presentation"));
 });
 
 test("web app snapshot provides Forge command actions instead of local automation", () => {
@@ -63,6 +64,7 @@ test("web app snapshot provides Forge command actions instead of local automatio
   assert.ok(snapshot.actions.every((action) => action.command_template[0] === "forge"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.operating.snapshot.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.proposal.generator.executor"));
+  assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.document.generator.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.ai.operating_copilot.executor"));
 });
 

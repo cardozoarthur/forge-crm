@@ -95,3 +95,16 @@ test("AI automation workflow routes operating copilot through a runtime contract
   assert.ok(aiWorkflow.runtime_contracts.includes("crm.ai.operating_copilot.executor"));
   assert.ok(pack.indexes.runtime_contracts.includes("crm.ai.operating_copilot.executor"));
 });
+
+test("document workflows route draft generation through a Forge runtime contract", () => {
+  const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
+
+  for (const workflowId of ["crm.contract.signature", "crm.campaign.lifecycle", "crm.document.approval"]) {
+    const workflow = pack.workflows.find((candidate) => candidate.id === workflowId);
+    assert.ok(workflow, `missing workflow ${workflowId}`);
+    assert.ok(workflow.runtime_contracts.includes("crm.document.generator.executor"), `${workflowId} must generate documents through Forge`);
+    assert.ok(workflow.runtime_contracts.includes("crm.document.validator"), `${workflowId} must validate generated documents`);
+  }
+
+  assert.ok(pack.indexes.runtime_contracts.includes("crm.document.generator.executor"));
+});

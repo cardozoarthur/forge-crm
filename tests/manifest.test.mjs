@@ -73,6 +73,33 @@ test("manifest exposes CRM operating copilot as a recommendation-only executor",
   assert.ok(contract.constraints.some((constraint) => constraint.includes("does not mutate")));
 });
 
+test("manifest exposes CRM document generation as a Forge-gated executor", () => {
+  const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.document.generator.executor");
+  assert.ok(contract);
+  assert.equal(contract.contract_type, "executor");
+  assert.equal(contract.capability_id, "crm_internal_operations");
+  assert.equal(contract.entrypoint, "forge_crm.generate_document");
+  assert.deepEqual(contract.permissions, ["crm.document.generate"]);
+
+  for (const output of [
+    "crm_document",
+    "crm_contract",
+    "crm_report",
+    "crm_email",
+    "crm_campaign",
+    "crm_landing_page",
+    "crm_presentation"
+  ]) {
+    assert.ok(contract.outputs.includes(output), `missing document generator output ${output}`);
+  }
+
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("approval is required")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("must not deliver externally")));
+
+  const artifactTypes = new Set(manifest.artifact_types.map((artifact) => artifact.id));
+  assert.ok(artifactTypes.has("crm_presentation"));
+});
+
 test("manifest declares the CRM web application entrypoint as an Addon view asset", () => {
   const systemMap = manifest.views.find((view) => view.id === "crm.system-map");
   assert.ok(systemMap);

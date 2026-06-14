@@ -80,6 +80,7 @@ try {
       "forge_crm.classify_lead",
       "forge_crm.operating_copilot",
       "forge_crm.generate_proposal",
+      "forge_crm.generate_document",
       "forge_crm.validate_document",
       "forge_crm.deliver_handoff"
     ],
@@ -90,6 +91,7 @@ try {
       "crm.lead.classifier.executor",
       "crm.ai.operating_copilot.executor",
       "crm.proposal.generator.executor",
+      "crm.document.generator.executor",
       "crm.document.validator",
       "crm.omnichannel.handoff"
     ],
@@ -263,6 +265,46 @@ try {
     throw new Error(`expected priority opportunity from copilot, got ${copilot.executor_result.outputs.priority_opportunity_id}`);
   }
 
+  const documentGenerator = runForge([
+    "addons",
+    "execute-executor",
+    "--addon-dir",
+    "addons",
+    "--addon",
+    "forge.addon.crm",
+    "--contract",
+    "crm.document.generator.executor",
+    "--worker",
+    workerId,
+    "--task",
+    "crm-smoke-document-generation",
+    "--workflow",
+    workflowId,
+    "--input",
+    JSON.stringify({
+      tenant_context: { id: "smoke", tenant_id: "smoke" },
+      workflow_id: "crm.campaign.lifecycle",
+      document_kind: "campaign_asset_pack",
+      subject: { id: "campaign-smoke", account: "Example Logistics" },
+      requested_artifacts: ["crm_contract", "crm_campaign", "crm_email", "crm_landing_page", "crm_report", "crm_presentation"],
+      brief: {
+        goal: "Generate a Forge-gated campaign pack",
+        audience: "Operations leaders"
+      }
+    }),
+    "--context",
+    JSON.stringify({ tenant: "smoke" }),
+    "--output",
+    "json"
+  ]);
+
+  if (documentGenerator.promotion?.status !== "addon_executor_result_promoted") {
+    throw new Error(`expected document generator promotion, got ${documentGenerator.promotion?.status || "missing"}`);
+  }
+  if (documentGenerator.executor_result.outputs.external_delivery_allowed !== false) {
+    throw new Error("expected generated documents to block external delivery before approval");
+  }
+
   const workflowArtifacts = runForge([
     "artifacts",
     "--workflow",
@@ -284,6 +326,8 @@ try {
   const snapshotPromotedEventCount = operatingSnapshot.promotion?.event_count ?? 0;
   const copilotPromotedArtifactCount = copilot.promotion?.artifact_count ?? 0;
   const copilotPromotedEventCount = copilot.promotion?.event_count ?? 0;
+  const documentPromotedArtifactCount = documentGenerator.promotion?.artifact_count ?? 0;
+  const documentPromotedEventCount = documentGenerator.promotion?.event_count ?? 0;
   const workflowArtifactCount = workflowArtifacts.artifacts?.length ?? 0;
   const workflowEventKinds = (workflowEvents.events || []).map((event) => event.kind);
 
@@ -320,6 +364,14 @@ try {
   }
   if (!workflowEventKinds.includes("crm.ai.operating_copilot_generated")) {
     throw new Error(`expected operating copilot event in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
+  }
+  if (documentPromotedArtifactCount < 7 || documentPromotedEventCount < 1) {
+    throw new Error(
+      `expected promoted document artifacts/events, got artifacts=${documentPromotedArtifactCount} events=${documentPromotedEventCount}`
+    );
+  }
+  if (!workflowEventKinds.includes("crm.document.generated")) {
+    throw new Error(`expected document generation event in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
   }
 
   const classifier = runForge([
@@ -452,6 +504,11 @@ try {
     copilot_risk_count: copilot.executor_result.outputs.risk_count,
     copilot_promoted_artifacts: copilotPromotedArtifactCount,
     copilot_promoted_events: copilotPromotedEventCount,
+    document_generator_status: documentGenerator.status,
+    document_generator_promotion_status: documentGenerator.promotion.status,
+    document_generator_document_id: documentGenerator.executor_result.outputs.document_id,
+    document_generator_promoted_artifacts: documentPromotedArtifactCount,
+    document_generator_promoted_events: documentPromotedEventCount,
     workflow_artifact_count: workflowArtifactCount,
     workflow_event_kinds: workflowEventKinds,
     bootstrap_workflow_count: bootstrap.executor_result.outputs.workflow_count,
