@@ -96,6 +96,19 @@ test("AI automation workflow routes operating copilot through a runtime contract
   assert.ok(pack.indexes.runtime_contracts.includes("crm.ai.operating_copilot.executor"));
 });
 
+test("relationship and pipeline workflows route timeline updates through Forge", () => {
+  const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
+
+  for (const workflowId of ["crm.lead.lifecycle", "crm.opportunity.pipeline"]) {
+    const workflow = pack.workflows.find((candidate) => candidate.id === workflowId);
+    assert.ok(workflow, `missing workflow ${workflowId}`);
+    assert.ok(workflow.runtime_contracts.includes("crm.relationship.timeline.executor"), `${workflowId} must record relationship timeline through Forge`);
+    assert.ok(workflow.artifacts.includes("crm_timeline_snapshot"), `${workflowId} must attach timeline artifacts`);
+  }
+
+  assert.ok(pack.indexes.runtime_contracts.includes("crm.relationship.timeline.executor"));
+});
+
 test("document workflows route draft generation through a Forge runtime contract", () => {
   const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
 

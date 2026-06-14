@@ -31,9 +31,9 @@ const WORKFLOWS = [
       ["qualified", "converted", "opportunity workflow created"],
       ["captured", "disqualified", "fit rejected with reason"]
     ],
-    runtime_contracts: ["crm.lead.classifier.executor"],
+    runtime_contracts: ["crm.relationship.timeline.executor", "crm.lead.classifier.executor"],
     artifacts: ["crm_timeline_snapshot", "crm_ai_recommendation"],
-    events: ["crm.lead.created", "crm.lead.classified", "crm.contact.updated"],
+    events: ["crm.lead.created", "crm.lead.classified", "crm.contact.updated", "crm.relationship.recorded"],
     memory_scopes: ["organization", "project"],
     permissions: ["crm.workflow.mutate", "crm.ai.recommend"],
     views: ["crm.relationship-graph"],
@@ -53,7 +53,12 @@ const WORKFLOWS = [
       ["negotiation", "won", "contract workflow started"],
       ["negotiation", "lost", "loss reason recorded"]
     ],
-    runtime_contracts: ["crm.lead.classifier.executor", "crm.ai.operating_copilot.executor", "crm.proposal.generator.executor"],
+    runtime_contracts: [
+      "crm.relationship.timeline.executor",
+      "crm.lead.classifier.executor",
+      "crm.ai.operating_copilot.executor",
+      "crm.proposal.generator.executor"
+    ],
     artifacts: ["crm_timeline_snapshot", "crm_report"],
     events: ["crm.opportunity.stage_changed", "crm.forecast.updated"],
     memory_scopes: ["organization", "project"],

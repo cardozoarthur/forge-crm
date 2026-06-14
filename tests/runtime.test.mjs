@@ -7,6 +7,7 @@ import {
   buildDocumentValidatorResult,
   buildOperatingCopilotResult,
   buildLeadClassifierResult,
+  buildRelationshipTimelineResult,
   buildOmnichannelHandoffResult,
   buildOperatingSnapshotResult,
   buildProposalGeneratorResult
@@ -91,6 +92,59 @@ test("lead classifier returns a Forge executor result without mutating CRM state
   assert.ok(result.outputs.score >= 80);
   assert.equal(result.outputs.mutates_crm_state, false);
   assert.equal(result.context_tenant, "test");
+});
+
+test("relationship timeline records entity and pipeline events as Forge artifacts", () => {
+  const result = buildRelationshipTimelineResult(
+    workerRequest(
+      "forge_crm.record_relationship_event",
+      {
+        tenant_context: { tenant_id: "demo" },
+        entity: {
+          id: "opp-001",
+          kind: "opportunity",
+          account: "Acme Logistics",
+          contact_ids: ["contact-001"],
+          company_id: "company-001"
+        },
+        relationships: [
+          { from: "company-001", to: "contact-001", relation: "employs" },
+          { from: "company-001", to: "opp-001", relation: "owns_opportunity" }
+        ],
+        timeline_event: {
+          kind: "stage_changed",
+          from_stage: "discovery",
+          to_stage: "proposal",
+          reason: "approved offer terms attached",
+          owner: "sales-owner"
+        },
+        pipeline: {
+          funnel_id: "enterprise",
+          from_stage: "discovery",
+          to_stage: "proposal",
+          amount: 180000,
+          probability: 0.64
+        }
+      },
+      { contract_id: "crm.relationship.timeline.executor", task_ref: "crm-relationship-smoke" }
+    )
+  );
+
+  assert.equal(result.schema_version, "forge.addon_executor_result.v1");
+  assert.equal(result.status, "completed");
+  assert.equal(result.outputs.tenant_id, "demo");
+  assert.equal(result.outputs.entity_id, "opp-001");
+  assert.equal(result.outputs.entity_kind, "opportunity");
+  assert.equal(result.outputs.pipeline_stage, "proposal");
+  assert.equal(result.outputs.funnel_id, "enterprise");
+  assert.equal(result.outputs.mutates_crm_state, false);
+  assert.equal(result.outputs.forge_event_sourced, true);
+
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_timeline_snapshot"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_entity_model"));
+  assert.ok(result.events.some((event) => event.kind === "crm.relationship.recorded"));
+  assert.ok(result.events.some((event) => event.kind === "crm.opportunity.stage_changed"));
+  assert.ok(result.events.some((event) => event.kind === "crm.forecast.updated"));
 });
 
 test("tenant bootstrap runtime returns a workflow-backed CRM pack", () => {

@@ -519,6 +519,34 @@
       ]
     },
     {
+      "id": "crm.relationship.timeline.executor",
+      "title": "CRM relationship timeline recorder",
+      "contract_type": "executor",
+      "capability_id": "crm_relationship_management",
+      "workflow_extension_id": "crm_entity_lifecycle",
+      "runtime": "external_api",
+      "entrypoint": "forge_crm.record_relationship_event",
+      "inputs": [
+        "entity",
+        "relationships",
+        "timeline_event",
+        "pipeline",
+        "tenant_context"
+      ],
+      "outputs": [
+        "crm_timeline_snapshot",
+        "crm_entity_model"
+      ],
+      "permissions": [
+        "crm.workflow.mutate"
+      ],
+      "constraints": [
+        "relationship timeline executor does not persist CRM state outside Forge",
+        "entity, relationship, pipeline and forecast changes must be promoted from Forge workflow artifacts and events",
+        "pipeline stage movement must include owner, reason and workflow lineage"
+      ]
+    },
+    {
       "id": "crm.ai.operating_copilot.executor",
       "title": "CRM operating copilot",
       "contract_type": "executor",
@@ -1041,6 +1069,11 @@
       "transport": "crm"
     },
     {
+      "id": "crm.relationship",
+      "title": "CRM relationship event",
+      "transport": "crm"
+    },
+    {
       "id": "crm.message",
       "title": "CRM omnichannel message",
       "transport": "crm"
@@ -1078,6 +1111,7 @@
       "event_types": [
         "crm.lead",
         "crm.opportunity",
+        "crm.relationship",
         "crm.document",
         "crm.campaign"
       ],
@@ -1268,6 +1302,7 @@
       "event_types": [
         "crm.lead",
         "crm.opportunity",
+        "crm.relationship",
         "crm.document",
         "crm.campaign"
       ],

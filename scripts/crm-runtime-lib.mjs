@@ -195,6 +195,166 @@ export function buildLeadClassifierResult(request) {
   };
 }
 
+function entityId(entity, fallback = "crm-entity") {
+  return String(entity.id || entity.entity_id || entity.lead_id || entity.contact_id || entity.company_id || entity.opportunity_id || fallback);
+}
+
+function entityKind(entity, fallback = "record") {
+  return String(entity.kind || entity.entity_kind || entity.type || fallback)
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "") || fallback;
+}
+
+function relationshipWorkflowFor(kind) {
+  return kind === "opportunity" ? "crm.opportunity.pipeline" : "crm.lead.lifecycle";
+}
+
+export function buildRelationshipTimelineResult(request) {
+  const input = dispatchPayload(request);
+  const context = providedContext(request);
+  const tenantId = input.tenant_id || input.tenant_context?.tenant_id || input.tenant_context?.id || context.tenant || "default";
+  const entity = asObject(input.entity ?? input.lead ?? input.contact ?? input.company ?? input.opportunity);
+  const kind = entityKind(entity, input.entity_kind || "record");
+  const id = entityId(entity, dispatchEnvelope(request).task_ref || "crm-entity");
+  const relationships = asArray(input.relationships);
+  const timelineEvent = asObject(input.timeline_event ?? input.event);
+  const pipeline = asObject(input.pipeline);
+  const workflowId = String(input.workflow_id || timelineEvent.workflow_id || pipeline.workflow_id || relationshipWorkflowFor(kind));
+  const taskRef = dispatchEnvelope(request).task_ref || `record-relationship-${slug(id, "entity")}`;
+  const fromStage = pipeline.from_stage || timelineEvent.from_stage || entity.previous_stage || null;
+  const toStage = pipeline.to_stage || timelineEvent.to_stage || entity.stage || null;
+  const funnelId = pipeline.funnel_id || entity.funnel_id || "default";
+  const amount = numberFrom(pipeline.amount ?? entity.amount ?? entity.value, 0);
+  const probability = probabilityFrom(pipeline.probability ?? pipeline.close_probability ?? entity.close_probability);
+  const forecastAmount = Math.round(amount * probability);
+  const timelineRecord = {
+    event_id: timelineEvent.id || `event-${slug(id, "entity")}-${slug(timelineEvent.kind || "relationship")}`,
+    kind: timelineEvent.kind || (toStage ? "stage_changed" : "relationship_recorded"),
+    from_stage: fromStage,
+    to_stage: toStage,
+    reason: timelineEvent.reason || input.reason || "Forge relationship event recorded",
+    owner: timelineEvent.owner || input.owner || "forge",
+    workflow_id: workflowId
+  };
+  const lineage = {
+    workflow_id: workflowId,
+    task_ref: taskRef,
+    source_contract: "crm.relationship.timeline.executor",
+    tenant_id: tenantId,
+    entity_id: id
+  };
+
+  const events = [
+    {
+      kind: "crm.relationship.recorded",
+      tenant_id: tenantId,
+      entity_id: id,
+      entity_kind: kind,
+      workflow_id: workflowId,
+      relationship_count: relationships.length,
+      timeline_event_kind: timelineRecord.kind
+    }
+  ];
+
+  if (kind === "opportunity" && toStage) {
+    events.push({
+      kind: "crm.opportunity.stage_changed",
+      tenant_id: tenantId,
+      opportunity_id: id,
+      workflow_id: workflowId,
+      funnel_id: funnelId,
+      from_stage: fromStage,
+      to_stage: toStage
+    });
+  }
+  if (kind === "opportunity" && amount > 0) {
+    events.push({
+      kind: "crm.forecast.updated",
+      tenant_id: tenantId,
+      opportunity_id: id,
+      workflow_id: workflowId,
+      funnel_id: funnelId,
+      amount,
+      probability,
+      forecast_amount: forecastAmount
+    });
+  }
+
+  return {
+    schema_version: "forge.addon_executor_result.v1",
+    status: "completed",
+    task_ref: taskRef,
+    summary: `Recorded ${kind} ${id} relationship timeline event through Forge`,
+    outputs: {
+      tenant_id: tenantId,
+      entity_id: id,
+      entity_kind: kind,
+      workflow_id: workflowId,
+      relationship_count: relationships.length,
+      timeline_event_count: 1,
+      pipeline_stage: toStage,
+      funnel_id: funnelId,
+      forecast_amount: forecastAmount,
+      mutates_crm_state: false,
+      forge_event_sourced: true
+    },
+    artifacts: [
+      {
+        kind: "crm_timeline_snapshot",
+        id: `timeline-${slug(kind, "entity")}-${slug(id, "entity")}`,
+        title: `CRM timeline snapshot for ${id}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          entity,
+          entity_id: id,
+          entity_kind: kind,
+          relationships,
+          timeline_events: [timelineRecord],
+          pipeline: {
+            ...pipeline,
+            funnel_id: funnelId,
+            from_stage: fromStage,
+            to_stage: toStage,
+            amount,
+            probability,
+            forecast_amount: forecastAmount
+          },
+          lineage,
+          state_owner: "forge_workflow_runtime",
+          external_database_required: false
+        }
+      },
+      {
+        kind: "crm_entity_model",
+        id: `entity-${slug(kind, "entity")}-${slug(id, "entity")}`,
+        title: `CRM entity model for ${id}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          entity_id: id,
+          entity_kind: kind,
+          workflow_id: workflowId,
+          record_identity: {
+            primary: "workflow_id",
+            external_primary_key_allowed: false
+          },
+          entity,
+          relationships,
+          current_stage: toStage,
+          funnel_id: funnelId,
+          lineage,
+          mutation_policy: "state_changes_must_be_promoted_by_forge_workflow"
+        }
+      }
+    ],
+    events,
+    context_tenant: context.tenant || tenantId
+  };
+}
+
 function opportunityId(opportunity) {
   return String(opportunity.id || opportunity.opportunity_id || opportunity.account || opportunity.company || "opportunity-unknown");
 }
@@ -755,6 +915,8 @@ export function executeCrmRuntimeRequest(request) {
       return buildOperatingSnapshotResult(request);
     case "forge_crm.classify_lead":
       return buildLeadClassifierResult(request);
+    case "forge_crm.record_relationship_event":
+      return buildRelationshipTimelineResult(request);
     case "forge_crm.operating_copilot":
       return buildOperatingCopilotResult(request);
     case "forge_crm.generate_proposal":

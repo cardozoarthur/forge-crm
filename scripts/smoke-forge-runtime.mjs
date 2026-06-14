@@ -78,6 +78,7 @@ try {
       "forge_crm.bootstrap_tenant",
       "forge_crm.operating_snapshot",
       "forge_crm.classify_lead",
+      "forge_crm.record_relationship_event",
       "forge_crm.operating_copilot",
       "forge_crm.generate_proposal",
       "forge_crm.generate_document",
@@ -89,6 +90,7 @@ try {
       "crm.tenant.bootstrap.executor",
       "crm.operating.snapshot.executor",
       "crm.lead.classifier.executor",
+      "crm.relationship.timeline.executor",
       "crm.ai.operating_copilot.executor",
       "crm.proposal.generator.executor",
       "crm.document.generator.executor",
@@ -265,6 +267,63 @@ try {
     throw new Error(`expected priority opportunity from copilot, got ${copilot.executor_result.outputs.priority_opportunity_id}`);
   }
 
+  const relationshipTimeline = runForge([
+    "addons",
+    "execute-executor",
+    "--addon-dir",
+    "addons",
+    "--addon",
+    "forge.addon.crm",
+    "--contract",
+    "crm.relationship.timeline.executor",
+    "--worker",
+    workerId,
+    "--task",
+    "crm-smoke-relationship-timeline",
+    "--workflow",
+    workflowId,
+    "--input",
+    JSON.stringify({
+      tenant_context: { id: "smoke", tenant_id: "smoke" },
+      entity: {
+        id: "opp-smoke-priority",
+        kind: "opportunity",
+        account: "Example Logistics",
+        company_id: "company-smoke",
+        contact_ids: ["contact-smoke"]
+      },
+      relationships: [
+        { from: "company-smoke", to: "contact-smoke", relation: "employs" },
+        { from: "company-smoke", to: "opp-smoke-priority", relation: "owns_opportunity" }
+      ],
+      timeline_event: {
+        kind: "stage_changed",
+        from_stage: "discovery",
+        to_stage: "proposal",
+        reason: "approved offer terms attached",
+        owner: "forge-crm-smoke"
+      },
+      pipeline: {
+        funnel_id: "enterprise",
+        from_stage: "discovery",
+        to_stage: "proposal",
+        amount: 180000,
+        probability: 0.74
+      }
+    }),
+    "--context",
+    JSON.stringify({ tenant: "smoke" }),
+    "--output",
+    "json"
+  ]);
+
+  if (relationshipTimeline.promotion?.status !== "addon_executor_result_promoted") {
+    throw new Error(`expected relationship timeline promotion, got ${relationshipTimeline.promotion?.status || "missing"}`);
+  }
+  if (relationshipTimeline.executor_result.outputs.pipeline_stage !== "proposal") {
+    throw new Error(`expected relationship timeline pipeline stage proposal, got ${relationshipTimeline.executor_result.outputs.pipeline_stage}`);
+  }
+
   const documentGenerator = runForge([
     "addons",
     "execute-executor",
@@ -326,6 +385,8 @@ try {
   const snapshotPromotedEventCount = operatingSnapshot.promotion?.event_count ?? 0;
   const copilotPromotedArtifactCount = copilot.promotion?.artifact_count ?? 0;
   const copilotPromotedEventCount = copilot.promotion?.event_count ?? 0;
+  const relationshipPromotedArtifactCount = relationshipTimeline.promotion?.artifact_count ?? 0;
+  const relationshipPromotedEventCount = relationshipTimeline.promotion?.event_count ?? 0;
   const documentPromotedArtifactCount = documentGenerator.promotion?.artifact_count ?? 0;
   const documentPromotedEventCount = documentGenerator.promotion?.event_count ?? 0;
   const workflowArtifactCount = workflowArtifacts.artifacts?.length ?? 0;
@@ -364,6 +425,16 @@ try {
   }
   if (!workflowEventKinds.includes("crm.ai.operating_copilot_generated")) {
     throw new Error(`expected operating copilot event in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
+  }
+  if (relationshipPromotedArtifactCount < 2 || relationshipPromotedEventCount < 3) {
+    throw new Error(
+      `expected promoted relationship artifacts/events, got artifacts=${relationshipPromotedArtifactCount} events=${relationshipPromotedEventCount}`
+    );
+  }
+  for (const eventKind of ["crm.relationship.recorded", "crm.opportunity.stage_changed", "crm.forecast.updated"]) {
+    if (!workflowEventKinds.includes(eventKind)) {
+      throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
+    }
   }
   if (documentPromotedArtifactCount < 7 || documentPromotedEventCount < 1) {
     throw new Error(
@@ -504,6 +575,11 @@ try {
     copilot_risk_count: copilot.executor_result.outputs.risk_count,
     copilot_promoted_artifacts: copilotPromotedArtifactCount,
     copilot_promoted_events: copilotPromotedEventCount,
+    relationship_timeline_status: relationshipTimeline.status,
+    relationship_timeline_promotion_status: relationshipTimeline.promotion.status,
+    relationship_timeline_pipeline_stage: relationshipTimeline.executor_result.outputs.pipeline_stage,
+    relationship_timeline_promoted_artifacts: relationshipPromotedArtifactCount,
+    relationship_timeline_promoted_events: relationshipPromotedEventCount,
     document_generator_status: documentGenerator.status,
     document_generator_promotion_status: documentGenerator.promotion.status,
     document_generator_document_id: documentGenerator.executor_result.outputs.document_id,

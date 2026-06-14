@@ -60,6 +60,19 @@ test("manifest exposes CRM operating snapshot as a Forge runtime contract", () =
   assert.ok(artifactTypes.has("crm_operating_snapshot"));
 });
 
+test("manifest exposes CRM relationship timeline as a Forge-owned executor", () => {
+  const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.relationship.timeline.executor");
+  assert.ok(contract);
+  assert.equal(contract.contract_type, "executor");
+  assert.equal(contract.capability_id, "crm_relationship_management");
+  assert.equal(contract.entrypoint, "forge_crm.record_relationship_event");
+  assert.deepEqual(contract.permissions, ["crm.workflow.mutate"]);
+  assert.ok(contract.outputs.includes("crm_timeline_snapshot"));
+  assert.ok(contract.outputs.includes("crm_entity_model"));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("does not persist")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("Forge workflow artifacts and events")));
+});
+
 test("manifest exposes CRM operating copilot as a recommendation-only executor", () => {
   const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.ai.operating_copilot.executor");
   assert.ok(contract);

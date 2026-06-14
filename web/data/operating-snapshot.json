@@ -27,7 +27,7 @@
     "business_module_count": 6,
     "surface_count": 8,
     "artifact_type_count": 13,
-    "event_type_count": 31,
+    "event_type_count": 32,
     "complete_scope": true
   },
   "surfaces": [
@@ -70,7 +70,8 @@
       "event_types": [
         "crm.contact.updated",
         "crm.lead.classified",
-        "crm.lead.created"
+        "crm.lead.created",
+        "crm.relationship.recorded"
       ],
       "mutation_requires_forge": true
     },
@@ -326,7 +327,8 @@
         "crm.forecast.updated",
         "crm.lead.classified",
         "crm.lead.created",
-        "crm.opportunity.stage_changed"
+        "crm.opportunity.stage_changed",
+        "crm.relationship.recorded"
       ],
       "validation_gates": [
         "classification evidence present",
@@ -522,6 +524,7 @@
           "enrichment_wait"
         ],
         "runtime_contracts": [
+          "crm.relationship.timeline.executor",
           "crm.lead.classifier.executor"
         ],
         "artifact_types": [
@@ -531,7 +534,8 @@
         "event_types": [
           "crm.lead.created",
           "crm.lead.classified",
-          "crm.contact.updated"
+          "crm.contact.updated",
+          "crm.relationship.recorded"
         ],
         "surface_ids": [
           "crm.relationship-graph"
@@ -556,6 +560,7 @@
         ],
         "wait_states": [],
         "runtime_contracts": [
+          "crm.relationship.timeline.executor",
           "crm.lead.classifier.executor",
           "crm.ai.operating_copilot.executor",
           "crm.proposal.generator.executor"
@@ -1216,6 +1221,33 @@
         "forge.addon.crm",
         "--contract",
         "crm.tenant.bootstrap.executor",
+        "--worker",
+        "<worker-id>",
+        "--task",
+        "<task-ref>",
+        "--input",
+        "<json>",
+        "--context",
+        "<json>",
+        "--output",
+        "json"
+      ]
+    },
+    {
+      "id": "crm.record-relationship-event",
+      "label": "Record relationship event",
+      "surface_id": "crm.relationship-graph",
+      "contract_id": "crm.relationship.timeline.executor",
+      "requires_permission": "crm.workflow.mutate",
+      "mutates_workflow": true,
+      "command_template": [
+        "forge",
+        "addons",
+        "execute-executor",
+        "--addon",
+        "forge.addon.crm",
+        "--contract",
+        "crm.relationship.timeline.executor",
         "--worker",
         "<worker-id>",
         "--task",
