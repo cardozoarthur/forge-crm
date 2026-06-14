@@ -6,9 +6,9 @@
   "addon_name": "Forge CRM",
   "addon_version": "0.1.0",
   "manifest_path": "addons/forge-crm.json",
-  "manifest_sha256": "792e2240709016ba38e19077065feba96cc27db9f15a6d8d7eb871f53dbb21dc",
-  "manifest_canonical_sha256": "75e8e8bc19e7ef0caa4e79db56046e4b34f4d7c580d4af823e28fb260c506aab",
-  "manifest_bytes": 121431,
+  "manifest_sha256": "66a94ce1fe367e89d6359b6d78dfca5528697de3d23bf5c35edd424990865aa8",
+  "manifest_canonical_sha256": "6063e1b7dca620f57cdfc60441b355596710c057469e65a2d48ccd64daa36362",
+  "manifest_bytes": 122795,
   "distribution": {
     "repository": "https://github.com/cardozoarthur/forge-crm",
     "channel": "stable",
@@ -23,7 +23,7 @@
     "scheme": "ed25519_detached",
     "signature": "",
     "public_key": "",
-    "payload_sha256": "1c1a928ecae83ebfa53a9e2b5919630b6247f534afa68b403c3ba250004fb3a2",
+    "payload_sha256": "7dac4b0f9d6c44a35624188d162a5649de397407e071381af24bf820dac0cb00",
     "verification_note": "package records detached signature metadata; trust verification is a marketplace policy gate"
   },
   "summary": {
@@ -2518,6 +2518,51 @@
               "provider_event",
               "channel_policy",
               "routing_policy"
+            ]
+          },
+          {
+            "id": "crm.tui.ingest-omnichannel-message",
+            "label": "Ingest omnichannel message",
+            "description": "Record an approved channel message as a Forge-owned thread before SLA triage or handoff.",
+            "palette_group": "CRM",
+            "source_panel": "crm.operational-cockpit",
+            "type": "command",
+            "target": "forge addons execute-executor",
+            "method": "CLI",
+            "permission": "crm.omnichannel.ingest",
+            "requires_confirmation": true,
+            "risk_level": "high",
+            "mutates_workflow": true,
+            "command_template": [
+              "addons",
+              "execute-executor",
+              "--addon",
+              "forge.addon.crm",
+              "--contract",
+              "crm.support.omnichannel_message.executor",
+              "--worker",
+              "<worker-id>",
+              "--task",
+              "<task-ref>",
+              "--input",
+              "<json>",
+              "--context",
+              "<json>",
+              "--output",
+              "json"
+            ],
+            "keywords": [
+              "crm",
+              "support",
+              "message",
+              "omnichannel"
+            ],
+            "payload_schema": [
+              "channel",
+              "message",
+              "customer",
+              "routing_policy",
+              "tenant_context"
             ]
           },
           {

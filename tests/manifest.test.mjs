@@ -936,6 +936,7 @@ test("manifest exposes a Forge TUI operational cockpit with permission-gated CRM
     "crm.tui.enrich-relationship-profile",
     "crm.tui.review-followup-forecast",
     "crm.tui.normalize-channel-intake",
+    "crm.tui.ingest-omnichannel-message",
     "crm.tui.run-omnichannel-center",
     "crm.tui.triage-ticket-sla",
     "crm.tui.automate-campaign",
@@ -952,6 +953,15 @@ test("manifest exposes a Forge TUI operational cockpit with permission-gated CRM
   ]) {
     assert.ok(actionIds.has(actionId), `missing TUI action ${actionId}`);
   }
+
+  const messageIngestion = cockpit.actions.find((action) => action.id === "crm.tui.ingest-omnichannel-message");
+  assert.ok(messageIngestion);
+  assert.equal(messageIngestion.permission, "crm.omnichannel.ingest");
+  assert.equal(messageIngestion.mutates_workflow, true);
+  assert.ok(messageIngestion.command_template.includes("crm.support.omnichannel_message.executor"));
+  assert.ok(messageIngestion.keywords.includes("message"));
+  assert.ok(messageIngestion.payload_schema.includes("message"));
+  assert.ok(messageIngestion.payload_schema.includes("routing_policy"));
 
   for (const action of cockpit.actions) {
     assert.equal(action.palette_group, "CRM");

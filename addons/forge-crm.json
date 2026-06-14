@@ -2323,6 +2323,51 @@
           ]
         },
         {
+          "id": "crm.tui.ingest-omnichannel-message",
+          "label": "Ingest omnichannel message",
+          "description": "Record an approved channel message as a Forge-owned thread before SLA triage or handoff.",
+          "palette_group": "CRM",
+          "source_panel": "crm.operational-cockpit",
+          "type": "command",
+          "target": "forge addons execute-executor",
+          "method": "CLI",
+          "permission": "crm.omnichannel.ingest",
+          "requires_confirmation": true,
+          "risk_level": "high",
+          "mutates_workflow": true,
+          "command_template": [
+            "addons",
+            "execute-executor",
+            "--addon",
+            "forge.addon.crm",
+            "--contract",
+            "crm.support.omnichannel_message.executor",
+            "--worker",
+            "<worker-id>",
+            "--task",
+            "<task-ref>",
+            "--input",
+            "<json>",
+            "--context",
+            "<json>",
+            "--output",
+            "json"
+          ],
+          "keywords": [
+            "crm",
+            "support",
+            "message",
+            "omnichannel"
+          ],
+          "payload_schema": [
+            "channel",
+            "message",
+            "customer",
+            "routing_policy",
+            "tenant_context"
+          ]
+        },
+        {
           "id": "crm.tui.run-omnichannel-center",
           "label": "Run omnichannel center",
           "description": "Unify channel threads and identities into a Forge-owned support queue snapshot.",
