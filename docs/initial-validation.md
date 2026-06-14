@@ -8,6 +8,8 @@ Date: 2026-06-14
 npm test
 node scripts/generate-crm-workflow-pack.mjs smoke
 node scripts/generate-crm-operating-model.mjs smoke
+node scripts/generate-crm-web-snapshot.mjs smoke
+npm run web:snapshot
 /home/arthur/projects/forge-core/target/release/forge addons validate --addon-dir /home/arthur/projects/forge-crm/addons --output json
 /home/arthur/projects/forge-core/target/release/forge addons resolve --goal "Create a workflow-first CRM" --addon-dir /home/arthur/projects/forge-crm/addons --output json
 FORGE_BIN=/home/arthur/projects/forge-core/target/release/forge npm run smoke:forge
@@ -15,9 +17,10 @@ FORGE_BIN=/home/arthur/projects/forge-core/target/release/forge npm run smoke:fo
 
 ## Result
 
-- Node tests passed: 19 tests, 0 failures.
+- Node tests passed: 25 tests, 0 failures.
 - CRM workflow pack generation produced `schema_version=forge.crm_workflow_pack.v1`, 11 workflows, 44 object types and complete scope coverage.
 - CRM operating model generation produced `schema_version=forge.crm_operating_model.v1`, 8 operator surfaces and 6 complete business modules.
+- CRM web snapshot generation produced `schema_version=forge.crm_web_app_snapshot.v1`, 8 business surfaces, 11 workflow graph nodes, document queue lanes and Forge command actions without browser persistence.
 - Forge Addon validation passed: `status=valid`, `issue_count=0`.
 - Forge capability resolution sees `forge.addon.crm` as an authorization-blocked Addon capability, preserving human approval before execution while keeping the CRM discoverable.
 - Runtime smoke passed through Forge `external_api`: tenant bootstrap, operating snapshot, lead classifier and proposal executor completed, document validator passed, and omnichannel handoff delivered.

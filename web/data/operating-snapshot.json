@@ -1,0 +1,1318 @@
+{
+  "schema_version": "forge.crm_web_app_snapshot.v1",
+  "tenant_id": "default",
+  "addon_id": "forge.addon.crm",
+  "generated_from": {
+    "operating_model_schema": "forge.crm_operating_model.v1",
+    "workflow_pack_schema": "forge.crm_workflow_pack.v1",
+    "runtime_contract": "crm.operating.snapshot.executor"
+  },
+  "ui_contract": {
+    "operational_center": "forge_tui",
+    "web_experience": "business_user_workbench",
+    "workflow_visualization": "n8n_inspired_graph",
+    "knowledge_graph": "obsidian_inspired_relationships",
+    "document_management": "paperclip_inspired_artifact_queue",
+    "design_system": "penpot_open_design_inspired_tokens"
+  },
+  "local_state_policy": {
+    "state_owner": "forge_workflow_runtime",
+    "external_database_required": false,
+    "direct_browser_persistence": false,
+    "allowed_mutation_path": "Forge workflow command, runtime contract or approved event",
+    "external_delivery_requires_approval": true
+  },
+  "metrics": {
+    "workflow_count": 11,
+    "business_module_count": 6,
+    "surface_count": 8,
+    "artifact_type_count": 12,
+    "event_type_count": 30,
+    "complete_scope": true
+  },
+  "surfaces": [
+    {
+      "id": "crm.system-map",
+      "key": "system_map",
+      "title": "CRM system map",
+      "surface_type": "graph",
+      "route": "/crm/system",
+      "permission": "crm.workflow.mutate",
+      "state_source": "forge_workflow_artifacts_and_events",
+      "workflow_ids": [],
+      "lanes": [],
+      "artifact_types": [],
+      "event_types": [],
+      "mutation_requires_forge": true
+    },
+    {
+      "id": "crm.relationship-graph",
+      "key": "relationship_graph",
+      "title": "Relationship graph",
+      "surface_type": "graph",
+      "route": "/crm/relationships",
+      "permission": "crm.ai.recommend",
+      "state_source": "forge_workflow_artifacts_and_events",
+      "workflow_ids": [
+        "crm.lead.lifecycle"
+      ],
+      "lanes": [
+        "captured",
+        "enrichment_wait",
+        "qualified",
+        "disqualified",
+        "converted"
+      ],
+      "artifact_types": [
+        "crm_ai_recommendation",
+        "crm_timeline_snapshot"
+      ],
+      "event_types": [
+        "crm.contact.updated",
+        "crm.lead.classified",
+        "crm.lead.created"
+      ],
+      "mutation_requires_forge": true
+    },
+    {
+      "id": "crm.pipeline-kanban",
+      "key": "pipeline_kanban",
+      "title": "Pipeline Kanban",
+      "surface_type": "board",
+      "route": "/crm/pipeline",
+      "permission": "crm.workflow.mutate",
+      "state_source": "forge_workflow_artifacts_and_events",
+      "workflow_ids": [
+        "crm.opportunity.pipeline"
+      ],
+      "lanes": [
+        "research",
+        "discovery",
+        "proposal",
+        "negotiation",
+        "won",
+        "lost"
+      ],
+      "artifact_types": [
+        "crm_report",
+        "crm_timeline_snapshot"
+      ],
+      "event_types": [
+        "crm.forecast.updated",
+        "crm.opportunity.stage_changed"
+      ],
+      "mutation_requires_forge": true
+    },
+    {
+      "id": "crm.commercial-command",
+      "key": "commercial_command",
+      "title": "Commercial command",
+      "surface_type": "panel",
+      "route": "/crm/commercial",
+      "permission": "crm.document.generate",
+      "state_source": "forge_workflow_artifacts_and_events",
+      "workflow_ids": [
+        "crm.opportunity.pipeline",
+        "crm.followup.forecast",
+        "crm.project.handoff"
+      ],
+      "lanes": [
+        "research",
+        "discovery",
+        "proposal",
+        "negotiation",
+        "won",
+        "lost",
+        "scheduled",
+        "waiting_due_date",
+        "sent",
+        "response_wait",
+        "forecast_reviewed",
+        "commission_accrued",
+        "handoff_requested",
+        "owner_assigned",
+        "project_planned",
+        "tasks_in_progress",
+        "blocked_wait",
+        "accepted"
+      ],
+      "artifact_types": [
+        "crm_email",
+        "crm_handoff_record",
+        "crm_report",
+        "crm_timeline_snapshot"
+      ],
+      "event_types": [
+        "crm.commission.accrued",
+        "crm.followup.scheduled",
+        "crm.forecast.reviewed",
+        "crm.forecast.updated",
+        "crm.opportunity.stage_changed",
+        "crm.project.accepted",
+        "crm.project.handoff_requested",
+        "crm.task.blocked"
+      ],
+      "mutation_requires_forge": true
+    },
+    {
+      "id": "crm.support-queue",
+      "key": "support_queue",
+      "title": "Support queue",
+      "surface_type": "queue",
+      "route": "/crm/support",
+      "permission": "crm.omnichannel.ingest",
+      "state_source": "forge_workflow_artifacts_and_events",
+      "workflow_ids": [
+        "crm.ticket.sla"
+      ],
+      "lanes": [
+        "received",
+        "triage",
+        "owner_assigned",
+        "customer_wait",
+        "sla_escalation",
+        "resolved"
+      ],
+      "artifact_types": [
+        "crm_handoff_record",
+        "crm_support_summary"
+      ],
+      "event_types": [
+        "crm.handoff.delivered",
+        "crm.message.received",
+        "crm.ticket.created"
+      ],
+      "mutation_requires_forge": true
+    },
+    {
+      "id": "crm.marketing-calendar",
+      "key": "marketing_calendar",
+      "title": "Marketing calendar",
+      "surface_type": "calendar",
+      "route": "/crm/marketing",
+      "permission": "crm.workflow.mutate",
+      "state_source": "forge_workflow_artifacts_and_events",
+      "workflow_ids": [
+        "crm.campaign.lifecycle",
+        "crm.lead.nurture"
+      ],
+      "lanes": [
+        "brief",
+        "segment_selected",
+        "assets_drafted",
+        "approval_wait",
+        "scheduled",
+        "running",
+        "reported",
+        "entered",
+        "wait_step",
+        "message_ready",
+        "sent",
+        "qualified_or_exit"
+      ],
+      "artifact_types": [
+        "crm_ai_recommendation",
+        "crm_campaign",
+        "crm_email",
+        "crm_landing_page",
+        "crm_report"
+      ],
+      "event_types": [
+        "crm.campaign.created",
+        "crm.campaign.reported",
+        "crm.campaign.scheduled",
+        "crm.lead.requalified",
+        "crm.nurture.message_sent",
+        "crm.nurture.step_due"
+      ],
+      "mutation_requires_forge": true
+    },
+    {
+      "id": "crm.document-queue",
+      "key": "document_queue",
+      "title": "Document queue",
+      "surface_type": "queue",
+      "route": "/crm/documents",
+      "permission": "crm.document.generate",
+      "state_source": "forge_workflow_artifacts_and_events",
+      "workflow_ids": [
+        "crm.proposal.approval",
+        "crm.contract.signature",
+        "crm.document.approval"
+      ],
+      "lanes": [
+        "draft_requested",
+        "draft_generated",
+        "approval_wait",
+        "approved",
+        "rework_required",
+        "delivered",
+        "contract_draft",
+        "legal_review",
+        "signature_wait",
+        "signed",
+        "renewal_wait",
+        "submitted",
+        "validation",
+        "archived"
+      ],
+      "artifact_types": [
+        "crm_contract",
+        "crm_document",
+        "crm_handoff_record",
+        "crm_proposal"
+      ],
+      "event_types": [
+        "crm.contract.reviewed",
+        "crm.contract.signed",
+        "crm.document.approval_requested",
+        "crm.document.approved",
+        "crm.document.submitted",
+        "crm.document.validated",
+        "crm.proposal.generated"
+      ],
+      "mutation_requires_forge": true
+    },
+    {
+      "id": "crm.ai-workbench",
+      "key": "ai_workbench",
+      "title": "AI workbench",
+      "surface_type": "workbench",
+      "route": "/crm/ai",
+      "permission": "crm.ai.recommend",
+      "state_source": "forge_workflow_artifacts_and_events",
+      "workflow_ids": [
+        "crm.ai.copilot.recommendation"
+      ],
+      "lanes": [
+        "context_requested",
+        "recommendation_generated",
+        "review_wait",
+        "approved_action",
+        "discarded"
+      ],
+      "artifact_types": [
+        "crm_ai_recommendation",
+        "crm_report",
+        "crm_risk_analysis"
+      ],
+      "event_types": [
+        "crm.ai.recommendation_generated",
+        "crm.ai.risk_flagged",
+        "crm.next_action.approved"
+      ],
+      "mutation_requires_forge": true
+    }
+  ],
+  "business_modules": [
+    {
+      "id": "relationship",
+      "complete": true,
+      "workflow_ids": [
+        "crm.lead.lifecycle",
+        "crm.opportunity.pipeline"
+      ],
+      "artifact_types": [
+        "crm_ai_recommendation",
+        "crm_report",
+        "crm_timeline_snapshot"
+      ],
+      "event_types": [
+        "crm.contact.updated",
+        "crm.forecast.updated",
+        "crm.lead.classified",
+        "crm.lead.created",
+        "crm.opportunity.stage_changed"
+      ],
+      "validation_gates": [
+        "classification evidence present",
+        "forecast impact recorded",
+        "stage movement is event-backed",
+        "state transition has owner and reason"
+      ]
+    },
+    {
+      "id": "commercial",
+      "complete": true,
+      "workflow_ids": [
+        "crm.opportunity.pipeline",
+        "crm.proposal.approval",
+        "crm.contract.signature",
+        "crm.followup.forecast",
+        "crm.lead.nurture",
+        "crm.project.handoff"
+      ],
+      "artifact_types": [
+        "crm_ai_recommendation",
+        "crm_contract",
+        "crm_document",
+        "crm_email",
+        "crm_handoff_record",
+        "crm_proposal",
+        "crm_report",
+        "crm_timeline_snapshot"
+      ],
+      "event_types": [
+        "crm.commission.accrued",
+        "crm.contract.reviewed",
+        "crm.contract.signed",
+        "crm.document.approval_requested",
+        "crm.followup.scheduled",
+        "crm.forecast.reviewed",
+        "crm.forecast.updated",
+        "crm.lead.requalified",
+        "crm.nurture.message_sent",
+        "crm.nurture.step_due",
+        "crm.opportunity.stage_changed",
+        "crm.project.accepted",
+        "crm.project.handoff_requested",
+        "crm.proposal.generated",
+        "crm.task.blocked"
+      ],
+      "validation_gates": [
+        "artifact lineage present",
+        "blocked reason explicit",
+        "contract approval lineage present",
+        "external delivery blocked until approval",
+        "external message approval present",
+        "forecast and commission evidence attached",
+        "forecast impact recorded",
+        "owner visible",
+        "scheduled wait visible",
+        "signature receipt attached",
+        "stage movement is event-backed"
+      ]
+    },
+    {
+      "id": "support",
+      "complete": true,
+      "workflow_ids": [
+        "crm.ticket.sla"
+      ],
+      "artifact_types": [
+        "crm_handoff_record",
+        "crm_support_summary"
+      ],
+      "event_types": [
+        "crm.handoff.delivered",
+        "crm.message.received",
+        "crm.ticket.created"
+      ],
+      "validation_gates": [
+        "SLA wait state explicit",
+        "handoff receipt attached"
+      ]
+    },
+    {
+      "id": "marketing",
+      "complete": true,
+      "workflow_ids": [
+        "crm.campaign.lifecycle",
+        "crm.lead.nurture"
+      ],
+      "artifact_types": [
+        "crm_ai_recommendation",
+        "crm_campaign",
+        "crm_email",
+        "crm_landing_page",
+        "crm_report"
+      ],
+      "event_types": [
+        "crm.campaign.created",
+        "crm.campaign.reported",
+        "crm.campaign.scheduled",
+        "crm.lead.requalified",
+        "crm.nurture.message_sent",
+        "crm.nurture.step_due"
+      ],
+      "validation_gates": [
+        "campaign artifacts approved",
+        "external message approval present",
+        "schedule state visible",
+        "scheduled wait visible"
+      ]
+    },
+    {
+      "id": "operations",
+      "complete": true,
+      "workflow_ids": [
+        "crm.contract.signature",
+        "crm.project.handoff",
+        "crm.document.approval"
+      ],
+      "artifact_types": [
+        "crm_contract",
+        "crm_document",
+        "crm_handoff_record",
+        "crm_report"
+      ],
+      "event_types": [
+        "crm.contract.reviewed",
+        "crm.contract.signed",
+        "crm.document.approved",
+        "crm.document.submitted",
+        "crm.document.validated",
+        "crm.project.accepted",
+        "crm.project.handoff_requested",
+        "crm.task.blocked"
+      ],
+      "validation_gates": [
+        "approval actor recorded",
+        "blocked reason explicit",
+        "contract approval lineage present",
+        "lineage points to Forge artifact",
+        "owner visible",
+        "signature receipt attached"
+      ]
+    },
+    {
+      "id": "ai_automation",
+      "complete": true,
+      "workflow_ids": [
+        "crm.proposal.approval",
+        "crm.ai.copilot.recommendation"
+      ],
+      "artifact_types": [
+        "crm_ai_recommendation",
+        "crm_document",
+        "crm_proposal",
+        "crm_report",
+        "crm_risk_analysis"
+      ],
+      "event_types": [
+        "crm.ai.recommendation_generated",
+        "crm.ai.risk_flagged",
+        "crm.document.approval_requested",
+        "crm.next_action.approved",
+        "crm.proposal.generated"
+      ],
+      "validation_gates": [
+        "artifact lineage present",
+        "external delivery blocked until approval",
+        "recommendation includes evidence",
+        "state mutation requires workflow approval"
+      ]
+    }
+  ],
+  "workflow_graph": {
+    "state_owner": "forge_workflow_runtime",
+    "nodes": [
+      {
+        "id": "crm.lead.lifecycle",
+        "title": "Lead, contact and company lifecycle",
+        "domain": "relationship",
+        "state_count": 5,
+        "states": [
+          "captured",
+          "enrichment_wait",
+          "qualified",
+          "disqualified",
+          "converted"
+        ],
+        "wait_states": [
+          "enrichment_wait"
+        ],
+        "runtime_contracts": [
+          "crm.lead.classifier.executor"
+        ],
+        "artifact_types": [
+          "crm_timeline_snapshot",
+          "crm_ai_recommendation"
+        ],
+        "event_types": [
+          "crm.lead.created",
+          "crm.lead.classified",
+          "crm.contact.updated"
+        ],
+        "surface_ids": [
+          "crm.relationship-graph"
+        ],
+        "validation_gates": [
+          "classification evidence present",
+          "state transition has owner and reason"
+        ]
+      },
+      {
+        "id": "crm.opportunity.pipeline",
+        "title": "Opportunity pipeline and multiple funnels",
+        "domain": "relationship",
+        "state_count": 6,
+        "states": [
+          "research",
+          "discovery",
+          "proposal",
+          "negotiation",
+          "won",
+          "lost"
+        ],
+        "wait_states": [],
+        "runtime_contracts": [
+          "crm.lead.classifier.executor",
+          "crm.proposal.generator.executor"
+        ],
+        "artifact_types": [
+          "crm_timeline_snapshot",
+          "crm_report"
+        ],
+        "event_types": [
+          "crm.opportunity.stage_changed",
+          "crm.forecast.updated"
+        ],
+        "surface_ids": [
+          "crm.pipeline-kanban",
+          "crm.commercial-command"
+        ],
+        "validation_gates": [
+          "stage movement is event-backed",
+          "forecast impact recorded"
+        ]
+      },
+      {
+        "id": "crm.proposal.approval",
+        "title": "Proposal generation and approval",
+        "domain": "commercial",
+        "state_count": 6,
+        "states": [
+          "draft_requested",
+          "draft_generated",
+          "approval_wait",
+          "approved",
+          "rework_required",
+          "delivered"
+        ],
+        "wait_states": [
+          "approval_wait"
+        ],
+        "runtime_contracts": [
+          "crm.proposal.generator.executor",
+          "crm.document.validator"
+        ],
+        "artifact_types": [
+          "crm_proposal",
+          "crm_document"
+        ],
+        "event_types": [
+          "crm.proposal.generated",
+          "crm.document.approval_requested"
+        ],
+        "surface_ids": [
+          "crm.document-queue"
+        ],
+        "validation_gates": [
+          "artifact lineage present",
+          "external delivery blocked until approval"
+        ]
+      },
+      {
+        "id": "crm.contract.signature",
+        "title": "Contract and signature lifecycle",
+        "domain": "commercial",
+        "state_count": 5,
+        "states": [
+          "contract_draft",
+          "legal_review",
+          "signature_wait",
+          "signed",
+          "renewal_wait"
+        ],
+        "wait_states": [
+          "signature_wait",
+          "renewal_wait"
+        ],
+        "runtime_contracts": [
+          "crm.document.validator"
+        ],
+        "artifact_types": [
+          "crm_contract",
+          "crm_document"
+        ],
+        "event_types": [
+          "crm.contract.reviewed",
+          "crm.contract.signed"
+        ],
+        "surface_ids": [
+          "crm.document-queue"
+        ],
+        "validation_gates": [
+          "contract approval lineage present",
+          "signature receipt attached"
+        ]
+      },
+      {
+        "id": "crm.followup.forecast",
+        "title": "Follow-up, forecast, goals and commissions",
+        "domain": "commercial",
+        "state_count": 6,
+        "states": [
+          "scheduled",
+          "waiting_due_date",
+          "sent",
+          "response_wait",
+          "forecast_reviewed",
+          "commission_accrued"
+        ],
+        "wait_states": [
+          "waiting_due_date",
+          "response_wait"
+        ],
+        "runtime_contracts": [],
+        "artifact_types": [
+          "crm_report",
+          "crm_email"
+        ],
+        "event_types": [
+          "crm.followup.scheduled",
+          "crm.forecast.reviewed",
+          "crm.commission.accrued"
+        ],
+        "surface_ids": [
+          "crm.commercial-command"
+        ],
+        "validation_gates": [
+          "scheduled wait visible",
+          "forecast and commission evidence attached"
+        ]
+      },
+      {
+        "id": "crm.ticket.sla",
+        "title": "Ticket, SLA and omnichannel support",
+        "domain": "support",
+        "state_count": 6,
+        "states": [
+          "received",
+          "triage",
+          "owner_assigned",
+          "customer_wait",
+          "sla_escalation",
+          "resolved"
+        ],
+        "wait_states": [
+          "customer_wait"
+        ],
+        "runtime_contracts": [
+          "crm.omnichannel.handoff"
+        ],
+        "artifact_types": [
+          "crm_support_summary",
+          "crm_handoff_record"
+        ],
+        "event_types": [
+          "crm.message.received",
+          "crm.ticket.created",
+          "crm.handoff.delivered"
+        ],
+        "surface_ids": [
+          "crm.support-queue"
+        ],
+        "validation_gates": [
+          "SLA wait state explicit",
+          "handoff receipt attached"
+        ]
+      },
+      {
+        "id": "crm.campaign.lifecycle",
+        "title": "Campaign, segmentation, landing pages and forms",
+        "domain": "marketing",
+        "state_count": 7,
+        "states": [
+          "brief",
+          "segment_selected",
+          "assets_drafted",
+          "approval_wait",
+          "scheduled",
+          "running",
+          "reported"
+        ],
+        "wait_states": [
+          "approval_wait"
+        ],
+        "runtime_contracts": [
+          "crm.document.validator"
+        ],
+        "artifact_types": [
+          "crm_campaign",
+          "crm_email",
+          "crm_landing_page",
+          "crm_report"
+        ],
+        "event_types": [
+          "crm.campaign.created",
+          "crm.campaign.scheduled",
+          "crm.campaign.reported"
+        ],
+        "surface_ids": [
+          "crm.marketing-calendar"
+        ],
+        "validation_gates": [
+          "campaign artifacts approved",
+          "schedule state visible"
+        ]
+      },
+      {
+        "id": "crm.lead.nurture",
+        "title": "Lead nurture automation",
+        "domain": "marketing",
+        "state_count": 6,
+        "states": [
+          "entered",
+          "wait_step",
+          "message_ready",
+          "approval_wait",
+          "sent",
+          "qualified_or_exit"
+        ],
+        "wait_states": [
+          "wait_step",
+          "approval_wait"
+        ],
+        "runtime_contracts": [
+          "crm.lead.classifier.executor",
+          "crm.omnichannel.handoff"
+        ],
+        "artifact_types": [
+          "crm_email",
+          "crm_ai_recommendation"
+        ],
+        "event_types": [
+          "crm.nurture.step_due",
+          "crm.nurture.message_sent",
+          "crm.lead.requalified"
+        ],
+        "surface_ids": [
+          "crm.marketing-calendar"
+        ],
+        "validation_gates": [
+          "scheduled wait visible",
+          "external message approval present"
+        ]
+      },
+      {
+        "id": "crm.project.handoff",
+        "title": "Post-sale project and team handoff",
+        "domain": "operations",
+        "state_count": 6,
+        "states": [
+          "handoff_requested",
+          "owner_assigned",
+          "project_planned",
+          "tasks_in_progress",
+          "blocked_wait",
+          "accepted"
+        ],
+        "wait_states": [
+          "blocked_wait"
+        ],
+        "runtime_contracts": [
+          "crm.omnichannel.handoff"
+        ],
+        "artifact_types": [
+          "crm_handoff_record",
+          "crm_report"
+        ],
+        "event_types": [
+          "crm.project.handoff_requested",
+          "crm.task.blocked",
+          "crm.project.accepted"
+        ],
+        "surface_ids": [
+          "crm.commercial-command"
+        ],
+        "validation_gates": [
+          "owner visible",
+          "blocked reason explicit"
+        ]
+      },
+      {
+        "id": "crm.document.approval",
+        "title": "Document queue and approvals",
+        "domain": "operations",
+        "state_count": 6,
+        "states": [
+          "submitted",
+          "validation",
+          "approval_wait",
+          "approved",
+          "rework_required",
+          "archived"
+        ],
+        "wait_states": [
+          "approval_wait"
+        ],
+        "runtime_contracts": [
+          "crm.document.validator"
+        ],
+        "artifact_types": [
+          "crm_document",
+          "crm_handoff_record"
+        ],
+        "event_types": [
+          "crm.document.submitted",
+          "crm.document.validated",
+          "crm.document.approved"
+        ],
+        "surface_ids": [
+          "crm.document-queue"
+        ],
+        "validation_gates": [
+          "approval actor recorded",
+          "lineage points to Forge artifact"
+        ]
+      },
+      {
+        "id": "crm.ai.copilot.recommendation",
+        "title": "Specialized CRM copilots and risk analysis",
+        "domain": "ai_automation",
+        "state_count": 5,
+        "states": [
+          "context_requested",
+          "recommendation_generated",
+          "review_wait",
+          "approved_action",
+          "discarded"
+        ],
+        "wait_states": [
+          "review_wait"
+        ],
+        "runtime_contracts": [
+          "crm.lead.classifier.executor",
+          "crm.proposal.generator.executor"
+        ],
+        "artifact_types": [
+          "crm_ai_recommendation",
+          "crm_risk_analysis",
+          "crm_report"
+        ],
+        "event_types": [
+          "crm.ai.recommendation_generated",
+          "crm.ai.risk_flagged",
+          "crm.next_action.approved"
+        ],
+        "surface_ids": [
+          "crm.ai-workbench"
+        ],
+        "validation_gates": [
+          "recommendation includes evidence",
+          "state mutation requires workflow approval"
+        ]
+      }
+    ],
+    "edges": [
+      {
+        "from": "crm.lead.lifecycle",
+        "to": "crm.opportunity.pipeline",
+        "reason": "converted lead starts opportunity workflow",
+        "state_owner": "forge_workflow_runtime"
+      },
+      {
+        "from": "crm.opportunity.pipeline",
+        "to": "crm.proposal.approval",
+        "reason": "approved offer terms request proposal artifact",
+        "state_owner": "forge_workflow_runtime"
+      },
+      {
+        "from": "crm.proposal.approval",
+        "to": "crm.contract.signature",
+        "reason": "approved proposal starts contract workflow",
+        "state_owner": "forge_workflow_runtime"
+      },
+      {
+        "from": "crm.contract.signature",
+        "to": "crm.followup.forecast",
+        "reason": "signed contract updates forecast and commission evidence",
+        "state_owner": "forge_workflow_runtime"
+      },
+      {
+        "from": "crm.campaign.lifecycle",
+        "to": "crm.lead.nurture",
+        "reason": "approved campaign schedules nurture workflow",
+        "state_owner": "forge_workflow_runtime"
+      },
+      {
+        "from": "crm.lead.nurture",
+        "to": "crm.lead.lifecycle",
+        "reason": "response classification updates lead lifecycle",
+        "state_owner": "forge_workflow_runtime"
+      },
+      {
+        "from": "crm.ticket.sla",
+        "to": "crm.project.handoff",
+        "reason": "resolved support issue can create internal handoff",
+        "state_owner": "forge_workflow_runtime"
+      },
+      {
+        "from": "crm.project.handoff",
+        "to": "crm.document.approval",
+        "reason": "handoff deliverables enter document queue",
+        "state_owner": "forge_workflow_runtime"
+      },
+      {
+        "from": "crm.document.approval",
+        "to": "crm.proposal.approval",
+        "reason": "document validation gates proposal delivery",
+        "state_owner": "forge_workflow_runtime"
+      },
+      {
+        "from": "crm.ai.copilot.recommendation",
+        "to": "crm.opportunity.pipeline",
+        "reason": "approved recommendation mutates pipeline state",
+        "state_owner": "forge_workflow_runtime"
+      }
+    ]
+  },
+  "knowledge_graph": {
+    "nodes": [
+      {
+        "id": "entity.company",
+        "label": "Company",
+        "kind": "company",
+        "source_workflow": "crm.lead.lifecycle"
+      },
+      {
+        "id": "entity.contact",
+        "label": "Contact",
+        "kind": "contact",
+        "source_workflow": "crm.lead.lifecycle"
+      },
+      {
+        "id": "entity.lead",
+        "label": "Lead",
+        "kind": "lead",
+        "source_workflow": "crm.lead.lifecycle"
+      },
+      {
+        "id": "entity.opportunity",
+        "label": "Opportunity",
+        "kind": "opportunity",
+        "source_workflow": "crm.opportunity.pipeline"
+      },
+      {
+        "id": "entity.ticket",
+        "label": "Ticket",
+        "kind": "ticket",
+        "source_workflow": "crm.ticket.sla"
+      },
+      {
+        "id": "artifact.proposal",
+        "label": "Proposal",
+        "kind": "proposal",
+        "source_workflow": "crm.proposal.approval"
+      },
+      {
+        "id": "artifact.contract",
+        "label": "Contract",
+        "kind": "contract",
+        "source_workflow": "crm.contract.signature"
+      },
+      {
+        "id": "artifact.campaign",
+        "label": "Campaign",
+        "kind": "campaign",
+        "source_workflow": "crm.campaign.lifecycle"
+      },
+      {
+        "id": "artifact.recommendation",
+        "label": "AI recommendation",
+        "kind": "ai_recommendation",
+        "source_workflow": "crm.ai.copilot.recommendation"
+      }
+    ],
+    "edges": [
+      {
+        "from": "entity.company",
+        "to": "entity.contact",
+        "relation": "employs",
+        "source": "forge_workflow_lineage"
+      },
+      {
+        "from": "entity.company",
+        "to": "entity.opportunity",
+        "relation": "owns commercial motion",
+        "source": "forge_workflow_lineage"
+      },
+      {
+        "from": "entity.lead",
+        "to": "entity.opportunity",
+        "relation": "converts into",
+        "source": "forge_workflow_lineage"
+      },
+      {
+        "from": "entity.opportunity",
+        "to": "artifact.proposal",
+        "relation": "requests",
+        "source": "forge_workflow_lineage"
+      },
+      {
+        "from": "artifact.proposal",
+        "to": "artifact.contract",
+        "relation": "approved into",
+        "source": "forge_workflow_lineage"
+      },
+      {
+        "from": "entity.ticket",
+        "to": "entity.company",
+        "relation": "belongs to account",
+        "source": "forge_workflow_lineage"
+      },
+      {
+        "from": "artifact.campaign",
+        "to": "entity.lead",
+        "relation": "nurtures",
+        "source": "forge_workflow_lineage"
+      },
+      {
+        "from": "artifact.recommendation",
+        "to": "entity.opportunity",
+        "relation": "suggests next state",
+        "source": "forge_workflow_lineage"
+      }
+    ]
+  },
+  "document_queue": {
+    "state_source": "forge.workflow.artifacts",
+    "lanes": [
+      {
+        "id": "draft_requested",
+        "title": "draft requested",
+        "workflow_ids": [
+          "crm.proposal.approval"
+        ]
+      },
+      {
+        "id": "draft_generated",
+        "title": "draft generated",
+        "workflow_ids": [
+          "crm.proposal.approval"
+        ]
+      },
+      {
+        "id": "submitted",
+        "title": "submitted",
+        "workflow_ids": [
+          "crm.document.approval"
+        ]
+      },
+      {
+        "id": "validation",
+        "title": "validation",
+        "workflow_ids": [
+          "crm.document.approval"
+        ]
+      },
+      {
+        "id": "approval_wait",
+        "title": "approval wait",
+        "workflow_ids": [
+          "crm.proposal.approval",
+          "crm.document.approval"
+        ]
+      },
+      {
+        "id": "approved",
+        "title": "approved",
+        "workflow_ids": [
+          "crm.proposal.approval",
+          "crm.document.approval"
+        ]
+      },
+      {
+        "id": "rework_required",
+        "title": "rework required",
+        "workflow_ids": [
+          "crm.proposal.approval",
+          "crm.document.approval"
+        ]
+      },
+      {
+        "id": "delivered",
+        "title": "delivered",
+        "workflow_ids": [
+          "crm.proposal.approval"
+        ]
+      },
+      {
+        "id": "archived",
+        "title": "archived",
+        "workflow_ids": [
+          "crm.document.approval"
+        ]
+      },
+      {
+        "id": "signature_wait",
+        "title": "signature wait",
+        "workflow_ids": [
+          "crm.contract.signature"
+        ]
+      }
+    ],
+    "artifact_types": [
+      "crm_contract",
+      "crm_document",
+      "crm_handoff_record",
+      "crm_proposal"
+    ],
+    "approval_required": true,
+    "rework_policy": "failed validation returns the owning workflow to work with a reason"
+  },
+  "actions": [
+    {
+      "id": "crm.refresh-operating-snapshot",
+      "label": "Refresh operating snapshot",
+      "surface_id": "crm.system-map",
+      "contract_id": "crm.operating.snapshot.executor",
+      "requires_permission": "crm.workflow.mutate",
+      "mutates_workflow": true,
+      "command_template": [
+        "forge",
+        "addons",
+        "execute-executor",
+        "--addon",
+        "forge.addon.crm",
+        "--contract",
+        "crm.operating.snapshot.executor",
+        "--worker",
+        "<worker-id>",
+        "--task",
+        "<task-ref>",
+        "--input",
+        "<json>",
+        "--context",
+        "<json>",
+        "--output",
+        "json"
+      ]
+    },
+    {
+      "id": "crm.bootstrap-tenant",
+      "label": "Bootstrap CRM tenant",
+      "surface_id": "crm.system-map",
+      "contract_id": "crm.tenant.bootstrap.executor",
+      "requires_permission": "crm.workflow.mutate",
+      "mutates_workflow": true,
+      "command_template": [
+        "forge",
+        "addons",
+        "execute-executor",
+        "--addon",
+        "forge.addon.crm",
+        "--contract",
+        "crm.tenant.bootstrap.executor",
+        "--worker",
+        "<worker-id>",
+        "--task",
+        "<task-ref>",
+        "--input",
+        "<json>",
+        "--context",
+        "<json>",
+        "--output",
+        "json"
+      ]
+    },
+    {
+      "id": "crm.generate-proposal",
+      "label": "Generate proposal",
+      "surface_id": "crm.document-queue",
+      "contract_id": "crm.proposal.generator.executor",
+      "requires_permission": "crm.document.generate",
+      "mutates_workflow": true,
+      "command_template": [
+        "forge",
+        "addons",
+        "execute-executor",
+        "--addon",
+        "forge.addon.crm",
+        "--contract",
+        "crm.proposal.generator.executor",
+        "--worker",
+        "<worker-id>",
+        "--task",
+        "<task-ref>",
+        "--input",
+        "<json>",
+        "--context",
+        "<json>",
+        "--output",
+        "json"
+      ]
+    },
+    {
+      "id": "crm.validate-document",
+      "label": "Validate document",
+      "surface_id": "crm.document-queue",
+      "contract_id": "crm.document.validator",
+      "requires_permission": "crm.document.generate",
+      "mutates_workflow": true,
+      "command_template": [
+        "forge",
+        "addons",
+        "execute-validator",
+        "--addon",
+        "forge.addon.crm",
+        "--contract",
+        "crm.document.validator",
+        "--worker",
+        "<worker-id>",
+        "--subject",
+        "<artifact-ref>",
+        "--input",
+        "<json>",
+        "--context",
+        "<json>",
+        "--output",
+        "json"
+      ]
+    },
+    {
+      "id": "crm.deliver-handoff",
+      "label": "Deliver omnichannel handoff",
+      "surface_id": "crm.support-queue",
+      "contract_id": "crm.omnichannel.handoff",
+      "requires_permission": "crm.omnichannel.ingest",
+      "mutates_workflow": true,
+      "command_template": [
+        "forge",
+        "addons",
+        "execute-handoff",
+        "--addon",
+        "forge.addon.crm",
+        "--contract",
+        "crm.omnichannel.handoff",
+        "--worker",
+        "<worker-id>",
+        "--handoff",
+        "<handoff-ref>",
+        "--input",
+        "<json>",
+        "--context",
+        "<json>",
+        "--output",
+        "json"
+      ]
+    }
+  ],
+  "design_tokens": {
+    "color": {
+      "background": "#f6f7f4",
+      "panel": "#ffffff",
+      "ink": "#1d2428",
+      "muted": "#607078",
+      "line": "#d8dfd8",
+      "accent": "#126c55",
+      "attention": "#9b4d19",
+      "info": "#285f9d",
+      "risk": "#a53c3c"
+    },
+    "radius": {
+      "panel": "8px",
+      "control": "6px"
+    },
+    "density": "compact_operational"
+  },
+  "observability": {
+    "audit_required": true,
+    "lineage_required": true,
+    "cost_visible_for_runtime_contracts": true,
+    "event_timeline_source": "forge.events.timeline",
+    "artifact_source": "forge.workflow.artifacts"
+  }
+}

@@ -11,5 +11,6 @@ Forge CRM treats the CRM as a generated workflow system:
 7. CRM workers execute bounded tasks.
 8. Forge owns checkpoints, approvals, memory, artifacts and observability.
 9. Core gaps are sent back to `forge-core` before CRM-specific workarounds are accepted.
+10. CRM web and TUI surfaces render Forge workflow snapshots and expose Forge command templates instead of owning CRM automation state.
 
 This model is the product benchmark for Forge v0.5, v0.6 and v0.7.

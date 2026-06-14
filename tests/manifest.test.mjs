@@ -60,6 +60,19 @@ test("manifest exposes CRM operating snapshot as a Forge runtime contract", () =
   assert.ok(artifactTypes.has("crm_operating_snapshot"));
 });
 
+test("manifest declares the CRM web application entrypoint as an Addon view asset", () => {
+  const systemMap = manifest.views.find((view) => view.id === "crm.system-map");
+  assert.ok(systemMap);
+  assert.equal(systemMap.surface, "web");
+  assert.equal(systemMap.props.web_app.entrypoint, "web/index.html");
+  assert.equal(systemMap.props.web_app.snapshot_path, "web/data/operating-snapshot.json");
+  assert.equal(systemMap.props.web_app.snapshot_script, "npm run web:snapshot");
+
+  const webIntegration = manifest.integrations.find((integration) => integration.id === "crm.web");
+  assert.ok(webIntegration);
+  assert.equal(webIntegration.integration_type, "ui");
+});
+
 test("CRM scope is workflow-backed across core business areas", () => {
   const workflowIds = new Set(manifest.workflows.map((workflow) => workflow.id));
   for (const workflowId of [

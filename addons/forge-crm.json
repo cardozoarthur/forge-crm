@@ -705,7 +705,18 @@
       ],
       "permissions": [
         "crm.workflow.mutate"
-      ]
+      ],
+      "props": {
+        "web_app": {
+          "entrypoint": "web/index.html",
+          "asset_root": "web",
+          "snapshot_path": "web/data/operating-snapshot.json",
+          "snapshot_script": "npm run web:snapshot",
+          "state_source": "crm.operating.snapshot.executor",
+          "external_database_required": false,
+          "direct_browser_persistence": false
+        }
+      }
     },
     {
       "id": "crm.pipeline-kanban",
