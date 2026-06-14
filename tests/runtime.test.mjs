@@ -11,6 +11,7 @@ import {
   buildRelationshipTimelineResult,
   buildOmnichannelHandoffResult,
   buildOperatingSnapshotResult,
+  buildWorkflowEvolutionResult,
   buildProposalGeneratorResult,
   buildTicketSlaResult
 } from "../scripts/crm-runtime-lib.mjs";
@@ -389,6 +390,76 @@ test("memory promotion executor prepares governed Forge memory promotion request
   assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_memory_promotion_request"));
   assert.ok(result.events.some((event) => event.kind === "crm.memory.knowledge_curated"));
   assert.ok(result.events.some((event) => event.kind === "crm.memory.promotion_requested"));
+});
+
+test("workflow evolution executor proposes governed Forge experiments without self-modifying", () => {
+  assert.equal(typeof buildWorkflowEvolutionResult, "function");
+
+  const result = buildWorkflowEvolutionResult(
+    workerRequest(
+      "forge_crm.evolve_workflow",
+      {
+        tenant_context: { tenant_id: "demo" },
+        workflow_state: {
+          workflow_id: "crm.ticket.sla",
+          current_version: "0.1.0",
+          bottlenecks: ["manual SLA owner routing", "repeated escalation rework"]
+        },
+        observability_report: {
+          audit_event_count: 34,
+          cost_total_usd: 18.75,
+          metric_samples: [
+            { name: "sla_breach_count", value: 5 },
+            { name: "cycle_time_minutes", value: 142 }
+          ],
+          risk_signals: ["sla_breach_count elevated"]
+        },
+        candidate_changes: [
+          {
+            id: "sla-owner-routing-policy",
+            title: "Route SLA owner from channel and account tier",
+            target_workflow_id: "crm.ticket.sla",
+            expected_metric: "sla_breach_count",
+            expected_delta: -2,
+            rollback_plan: "restore previous owner routing policy"
+          }
+        ],
+        benchmark_policy: {
+          required_metric: "sla_breach_count",
+          acceptance_threshold: 3,
+          validation_command: "forge improve benchmark-event-policy --workflow crm.ticket.sla --policy sla-owner-routing-policy --output json",
+          approved_by: "ops-lead"
+        }
+      },
+      { contract_id: "crm.workflow.evolution.executor", task_ref: "workflow-evolution-test" }
+    )
+  );
+
+  assert.equal(result.schema_version, "forge.addon_executor_result.v1");
+  assert.equal(result.status, "completed");
+  assert.equal(result.outputs.tenant_id, "demo");
+  assert.equal(result.outputs.workflow_id, "crm.ticket.sla");
+  assert.equal(result.outputs.evolution_state, "benchmark_wait");
+  assert.equal(result.outputs.candidate_count, 1);
+  assert.equal(result.outputs.promotion_allowed, false);
+  assert.equal(result.outputs.requires_forge_improve, true);
+  assert.equal(result.outputs.mutates_crm_state, false);
+  assert.equal(result.outputs.forge_event_sourced, true);
+  assert.ok(result.outputs.recommended_commands.every((command) => command.startsWith("forge improve")));
+
+  for (const artifactKind of [
+    "crm_workflow_evolution_plan",
+    "crm_evolution_experiment",
+    "crm_benchmark_report",
+    "crm_promotion_decision",
+    "crm_core_gap_report"
+  ]) {
+    assert.ok(result.artifacts.some((artifact) => artifact.kind === artifactKind), `missing ${artifactKind}`);
+  }
+
+  assert.ok(result.events.some((event) => event.kind === "crm.evolution.candidate_generated"));
+  assert.ok(result.events.some((event) => event.kind === "crm.evolution.benchmark_reported"));
+  assert.ok(result.events.some((event) => event.kind === "crm.evolution.promotion_decision_recorded"));
 });
 
 test("observability inspector reports audit lineage cost metrics and logs from Forge state", () => {

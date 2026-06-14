@@ -23,11 +23,11 @@
     "external_delivery_requires_approval": true
   },
   "metrics": {
-    "workflow_count": 14,
+    "workflow_count": 15,
     "business_module_count": 6,
     "surface_count": 8,
-    "artifact_type_count": 42,
-    "event_type_count": 50,
+    "artifact_type_count": 47,
+    "event_type_count": 55,
     "complete_scope": true
   },
   "surfaces": [
@@ -41,7 +41,8 @@
       "state_source": "forge_workflow_artifacts_and_events",
       "workflow_ids": [
         "crm.operational.observability",
-        "crm.enterprise.readiness"
+        "crm.enterprise.readiness",
+        "crm.workflow.evolution"
       ],
       "lanes": [
         "inspection_requested",
@@ -54,21 +55,37 @@
         "evidence_mapped",
         "readiness_reported",
         "rework_required",
-        "operable"
+        "operable",
+        "candidate_scan",
+        "experiment_designed",
+        "benchmark_wait",
+        "promotion_blocked",
+        "promoted",
+        "core_gap_reported"
       ],
       "artifact_types": [
         "crm_audit_report",
+        "crm_benchmark_report",
         "crm_business_runbook",
+        "crm_core_gap_report",
         "crm_cost_report",
         "crm_domain_coverage_matrix",
+        "crm_evolution_experiment",
         "crm_lineage_map",
         "crm_metric_snapshot",
         "crm_operating_readiness_report",
-        "crm_user_outcome_manifest"
+        "crm_promotion_decision",
+        "crm_user_outcome_manifest",
+        "crm_workflow_evolution_plan"
       ],
       "event_types": [
         "crm.audit.reported",
+        "crm.core_gap.reported",
         "crm.cost.reviewed",
+        "crm.evolution.benchmark_reported",
+        "crm.evolution.candidate_generated",
+        "crm.evolution.experiment_designed",
+        "crm.evolution.promotion_decision_recorded",
         "crm.metric.reviewed",
         "crm.observability.inspected",
         "crm.operating.readiness_reported",
@@ -358,9 +375,16 @@
       "permission": "crm.ai.recommend",
       "state_source": "forge_workflow_artifacts_and_events",
       "workflow_ids": [
+        "crm.workflow.evolution",
         "crm.ai.copilot.recommendation"
       ],
       "lanes": [
+        "candidate_scan",
+        "experiment_designed",
+        "benchmark_wait",
+        "promotion_blocked",
+        "promoted",
+        "core_gap_reported",
         "context_requested",
         "recommendation_generated",
         "review_wait",
@@ -369,14 +393,24 @@
       ],
       "artifact_types": [
         "crm_ai_recommendation",
+        "crm_benchmark_report",
+        "crm_core_gap_report",
+        "crm_evolution_experiment",
         "crm_knowledge_summary",
         "crm_memory_promotion_request",
+        "crm_promotion_decision",
         "crm_report",
-        "crm_risk_analysis"
+        "crm_risk_analysis",
+        "crm_workflow_evolution_plan"
       ],
       "event_types": [
         "crm.ai.recommendation_generated",
         "crm.ai.risk_flagged",
+        "crm.core_gap.reported",
+        "crm.evolution.benchmark_reported",
+        "crm.evolution.candidate_generated",
+        "crm.evolution.experiment_designed",
+        "crm.evolution.promotion_decision_recorded",
         "crm.memory.knowledge_curated",
         "crm.memory.promotion_requested",
         "crm.next_action.approved"
@@ -634,30 +668,44 @@
       "complete": true,
       "workflow_ids": [
         "crm.proposal.approval",
+        "crm.workflow.evolution",
         "crm.ai.copilot.recommendation"
       ],
       "artifact_types": [
         "crm_ai_recommendation",
+        "crm_benchmark_report",
+        "crm_core_gap_report",
         "crm_document",
+        "crm_evolution_experiment",
         "crm_knowledge_summary",
         "crm_memory_promotion_request",
+        "crm_promotion_decision",
         "crm_proposal",
         "crm_report",
-        "crm_risk_analysis"
+        "crm_risk_analysis",
+        "crm_workflow_evolution_plan"
       ],
       "event_types": [
         "crm.ai.recommendation_generated",
         "crm.ai.risk_flagged",
+        "crm.core_gap.reported",
         "crm.document.approval_requested",
+        "crm.evolution.benchmark_reported",
+        "crm.evolution.candidate_generated",
+        "crm.evolution.experiment_designed",
+        "crm.evolution.promotion_decision_recorded",
         "crm.memory.knowledge_curated",
         "crm.memory.promotion_requested",
         "crm.next_action.approved",
         "crm.proposal.generated"
       ],
       "validation_gates": [
+        "Core primitive gaps are reported to forge-core before CRM workaround",
         "artifact lineage present",
+        "experiment candidate includes changelog and rollback plan",
         "external delivery blocked until approval",
         "memory promotion uses Forge memory governance",
+        "promotion is blocked until benchmark evidence passes",
         "recommendation includes evidence",
         "state mutation requires workflow approval"
       ]
@@ -1195,6 +1243,50 @@
         ]
       },
       {
+        "id": "crm.workflow.evolution",
+        "title": "Adaptive CRM workflow evolution",
+        "domain": "ai_automation",
+        "state_count": 6,
+        "states": [
+          "candidate_scan",
+          "experiment_designed",
+          "benchmark_wait",
+          "promotion_blocked",
+          "promoted",
+          "core_gap_reported"
+        ],
+        "wait_states": [
+          "benchmark_wait"
+        ],
+        "runtime_contracts": [
+          "crm.workflow.evolution.executor",
+          "crm.observability.inspector.executor"
+        ],
+        "artifact_types": [
+          "crm_workflow_evolution_plan",
+          "crm_evolution_experiment",
+          "crm_benchmark_report",
+          "crm_promotion_decision",
+          "crm_core_gap_report"
+        ],
+        "event_types": [
+          "crm.evolution.candidate_generated",
+          "crm.evolution.experiment_designed",
+          "crm.evolution.benchmark_reported",
+          "crm.evolution.promotion_decision_recorded",
+          "crm.core_gap.reported"
+        ],
+        "surface_ids": [
+          "crm.system-map",
+          "crm.ai-workbench"
+        ],
+        "validation_gates": [
+          "experiment candidate includes changelog and rollback plan",
+          "promotion is blocked until benchmark evidence passes",
+          "Core primitive gaps are reported to forge-core before CRM workaround"
+        ]
+      },
+      {
         "id": "crm.ai.copilot.recommendation",
         "title": "Specialized CRM copilots and risk analysis",
         "domain": "ai_automation",
@@ -1298,6 +1390,18 @@
         "from": "crm.ai.copilot.recommendation",
         "to": "crm.opportunity.pipeline",
         "reason": "approved recommendation mutates pipeline state",
+        "state_owner": "forge_workflow_runtime"
+      },
+      {
+        "from": "crm.operational.observability",
+        "to": "crm.workflow.evolution",
+        "reason": "observability findings generate controlled evolution candidates",
+        "state_owner": "forge_workflow_runtime"
+      },
+      {
+        "from": "crm.workflow.evolution",
+        "to": "crm.enterprise.readiness",
+        "reason": "validated experiments update readiness evidence",
         "state_owner": "forge_workflow_runtime"
       }
     ]
@@ -1955,11 +2059,13 @@
         "state_source": "forge_workflow_artifacts_and_events",
         "mutation_requires_forge": true,
         "workflow_ids": [
+          "crm.workflow.evolution",
           "crm.ai.copilot.recommendation"
         ],
         "action_ids": [
           "crm.run-operating-copilot",
           "crm.prepare-memory-promotion",
+          "crm.evolve-workflow",
           "crm.inspect-observability",
           "crm.generate-readiness-package"
         ],
@@ -2004,6 +2110,123 @@
         }
       }
     ]
+  },
+  "workflow_evolution_workbench": {
+    "schema_version": "forge.crm_workflow_evolution_workbench.v1",
+    "workflow_id": "crm.workflow.evolution",
+    "workflow_extension_id": "crm_workflow_evolution",
+    "state_source": "forge_improve_candidates_and_benchmarks",
+    "local_self_modification_allowed": false,
+    "action_id": "crm.evolve-workflow",
+    "contract_id": "crm.workflow.evolution.executor",
+    "evolution_loop": {
+      "operation_plan": [
+        {
+          "id": "inspect_observability",
+          "title": "Inspect CRM observability evidence",
+          "owner": "crm.observability.inspector.executor"
+        },
+        {
+          "id": "generate_candidate",
+          "title": "Generate controlled workflow candidate",
+          "owner": "crm.workflow.evolution.executor"
+        },
+        {
+          "id": "benchmark_candidate",
+          "title": "Benchmark candidate with Forge improve",
+          "owner": "forge.improve.benchmark_event_policy"
+        },
+        {
+          "id": "promote_only_after_validation",
+          "title": "Promote only after validation and approval",
+          "owner": "forge.improve.promote_event_policy"
+        }
+      ]
+    },
+    "candidates": [
+      {
+        "id": "evolve-sla-owner-routing",
+        "title": "Route SLA owner from channel and account tier",
+        "target_workflow_id": "crm.ticket.sla",
+        "source_observability_workflow_id": "crm.operational.observability",
+        "expected_metric": "sla_breach_count",
+        "expected_delta": -2,
+        "rollback_plan": "restore previous owner routing policy through Forge improve rollback gate",
+        "changelog_required": true,
+        "action_id": "crm.evolve-workflow"
+      },
+      {
+        "id": "evolve-document-approval-rework",
+        "title": "Split document validation rework by artifact type",
+        "target_workflow_id": "crm.document.approval",
+        "source_observability_workflow_id": "crm.operational.observability",
+        "expected_metric": "document_rework_count",
+        "expected_delta": -3,
+        "rollback_plan": "restore generic document approval validation gate",
+        "changelog_required": true,
+        "action_id": "crm.evolve-workflow"
+      }
+    ],
+    "benchmark_queue": [
+      {
+        "candidate_id": "evolve-sla-owner-routing",
+        "target_workflow_id": "crm.ticket.sla",
+        "metric": "sla_breach_count",
+        "command_template": [
+          "forge",
+          "improve",
+          "benchmark-event-policy",
+          "--workflow",
+          "crm.ticket.sla",
+          "--policy",
+          "evolve-sla-owner-routing",
+          "--output",
+          "json"
+        ]
+      },
+      {
+        "candidate_id": "evolve-document-approval-rework",
+        "target_workflow_id": "crm.document.approval",
+        "metric": "document_rework_count",
+        "command_template": [
+          "forge",
+          "improve",
+          "benchmark-event-policy",
+          "--workflow",
+          "crm.document.approval",
+          "--policy",
+          "evolve-document-approval-rework",
+          "--output",
+          "json"
+        ]
+      }
+    ],
+    "promotion_gates": [
+      {
+        "candidate_id": "evolve-sla-owner-routing",
+        "required_before_promotion": true,
+        "requirements": [
+          "benchmark evidence passes",
+          "rollback plan exists",
+          "changelog is attached",
+          "human approval is recorded"
+        ]
+      },
+      {
+        "candidate_id": "evolve-document-approval-rework",
+        "required_before_promotion": true,
+        "requirements": [
+          "benchmark evidence passes",
+          "rollback plan exists",
+          "changelog is attached",
+          "human approval is recorded"
+        ]
+      }
+    ],
+    "core_gap_policy": {
+      "target_repository": "forge-core",
+      "rule": "If the experiment needs a missing runtime primitive, report the gap instead of creating CRM-local automation."
+    }
   },
   "actions": [
     {
@@ -2426,6 +2649,33 @@
         "forge.addon.crm",
         "--contract",
         "crm.memory.promotion.executor",
+        "--worker",
+        "<worker-id>",
+        "--task",
+        "<task-ref>",
+        "--input",
+        "<json>",
+        "--context",
+        "<json>",
+        "--output",
+        "json"
+      ]
+    },
+    {
+      "id": "crm.evolve-workflow",
+      "label": "Evolve CRM workflow",
+      "surface_id": "crm.ai-workbench",
+      "contract_id": "crm.workflow.evolution.executor",
+      "requires_permission": "crm.workflow.mutate",
+      "mutates_workflow": true,
+      "command_template": [
+        "forge",
+        "addons",
+        "execute-executor",
+        "--addon",
+        "forge.addon.crm",
+        "--contract",
+        "crm.workflow.evolution.executor",
         "--worker",
         "<worker-id>",
         "--task",
@@ -3551,6 +3801,68 @@
             "title": "Execute runtime contract",
             "owner": "forge.addons.runtime",
             "evidence": "crm.memory.promotion.executor"
+          },
+          {
+            "id": "promote_result_to_workflow",
+            "title": "Promote result to workflow",
+            "owner": "forge.workflow.runtime",
+            "evidence": "artifact and event promotion"
+          },
+          {
+            "id": "refresh_operating_snapshot",
+            "title": "Refresh operating snapshot",
+            "owner": "forge.addon.crm",
+            "evidence": "crm.operating.snapshot.executor"
+          }
+        ],
+        "output_policy": {
+          "promote_result_to_workflow": true,
+          "browser_local_state_write": false,
+          "refresh_source": "forge_workflow_artifacts_and_events"
+        }
+      },
+      {
+        "action_id": "crm.evolve-workflow",
+        "label": "Evolve CRM workflow",
+        "surface_id": "crm.ai-workbench",
+        "contract_id": "crm.workflow.evolution.executor",
+        "required_permission": "crm.workflow.mutate",
+        "selected_command": [
+          "forge",
+          "addons",
+          "execute-executor",
+          "--addon",
+          "forge.addon.crm",
+          "--contract",
+          "crm.workflow.evolution.executor",
+          "--worker",
+          "<worker-id>",
+          "--task",
+          "<task-ref>",
+          "--input",
+          "<json>",
+          "--context",
+          "<json>",
+          "--output",
+          "json"
+        ],
+        "permission_gate": {
+          "status": "requires_forge_permission",
+          "permission": "crm.workflow.mutate",
+          "approval_owner": "forge_permission_policy"
+        },
+        "operation_plan": [
+          {
+            "id": "check_addon_permission",
+            "title": "Check Addon permission",
+            "owner": "forge.permissions",
+            "evidence": "crm.workflow.mutate"
+          },
+          {
+            "id": "execute_runtime_contract",
+            "title": "Execute runtime contract",
+            "owner": "forge.addons.runtime",
+            "evidence": "crm.workflow.evolution.executor"
           },
           {
             "id": "promote_result_to_workflow",

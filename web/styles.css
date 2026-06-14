@@ -310,11 +310,13 @@ h3 {
 .support-ticket,
 .campaign-row,
 .form-row,
-.ai-recommendation,
-.memory-promotion,
-.document-item,
-.action-plan,
-.cadence-row {
+	.ai-recommendation,
+	.memory-promotion,
+	.document-item,
+	.action-plan,
+	.cadence-row,
+	.evolution-candidate,
+	.benchmark-row {
   display: grid;
   gap: 6px;
   min-width: 0;
@@ -335,8 +337,10 @@ h3 {
 .support-ticket span,
 .campaign-row span,
 .form-row span,
-.ai-recommendation span,
-.memory-promotion span {
+	.ai-recommendation span,
+	.memory-promotion span,
+	.evolution-candidate span,
+	.benchmark-row span {
   color: #607078;
   font-size: 0.78rem;
   line-height: 1.35;
@@ -348,9 +352,11 @@ h3 {
 .support-ticket code,
 .campaign-row code,
 .form-row code,
-.ai-recommendation code,
-.memory-promotion code,
-.document-item code {
+	.ai-recommendation code,
+	.memory-promotion code,
+	.document-item code,
+	.evolution-candidate code,
+	.benchmark-row code {
   color: #285f9d;
   font-size: 0.74rem;
   overflow-wrap: anywhere;
@@ -461,9 +467,11 @@ h3 {
 
 .module-grid,
 .document-lanes,
-.action-list,
-.action-plan-list,
-.cadence-list {
+	.action-list,
+	.action-plan-list,
+	.cadence-list,
+	.evolution-candidates,
+	.benchmark-queue {
   display: grid;
   gap: 8px;
   margin-top: 12px;
@@ -534,20 +542,34 @@ h3 {
   grid-column: 1 / -1;
 }
 
-.cadence-panel {
-  grid-column: 1 / -1;
-}
+	.cadence-panel {
+	  grid-column: 1 / -1;
+	}
 
-.cadence-list {
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-}
+	.evolution-workbench {
+	  grid-column: 1 / -1;
+	}
 
-.cadence-row {
+	.cadence-list {
+	  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+	}
+
+	.evolution-candidates,
+	.benchmark-queue {
+	  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+	}
+
+	.cadence-row {
   grid-template-columns: minmax(0, 1fr) auto;
   align-content: start;
   min-height: 164px;
-  border-left: 4px solid #126c55;
-}
+	  border-left: 4px solid #126c55;
+	}
+
+	.evolution-candidate,
+	.benchmark-row {
+	  border-left: 4px solid #285f9d;
+	}
 
 .cadence-workflow,
 .cadence-state {
@@ -571,7 +593,7 @@ h3 {
   overflow-wrap: anywhere;
 }
 
-.cadence-steps {
+	.cadence-steps {
   display: grid;
   grid-column: 1 / -1;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -579,9 +601,18 @@ h3 {
   margin: 4px 0 0;
   padding: 0;
   list-style: none;
-}
+	}
 
-.cadence-steps li {
+	.evolution-steps {
+	  display: grid;
+	  grid-template-columns: repeat(4, minmax(0, 1fr));
+	  gap: 6px;
+	  margin: 12px 0 0;
+	  padding: 0;
+	  list-style: none;
+	}
+
+	.cadence-steps li {
   min-height: 34px;
   padding: 6px 7px;
   border: 1px solid #d8dfd8;
@@ -590,8 +621,20 @@ h3 {
   color: #405057;
   font-size: 0.72rem;
   line-height: 1.25;
-  overflow-wrap: anywhere;
-}
+	  overflow-wrap: anywhere;
+	}
+
+	.evolution-steps li {
+	  min-height: 34px;
+	  padding: 6px 7px;
+	  border: 1px solid #d8dfd8;
+	  border-radius: 6px;
+	  background: #fbfcf9;
+	  color: #405057;
+	  font-size: 0.72rem;
+	  line-height: 1.25;
+	  overflow-wrap: anywhere;
+	}
 
 .action-plan-list {
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -701,9 +744,10 @@ h3 {
   .knowledge-graph,
   .pipeline-board,
   .commercial-row,
-  .cadence-row,
-  .cadence-steps,
-  .plan-steps {
+	  .cadence-row,
+	  .cadence-steps,
+	  .evolution-steps,
+	  .plan-steps {
     grid-template-columns: 1fr;
   }
 

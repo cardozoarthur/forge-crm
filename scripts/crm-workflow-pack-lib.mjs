@@ -357,6 +357,44 @@ const WORKFLOWS = [
     ]
   },
   {
+    id: "crm.workflow.evolution",
+    title: "Adaptive CRM workflow evolution",
+    domain: "ai_automation",
+    workflow_extension_id: "crm_workflow_evolution",
+    object_types: ["workflow_evolution", "benchmark", "controlled_promotion", "workflow_automation", "risk_analysis"],
+    states: ["candidate_scan", "experiment_designed", "benchmark_wait", "promotion_blocked", "promoted", "core_gap_reported"],
+    transitions: [
+      ["candidate_scan", "experiment_designed", "candidate includes changelog and rollback plan"],
+      ["experiment_designed", "benchmark_wait", "Forge benchmark command prepared"],
+      ["benchmark_wait", "promotion_blocked", "benchmark evidence missing or below threshold"],
+      ["benchmark_wait", "promoted", "benchmark and validation evidence passed"],
+      ["experiment_designed", "core_gap_reported", "missing Forge primitive blocks safe experiment"]
+    ],
+    runtime_contracts: ["crm.workflow.evolution.executor", "crm.observability.inspector.executor"],
+    artifacts: [
+      "crm_workflow_evolution_plan",
+      "crm_evolution_experiment",
+      "crm_benchmark_report",
+      "crm_promotion_decision",
+      "crm_core_gap_report"
+    ],
+    events: [
+      "crm.evolution.candidate_generated",
+      "crm.evolution.experiment_designed",
+      "crm.evolution.benchmark_reported",
+      "crm.evolution.promotion_decision_recorded",
+      "crm.core_gap.reported"
+    ],
+    memory_scopes: ["organization", "project", "processing"],
+    permissions: ["crm.observability.inspect", "crm.workflow.mutate"],
+    views: ["crm.system-map", "crm.ai-workbench"],
+    validation_gates: [
+      "experiment candidate includes changelog and rollback plan",
+      "promotion is blocked until benchmark evidence passes",
+      "Core primitive gaps are reported to forge-core before CRM workaround"
+    ]
+  },
+  {
     id: "crm.ai.copilot.recommendation",
     title: "Specialized CRM copilots and risk analysis",
     domain: "ai_automation",

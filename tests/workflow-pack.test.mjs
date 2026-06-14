@@ -325,3 +325,28 @@ test("enterprise readiness workflow maps success criteria to user-facing deliver
   assert.ok(workflow.validation_gates.includes("success criteria mapped to user-facing deliverables"));
   assert.ok(pack.indexes.runtime_contracts.includes("crm.operating.readiness.executor"));
 });
+
+test("workflow evolution loop turns CRM bottlenecks into governed Forge experiments", () => {
+  const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
+  const workflow = pack.workflows.find((candidate) => candidate.id === "crm.workflow.evolution");
+
+  assert.ok(workflow);
+  assert.equal(workflow.workflow_extension_id, "crm_workflow_evolution");
+  assert.equal(workflow.domain, "ai_automation");
+  assert.ok(workflow.object_types.includes("workflow_evolution"));
+  assert.ok(workflow.object_types.includes("benchmark"));
+  assert.ok(workflow.object_types.includes("controlled_promotion"));
+  assert.ok(workflow.runtime_contracts.includes("crm.workflow.evolution.executor"));
+  assert.ok(workflow.runtime_contracts.includes("crm.observability.inspector.executor"));
+  assert.ok(workflow.artifacts.includes("crm_workflow_evolution_plan"));
+  assert.ok(workflow.artifacts.includes("crm_evolution_experiment"));
+  assert.ok(workflow.artifacts.includes("crm_benchmark_report"));
+  assert.ok(workflow.artifacts.includes("crm_promotion_decision"));
+  assert.ok(workflow.artifacts.includes("crm_core_gap_report"));
+  assert.ok(workflow.events.includes("crm.evolution.candidate_generated"));
+  assert.ok(workflow.events.includes("crm.evolution.benchmark_reported"));
+  assert.ok(workflow.events.includes("crm.evolution.promotion_decision_recorded"));
+  assert.ok(workflow.validation_gates.includes("experiment candidate includes changelog and rollback plan"));
+  assert.ok(workflow.validation_gates.includes("promotion is blocked until benchmark evidence passes"));
+  assert.ok(pack.indexes.runtime_contracts.includes("crm.workflow.evolution.executor"));
+});

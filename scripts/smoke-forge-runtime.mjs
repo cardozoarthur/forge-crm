@@ -82,6 +82,7 @@ try {
       "forge_crm.move_opportunity_stage",
       "forge_crm.operating_copilot",
       "forge_crm.prepare_memory_promotion",
+      "forge_crm.evolve_workflow",
       "forge_crm.inspect_observability",
       "forge_crm.generate_operating_readiness",
       "forge_crm.generate_proposal",
@@ -107,6 +108,7 @@ try {
       "crm.pipeline.stage_move.executor",
       "crm.ai.operating_copilot.executor",
       "crm.memory.promotion.executor",
+      "crm.workflow.evolution.executor",
       "crm.observability.inspector.executor",
       "crm.operating.readiness.executor",
       "crm.proposal.generator.executor",
@@ -406,6 +408,74 @@ try {
   }
   if (observabilityInspection.executor_result.outputs.cost_total_usd !== 1.5) {
     throw new Error(`expected observability cost total 1.5, got ${observabilityInspection.executor_result.outputs.cost_total_usd}`);
+  }
+
+  const workflowEvolution = runForge([
+    "addons",
+    "execute-executor",
+    "--addon-dir",
+    "addons",
+    "--addon",
+    "forge.addon.crm",
+    "--contract",
+    "crm.workflow.evolution.executor",
+    "--worker",
+    workerId,
+    "--task",
+    "crm-smoke-workflow-evolution",
+    "--workflow",
+    workflowId,
+    "--input",
+    JSON.stringify({
+      tenant_context: { id: "smoke", tenant_id: "smoke" },
+      workflow_state: {
+        workflow_id: "crm.ticket.sla",
+        current_version: "0.1.0",
+        status: "running",
+        bottlenecks: ["manual SLA owner routing", "repeated escalation rework"]
+      },
+      observability_report: {
+        audit_event_count: observabilityInspection.executor_result.outputs.audit_event_count,
+        cost_total_usd: observabilityInspection.executor_result.outputs.cost_total_usd,
+        metric_samples: [
+          { name: "sla_breach_count", value: 5 },
+          { name: "cycle_time_minutes", value: 142 }
+        ],
+        risk_signals: ["sla_breach_count elevated"]
+      },
+      candidate_changes: [
+        {
+          id: "sla-owner-routing-policy",
+          title: "Route SLA owner from channel and account tier",
+          target_workflow_id: "crm.ticket.sla",
+          expected_metric: "sla_breach_count",
+          expected_delta: -2,
+          changelog: "Route SLA ownership through a deterministic Forge event policy using channel and account tier signals.",
+          rollback_plan: "restore previous SLA owner routing event policy"
+        }
+      ],
+      benchmark_policy: {
+        required_metric: "sla_breach_count",
+        acceptance_threshold: 3,
+        validation_command:
+          "forge improve benchmark-event-policy --workflow crm.ticket.sla --policy sla-owner-routing-policy --output json",
+        approved_by: "forge-crm-smoke"
+      }
+    }),
+    "--context",
+    JSON.stringify({ tenant: "smoke" }),
+    "--output",
+    "json"
+  ]);
+
+  if (workflowEvolution.promotion?.status !== "addon_executor_result_promoted") {
+    throw new Error(`expected workflow evolution promotion, got ${workflowEvolution.promotion?.status || "missing"}`);
+  }
+  if (workflowEvolution.executor_result.outputs.evolution_state !== "benchmark_wait") {
+    throw new Error(`expected workflow evolution benchmark_wait, got ${workflowEvolution.executor_result.outputs.evolution_state}`);
+  }
+  if (workflowEvolution.executor_result.outputs.promotion_allowed !== false) {
+    throw new Error("expected workflow evolution promotion to stay blocked until benchmark evidence exists");
   }
 
   const workflowPackArtifact = bootstrap.executor_result.artifacts.find((artifact) => artifact.kind === "crm_workflow_pack");
@@ -1131,6 +1201,8 @@ try {
   const memoryPromotedEventCount = memoryPromotion.promotion?.event_count ?? 0;
   const observabilityPromotedArtifactCount = observabilityInspection.promotion?.artifact_count ?? 0;
   const observabilityPromotedEventCount = observabilityInspection.promotion?.event_count ?? 0;
+  const workflowEvolutionPromotedArtifactCount = workflowEvolution.promotion?.artifact_count ?? 0;
+  const workflowEvolutionPromotedEventCount = workflowEvolution.promotion?.event_count ?? 0;
   const readinessPromotedArtifactCount = operatingReadiness.promotion?.artifact_count ?? 0;
   const readinessPromotedEventCount = operatingReadiness.promotion?.event_count ?? 0;
   const relationshipPromotedArtifactCount = relationshipTimeline.promotion?.artifact_count ?? 0;
@@ -1214,6 +1286,21 @@ try {
     "crm.audit.reported",
     "crm.cost.reviewed",
     "crm.metric.reviewed"
+  ]) {
+    if (!workflowEventKinds.includes(eventKind)) {
+      throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
+    }
+  }
+  if (workflowEvolutionPromotedArtifactCount < 5 || workflowEvolutionPromotedEventCount < 4) {
+    throw new Error(
+      `expected promoted workflow evolution artifacts/events, got artifacts=${workflowEvolutionPromotedArtifactCount} events=${workflowEvolutionPromotedEventCount}`
+    );
+  }
+  for (const eventKind of [
+    "crm.evolution.candidate_generated",
+    "crm.evolution.experiment_designed",
+    "crm.evolution.benchmark_reported",
+    "crm.evolution.promotion_decision_recorded"
   ]) {
     if (!workflowEventKinds.includes(eventKind)) {
       throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
@@ -1505,6 +1592,14 @@ try {
     observability_inspection_status: observabilityInspection.executor_result.outputs.inspection_status,
     observability_promoted_artifacts: observabilityPromotedArtifactCount,
     observability_promoted_events: observabilityPromotedEventCount,
+    workflow_evolution_status: workflowEvolution.status,
+    workflow_evolution_promotion_status: workflowEvolution.promotion.status,
+    workflow_evolution_state: workflowEvolution.executor_result.outputs.evolution_state,
+    workflow_evolution_candidate_count: workflowEvolution.executor_result.outputs.candidate_count,
+    workflow_evolution_promotion_allowed: workflowEvolution.executor_result.outputs.promotion_allowed,
+    workflow_evolution_benchmark_metric: workflowEvolution.executor_result.outputs.benchmark_metric,
+    workflow_evolution_promoted_artifacts: workflowEvolutionPromotedArtifactCount,
+    workflow_evolution_promoted_events: workflowEvolutionPromotedEventCount,
     operating_readiness_status: operatingReadiness.status,
     operating_readiness_promotion_status: operatingReadiness.promotion.status,
     operating_readiness_success_criteria_status: operatingReadiness.executor_result.outputs.success_criteria_status,

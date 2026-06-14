@@ -32,7 +32,9 @@ const WORKFLOW_EDGES = [
   ["crm.ticket.sla", "crm.project.handoff", "resolved support issue can create internal handoff"],
   ["crm.project.handoff", "crm.document.approval", "handoff deliverables enter document queue"],
   ["crm.document.approval", "crm.proposal.approval", "document validation gates proposal delivery"],
-  ["crm.ai.copilot.recommendation", "crm.opportunity.pipeline", "approved recommendation mutates pipeline state"]
+  ["crm.ai.copilot.recommendation", "crm.opportunity.pipeline", "approved recommendation mutates pipeline state"],
+  ["crm.operational.observability", "crm.workflow.evolution", "observability findings generate controlled evolution candidates"],
+  ["crm.workflow.evolution", "crm.enterprise.readiness", "validated experiments update readiness evidence"]
 ];
 
 const DESIGN_TOKENS = {
@@ -456,6 +458,7 @@ function buildOperationalWorkbench(workflows, actionList, documentQueueSnapshot)
       action_ids: checkedActionIds(actionList, [
         "crm.run-operating-copilot",
         "crm.prepare-memory-promotion",
+        "crm.evolve-workflow",
         "crm.inspect-observability",
         "crm.generate-readiness-package"
       ])
@@ -506,6 +509,101 @@ function buildOperationalWorkbench(workflows, actionList, documentQueueSnapshot)
     state_source: WORKBENCH_STATE_SOURCE,
     mutation_requires_forge: true,
     panels: [pipelinePanel, commercialPanel, supportPanel, marketingPanel, documentPanel, aiPanel]
+  };
+}
+
+function workflowEvolutionWorkbench(workflows, actionList) {
+  const actionById = new Map(actionList.map((action) => [action.id, action]));
+  const evolutionAction = actionById.get("crm.evolve-workflow");
+  const evolutionWorkflow = workflows.find((workflow) => workflow.id === "crm.workflow.evolution");
+  const candidates = [
+    {
+      id: "evolve-sla-owner-routing",
+      title: "Route SLA owner from channel and account tier",
+      target_workflow_id: "crm.ticket.sla",
+      source_observability_workflow_id: "crm.operational.observability",
+      expected_metric: "sla_breach_count",
+      expected_delta: -2,
+      rollback_plan: "restore previous owner routing policy through Forge improve rollback gate",
+      changelog_required: true,
+      action_id: "crm.evolve-workflow"
+    },
+    {
+      id: "evolve-document-approval-rework",
+      title: "Split document validation rework by artifact type",
+      target_workflow_id: "crm.document.approval",
+      source_observability_workflow_id: "crm.operational.observability",
+      expected_metric: "document_rework_count",
+      expected_delta: -3,
+      rollback_plan: "restore generic document approval validation gate",
+      changelog_required: true,
+      action_id: "crm.evolve-workflow"
+    }
+  ];
+
+  return {
+    schema_version: "forge.crm_workflow_evolution_workbench.v1",
+    workflow_id: evolutionWorkflow?.id || "crm.workflow.evolution",
+    workflow_extension_id: evolutionWorkflow?.workflow_extension_id || "crm_workflow_evolution",
+    state_source: "forge_improve_candidates_and_benchmarks",
+    local_self_modification_allowed: false,
+    action_id: evolutionAction?.id || "crm.evolve-workflow",
+    contract_id: evolutionAction?.contract_id || "crm.workflow.evolution.executor",
+    evolution_loop: {
+      operation_plan: [
+        {
+          id: "inspect_observability",
+          title: "Inspect CRM observability evidence",
+          owner: "crm.observability.inspector.executor"
+        },
+        {
+          id: "generate_candidate",
+          title: "Generate controlled workflow candidate",
+          owner: "crm.workflow.evolution.executor"
+        },
+        {
+          id: "benchmark_candidate",
+          title: "Benchmark candidate with Forge improve",
+          owner: "forge.improve.benchmark_event_policy"
+        },
+        {
+          id: "promote_only_after_validation",
+          title: "Promote only after validation and approval",
+          owner: "forge.improve.promote_event_policy"
+        }
+      ]
+    },
+    candidates,
+    benchmark_queue: candidates.map((candidate) => ({
+      candidate_id: candidate.id,
+      target_workflow_id: candidate.target_workflow_id,
+      metric: candidate.expected_metric,
+      command_template: [
+        "forge",
+        "improve",
+        "benchmark-event-policy",
+        "--workflow",
+        candidate.target_workflow_id,
+        "--policy",
+        candidate.id,
+        "--output",
+        "json"
+      ]
+    })),
+    promotion_gates: candidates.map((candidate) => ({
+      candidate_id: candidate.id,
+      required_before_promotion: true,
+      requirements: [
+        "benchmark evidence passes",
+        "rollback plan exists",
+        "changelog is attached",
+        "human approval is recorded"
+      ]
+    })),
+    core_gap_policy: {
+      target_repository: "forge-core",
+      rule: "If the experiment needs a missing runtime primitive, report the gap instead of creating CRM-local automation."
+    }
   };
 }
 
@@ -672,6 +770,15 @@ function actions() {
       requires_permission: "crm.ai.recommend",
       mutates_workflow: true,
       command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.memory.promotion.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
+    },
+    {
+      id: "crm.evolve-workflow",
+      label: "Evolve CRM workflow",
+      surface_id: "crm.ai-workbench",
+      contract_id: "crm.workflow.evolution.executor",
+      requires_permission: "crm.workflow.mutate",
+      mutates_workflow: true,
+      command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.workflow.evolution.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
     },
     {
       id: "crm.ingest-omnichannel-message",
@@ -994,6 +1101,7 @@ export function buildCrmWebAppSnapshot(options = {}) {
     knowledge_graph: knowledgeGraph(),
     document_queue: documentQueueSnapshot,
     operational_workbench: buildOperationalWorkbench(workflows, actionList, documentQueueSnapshot),
+    workflow_evolution_workbench: workflowEvolutionWorkbench(workflows, actionList),
     actions: actionList,
     action_invocation_plans: actionInvocationPlans(actionList),
     workflow_cadences: workflowCadences(workflows, actionList),

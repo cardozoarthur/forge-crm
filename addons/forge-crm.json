@@ -142,7 +142,8 @@
       ],
       "workflow_extensions": [
         "crm_workflow_factory_system_bootstrap",
-        "crm_enterprise_readiness"
+        "crm_enterprise_readiness",
+        "crm_workflow_evolution"
       ],
       "deliverables": [
         "CRM system blueprint",
@@ -167,7 +168,11 @@
         "crm_operating_readiness_report",
         "crm_user_outcome_manifest",
         "crm_domain_coverage_matrix",
-        "crm_business_runbook"
+        "crm_business_runbook",
+        "crm_workflow_evolution_plan",
+        "crm_evolution_experiment",
+        "crm_benchmark_report",
+        "crm_promotion_decision"
       ],
       "view_ids": [
         "crm.system-map"
@@ -563,6 +568,11 @@
       "description": "Map enterprise CRM success criteria to user-facing deliverables backed by Forge workflows, artifacts, events and validation evidence."
     },
     {
+      "id": "crm_workflow_evolution",
+      "kind": "agentic_workflow",
+      "description": "Turn CRM observability bottlenecks into Forge improve experiments, benchmarks and governed promotion decisions."
+    },
+    {
       "id": "crm_ai_copilot_recommendation",
       "kind": "agentic_workflow",
       "description": "Run bounded copilots for classification, prioritization and recommendations."
@@ -732,6 +742,38 @@
         "memory promotion preparation does not write memory directly",
         "actual promotion must be executed by forge memory promote with approval and lineage",
         "raw private processing memory must be summarized before organization or global sharing"
+      ]
+    },
+    {
+      "id": "crm.workflow.evolution.executor",
+      "title": "CRM adaptive workflow evolution",
+      "contract_type": "executor",
+      "capability_id": "crm_workflow_factory",
+      "workflow_extension_id": "crm_workflow_evolution",
+      "runtime": "external_api",
+      "entrypoint": "forge_crm.evolve_workflow",
+      "inputs": [
+        "workflow_state",
+        "observability_report",
+        "candidate_changes",
+        "benchmark_policy",
+        "tenant_context"
+      ],
+      "outputs": [
+        "crm_workflow_evolution_plan",
+        "crm_evolution_experiment",
+        "crm_benchmark_report",
+        "crm_promotion_decision",
+        "crm_core_gap_report"
+      ],
+      "permissions": [
+        "crm.observability.inspect",
+        "crm.workflow.mutate"
+      ],
+      "constraints": [
+        "workflow evolution must be expressed as forge improve candidates, benchmark evidence and governed promotion",
+        "CRM workflow evolution does not self-modify or bypass Forge validation gates",
+        "promotion is blocked until benchmark and rollback evidence pass"
       ]
     },
     {
@@ -1718,6 +1760,49 @@
             "operating_snapshot",
             "validation_evidence"
           ]
+        },
+        {
+          "id": "crm.tui.evolve-workflow",
+          "label": "Evolve CRM workflow",
+          "description": "Generate a Forge improve experiment, benchmark plan and promotion decision for a CRM workflow bottleneck.",
+          "palette_group": "CRM",
+          "source_panel": "crm.operational-cockpit",
+          "type": "command",
+          "target": "forge addons execute-executor",
+          "method": "CLI",
+          "permission": "crm.workflow.mutate",
+          "requires_confirmation": true,
+          "risk_level": "high",
+          "mutates_workflow": true,
+          "command_template": [
+            "addons",
+            "execute-executor",
+            "--addon",
+            "forge.addon.crm",
+            "--contract",
+            "crm.workflow.evolution.executor",
+            "--worker",
+            "<worker-id>",
+            "--task",
+            "<task-ref>",
+            "--input",
+            "<json>",
+            "--context",
+            "<json>",
+            "--output",
+            "json"
+          ],
+          "keywords": [
+            "crm",
+            "evolution",
+            "benchmark"
+          ],
+          "payload_schema": [
+            "workflow_state",
+            "observability_report",
+            "candidate_changes",
+            "benchmark_policy"
+          ]
         }
       ],
       "permissions": [
@@ -2047,6 +2132,26 @@
       "id": "crm_risk_analysis",
       "title": "CRM risk analysis",
       "generic_kind": "report"
+    },
+    {
+      "id": "crm_workflow_evolution_plan",
+      "title": "CRM workflow evolution plan",
+      "generic_kind": "artifact"
+    },
+    {
+      "id": "crm_evolution_experiment",
+      "title": "CRM evolution experiment",
+      "generic_kind": "artifact"
+    },
+    {
+      "id": "crm_benchmark_report",
+      "title": "CRM benchmark report",
+      "generic_kind": "report"
+    },
+    {
+      "id": "crm_promotion_decision",
+      "title": "CRM promotion decision",
+      "generic_kind": "artifact"
     }
   ],
   "event_types": [
@@ -2158,6 +2263,11 @@
     {
       "id": "crm.metric",
       "title": "CRM metric event",
+      "transport": "crm"
+    },
+    {
+      "id": "crm.evolution",
+      "title": "CRM workflow evolution event",
       "transport": "crm"
     },
     {

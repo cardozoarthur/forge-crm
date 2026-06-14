@@ -80,6 +80,7 @@ test("web app snapshot provides Forge command actions instead of local automatio
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.observability.inspector.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.operating.readiness.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.ai.operating_copilot.executor"));
+  assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.workflow.evolution.executor"));
 });
 
 test("web app snapshot exposes auditable Forge action invocation plans", () => {
@@ -193,6 +194,27 @@ test("web app snapshot exposes an operational workbench backed by Forge artifact
   assert.ok(panels.get("ai_workbench").memory_promotions.some((promotion) => promotion.action_id === "crm.prepare-memory-promotion"));
 });
 
+test("web app snapshot exposes adaptive workflow evolution as Forge-governed experiments", () => {
+  const snapshot = buildCrmWebAppSnapshot({ tenant_id: "demo" });
+  const workbench = snapshot.workflow_evolution_workbench;
+
+  assert.equal(workbench.schema_version, "forge.crm_workflow_evolution_workbench.v1");
+  assert.equal(workbench.state_source, "forge_improve_candidates_and_benchmarks");
+  assert.equal(workbench.local_self_modification_allowed, false);
+  assert.equal(workbench.workflow_id, "crm.workflow.evolution");
+  assert.ok(workbench.evolution_loop.operation_plan.map((step) => step.id).includes("benchmark_candidate"));
+  assert.ok(workbench.evolution_loop.operation_plan.map((step) => step.id).includes("promote_only_after_validation"));
+  assert.ok(workbench.candidates.some((candidate) => candidate.target_workflow_id === "crm.ticket.sla"));
+  assert.ok(workbench.candidates.every((candidate) => candidate.rollback_plan));
+  assert.ok(workbench.benchmark_queue.every((benchmark) => benchmark.command_template[0] === "forge"));
+  assert.ok(workbench.promotion_gates.every((gate) => gate.required_before_promotion === true));
+
+  const action = snapshot.actions.find((candidate) => candidate.id === "crm.evolve-workflow");
+  assert.ok(action);
+  assert.equal(action.contract_id, "crm.workflow.evolution.executor");
+  assert.equal(action.requires_permission, "crm.workflow.mutate");
+});
+
 test("web assets mount the generated CRM snapshot without a build step", async () => {
   const html = await readFile(new URL("../web/index.html", import.meta.url), "utf8");
   const app = await readFile(new URL("../web/app.js", import.meta.url), "utf8");
@@ -214,6 +236,7 @@ test("web assets mount the generated CRM snapshot without a build step", async (
   assert.match(app, /renderAiWorkbench/);
   assert.match(app, /renderActionInvocationPlans/);
   assert.match(app, /renderWorkflowCadences/);
+  assert.match(app, /renderWorkflowEvolutionWorkbench/);
   assert.match(styles, /\.workflow-node/);
   assert.match(styles, /\.knowledge-node/);
   assert.match(styles, /\.document-row/);
@@ -224,6 +247,7 @@ test("web assets mount the generated CRM snapshot without a build step", async (
   assert.match(styles, /\.ai-workbench/);
   assert.match(styles, /\.action-plan/);
   assert.match(styles, /\.cadence-row/);
+  assert.match(styles, /\.evolution-workbench/);
   assert.match(favicon, /<svg/);
 });
 

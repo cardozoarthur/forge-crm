@@ -812,6 +812,216 @@ export function buildMemoryPromotionCandidateResult(request) {
   };
 }
 
+function metricValue(metrics, name, fallback = 0) {
+  const found = asArray(metrics).find((metric) => String(metric.name || metric.id) === name);
+  return numberFrom(found?.value, fallback);
+}
+
+export function buildWorkflowEvolutionResult(request) {
+  const input = dispatchPayload(request);
+  const context = providedContext(request);
+  const tenantId = input.tenant_id || input.tenant_context?.tenant_id || input.tenant_context?.id || context.tenant || "default";
+  const workflowState = asObject(input.workflow_state ?? input.workflow);
+  const observabilityReport = asObject(input.observability_report ?? input.observability);
+  const benchmarkPolicy = asObject(input.benchmark_policy ?? input.policy);
+  const workflowId = String(workflowState.workflow_id || input.workflow_id || "crm.workflow.evolution");
+  const taskRef = dispatchEnvelope(request).task_ref || `workflow-evolution-${slug(workflowId, "workflow")}`;
+  const candidates = asArray(input.candidate_changes ?? input.candidates).map((candidate, index) => {
+    const candidateObject = asObject(candidate);
+    const id = String(candidateObject.id || `candidate-${index + 1}`);
+    return {
+      id,
+      title: candidateObject.title || `CRM workflow evolution candidate ${index + 1}`,
+      target_workflow_id: candidateObject.target_workflow_id || workflowId,
+      expected_metric: candidateObject.expected_metric || benchmarkPolicy.required_metric || "cycle_time_minutes",
+      expected_delta: numberFrom(candidateObject.expected_delta, 0),
+      changelog: candidateObject.changelog || `Evolve ${candidateObject.target_workflow_id || workflowId} through Forge-controlled experiment ${id}.`,
+      rollback_plan: candidateObject.rollback_plan || "rollback through Forge improve rollback gate before promotion"
+    };
+  });
+  const fallbackCandidate = {
+    id: `observe-${slug(workflowId, "workflow")}`,
+    title: `Inspect ${workflowId} for controlled evolution`,
+    target_workflow_id: workflowId,
+    expected_metric: benchmarkPolicy.required_metric || "cycle_time_minutes",
+    expected_delta: 0,
+    changelog: `Collect stronger observability before mutating ${workflowId}.`,
+    rollback_plan: "no mutation proposed until benchmark evidence exists"
+  };
+  const plannedCandidates = candidates.length > 0 ? candidates : [fallbackCandidate];
+  const requiredMetric = String(benchmarkPolicy.required_metric || plannedCandidates[0].expected_metric);
+  const baselineMetric = metricValue(observabilityReport.metric_samples ?? observabilityReport.metrics, requiredMetric, 0);
+  const acceptanceThreshold = numberFrom(benchmarkPolicy.acceptance_threshold, 0);
+  const projectedBenchmarkPass =
+    baselineMetric > 0 &&
+    acceptanceThreshold > 0 &&
+    (plannedCandidates[0].expected_delta < 0
+      ? baselineMetric + plannedCandidates[0].expected_delta <= acceptanceThreshold
+      : baselineMetric + plannedCandidates[0].expected_delta >= acceptanceThreshold);
+  const benchmarkReceipt = asObject(input.benchmark_receipt ?? input.benchmark_result);
+  const benchmarkPassed =
+    benchmarkPolicy.benchmark_passed === true ||
+    benchmarkReceipt.passed === true ||
+    benchmarkReceipt.status === "passed";
+  const candidateId = plannedCandidates[0].id;
+  const validationCommand =
+    benchmarkPolicy.validation_command ||
+    `forge improve benchmark-event-policy --workflow ${workflowId} --policy ${candidateId} --output json`;
+  const recommendedCommands = [
+    `forge improve --workflow ${workflowId} --target-version ${slug(candidateId, "candidate")} --output json`,
+    validationCommand,
+    `forge improve promote-event-policy --workflow ${workflowId} --policy ${candidateId} --approved-by ${benchmarkPolicy.approved_by || "<operator>"} --output json`
+  ];
+  const lineage = {
+    workflow_id: workflowId,
+    task_ref: taskRef,
+    source_contract: "crm.workflow.evolution.executor",
+    tenant_id: tenantId,
+    candidate_id: candidateId
+  };
+  const promotionAllowed = Boolean(benchmarkPassed && benchmarkPolicy.approved_by);
+  const promotionDecision = promotionAllowed ? "ready_for_governed_promotion" : "blocked_until_benchmark_and_approval";
+  const gapReasons = asArray(input.core_gap_reasons ?? input.core_gaps);
+
+  return {
+    schema_version: "forge.addon_executor_result.v1",
+    status: "completed",
+    task_ref: taskRef,
+    summary: `CRM workflow evolution prepared ${plannedCandidates.length} Forge-governed candidate(s) for ${workflowId}`,
+    outputs: {
+      tenant_id: tenantId,
+      workflow_id: workflowId,
+      evolution_state: promotionAllowed ? "promotion_ready" : "benchmark_wait",
+      candidate_count: plannedCandidates.length,
+      benchmark_metric: requiredMetric,
+      baseline_metric: baselineMetric,
+      acceptance_threshold: acceptanceThreshold,
+      promotion_allowed: promotionAllowed,
+      promotion_decision: promotionDecision,
+      requires_forge_improve: true,
+      recommended_commands: recommendedCommands,
+      mutates_crm_state: false,
+      forge_event_sourced: true
+    },
+    artifacts: [
+      {
+        kind: "crm_workflow_evolution_plan",
+        id: `crm-workflow-evolution-plan-${slug(workflowId, "workflow")}`,
+        title: `CRM workflow evolution plan for ${workflowId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          workflow_state: workflowState,
+          observability_report: observabilityReport,
+          candidates: plannedCandidates,
+          recommended_commands: recommendedCommands,
+          state_owner: "forge_workflow_runtime",
+          local_self_modification_allowed: false,
+          lineage
+        }
+      },
+      {
+        kind: "crm_evolution_experiment",
+        id: `crm-evolution-experiment-${slug(candidateId, "candidate")}`,
+        title: `CRM evolution experiment ${candidateId}`,
+        content_type: "application/json",
+        data: {
+          candidate: plannedCandidates[0],
+          required_changelog: plannedCandidates[0].changelog,
+          rollback_plan: plannedCandidates[0].rollback_plan,
+          benchmark_command: validationCommand,
+          promotion_requires_validation: true,
+          lineage
+        }
+      },
+      {
+        kind: "crm_benchmark_report",
+        id: `crm-benchmark-report-${slug(candidateId, "candidate")}`,
+        title: `CRM benchmark report for ${candidateId}`,
+        content_type: "application/json",
+        data: {
+          required_metric: requiredMetric,
+          baseline_metric: baselineMetric,
+          expected_delta: plannedCandidates[0].expected_delta,
+          acceptance_threshold: acceptanceThreshold,
+          projected_benchmark_pass: projectedBenchmarkPass,
+          benchmark_passed: benchmarkPassed,
+          benchmark_command: validationCommand,
+          lineage
+        }
+      },
+      {
+        kind: "crm_promotion_decision",
+        id: `crm-promotion-decision-${slug(candidateId, "candidate")}`,
+        title: `CRM promotion decision for ${candidateId}`,
+        content_type: "application/json",
+        data: {
+          decision: promotionDecision,
+          promotion_allowed: promotionAllowed,
+          approved_by: benchmarkPolicy.approved_by || null,
+          blocked_reason: promotionAllowed ? null : "benchmark evidence and explicit approval required",
+          promote_command: recommendedCommands[2],
+          lineage
+        }
+      },
+      {
+        kind: "crm_core_gap_report",
+        id: `crm-core-gap-report-${slug(workflowId, "workflow")}`,
+        title: `CRM Core gap report for ${workflowId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          workflow_id: workflowId,
+          gap_count: gapReasons.length,
+          gaps: gapReasons,
+          policy: "Core primitive gaps must be implemented in forge-core before CRM-local workarounds",
+          target_repository: "forge-core",
+          lineage
+        }
+      }
+    ],
+    events: [
+      {
+        kind: "crm.evolution.candidate_generated",
+        tenant_id: tenantId,
+        workflow_id: workflowId,
+        candidate_count: plannedCandidates.length
+      },
+      {
+        kind: "crm.evolution.experiment_designed",
+        tenant_id: tenantId,
+        workflow_id: workflowId,
+        candidate_id: candidateId
+      },
+      {
+        kind: "crm.evolution.benchmark_reported",
+        tenant_id: tenantId,
+        workflow_id: workflowId,
+        candidate_id: candidateId,
+        benchmark_passed: benchmarkPassed
+      },
+      {
+        kind: "crm.evolution.promotion_decision_recorded",
+        tenant_id: tenantId,
+        workflow_id: workflowId,
+        candidate_id: candidateId,
+        promotion_allowed: promotionAllowed
+      },
+      ...(gapReasons.length > 0
+        ? [
+            {
+              kind: "crm.core_gap.reported",
+              tenant_id: tenantId,
+              workflow_id: workflowId,
+              gap_count: gapReasons.length
+            }
+          ]
+        : [])
+    ],
+    context_tenant: context.tenant || tenantId
+  };
+}
+
 export function buildObservabilityInspectorResult(request) {
   const input = dispatchPayload(request);
   const context = providedContext(request);
@@ -3070,6 +3280,8 @@ export function executeCrmRuntimeRequest(request) {
       return buildOperatingCopilotResult(request);
     case "forge_crm.prepare_memory_promotion":
       return buildMemoryPromotionCandidateResult(request);
+    case "forge_crm.evolve_workflow":
+      return buildWorkflowEvolutionResult(request);
     case "forge_crm.inspect_observability":
       return buildObservabilityInspectorResult(request);
     case "forge_crm.generate_operating_readiness":

@@ -189,7 +189,13 @@ function buildBenchmarkTracks(byId) {
     {
       id: "forge_0_6_adaptive_intelligence",
       title: "Forge v0.6 Adaptive Intelligence & Workflow Evolution Runtime",
-      workflow_ids: ["crm.ai.copilot.recommendation", "crm.lead.lifecycle", "crm.opportunity.pipeline", "crm.enterprise.readiness"]
+      workflow_ids: [
+        "crm.ai.copilot.recommendation",
+        "crm.workflow.evolution",
+        "crm.lead.lifecycle",
+        "crm.opportunity.pipeline",
+        "crm.enterprise.readiness"
+      ]
     },
     {
       id: "forge_0_7_universal_workflow_framework",

@@ -202,6 +202,51 @@ test("manifest exposes CRM operating readiness as a user-facing outcome package"
   assert.ok(eventTypes.has("crm.outcome"));
 });
 
+test("manifest exposes adaptive CRM workflow evolution through Forge", () => {
+  const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.workflow.evolution.executor");
+  assert.ok(contract);
+  assert.equal(contract.contract_type, "executor");
+  assert.equal(contract.capability_id, "crm_workflow_factory");
+  assert.equal(contract.workflow_extension_id, "crm_workflow_evolution");
+  assert.equal(contract.entrypoint, "forge_crm.evolve_workflow");
+  assert.deepEqual(contract.permissions, ["crm.observability.inspect", "crm.workflow.mutate"]);
+
+  for (const input of ["workflow_state", "observability_report", "candidate_changes", "benchmark_policy", "tenant_context"]) {
+    assert.ok(contract.inputs.includes(input), `missing workflow evolution input ${input}`);
+  }
+
+  for (const output of [
+    "crm_workflow_evolution_plan",
+    "crm_evolution_experiment",
+    "crm_benchmark_report",
+    "crm_promotion_decision",
+    "crm_core_gap_report"
+  ]) {
+    assert.ok(contract.outputs.includes(output), `missing workflow evolution output ${output}`);
+  }
+
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("forge improve")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("does not self-modify")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("benchmark")));
+
+  const workflowExtensionIds = new Set(manifest.workflows.map((extension) => extension.id));
+  assert.ok(workflowExtensionIds.has("crm_workflow_evolution"));
+
+  const artifactTypes = new Set(manifest.artifact_types.map((artifact) => artifact.id));
+  for (const artifactType of [
+    "crm_workflow_evolution_plan",
+    "crm_evolution_experiment",
+    "crm_benchmark_report",
+    "crm_promotion_decision",
+    "crm_core_gap_report"
+  ]) {
+    assert.ok(artifactTypes.has(artifactType), `missing artifact type ${artifactType}`);
+  }
+
+  const eventTypes = new Set(manifest.event_types.map((event) => event.id));
+  assert.ok(eventTypes.has("crm.evolution"));
+});
+
 test("manifest exposes CRM pipeline stage movement as a Forge-owned executor", () => {
   const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.pipeline.stage_move.executor");
   assert.ok(contract);

@@ -371,6 +371,48 @@ export function renderWorkflowCadences(snapshot) {
   return section;
 }
 
+export function renderWorkflowEvolutionWorkbench(snapshot) {
+  const workbench = snapshot.workflow_evolution_workbench;
+  const section = nodeElement("section", "panel evolution-workbench");
+  section.dataset.surfacePanel = "crm.ai-workbench";
+  section.append(nodeElement("h2", "", "Workflow Evolution"));
+  if (!workbench) {
+    section.append(nodeElement("p", "muted-copy", "Evolution workbench unavailable in this snapshot."));
+    return section;
+  }
+
+  section.append(nodeElement("p", "panel-source", `${workbench.workflow_id} · ${workbench.state_source}`));
+
+  const steps = nodeElement("ol", "evolution-steps");
+  for (const step of workbench.evolution_loop.operation_plan) {
+    const item = nodeElement("li", "", step.title);
+    item.title = step.owner;
+    steps.append(item);
+  }
+
+  const candidates = nodeElement("div", "evolution-candidates");
+  for (const candidate of workbench.candidates) {
+    const item = nodeElement("article", "evolution-candidate");
+    item.append(nodeElement("strong", "", candidate.title));
+    item.append(nodeElement("span", "", `${candidate.target_workflow_id} · ${candidate.expected_metric} ${candidate.expected_delta}`));
+    item.append(nodeElement("code", "", actionLabel(snapshot, candidate.action_id)));
+    item.title = candidate.rollback_plan;
+    candidates.append(item);
+  }
+
+  const queue = nodeElement("div", "benchmark-queue");
+  for (const benchmark of workbench.benchmark_queue) {
+    const item = nodeElement("article", "benchmark-row");
+    item.append(nodeElement("strong", "", benchmark.candidate_id));
+    item.append(nodeElement("span", "", benchmark.metric));
+    item.append(nodeElement("code", "", benchmark.command_template.join(" ")));
+    queue.append(item);
+  }
+
+  section.append(steps, candidates, queue);
+  return section;
+}
+
 function renderModuleBoard(snapshot) {
   const section = nodeElement("section", "panel module-panel");
   section.append(nodeElement("h2", "", "Business Modules"));
@@ -466,6 +508,7 @@ function render(snapshot) {
   workspace.append(renderMarketingCalendar(snapshot));
   workspace.append(renderAiWorkbench(snapshot));
   workspace.append(renderWorkflowCadences(snapshot));
+  workspace.append(renderWorkflowEvolutionWorkbench(snapshot));
   workspace.append(renderWorkflowGraph(snapshot));
   workspace.append(renderModuleBoard(snapshot));
   workspace.append(renderKnowledgeGraph(snapshot));
