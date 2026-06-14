@@ -1,8 +1,12 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { buildCrmOperatingModel, buildCrmWorkflowPack, REQUIRED_SCOPE } from "./crm-workflow-pack-lib.mjs";
 
 const manifest = JSON.parse(readFileSync(new URL("../addons/forge-crm.json", import.meta.url), "utf8"));
 const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+const versionedPackagePath = `forge-crm-${packageJson.version}.package.json`;
+const versionedPackageUrl = new URL(`../${versionedPackagePath}`, import.meta.url);
+const ciWorkflowPath = ".github/workflows/ci.yml";
+const ciWorkflowUrl = new URL(`../${ciWorkflowPath}`, import.meta.url);
 
 const USER_FACING_DELIVERABLES = [
   {
@@ -123,6 +127,14 @@ function unique(values) {
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
+}
+
+function normalizeRepositoryUrl(value) {
+  return String(value || "").replace(/\.git$/, "");
+}
+
+function isPublicGithubRepository(value) {
+  return /^https:\/\/github\.com\/[^/]+\/[^/]+$/.test(normalizeRepositoryUrl(value));
 }
 
 function workflowsById(workflows) {
@@ -296,6 +308,115 @@ function addonAudit() {
   };
 }
 
+function dependencyRepository(dependency) {
+  if (dependency.id === "forge.core.kernel") {
+    return manifest.metadata?.core_repository || null;
+  }
+
+  const metadataKey = `${dependency.id.replace(/[^a-zA-Z0-9]+/g, "_")}_repository`;
+  return manifest.metadata?.[metadataKey] || null;
+}
+
+function versionedPackageAudit() {
+  const packageExists = existsSync(versionedPackageUrl);
+  const addonPackage = packageExists ? JSON.parse(readFileSync(versionedPackageUrl, "utf8")) : null;
+
+  return {
+    path: versionedPackagePath,
+    exists: packageExists,
+    status: addonPackage?.status || "missing",
+    package_id: addonPackage?.package_id || null,
+    addon_id: addonPackage?.addon_id || null,
+    addon_version: addonPackage?.addon_version || null,
+    validation_status: addonPackage?.validation?.status || null,
+    validation_issue_count: addonPackage?.validation?.issue_count ?? null,
+    repository: normalizeRepositoryUrl(addonPackage?.distribution?.repository),
+    channel: addonPackage?.distribution?.channel || null,
+    install_command: addonPackage?.distribution?.install_command || null,
+    package_matches_manifest:
+      addonPackage?.package_id === `${manifest.id}@${manifest.version}` &&
+      addonPackage?.addon_id === manifest.id &&
+      addonPackage?.addon_version === manifest.version
+  };
+}
+
+function ciDistributionAudit() {
+  const workflowExists = existsSync(ciWorkflowUrl);
+  const workflow = workflowExists ? readFileSync(ciWorkflowUrl, "utf8") : "";
+  const gates = {
+    validates_forge_core_checkout: workflow.includes("repository: cardozoarthur/forge-core"),
+    validates_tests: workflow.includes("npm test"),
+    validates_memory_policy: workflow.includes("forge memory policy"),
+    validates_ops_snapshot: workflow.includes("forge ops snapshot"),
+    validates_addon_validation: workflow.includes("forge addons validate"),
+    validates_addon_catalog: workflow.includes("forge addons catalog"),
+    validates_addon_package: workflow.includes("forge addons package"),
+    validates_runtime_smoke: workflow.includes("npm run smoke:forge")
+  };
+
+  return {
+    workflow_path: ciWorkflowPath,
+    exists: workflowExists,
+    status: workflowExists && Object.values(gates).every(Boolean) ? "distribution_gates_declared" : "distribution_gates_incomplete",
+    ...gates
+  };
+}
+
+function distributionEvidence() {
+  const packageRepository = normalizeRepositoryUrl(packageJson.repository?.url);
+  const manifestRepository = normalizeRepositoryUrl(manifest.metadata?.crm_repository);
+  const packageAudit = versionedPackageAudit();
+  const dependencies = asArray(manifest.dependencies).map((dependency) => {
+    const repository = normalizeRepositoryUrl(dependencyRepository(dependency));
+    const publicRepositoryDeclared = isPublicGithubRepository(repository);
+    return {
+      id: dependency.id,
+      required: dependency.required === true,
+      repository,
+      public_repository_declared: publicRepositoryDeclared,
+      publication_status: publicRepositoryDeclared ? "public_repository_declared" : "missing_public_repository_declaration"
+    };
+  });
+  const allRequiredDependenciesPublic = dependencies
+    .filter((dependency) => dependency.required)
+    .every((dependency) => dependency.public_repository_declared);
+  const ci = ciDistributionAudit();
+  const repository = {
+    package_repository: packageRepository,
+    manifest_repository: manifestRepository,
+    public_repository_declared: isPublicGithubRepository(packageRepository),
+    package_matches_manifest: packageRepository === manifestRepository
+  };
+  const localCrmInfrastructureRequired = false;
+  const ready =
+    repository.public_repository_declared &&
+    repository.package_matches_manifest &&
+    packageAudit.exists &&
+    packageAudit.status === "addon_package_ready" &&
+    packageAudit.validation_status === "valid" &&
+    packageAudit.validation_issue_count === 0 &&
+    packageAudit.package_matches_manifest &&
+    packageAudit.repository === packageRepository &&
+    packageAudit.channel === "stable" &&
+    allRequiredDependenciesPublic &&
+    ci.status === "distribution_gates_declared" &&
+    localCrmInfrastructureRequired === false;
+
+  return {
+    schema_version: "forge.crm_distribution_evidence.v1",
+    status: ready ? "ready_for_public_addon_distribution" : "distribution_rework_required",
+    local_crm_infrastructure_required: localCrmInfrastructureRequired,
+    repository,
+    package: packageAudit,
+    dependency_publication: {
+      dependency_count: dependencies.length,
+      all_required_dependencies_public: allRequiredDependenciesPublic,
+      dependencies
+    },
+    ci
+  };
+}
+
 function coreRequirementAudit(pack, model) {
   const contracts = manifestContractIds();
   const artifactTypes = manifestArtifactIds();
@@ -343,6 +464,7 @@ export function buildEnterpriseReadinessAudit(options = {}) {
   const readyUserFacingDeliverableCount = userFacingDeliverables.filter((deliverable) => deliverable.ready).length;
   const allBenchmarkTracksCovered = benchmarkTracks.every((track) => track.status === "covered_by_current_addon_evidence");
   const addon = addonAudit();
+  const distribution = distributionEvidence();
 
   return {
     schema_version: "forge.crm_enterprise_readiness_audit.v1",
@@ -371,6 +493,7 @@ export function buildEnterpriseReadinessAudit(options = {}) {
     objective_matrix: objectiveMatrix,
     user_facing_deliverables: userFacingDeliverables,
     benchmark_tracks: benchmarkTracks,
+    distribution_evidence: distribution,
     forge_core_requirements: coreRequirementAudit(pack, model),
     core_gap_policy: {
       repository: "forge-core",
@@ -386,6 +509,7 @@ export function buildEnterpriseReadinessAudit(options = {}) {
       missing_objective_item_count: missingObjectiveItemCount,
       ready_user_facing_deliverable_count: readyUserFacingDeliverableCount,
       benchmark_track_count: benchmarkTracks.length,
+      distribution_status: distribution.status,
       complete_scope: pack.summary.complete_scope
     }
   };
@@ -448,6 +572,19 @@ export function enterpriseReadinessAuditToMarkdown(audit) {
     "## Benchmark Tracks",
     "",
     ...audit.benchmark_tracks.map((track) => `- ${track.title}: ${track.status}`),
+    "",
+    "## Distribution Evidence",
+    "",
+    `Distribution status: ${audit.distribution_evidence.status}`,
+    `Repository: ${audit.distribution_evidence.repository.package_repository}`,
+    `Manifest repository: ${audit.distribution_evidence.repository.manifest_repository}`,
+    `Package: ${audit.distribution_evidence.package.path} (${audit.distribution_evidence.package.status})`,
+    `Package validation: ${audit.distribution_evidence.package.validation_status}; issues=${audit.distribution_evidence.package.validation_issue_count}`,
+    `CI gates: ${audit.distribution_evidence.ci.status}`,
+    `Required dependencies public: ${audit.distribution_evidence.dependency_publication.all_required_dependencies_public}`,
+    ...audit.distribution_evidence.dependency_publication.dependencies.map(
+      (dependency) => `- ${dependency.id}: ${dependency.publication_status}; repository=${dependency.repository}`
+    ),
     "",
     "## Forge Core Requirements",
     "",

@@ -65,6 +65,17 @@ Repository: https://github.com/cardozoarthur/forge-crm.git
 - Forge v0.6 Adaptive Intelligence & Workflow Evolution Runtime: covered_by_current_addon_evidence
 - Forge v0.7 Universal Workflow Framework: covered_by_current_addon_evidence
 
+## Distribution Evidence
+
+Distribution status: ready_for_public_addon_distribution
+Repository: https://github.com/cardozoarthur/forge-crm
+Manifest repository: https://github.com/cardozoarthur/forge-crm
+Package: forge-crm-0.1.0.package.json (addon_package_ready)
+Package validation: valid; issues=0
+CI gates: distribution_gates_declared
+Required dependencies public: true
+- forge.core.kernel: public_repository_declared; repository=https://github.com/cardozoarthur/forge-core
+
 ## Forge Core Requirements
 
 - durable_workflows: crm_consumes_forge_core_contract; repository=forge-core

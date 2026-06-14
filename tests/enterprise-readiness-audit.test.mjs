@@ -73,6 +73,51 @@ test("enterprise readiness audit keeps CRM as a public Forge Addon and maps benc
   );
 });
 
+test("enterprise readiness audit proves public Addon distribution and dependency publication", () => {
+  const audit = buildEnterpriseReadinessAudit({ tenant_id: "demo" });
+  const distribution = audit.distribution_evidence;
+
+  assert.equal(distribution.schema_version, "forge.crm_distribution_evidence.v1");
+  assert.equal(distribution.status, "ready_for_public_addon_distribution");
+  assert.equal(distribution.local_crm_infrastructure_required, false);
+
+  assert.equal(distribution.repository.public_repository_declared, true);
+  assert.equal(distribution.repository.package_repository, "https://github.com/cardozoarthur/forge-crm");
+  assert.equal(distribution.repository.manifest_repository, "https://github.com/cardozoarthur/forge-crm");
+  assert.equal(distribution.repository.package_matches_manifest, true);
+
+  assert.equal(distribution.package.path, "forge-crm-0.1.0.package.json");
+  assert.equal(distribution.package.exists, true);
+  assert.equal(distribution.package.status, "addon_package_ready");
+  assert.equal(distribution.package.package_id, "forge.addon.crm@0.1.0");
+  assert.equal(distribution.package.validation_status, "valid");
+  assert.equal(distribution.package.validation_issue_count, 0);
+  assert.equal(distribution.package.repository, "https://github.com/cardozoarthur/forge-crm");
+  assert.equal(distribution.package.channel, "stable");
+  assert.equal(distribution.package.install_command, "forge addons install --manifest addons/forge-crm.json --output json");
+
+  assert.equal(distribution.dependency_publication.all_required_dependencies_public, true);
+  assert.equal(distribution.dependency_publication.dependencies.length, 1);
+  assert.deepEqual(distribution.dependency_publication.dependencies[0], {
+    id: "forge.core.kernel",
+    required: true,
+    repository: "https://github.com/cardozoarthur/forge-core",
+    public_repository_declared: true,
+    publication_status: "public_repository_declared"
+  });
+
+  assert.equal(distribution.ci.workflow_path, ".github/workflows/ci.yml");
+  assert.equal(distribution.ci.status, "distribution_gates_declared");
+  assert.equal(distribution.ci.validates_forge_core_checkout, true);
+  assert.equal(distribution.ci.validates_tests, true);
+  assert.equal(distribution.ci.validates_memory_policy, true);
+  assert.equal(distribution.ci.validates_ops_snapshot, true);
+  assert.equal(distribution.ci.validates_addon_validation, true);
+  assert.equal(distribution.ci.validates_addon_catalog, true);
+  assert.equal(distribution.ci.validates_addon_package, true);
+  assert.equal(distribution.ci.validates_runtime_smoke, true);
+});
+
 test("enterprise readiness audit CLI emits JSON for release evidence", async () => {
   const { stdout } = await execFileAsync("node", ["scripts/audit-crm-enterprise-readiness.mjs", "demo"], {
     cwd: new URL("..", import.meta.url)
@@ -94,6 +139,8 @@ test("enterprise readiness Markdown report is generated from current audit evide
   assert.match(markdown, /- Workflows: 31/);
   assert.match(markdown, /- Runtime contracts: 41/);
   assert.match(markdown, /## Forge Core Requirements/);
+  assert.match(markdown, /## Distribution Evidence/);
+  assert.match(markdown, /Distribution status: ready_for_public_addon_distribution/);
   assert.match(markdown, /durable_workflows: crm_consumes_forge_core_contract/);
   assert.match(markdown, /## Core Gap Policy/);
   assert.match(markdown, /Repository: forge-core/);
