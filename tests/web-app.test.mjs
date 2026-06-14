@@ -294,6 +294,12 @@ test("web app snapshot exposes an operational workbench backed by Forge artifact
   assert.ok(panels.get("commercial_command").commission.plan_action_id === "crm.review-followup-forecast");
   assert.ok(panels.get("commercial_command").goal_commission.action_id === "crm.settle-goal-commission");
   assert.equal(panels.get("commercial_command").goal_commission.contract_id, "crm.commercial.goal_commission.executor");
+  assert.ok(panels.get("commercial_command").customer_success_plans.some((plan) => plan.action_id === "crm.plan-customer-success"));
+  assert.ok(
+    panels
+      .get("commercial_command")
+      .customer_success_plans.every((plan) => plan.contract_id === "crm.commercial.customer_success_plan.executor")
+  );
   assert.ok(panels.get("support_queue").tickets.some((ticket) => ticket.sla_status === "at_risk"));
   assert.ok(panels.get("support_queue").channels.includes("whatsapp"));
   assert.ok(panels.get("support_queue").channel_intake.some((intake) => intake.action_id === "crm.normalize-channel-intake"));
@@ -328,6 +334,25 @@ test("web app snapshot exposes an operational workbench backed by Forge artifact
   assert.ok(panels.get("ai_workbench").executive_reports.some((report) => report.action_id === "crm.generate-executive-report"));
   assert.ok(panels.get("ai_workbench").executive_reports.every((report) => report.contract_id === "crm.analytics.executive_report.executor"));
   assert.ok(panels.get("ai_workbench").memory_promotions.some((promotion) => promotion.action_id === "crm.prepare-memory-promotion"));
+});
+
+test("web app snapshot exposes customer success planning as a Forge commercial command surface", () => {
+  const snapshot = buildCrmWebAppSnapshot({ tenant_id: "demo" });
+  const action = snapshot.actions.find((candidate) => candidate.id === "crm.plan-customer-success");
+  const commercialPanel = snapshot.operational_workbench.panels.find((panel) => panel.id === "commercial_command");
+
+  assert.ok(action);
+  assert.equal(action.surface_id, "crm.commercial-command");
+  assert.equal(action.contract_id, "crm.commercial.customer_success_plan.executor");
+  assert.equal(action.requires_permission, "crm.workflow.mutate");
+  assert.deepEqual(action.command_template.slice(0, 3), ["forge", "addons", "execute-executor"]);
+
+  assert.ok(commercialPanel);
+  assert.ok(commercialPanel.workflow_ids.includes("crm.customer_success.plan"));
+  assert.ok(commercialPanel.action_ids.includes("crm.plan-customer-success"));
+  assert.ok(commercialPanel.customer_success_plans.length > 0);
+  assert.ok(commercialPanel.customer_success_plans.every((plan) => plan.state_owner === "forge_workflow_runtime"));
+  assert.ok(commercialPanel.customer_success_plans.every((plan) => plan.local_state_allowed === false));
 });
 
 test("web app snapshot exposes a daily operating cycle workbench from Forge evidence", () => {

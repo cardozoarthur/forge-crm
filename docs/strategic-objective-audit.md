@@ -8,10 +8,10 @@ Status: covered_by_current_addon_evidence
 - Sections: 9
 - Requirements: 50
 - Missing requirements: 0
-- Workflows: 36
-- Runtime contracts: 47
-- Artifact types: 106
-- Event types: 44
+- Workflows: 37
+- Runtime contracts: 48
+- Artifact types: 110
+- Event types: 45
 - Views: 12
 
 ## Sections
@@ -51,7 +51,7 @@ Missing: none
 - forecast: covered_by_forge_evidence; workflows=crm.followup.forecast, crm.forecast.review; contracts=crm.commercial.followup_forecast.executor, crm.commercial.forecast_review.executor, crm.commercial.goal_commission.executor
 - goals: covered_by_forge_evidence; workflows=crm.goal.commission; contracts=crm.commercial.goal_commission.executor
 - commissions: covered_by_forge_evidence; workflows=crm.goal.commission; contracts=crm.commercial.goal_commission.executor
-- account_management: covered_by_forge_evidence; workflows=crm.account.management; contracts=crm.commercial.account_management.executor
+- account_management: covered_by_forge_evidence; workflows=crm.account.management, crm.customer_success.plan; contracts=crm.commercial.account_management.executor, crm.commercial.customer_success_plan.executor
 
 ### Support
 

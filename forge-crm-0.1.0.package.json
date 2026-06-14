@@ -6,9 +6,9 @@
   "addon_name": "Forge CRM",
   "addon_version": "0.1.0",
   "manifest_path": "addons/forge-crm.json",
-  "manifest_sha256": "96ba567200409e7f679c4436819d0e7305e30f03c92cafac378f074db87aa528",
-  "manifest_canonical_sha256": "89b2988d37a80d43e822268fc903dcd90fffd68f248c74bc141ecb28761562a7",
-  "manifest_bytes": 188561,
+  "manifest_sha256": "6d06b7a23eaf3611ae98b147f40f353587a7bfef0853d2e2eb86399236224348",
+  "manifest_canonical_sha256": "130e447853ec4e715ef8766bcce7c41278bb80214558f7b669a98bdd12368b06",
+  "manifest_bytes": 192221,
   "distribution": {
     "repository": "https://github.com/cardozoarthur/forge-crm",
     "channel": "stable",
@@ -23,15 +23,15 @@
     "scheme": "ed25519_detached",
     "signature": "",
     "public_key": "",
-    "payload_sha256": "e1007c13caf4e9377b204fd0ab166bfc3e08f2c6a055bdc90bbd5d7654b3824a",
+    "payload_sha256": "ae0939af9bdc61786bb3911660406cceb6a8d6a81cf1ca4daa30f0109ab78cfa",
     "verification_note": "package records detached signature metadata; trust verification is a marketplace policy gate"
   },
   "summary": {
     "capability_count": 9,
     "dependency_count": 1,
     "permission_count": 5,
-    "workflow_extension_count": 37,
-    "runtime_contract_count": 47,
+    "workflow_extension_count": 38,
+    "runtime_contract_count": 48,
     "view_count": 12,
     "event_adapter_count": 3,
     "integration_count": 5,
@@ -87,6 +87,7 @@
       "crm.commercial.forecast_review.executor",
       "crm.commercial.goal_commission.executor",
       "crm.commercial.account_management.executor",
+      "crm.commercial.customer_success_plan.executor",
       "crm.commercial.contract_signature.executor",
       "crm.document.generator.executor",
       "crm.document.validator",
@@ -434,7 +435,7 @@
       {
         "id": "crm_commercial_operations",
         "title": "CRM commercial operations",
-        "description": "Proposals, contracts, signatures, follow-ups, forecast, goals, commissions and account management.",
+        "description": "Proposals, contracts, signatures, follow-ups, forecast, goals, commissions, account management and customer success.",
         "domains": [
           "crm",
           "sales",
@@ -446,7 +447,9 @@
           "signature",
           "forecast",
           "commission",
-          "account"
+          "account",
+          "customer success",
+          "renewal risk"
         ],
         "requires_capabilities": [
           "workflow_runtime",
@@ -459,14 +462,16 @@
           "crm_followup_sequence",
           "crm_forecast_review",
           "crm_goal_commission_settlement",
-          "crm_account_management"
+          "crm_account_management",
+          "crm_customer_success_plan"
         ],
         "deliverables": [
           "Proposal workflow",
           "Contract workflow",
           "Forecast report",
           "Goal and commission settlement",
-          "Account plan"
+          "Account plan",
+          "Customer success plan"
         ],
         "constraints": [],
         "risks": [],
@@ -487,6 +492,10 @@
           "crm_renewal_plan",
           "crm_account_plan",
           "crm_health_report",
+          "crm_customer_success_plan",
+          "crm_adoption_scorecard",
+          "crm_renewal_risk_report",
+          "crm_expansion_playbook",
           "crm_report"
         ],
         "view_ids": [
@@ -891,6 +900,11 @@
         "id": "crm_account_management",
         "kind": "commercial_workflow",
         "description": "Review account health, renewals, expansion and success-plan tasks through Forge workflow state."
+      },
+      {
+        "id": "crm_customer_success_plan",
+        "kind": "commercial_workflow",
+        "description": "Plan customer success adoption, renewal risk, expansion playbooks and success milestones through Forge workflow state."
       },
       {
         "id": "crm_ticket_sla",
@@ -1900,6 +1914,39 @@
           "account management review does not persist CRM state outside Forge",
           "renewal and expansion states must be represented as Forge workflow events",
           "success-plan actions must be emitted as Forge-owned task plans"
+        ]
+      },
+      {
+        "id": "crm.commercial.customer_success_plan.executor",
+        "title": "CRM customer success plan",
+        "contract_type": "executor",
+        "capability_id": "crm_commercial_operations",
+        "workflow_extension_id": "crm_customer_success_plan",
+        "runtime": "external_api",
+        "entrypoint": "forge_crm.plan_customer_success",
+        "inputs": [
+          "account",
+          "adoption_signals",
+          "renewal_context",
+          "expansion_context",
+          "success_playbook",
+          "tenant_context"
+        ],
+        "outputs": [
+          "crm_customer_success_plan",
+          "crm_adoption_scorecard",
+          "crm_renewal_risk_report",
+          "crm_expansion_playbook",
+          "crm_task_plan"
+        ],
+        "permissions": [
+          "crm.workflow.mutate",
+          "crm.observability.inspect"
+        ],
+        "constraints": [
+          "customer success planning does not persist CRM state outside Forge",
+          "renewal risk must be represented as Forge workflow evidence before promotion",
+          "success milestones must be emitted as Forge-owned task plans"
         ]
       },
       {
@@ -3139,6 +3186,53 @@
               "health_signals",
               "expansion_opportunities",
               "success_plan",
+              "tenant_context"
+            ]
+          },
+          {
+            "id": "crm.tui.plan-customer-success",
+            "label": "Plan customer success",
+            "description": "Generate adoption, renewal risk, expansion and success milestone evidence through Forge.",
+            "palette_group": "CRM",
+            "source_panel": "crm.operational-cockpit",
+            "type": "command",
+            "target": "forge addons execute-executor",
+            "method": "CLI",
+            "permission": "crm.workflow.mutate",
+            "requires_confirmation": true,
+            "risk_level": "high",
+            "mutates_workflow": true,
+            "command_template": [
+              "addons",
+              "execute-executor",
+              "--addon",
+              "forge.addon.crm",
+              "--contract",
+              "crm.commercial.customer_success_plan.executor",
+              "--worker",
+              "<worker-id>",
+              "--task",
+              "<task-ref>",
+              "--input",
+              "<json>",
+              "--context",
+              "<json>",
+              "--output",
+              "json"
+            ],
+            "keywords": [
+              "crm",
+              "customer success",
+              "adoption",
+              "renewal",
+              "expansion"
+            ],
+            "payload_schema": [
+              "account",
+              "adoption_signals",
+              "renewal_context",
+              "expansion_context",
+              "success_playbook",
               "tenant_context"
             ]
           },
@@ -5252,6 +5346,26 @@
         "generic_kind": "report"
       },
       {
+        "id": "crm_customer_success_plan",
+        "title": "CRM customer success plan",
+        "generic_kind": "artifact"
+      },
+      {
+        "id": "crm_adoption_scorecard",
+        "title": "CRM adoption scorecard",
+        "generic_kind": "report"
+      },
+      {
+        "id": "crm_renewal_risk_report",
+        "title": "CRM renewal risk report",
+        "generic_kind": "report"
+      },
+      {
+        "id": "crm_expansion_playbook",
+        "title": "CRM expansion playbook",
+        "generic_kind": "artifact"
+      },
+      {
         "id": "crm_nurture_plan",
         "title": "CRM nurture plan",
         "generic_kind": "artifact"
@@ -5631,6 +5745,11 @@
       {
         "id": "crm.account",
         "title": "CRM account event",
+        "transport": "crm"
+      },
+      {
+        "id": "crm.success",
+        "title": "CRM customer success event",
         "transport": "crm"
       },
       {

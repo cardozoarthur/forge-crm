@@ -58,6 +58,7 @@ The current CRM worker exposes forty-six Forge runtime entrypoints:
 - `forge_crm.review_commercial_forecast` for advisory forecast review without sending follow-ups;
 - `forge_crm.settle_goal_commission` for goal attainment, revenue-event lineage, commission statements and payout approval gates;
 - `forge_crm.manage_account` for account health, renewal, expansion and success-plan task workflows;
+- `forge_crm.plan_customer_success` for adoption scorecards, renewal risk review, expansion playbooks and success milestone task workflows;
 - `forge_crm.manage_contract_signature` for contract review, signature receipts and renewal scheduling;
 - `forge_crm.generate_document` for contract, campaign, email, landing page, report and presentation drafts;
 - `forge_crm.publish_landing_page` for approval-gated landing pages, form schemas and automation plans as Forge artifacts;
@@ -80,7 +81,7 @@ The worker returns Forge Addon result schemas and does not persist CRM state dir
 
 ## Tenant Workflow Pack
 
-`scripts/crm-workflow-pack-lib.mjs` produces the first operational workflow model for a CRM tenant. It declares 36 Forge-owned workflows across relationship lifecycle packaging, relationship profile enrichment, commercial follow-up, goal and commission settlement, executive reporting, support channel intake, omnichannel message threads, unified omnichannel center, marketing segment building, campaigns, document library/versioning, operations, cross-domain work queues, daily operating cycle, subworkflow orchestration, workflow automation design, workflow automation execution trace, user experience/design system, AI automation, operational observability, enterprise readiness and end-to-end customer journey acceptance. Each workflow carries explicit states, transitions, object types, runtime contracts, artifact types, events, memory scopes, permissions, validation gates and mutation policy.
+`scripts/crm-workflow-pack-lib.mjs` produces the first operational workflow model for a CRM tenant. It declares 37 Forge-owned workflows across relationship lifecycle packaging, relationship profile enrichment, commercial follow-up, account management, customer success planning, goal and commission settlement, executive reporting, support channel intake, omnichannel message threads, unified omnichannel center, marketing segment building, campaigns, document library/versioning, operations, cross-domain work queues, daily operating cycle, subworkflow orchestration, workflow automation design, workflow automation execution trace, user experience/design system, AI automation, operational observability, enterprise readiness and end-to-end customer journey acceptance. Each workflow carries explicit states, transitions, object types, runtime contracts, artifact types, events, memory scopes, permissions, validation gates and mutation policy.
 
 The pack uses `workflow_id`, `artifact_id` and `event_id` as durable identities. External primary keys and direct external persistence are explicitly disabled.
 

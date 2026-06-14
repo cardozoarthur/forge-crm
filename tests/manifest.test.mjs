@@ -812,6 +812,57 @@ test("manifest exposes CRM account management as a Forge-owned commercial execut
   assert.ok(artifactTypes.has("crm_health_report"));
 });
 
+test("manifest exposes CRM customer success planning as a Forge-owned commercial executor", () => {
+  const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.commercial.customer_success_plan.executor");
+  assert.ok(contract);
+  assert.equal(contract.contract_type, "executor");
+  assert.equal(contract.capability_id, "crm_commercial_operations");
+  assert.equal(contract.workflow_extension_id, "crm_customer_success_plan");
+  assert.equal(contract.entrypoint, "forge_crm.plan_customer_success");
+  assert.deepEqual(contract.permissions, ["crm.workflow.mutate", "crm.observability.inspect"]);
+  for (const input of [
+    "account",
+    "adoption_signals",
+    "renewal_context",
+    "expansion_context",
+    "success_playbook",
+    "tenant_context"
+  ]) {
+    assert.ok(contract.inputs.includes(input), `missing customer success input ${input}`);
+  }
+  for (const output of [
+    "crm_customer_success_plan",
+    "crm_adoption_scorecard",
+    "crm_renewal_risk_report",
+    "crm_expansion_playbook",
+    "crm_task_plan"
+  ]) {
+    assert.ok(contract.outputs.includes(output), `missing customer success output ${output}`);
+  }
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("does not persist CRM state outside Forge")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("renewal risk")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("success milestones")));
+
+  const capability = manifest.capabilities.find((candidate) => candidate.id === "crm_commercial_operations");
+  assert.ok(capability.workflow_extensions.includes("crm_customer_success_plan"));
+
+  const workflowExtensionIds = new Set(manifest.workflows.map((extension) => extension.id));
+  assert.ok(workflowExtensionIds.has("crm_customer_success_plan"));
+
+  const artifactTypes = new Set(manifest.artifact_types.map((artifact) => artifact.id));
+  for (const artifactType of [
+    "crm_customer_success_plan",
+    "crm_adoption_scorecard",
+    "crm_renewal_risk_report",
+    "crm_expansion_playbook"
+  ]) {
+    assert.ok(artifactTypes.has(artifactType), `missing artifact type ${artifactType}`);
+  }
+
+  const eventTypes = new Set(manifest.event_types.map((event) => event.id));
+  assert.ok(eventTypes.has("crm.success"));
+});
+
 test("manifest exposes CRM contract signature as a Forge-owned commercial executor", () => {
   const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.commercial.contract_signature.executor");
   assert.ok(contract);

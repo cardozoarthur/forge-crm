@@ -571,6 +571,44 @@ test("commercial account workflow routes health, renewal and expansion through F
   assert.ok(pack.indexes.runtime_contracts.includes("crm.commercial.account_management.executor"));
 });
 
+test("commercial customer success workflow routes adoption renewal risk and expansion playbooks through Forge", () => {
+  const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
+  const workflow = pack.workflows.find((candidate) => candidate.id === "crm.customer_success.plan");
+
+  assert.ok(workflow);
+  assert.equal(workflow.domain, "commercial");
+  assert.equal(workflow.workflow_extension_id, "crm_customer_success_plan");
+  assert.ok(workflow.runtime_contracts.includes("crm.commercial.customer_success_plan.executor"));
+  assert.ok(workflow.runtime_contracts.includes("crm.commercial.account_management.executor"));
+  for (const objectType of ["customer_success", "adoption", "renewal_risk", "expansion_playbook", "success_milestone"]) {
+    assert.ok(workflow.object_types.includes(objectType), `missing customer success object type ${objectType}`);
+  }
+  for (const artifact of [
+    "crm_customer_success_plan",
+    "crm_adoption_scorecard",
+    "crm_renewal_risk_report",
+    "crm_expansion_playbook",
+    "crm_task_plan"
+  ]) {
+    assert.ok(workflow.artifacts.includes(artifact), `missing customer success artifact ${artifact}`);
+    assert.ok(pack.indexes.artifact_types.includes(artifact), `missing indexed customer success artifact ${artifact}`);
+  }
+  for (const event of [
+    "crm.success.plan_created",
+    "crm.success.adoption_reviewed",
+    "crm.success.renewal_risk_flagged",
+    "crm.success.expansion_playbook_created",
+    "crm.task.created"
+  ]) {
+    assert.ok(workflow.events.includes(event), `missing customer success event ${event}`);
+  }
+  assert.ok(workflow.depends_on_workflows.includes("crm.account.management"));
+  assert.ok(workflow.depends_on_workflows.includes("crm.ticket.sla"));
+  assert.ok(workflow.validation_gates.includes("renewal risk is reviewed before success plan promotion"));
+  assert.ok(workflow.validation_gates.includes("success milestones are Forge workflow tasks with owner and lineage"));
+  assert.ok(pack.indexes.runtime_contracts.includes("crm.commercial.customer_success_plan.executor"));
+});
+
 test("commercial contract workflow routes signature and renewal through Forge", () => {
   const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
   const workflow = pack.workflows.find((candidate) => candidate.id === "crm.contract.signature");

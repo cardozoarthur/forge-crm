@@ -2,7 +2,17 @@ import { buildWorkflowFactoryBlueprint } from "./crm-factory-blueprint-lib.mjs";
 
 const REQUIRED_SCOPE = {
   relationship: ["lead", "contact", "company", "opportunity", "pipeline_kanban", "multiple_funnels", "complete_history", "unified_timeline"],
-  commercial: ["proposal", "contract", "signature", "follow_up", "forecast", "goal", "commission", "account_management"],
+  commercial: [
+    "proposal",
+    "contract",
+    "signature",
+    "follow_up",
+    "forecast",
+    "goal",
+    "commission",
+    "account_management",
+    "customer_success"
+  ],
   support: [
     "ticket",
     "sla",
@@ -290,6 +300,45 @@ const WORKFLOWS = [
     permissions: ["crm.workflow.mutate"],
     views: ["crm.commercial-command"],
     validation_gates: ["account owner visible", "renewal state explicit", "expansion forecast event-backed"]
+  },
+  {
+    id: "crm.customer_success.plan",
+    title: "Customer success adoption, renewal risk and expansion playbook",
+    domain: "commercial",
+    workflow_extension_id: "crm_customer_success_plan",
+    object_types: ["customer_success", "account", "adoption", "renewal_risk", "expansion_playbook", "success_milestone", "task"],
+    states: ["success_review_requested", "adoption_reviewed", "renewal_risk_reviewed", "success_plan_active", "expansion_playbook_created", "risk_mitigation"],
+    transitions: [
+      ["success_review_requested", "adoption_reviewed", "adoption signals attached"],
+      ["adoption_reviewed", "renewal_risk_reviewed", "renewal context and support risk attached"],
+      ["renewal_risk_reviewed", "success_plan_active", "success milestones converted to Forge tasks"],
+      ["success_plan_active", "expansion_playbook_created", "expansion opportunities attached"],
+      ["renewal_risk_reviewed", "risk_mitigation", "renewal risk requires owner action"]
+    ],
+    runtime_contracts: ["crm.commercial.customer_success_plan.executor", "crm.commercial.account_management.executor"],
+    depends_on_workflows: ["crm.account.management", "crm.ticket.sla", "crm.lead.nurture"],
+    artifacts: [
+      "crm_customer_success_plan",
+      "crm_adoption_scorecard",
+      "crm_renewal_risk_report",
+      "crm_expansion_playbook",
+      "crm_task_plan"
+    ],
+    events: [
+      "crm.success.plan_created",
+      "crm.success.adoption_reviewed",
+      "crm.success.renewal_risk_flagged",
+      "crm.success.expansion_playbook_created",
+      "crm.task.created"
+    ],
+    memory_scopes: ["organization", "project"],
+    permissions: ["crm.workflow.mutate", "crm.observability.inspect"],
+    views: ["crm.commercial-command"],
+    validation_gates: [
+      "renewal risk is reviewed before success plan promotion",
+      "success milestones are Forge workflow tasks with owner and lineage",
+      "customer success plan does not persist CRM state outside Forge"
+    ]
   },
   {
     id: "crm.omnichannel.channel_intake",

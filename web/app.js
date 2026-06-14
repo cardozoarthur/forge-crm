@@ -271,6 +271,21 @@ export function renderCommercialCommand(snapshot) {
     accounts.append(item);
   }
 
+  const successPlans = nodeElement("div", "commercial-list success-plan-list");
+  for (const plan of panel.customer_success_plans || []) {
+    const item = nodeElement("article", "commercial-row");
+    item.append(nodeElement("strong", "", plan.account));
+    item.append(
+      nodeElement(
+        "span",
+        "",
+        `Adoption ${plan.adoption_score} · ${compactTitle(plan.renewal_risk_state)} · ${plan.expansion_playbook_count} expansion`
+      )
+    );
+    item.append(nodeElement("code", "", actionLabel(snapshot, plan.action_id)));
+    successPlans.append(item);
+  }
+
   const settlement = nodeElement("div", "commercial-list goal-commission-inline");
   if (panel.goal_commission) {
     const item = nodeElement("article", "commercial-row");
@@ -286,7 +301,7 @@ export function renderCommercialCommand(snapshot) {
     settlement.append(item);
   }
 
-  section.append(summary, contracts, accounts, settlement);
+  section.append(summary, contracts, accounts, successPlans, settlement);
   return section;
 }
 

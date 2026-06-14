@@ -26,7 +26,7 @@ const DOMAIN_REQUIREMENTS = {
     ["forecast", "Forecast", ["crm.followup.forecast", "crm.forecast.review"]],
     ["goals", "Goals", ["crm.goal.commission"]],
     ["commissions", "Commissions", ["crm.goal.commission"]],
-    ["account_management", "Account management", ["crm.account.management"]]
+    ["account_management", "Account management", ["crm.account.management", "crm.customer_success.plan"]]
   ],
   marketing: [
     ["campaigns", "Campaigns", ["crm.campaign.lifecycle"]],

@@ -67,6 +67,7 @@ export function createCrmWorkerServer() {
             "forge_crm.review_commercial_forecast",
             "forge_crm.settle_goal_commission",
             "forge_crm.manage_account",
+            "forge_crm.plan_customer_success",
             "forge_crm.manage_contract_signature",
             "forge_crm.generate_document",
             "forge_crm.validate_document",

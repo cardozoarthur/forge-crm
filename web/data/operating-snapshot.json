@@ -23,11 +23,11 @@
     "external_delivery_requires_approval": true
   },
   "metrics": {
-    "workflow_count": 36,
+    "workflow_count": 37,
     "business_module_count": 7,
     "surface_count": 10,
-    "artifact_type_count": 102,
-    "event_type_count": 118,
+    "artifact_type_count": 106,
+    "event_type_count": 122,
     "complete_scope": true
   },
   "surfaces": [
@@ -320,6 +320,7 @@
         "crm.forecast.review",
         "crm.goal.commission",
         "crm.account.management",
+        "crm.customer_success.plan",
         "crm.project.handoff",
         "crm.daily.operating_cycle",
         "crm.approval.governance",
@@ -355,6 +356,10 @@
         "renewal_planned",
         "expansion_identified",
         "risk_mitigation",
+        "success_review_requested",
+        "adoption_reviewed",
+        "renewal_risk_reviewed",
+        "expansion_playbook_created",
         "handoff_requested",
         "owner_assigned",
         "project_planned",
@@ -384,6 +389,7 @@
       ],
       "artifact_types": [
         "crm_account_plan",
+        "crm_adoption_scorecard",
         "crm_approval_decision_batch",
         "crm_approval_governance_queue",
         "crm_approval_rework_reason",
@@ -392,9 +398,11 @@
         "crm_commission_statement",
         "crm_compensation_audit_report",
         "crm_cross_domain_handoff_map",
+        "crm_customer_success_plan",
         "crm_daily_operating_cycle",
         "crm_email",
         "crm_enterprise_journey_map",
+        "crm_expansion_playbook",
         "crm_followup_plan",
         "crm_forecast_report",
         "crm_goal_scorecard",
@@ -406,6 +414,7 @@
         "crm_permission_gate_report",
         "crm_pipeline_board",
         "crm_project_plan",
+        "crm_renewal_risk_report",
         "crm_report",
         "crm_risk_analysis",
         "crm_stage_change",
@@ -438,6 +447,10 @@
         "crm.opportunity.stage_changed",
         "crm.project.accepted",
         "crm.project.handoff_requested",
+        "crm.success.adoption_reviewed",
+        "crm.success.expansion_playbook_created",
+        "crm.success.plan_created",
+        "crm.success.renewal_risk_flagged",
         "crm.task.blocked",
         "crm.task.created"
       ],
@@ -1105,19 +1118,23 @@
         "crm.forecast.review",
         "crm.goal.commission",
         "crm.account.management",
+        "crm.customer_success.plan",
         "crm.lead.nurture",
         "crm.project.handoff"
       ],
       "artifact_types": [
         "crm_account_plan",
+        "crm_adoption_scorecard",
         "crm_ai_recommendation",
         "crm_automation_plan",
         "crm_commission_record",
         "crm_commission_statement",
         "crm_compensation_audit_report",
         "crm_contract",
+        "crm_customer_success_plan",
         "crm_document",
         "crm_email",
+        "crm_expansion_playbook",
         "crm_followup_plan",
         "crm_forecast_report",
         "crm_goal_scorecard",
@@ -1128,6 +1145,7 @@
         "crm_project_plan",
         "crm_proposal",
         "crm_renewal_plan",
+        "crm_renewal_risk_report",
         "crm_report",
         "crm_risk_analysis",
         "crm_signature_receipt",
@@ -1160,6 +1178,10 @@
         "crm.project.accepted",
         "crm.project.handoff_requested",
         "crm.proposal.generated",
+        "crm.success.adoption_reviewed",
+        "crm.success.expansion_playbook_created",
+        "crm.success.plan_created",
+        "crm.success.renewal_risk_flagged",
         "crm.task.blocked",
         "crm.task.created"
       ],
@@ -1169,6 +1191,7 @@
         "blocked reason explicit",
         "commission payout remains blocked until Forge approval",
         "contract approval lineage present",
+        "customer success plan does not persist CRM state outside Forge",
         "expansion forecast event-backed",
         "external delivery blocked until approval",
         "external message approval present",
@@ -1178,11 +1201,13 @@
         "forecast snapshot lineage present",
         "goal attainment and commission settlement require revenue event lineage",
         "owner visible",
+        "renewal risk is reviewed before success plan promotion",
         "renewal state explicit",
         "risk review owner visible",
         "scheduled wait visible",
         "signature receipt attached",
-        "stage movement is event-backed"
+        "stage movement is event-backed",
+        "success milestones are Forge workflow tasks with owner and lineage"
       ]
     },
     {
@@ -1325,6 +1350,7 @@
         "crm.contract.signature",
         "crm.forecast.review",
         "crm.account.management",
+        "crm.customer_success.plan",
         "crm.omnichannel.reply",
         "crm.project.handoff",
         "crm.document.approval",
@@ -1342,6 +1368,7 @@
       ],
       "artifact_types": [
         "crm_account_plan",
+        "crm_adoption_scorecard",
         "crm_approval_decision_batch",
         "crm_approval_governance_queue",
         "crm_approval_record",
@@ -1354,6 +1381,7 @@
         "crm_core_gap_report",
         "crm_cost_report",
         "crm_cross_domain_handoff_map",
+        "crm_customer_success_plan",
         "crm_daily_operating_cycle",
         "crm_document",
         "crm_document_collection",
@@ -1361,6 +1389,7 @@
         "crm_domain_coverage_matrix",
         "crm_enterprise_journey_map",
         "crm_executive_summary",
+        "crm_expansion_playbook",
         "crm_factory_portability_report",
         "crm_file_record",
         "crm_forecast_report",
@@ -1379,6 +1408,7 @@
         "crm_queue_assignment_plan",
         "crm_queue_sla_risk_report",
         "crm_renewal_plan",
+        "crm_renewal_risk_report",
         "crm_report",
         "crm_requirement_coverage_matrix",
         "crm_risk_analysis",
@@ -1450,6 +1480,10 @@
         "crm.subworkflow.bound",
         "crm.subworkflow.promoted",
         "crm.subworkflow.validated",
+        "crm.success.adoption_reviewed",
+        "crm.success.expansion_playbook_created",
+        "crm.success.plan_created",
+        "crm.success.renewal_risk_flagged",
         "crm.support.channel_coverage_reported",
         "crm.task.blocked",
         "crm.task.created"
@@ -1470,6 +1504,7 @@
         "contract approval lineage present",
         "cross-domain handoffs preserve workflow and artifact lineage",
         "customer replies are drafted as Forge artifacts before external send",
+        "customer success plan does not persist CRM state outside Forge",
         "daily cycle does not persist CRM-local state",
         "daily operating actions route through Forge runtime contracts",
         "document library state is represented by Forge artifacts and events",
@@ -1495,6 +1530,7 @@
         "readiness evidence sourced from Forge workflows artifacts events and validation gates",
         "recommended decisions remain advisory until Forge approval",
         "remediation requires Forge workflow mutation",
+        "renewal risk is reviewed before success plan promotion",
         "renewal state explicit",
         "reply lineage cites conversation thread, ticket SLA and channel identity evidence",
         "rework reason recorded before any operable claim",
@@ -1505,6 +1541,7 @@
         "strategic audit does not create CRM-local persistence",
         "subworkflow lineage cites child workflow artifacts and events",
         "success criteria mapped to user-facing deliverables",
+        "success milestones are Forge workflow tasks with owner and lineage",
         "support channel coverage includes chat email telegram and whatsapp evidence",
         "version promotion waits for Forge approval evidence"
       ]
@@ -1996,6 +2033,47 @@
           "account owner visible",
           "renewal state explicit",
           "expansion forecast event-backed"
+        ]
+      },
+      {
+        "id": "crm.customer_success.plan",
+        "title": "Customer success adoption, renewal risk and expansion playbook",
+        "domain": "commercial",
+        "state_count": 6,
+        "states": [
+          "success_review_requested",
+          "adoption_reviewed",
+          "renewal_risk_reviewed",
+          "success_plan_active",
+          "expansion_playbook_created",
+          "risk_mitigation"
+        ],
+        "wait_states": [],
+        "runtime_contracts": [
+          "crm.commercial.customer_success_plan.executor",
+          "crm.commercial.account_management.executor"
+        ],
+        "artifact_types": [
+          "crm_customer_success_plan",
+          "crm_adoption_scorecard",
+          "crm_renewal_risk_report",
+          "crm_expansion_playbook",
+          "crm_task_plan"
+        ],
+        "event_types": [
+          "crm.success.plan_created",
+          "crm.success.adoption_reviewed",
+          "crm.success.renewal_risk_flagged",
+          "crm.success.expansion_playbook_created",
+          "crm.task.created"
+        ],
+        "surface_ids": [
+          "crm.commercial-command"
+        ],
+        "validation_gates": [
+          "renewal risk is reviewed before success plan promotion",
+          "success milestones are Forge workflow tasks with owner and lineage",
+          "customer success plan does not persist CRM state outside Forge"
         ]
       },
       {
@@ -3942,6 +4020,7 @@
           "crm.forecast.review",
           "crm.goal.commission",
           "crm.account.management",
+          "crm.customer_success.plan",
           "crm.project.handoff",
           "crm.daily.operating_cycle",
           "crm.approval.governance",
@@ -3953,6 +4032,7 @@
           "crm.review-followup-forecast",
           "crm.settle-goal-commission",
           "crm.manage-account",
+          "crm.plan-customer-success",
           "crm.manage-contract-signature",
           "crm.plan-project-handoff",
           "crm.generate-proposal"
@@ -4015,6 +4095,21 @@
             "renewal_state": "success_plan_active",
             "expansion_state": "handoff_requested",
             "next_action_id": "crm.plan-project-handoff"
+          }
+        ],
+        "customer_success_plans": [
+          {
+            "account": "Rota Sul Logistics",
+            "workflow_id": "crm.customer_success.plan",
+            "contract_id": "crm.commercial.customer_success_plan.executor",
+            "adoption_state": "watch",
+            "adoption_score": 62,
+            "renewal_risk_state": "watch",
+            "expansion_playbook_count": 1,
+            "owner": "success-manager",
+            "state_owner": "forge_workflow_runtime",
+            "local_state_allowed": false,
+            "action_id": "crm.plan-customer-success"
           }
         ]
       },
@@ -7280,6 +7375,43 @@
         "reuse_policy": "copy_as_forge_workflow_module_template"
       },
       {
+        "id": "module.crm_customer_success_plan",
+        "title": "Customer success adoption, renewal risk and expansion playbook",
+        "domain": "commercial",
+        "workflow_ids": [
+          "crm.customer_success.plan"
+        ],
+        "workflow_extension_id": "crm_customer_success_plan",
+        "runtime_contracts": [
+          "crm.commercial.customer_success_plan.executor",
+          "crm.commercial.account_management.executor"
+        ],
+        "artifact_types": [
+          "crm_customer_success_plan",
+          "crm_adoption_scorecard",
+          "crm_renewal_risk_report",
+          "crm_expansion_playbook",
+          "crm_task_plan"
+        ],
+        "event_types": [
+          "crm.success.plan_created",
+          "crm.success.adoption_reviewed",
+          "crm.success.renewal_risk_flagged",
+          "crm.success.expansion_playbook_created",
+          "crm.task.created"
+        ],
+        "surface_ids": [
+          "crm.commercial-command"
+        ],
+        "validation_gates": [
+          "renewal risk is reviewed before success plan promotion",
+          "success milestones are Forge workflow tasks with owner and lineage",
+          "customer success plan does not persist CRM state outside Forge"
+        ],
+        "state_owner": "forge_workflow_runtime",
+        "reuse_policy": "copy_as_forge_workflow_module_template"
+      },
+      {
         "id": "module.crm_omnichannel_channel_intake",
         "title": "Approved omnichannel channel intake",
         "domain": "support",
@@ -8393,7 +8525,7 @@
     ],
     "portability_report": {
       "state": "ready_for_reuse",
-      "module_count": 36,
+      "module_count": 37,
       "missing_runtime_contract_modules": [],
       "target_repository_for_core_gaps": "forge-core",
       "local_state_allowed": false
@@ -9622,6 +9754,33 @@
         "forge.addon.crm",
         "--contract",
         "crm.commercial.account_management.executor",
+        "--worker",
+        "<worker-id>",
+        "--task",
+        "<task-ref>",
+        "--input",
+        "<json>",
+        "--context",
+        "<json>",
+        "--output",
+        "json"
+      ]
+    },
+    {
+      "id": "crm.plan-customer-success",
+      "label": "Plan customer success",
+      "surface_id": "crm.commercial-command",
+      "contract_id": "crm.commercial.customer_success_plan.executor",
+      "requires_permission": "crm.workflow.mutate",
+      "mutates_workflow": true,
+      "command_template": [
+        "forge",
+        "addons",
+        "execute-executor",
+        "--addon",
+        "forge.addon.crm",
+        "--contract",
+        "crm.commercial.customer_success_plan.executor",
         "--worker",
         "<worker-id>",
         "--task",
@@ -11632,6 +11791,68 @@
             "title": "Execute runtime contract",
             "owner": "forge.addons.runtime",
             "evidence": "crm.commercial.account_management.executor"
+          },
+          {
+            "id": "promote_result_to_workflow",
+            "title": "Promote result to workflow",
+            "owner": "forge.workflow.runtime",
+            "evidence": "artifact and event promotion"
+          },
+          {
+            "id": "refresh_operating_snapshot",
+            "title": "Refresh operating snapshot",
+            "owner": "forge.addon.crm",
+            "evidence": "crm.operating.snapshot.executor"
+          }
+        ],
+        "output_policy": {
+          "promote_result_to_workflow": true,
+          "browser_local_state_write": false,
+          "refresh_source": "forge_workflow_artifacts_and_events"
+        }
+      },
+      {
+        "action_id": "crm.plan-customer-success",
+        "label": "Plan customer success",
+        "surface_id": "crm.commercial-command",
+        "contract_id": "crm.commercial.customer_success_plan.executor",
+        "required_permission": "crm.workflow.mutate",
+        "selected_command": [
+          "forge",
+          "addons",
+          "execute-executor",
+          "--addon",
+          "forge.addon.crm",
+          "--contract",
+          "crm.commercial.customer_success_plan.executor",
+          "--worker",
+          "<worker-id>",
+          "--task",
+          "<task-ref>",
+          "--input",
+          "<json>",
+          "--context",
+          "<json>",
+          "--output",
+          "json"
+        ],
+        "permission_gate": {
+          "status": "requires_forge_permission",
+          "permission": "crm.workflow.mutate",
+          "approval_owner": "forge_permission_policy"
+        },
+        "operation_plan": [
+          {
+            "id": "check_addon_permission",
+            "title": "Check Addon permission",
+            "owner": "forge.permissions",
+            "evidence": "crm.workflow.mutate"
+          },
+          {
+            "id": "execute_runtime_contract",
+            "title": "Execute runtime contract",
+            "owner": "forge.addons.runtime",
+            "evidence": "crm.commercial.customer_success_plan.executor"
           },
           {
             "id": "promote_result_to_workflow",

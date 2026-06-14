@@ -4849,6 +4849,26 @@ function healthState(score) {
   return "at_risk";
 }
 
+function adoptionState(score) {
+  if (score >= 75) {
+    return "adopted";
+  }
+  if (score >= 50) {
+    return "watch";
+  }
+  return "at_risk";
+}
+
+function renewalRiskState(renewalProbability, criticalTickets, accountAdoptionState) {
+  if (renewalProbability < 0.55 || criticalTickets > 1 || accountAdoptionState === "at_risk") {
+    return "at_risk";
+  }
+  if (renewalProbability < 0.8 || criticalTickets > 0 || accountAdoptionState === "watch") {
+    return "watch";
+  }
+  return "healthy";
+}
+
 export function buildCommercialAccountManagementResult(request) {
   const input = dispatchPayload(request);
   const context = providedContext(request);
@@ -5015,6 +5035,227 @@ export function buildCommercialAccountManagementResult(request) {
               workflow_id: workflowId,
               expansion_opportunity_count: expansionOpportunities.length,
               expansion_forecast_amount: expansionForecastAmount
+            }
+          ]
+        : []),
+      ...(tasks.length > 0
+        ? [
+            {
+              kind: "crm.task.created",
+              tenant_id: tenantId,
+              account_id: id,
+              workflow_id: workflowId,
+              task_count: tasks.length
+            }
+          ]
+        : [])
+    ],
+    context_tenant: context.tenant || tenantId
+  };
+}
+
+export function buildCustomerSuccessPlanResult(request) {
+  const input = dispatchPayload(request);
+  const context = providedContext(request);
+  const tenantId = input.tenant_id || input.tenant_context?.tenant_id || input.tenant_context?.id || context.tenant || "default";
+  const account = asObject(input.account ?? input.account_context);
+  const adoptionSignals = asObject(input.adoption_signals);
+  const renewalContext = asObject(input.renewal_context);
+  const expansionContext = asObject(input.expansion_context);
+  const successPlaybook = asObject(input.success_playbook ?? input.playbook);
+  const id = accountId(account, dispatchEnvelope(request).task_ref || "account");
+  const name = account.name || account.account || id;
+  const owner = account.owner || successPlaybook.owner || "customer-success";
+  const workflowId = String(input.workflow_id || "crm.customer_success.plan");
+  const taskRef = dispatchEnvelope(request).task_ref || `customer-success-${slug(id, "account")}`;
+  const blockedMilestones = asArray(adoptionSignals.open_success_milestones).filter((milestone) => {
+    const status = String(asObject(milestone).status || "").toLowerCase();
+    return status === "blocked" || status === "at_risk";
+  });
+  const adoptionInputs = [
+    numberFrom(adoptionSignals.active_users_percent, 0),
+    numberFrom(adoptionSignals.onboarding_completion_percent, 0),
+    numberFrom(adoptionSignals.feature_depth_percent, 0)
+  ];
+  const adoptionScore = Math.max(
+    0,
+    Math.min(100, Math.round(adoptionInputs.reduce((total, value) => total + value, 0) / adoptionInputs.length - blockedMilestones.length * 10))
+  );
+  const accountAdoptionState = adoptionState(adoptionScore);
+  const renewalProbability = probabilityFrom(renewalContext.renewal_probability ?? renewalContext.probability);
+  const criticalTickets = numberFrom(renewalContext.open_critical_tickets ?? renewalContext.critical_ticket_count, 0);
+  const accountRenewalRiskState = renewalRiskState(renewalProbability, criticalTickets, accountAdoptionState);
+  const expansionOpportunities = asArray(expansionContext.opportunities ?? expansionContext.expansion_opportunities).map((opportunity, index) => {
+    const record = asObject(opportunity);
+    const amount = numberFrom(record.amount ?? record.value, 0);
+    const probability = probabilityFrom(record.probability ?? record.close_probability);
+    return {
+      id: String(record.id || record.opportunity_id || `success-expansion-${index + 1}`),
+      title: record.title || record.name || `Success expansion ${index + 1}`,
+      amount,
+      probability,
+      forecast_amount: Math.round(amount * probability)
+    };
+  });
+  const milestoneTitles = asArray(successPlaybook.milestones).map((milestone) => String(milestone).trim()).filter(Boolean);
+  const requiredActions = asArray(successPlaybook.required_actions ?? input.required_actions)
+    .map((action) => String(action).trim())
+    .filter(Boolean);
+  const tasks = [...milestoneTitles, ...requiredActions].map((title, index) => ({
+    id: `success-task-${slug(id, "account")}-${index + 1}`,
+    title,
+    owner,
+    status: "ready",
+    workflow_id: workflowId
+  }));
+  const nextState = tasks.length > 0
+    ? "success_plan_active"
+    : accountRenewalRiskState === "at_risk"
+      ? "risk_mitigation"
+      : "success_plan_reviewed";
+  const lineage = {
+    workflow_id: workflowId,
+    task_ref: taskRef,
+    source_contract: "crm.commercial.customer_success_plan.executor",
+    tenant_id: tenantId,
+    account_id: id
+  };
+
+  return {
+    schema_version: "forge.addon_executor_result.v1",
+    status: "completed",
+    task_ref: taskRef,
+    summary: `Customer success plan for ${name} prepared with ${accountAdoptionState} adoption and ${accountRenewalRiskState} renewal risk`,
+    outputs: {
+      tenant_id: tenantId,
+      account_id: id,
+      workflow_id: workflowId,
+      owner,
+      adoption_score: adoptionScore,
+      adoption_state: accountAdoptionState,
+      renewal_risk_state: accountRenewalRiskState,
+      renewal_probability: renewalProbability,
+      expansion_playbook_count: expansionOpportunities.length,
+      task_count: tasks.length,
+      next_state: nextState,
+      mutates_crm_state: false,
+      forge_event_sourced: true
+    },
+    artifacts: [
+      {
+        kind: "crm_customer_success_plan",
+        id: `customer-success-plan-${slug(id, "account")}`,
+        title: `Customer success plan for ${name}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          account_id: id,
+          account,
+          owner,
+          objective: successPlaybook.objective || "Protect renewal and expand account value",
+          milestones: milestoneTitles,
+          next_state: nextState,
+          state_owner: "forge_workflow_runtime",
+          local_state_allowed: false,
+          lineage
+        }
+      },
+      {
+        kind: "crm_adoption_scorecard",
+        id: `adoption-scorecard-${slug(id, "account")}`,
+        title: `Adoption scorecard for ${name}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          account_id: id,
+          adoption_signals: adoptionSignals,
+          adoption_score: adoptionScore,
+          adoption_state: accountAdoptionState,
+          blocked_milestone_count: blockedMilestones.length,
+          lineage
+        }
+      },
+      {
+        kind: "crm_renewal_risk_report",
+        id: `renewal-risk-${slug(id, "account")}`,
+        title: `Renewal risk report for ${name}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          account_id: id,
+          renewal_context: renewalContext,
+          renewal_probability: renewalProbability,
+          renewal_risk_state: accountRenewalRiskState,
+          critical_ticket_count: criticalTickets,
+          risk_flags: accountRenewalRiskState === "healthy" ? [] : ["renewal_success_review_required"],
+          lineage
+        }
+      },
+      {
+        kind: "crm_expansion_playbook",
+        id: `expansion-playbook-${slug(id, "account")}`,
+        title: `Expansion playbook for ${name}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          account_id: id,
+          expansion_opportunities: expansionOpportunities,
+          expansion_forecast_amount: expansionOpportunities.reduce((total, opportunity) => total + opportunity.forecast_amount, 0),
+          approval_policy: "expansion actions require Forge workflow approval before external delivery",
+          lineage
+        }
+      },
+      {
+        kind: "crm_task_plan",
+        id: `customer-success-task-plan-${slug(id, "account")}`,
+        title: `Customer success task plan for ${name}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          account_id: id,
+          tasks,
+          task_workflow_policy: "success milestones are Forge workflow tasks with owner and lineage",
+          lineage
+        }
+      }
+    ],
+    events: [
+      {
+        kind: "crm.success.plan_created",
+        tenant_id: tenantId,
+        account_id: id,
+        workflow_id: workflowId,
+        owner,
+        next_state: nextState
+      },
+      {
+        kind: "crm.success.adoption_reviewed",
+        tenant_id: tenantId,
+        account_id: id,
+        workflow_id: workflowId,
+        adoption_score: adoptionScore,
+        adoption_state: accountAdoptionState
+      },
+      ...(accountRenewalRiskState === "healthy"
+        ? []
+        : [
+            {
+              kind: "crm.success.renewal_risk_flagged",
+              tenant_id: tenantId,
+              account_id: id,
+              workflow_id: workflowId,
+              renewal_risk_state: accountRenewalRiskState,
+              renewal_probability: renewalProbability
+            }
+          ]),
+      ...(expansionOpportunities.length > 0
+        ? [
+            {
+              kind: "crm.success.expansion_playbook_created",
+              tenant_id: tenantId,
+              account_id: id,
+              workflow_id: workflowId,
+              expansion_playbook_count: expansionOpportunities.length
             }
           ]
         : []),
@@ -7710,6 +7951,8 @@ export function executeCrmRuntimeRequest(request) {
       return buildCommercialGoalCommissionResult(request);
     case "forge_crm.manage_account":
       return buildCommercialAccountManagementResult(request);
+    case "forge_crm.plan_customer_success":
+      return buildCustomerSuccessPlanResult(request);
     case "forge_crm.manage_contract_signature":
       return buildCommercialContractSignatureResult(request);
     case "forge_crm.generate_document":

@@ -117,6 +117,7 @@ try {
       "forge_crm.review_commercial_forecast",
       "forge_crm.settle_goal_commission",
       "forge_crm.manage_account",
+      "forge_crm.plan_customer_success",
       "forge_crm.manage_contract_signature",
       "forge_crm.generate_document",
       "forge_crm.validate_document",
@@ -166,6 +167,7 @@ try {
       "crm.commercial.forecast_review.executor",
       "crm.commercial.goal_commission.executor",
       "crm.commercial.account_management.executor",
+      "crm.commercial.customer_success_plan.executor",
       "crm.commercial.contract_signature.executor",
       "crm.document.generator.executor",
       "crm.document.validator",
@@ -1955,6 +1957,75 @@ try {
     throw new Error(`expected account management success_plan_active, got ${accountManagement.executor_result.outputs.next_state}`);
   }
 
+  const customerSuccessPlan = runForge([
+    "addons",
+    "execute-executor",
+    "--addon-dir",
+    "addons",
+    "--addon",
+    "forge.addon.crm",
+    "--contract",
+    "crm.commercial.customer_success_plan.executor",
+    "--worker",
+    workerId,
+    "--task",
+    "crm-smoke-customer-success",
+    "--workflow",
+    workflowId,
+    "--input",
+    JSON.stringify({
+      tenant_context: { id: "smoke", tenant_id: "smoke" },
+      account: {
+        id: "account-smoke",
+        name: "Example Logistics",
+        owner: "success-manager",
+        lifecycle_stage: "active_customer",
+        arr: 180000
+      },
+      adoption_signals: {
+        active_users_percent: 62,
+        onboarding_completion_percent: 80,
+        feature_depth_percent: 55,
+        open_success_milestones: [{ id: "milestone-integrations", status: "blocked" }]
+      },
+      renewal_context: {
+        renewal_at: "2026-10-01T00:00:00Z",
+        renewal_probability: 0.68,
+        open_critical_tickets: 1
+      },
+      expansion_context: {
+        opportunities: [
+          {
+            id: "expansion-success-smoke",
+            title: "Operations team rollout",
+            amount: 60000,
+            probability: 0.65
+          }
+        ]
+      },
+      success_playbook: {
+        objective: "Drive adoption before renewal",
+        owner: "success-manager",
+        milestones: ["unblock integrations", "run executive business review"],
+        required_actions: ["schedule QBR", "attach adoption report", "open renewal risk review"]
+      }
+    }),
+    "--context",
+    JSON.stringify({ tenant: "smoke" }),
+    "--output",
+    "json"
+  ]);
+
+  if (customerSuccessPlan.promotion?.status !== "addon_executor_result_promoted") {
+    throw new Error(`expected customer success promotion, got ${customerSuccessPlan.promotion?.status || "missing"}`);
+  }
+  if (customerSuccessPlan.executor_result.outputs.workflow_id !== "crm.customer_success.plan") {
+    throw new Error(`expected customer success workflow, got ${customerSuccessPlan.executor_result.outputs.workflow_id}`);
+  }
+  if (customerSuccessPlan.executor_result.outputs.renewal_risk_state !== "watch") {
+    throw new Error(`expected customer success renewal risk watch, got ${customerSuccessPlan.executor_result.outputs.renewal_risk_state}`);
+  }
+
   const contractSignature = runForge([
     "addons",
     "execute-executor",
@@ -2975,6 +3046,8 @@ try {
   const goalCommissionPromotedEventCount = goalCommissionSettlement.promotion?.event_count ?? 0;
   const accountPromotedArtifactCount = accountManagement.promotion?.artifact_count ?? 0;
   const accountPromotedEventCount = accountManagement.promotion?.event_count ?? 0;
+  const customerSuccessPromotedArtifactCount = customerSuccessPlan.promotion?.artifact_count ?? 0;
+  const customerSuccessPromotedEventCount = customerSuccessPlan.promotion?.event_count ?? 0;
   const contractSignaturePromotedArtifactCount = contractSignature.promotion?.artifact_count ?? 0;
   const contractSignaturePromotedEventCount = contractSignature.promotion?.event_count ?? 0;
   const documentPromotedArtifactCount = documentGenerator.promotion?.artifact_count ?? 0;
@@ -3309,6 +3382,21 @@ try {
     "crm.account.renewal_planned",
     "crm.account.expansion_identified",
     "crm.task.created"
+  ]) {
+    if (!workflowEventKinds.includes(eventKind)) {
+      throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
+    }
+  }
+  if (customerSuccessPromotedArtifactCount < 5 || customerSuccessPromotedEventCount < 5) {
+    throw new Error(
+      `expected promoted customer success artifacts/events, got artifacts=${customerSuccessPromotedArtifactCount} events=${customerSuccessPromotedEventCount}`
+    );
+  }
+  for (const eventKind of [
+    "crm.success.plan_created",
+    "crm.success.adoption_reviewed",
+    "crm.success.renewal_risk_flagged",
+    "crm.success.expansion_playbook_created"
   ]) {
     if (!workflowEventKinds.includes(eventKind)) {
       throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
@@ -3763,6 +3851,13 @@ try {
     account_management_expansion_forecast_amount: accountManagement.executor_result.outputs.expansion_forecast_amount,
     account_management_promoted_artifacts: accountPromotedArtifactCount,
     account_management_promoted_events: accountPromotedEventCount,
+    customer_success_status: customerSuccessPlan.status,
+    customer_success_promotion_status: customerSuccessPlan.promotion.status,
+    customer_success_adoption_state: customerSuccessPlan.executor_result.outputs.adoption_state,
+    customer_success_renewal_risk_state: customerSuccessPlan.executor_result.outputs.renewal_risk_state,
+    customer_success_expansion_playbook_count: customerSuccessPlan.executor_result.outputs.expansion_playbook_count,
+    customer_success_promoted_artifacts: customerSuccessPromotedArtifactCount,
+    customer_success_promoted_events: customerSuccessPromotedEventCount,
     contract_signature_status: contractSignature.status,
     contract_signature_promotion_status: contractSignature.promotion.status,
     contract_signature_state: contractSignature.executor_result.outputs.contract_state,

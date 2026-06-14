@@ -398,12 +398,14 @@ function buildOperationalWorkbench(workflows, actionList, documentQueueSnapshot)
         ...workflowIdsForSurface(workflows, "crm.commercial-command"),
         "crm.proposal.approval",
         "crm.contract.signature",
-        "crm.goal.commission"
+        "crm.goal.commission",
+        "crm.customer_success.plan"
       ]),
       action_ids: checkedActionIds(actionList, [
         "crm.review-followup-forecast",
         "crm.settle-goal-commission",
         "crm.manage-account",
+        "crm.plan-customer-success",
         "crm.manage-contract-signature",
         "crm.plan-project-handoff",
         "crm.generate-proposal"
@@ -463,6 +465,21 @@ function buildOperationalWorkbench(workflows, actionList, documentQueueSnapshot)
         renewal_state: "success_plan_active",
         expansion_state: "handoff_requested",
         next_action_id: "crm.plan-project-handoff"
+      }
+    ],
+    customer_success_plans: [
+      {
+        account: "Rota Sul Logistics",
+        workflow_id: "crm.customer_success.plan",
+        contract_id: "crm.commercial.customer_success_plan.executor",
+        adoption_state: "watch",
+        adoption_score: 62,
+        renewal_risk_state: "watch",
+        expansion_playbook_count: 1,
+        owner: "success-manager",
+        state_owner: "forge_workflow_runtime",
+        local_state_allowed: false,
+        action_id: "crm.plan-customer-success"
       }
     ]
   };
@@ -2446,6 +2463,15 @@ function actions() {
       requires_permission: "crm.workflow.mutate",
       mutates_workflow: true,
       command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.commercial.account_management.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
+    },
+    {
+      id: "crm.plan-customer-success",
+      label: "Plan customer success",
+      surface_id: "crm.commercial-command",
+      contract_id: "crm.commercial.customer_success_plan.executor",
+      requires_permission: "crm.workflow.mutate",
+      mutates_workflow: true,
+      command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.commercial.customer_success_plan.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
     },
     {
       id: "crm.manage-contract-signature",

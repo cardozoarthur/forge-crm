@@ -21,7 +21,14 @@ const USER_FACING_DELIVERABLES = [
     title: "Commercial command center",
     domain: "commercial",
     surface_id: "crm.commercial-command",
-    workflow_ids: ["crm.opportunity.pipeline", "crm.proposal.approval", "crm.contract.signature", "crm.followup.forecast", "crm.account.management"]
+    workflow_ids: [
+      "crm.opportunity.pipeline",
+      "crm.proposal.approval",
+      "crm.contract.signature",
+      "crm.followup.forecast",
+      "crm.account.management",
+      "crm.customer_success.plan"
+    ]
   },
   {
     id: "support_inbox",

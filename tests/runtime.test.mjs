@@ -1896,6 +1896,86 @@ test("commercial account management executor produces account health and expansi
   assert.ok(result.events.some((event) => event.kind === "crm.task.created"));
 });
 
+test("customer success plan executor routes adoption renewal and expansion through Forge artifacts", () => {
+  assert.equal(typeof runtime.buildCustomerSuccessPlanResult, "function");
+
+  const result = runtime.buildCustomerSuccessPlanResult(
+    workerRequest(
+      "forge_crm.plan_customer_success",
+      {
+        tenant_context: { tenant_id: "demo" },
+        account: {
+          id: "account-001",
+          name: "Acme Logistics",
+          owner: "success-manager",
+          lifecycle_stage: "active_customer",
+          arr: 180000
+        },
+        adoption_signals: {
+          active_users_percent: 62,
+          onboarding_completion_percent: 80,
+          feature_depth_percent: 55,
+          open_success_milestones: [{ id: "milestone-integrations", status: "blocked" }]
+        },
+        renewal_context: {
+          renewal_at: "2026-10-01T00:00:00Z",
+          renewal_probability: 0.68,
+          open_critical_tickets: 1
+        },
+        expansion_context: {
+          opportunities: [
+            {
+              id: "expansion-ops",
+              title: "Operations team rollout",
+              amount: 60000,
+              probability: 0.65
+            }
+          ]
+        },
+        success_playbook: {
+          objective: "Drive adoption before renewal",
+          owner: "success-manager",
+          milestones: ["unblock integrations", "run executive business review"],
+          required_actions: ["schedule QBR", "attach adoption report", "open renewal risk review"]
+        }
+      },
+      { contract_id: "crm.commercial.customer_success_plan.executor", task_ref: "customer-success-test" }
+    )
+  );
+
+  assert.equal(result.schema_version, "forge.addon_executor_result.v1");
+  assert.equal(result.status, "completed");
+  assert.equal(result.outputs.tenant_id, "demo");
+  assert.equal(result.outputs.account_id, "account-001");
+  assert.equal(result.outputs.workflow_id, "crm.customer_success.plan");
+  assert.equal(result.outputs.owner, "success-manager");
+  assert.equal(result.outputs.adoption_state, "watch");
+  assert.equal(result.outputs.renewal_risk_state, "watch");
+  assert.equal(result.outputs.expansion_playbook_count, 1);
+  assert.equal(result.outputs.next_state, "success_plan_active");
+  assert.equal(result.outputs.mutates_crm_state, false);
+  assert.equal(result.outputs.forge_event_sourced, true);
+
+  for (const kind of [
+    "crm_customer_success_plan",
+    "crm_adoption_scorecard",
+    "crm_renewal_risk_report",
+    "crm_expansion_playbook",
+    "crm_task_plan"
+  ]) {
+    assert.ok(result.artifacts.some((artifact) => artifact.kind === kind), `missing artifact ${kind}`);
+  }
+  for (const kind of [
+    "crm.success.plan_created",
+    "crm.success.adoption_reviewed",
+    "crm.success.renewal_risk_flagged",
+    "crm.success.expansion_playbook_created",
+    "crm.task.created"
+  ]) {
+    assert.ok(result.events.some((event) => event.kind === kind), `missing event ${kind}`);
+  }
+});
+
 test("commercial contract signature executor records signature receipt and renewal plan as Forge artifacts", () => {
   assert.equal(typeof runtime.buildCommercialContractSignatureResult, "function");
 
