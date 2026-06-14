@@ -200,6 +200,23 @@ test("marketing workflows route campaign automation and nurture through Forge", 
   assert.ok(pack.indexes.runtime_contracts.includes("crm.marketing.campaign_automation.executor"));
 });
 
+test("marketing form workflow routes form submissions into Forge lead lifecycle", () => {
+  const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
+  const campaignWorkflow = pack.workflows.find((candidate) => candidate.id === "crm.campaign.lifecycle");
+  const leadWorkflow = pack.workflows.find((candidate) => candidate.id === "crm.lead.lifecycle");
+
+  assert.ok(campaignWorkflow);
+  assert.ok(leadWorkflow);
+  assert.ok(campaignWorkflow.runtime_contracts.includes("crm.marketing.form_capture.executor"));
+  assert.ok(leadWorkflow.runtime_contracts.includes("crm.marketing.form_capture.executor"));
+  assert.ok(campaignWorkflow.artifacts.includes("crm_form_submission"));
+  assert.ok(campaignWorkflow.artifacts.includes("crm_consent_record"));
+  assert.ok(leadWorkflow.artifacts.includes("crm_lead_capture"));
+  assert.ok(campaignWorkflow.events.includes("crm.form.submitted"));
+  assert.ok(leadWorkflow.events.includes("crm.lead.created"));
+  assert.ok(pack.indexes.runtime_contracts.includes("crm.marketing.form_capture.executor"));
+});
+
 test("operations workflow routes project handoff and task planning through Forge", () => {
   const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
   const workflow = pack.workflows.find((candidate) => candidate.id === "crm.project.handoff");

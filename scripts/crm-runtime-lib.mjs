@@ -1374,6 +1374,14 @@ function segmentId(segment, fallback = "crm-segment") {
   return String(segment.id || segment.segment_id || segment.name || fallback);
 }
 
+function submissionFields(submission) {
+  return asObject(submission.fields ?? submission.data ?? submission.values);
+}
+
+function leadIdFromSubmission(submission, fields, fallback = "lead") {
+  return String(submission.lead_id || fields.email || fields.phone || submission.email || submission.id || fallback);
+}
+
 export function buildMarketingCampaignAutomationResult(request) {
   const input = dispatchPayload(request);
   const context = providedContext(request);
@@ -1519,6 +1527,169 @@ export function buildMarketingCampaignAutomationResult(request) {
         lead_count: leadIds.length,
         wait_minutes: waitMinutes,
         workflow_id: nurtureWorkflowId
+      }
+    ],
+    context_tenant: context.tenant || tenantId
+  };
+}
+
+export function buildMarketingFormCaptureResult(request) {
+  const input = dispatchPayload(request);
+  const context = providedContext(request);
+  const tenantId = input.tenant_id || input.tenant_context?.tenant_id || input.tenant_context?.id || context.tenant || "default";
+  const campaign = asObject(input.campaign);
+  const landingPage = asObject(input.landing_page ?? input.landingPage);
+  const submission = asObject(input.form_submission ?? input.submission);
+  const consentPolicy = asObject(input.consent_policy);
+  const routingPolicy = asObject(input.routing_policy);
+  const fields = submissionFields(submission);
+  const submissionId = String(submission.id || submission.submission_id || dispatchEnvelope(request).task_ref || "form-submission");
+  const leadId = leadIdFromSubmission(submission, fields, submissionId);
+  const campaignIdValue = campaignId(campaign, input.campaign_id || "campaign");
+  const workflowId = String(input.workflow_id || "crm.campaign.lifecycle");
+  const leadWorkflowId = String(input.lead_workflow_id || "crm.lead.lifecycle");
+  const nurtureWorkflowId = String(input.nurture_workflow_id || "crm.lead.nurture");
+  const taskRef = dispatchEnvelope(request).task_ref || `capture-form-${slug(submissionId, "submission")}`;
+  const consentCaptured = consentPolicy.consent_given === true || consentPolicy.accepted === true;
+  const consentState = consentCaptured ? "captured" : "consent_review_required";
+  const owner = routingPolicy.owner || campaign.owner || "marketing-ops";
+  const sequenceId = routingPolicy.nurture_sequence_id || routingPolicy.sequence_id || `nurture-${slug(campaignIdValue, "campaign")}`;
+  const leadProfile = {
+    id: leadId,
+    email: fields.email || submission.email || null,
+    name: fields.name || submission.name || null,
+    company: fields.company || campaign.account || null,
+    role: fields.role || fields.title || null,
+    budget: fields.budget || fields.estimated_budget || null,
+    pain: fields.pain || fields.problem || null,
+    source: "landing_page_form"
+  };
+  const lineage = {
+    workflow_id: workflowId,
+    lead_workflow_id: leadWorkflowId,
+    nurture_workflow_id: nurtureWorkflowId,
+    task_ref: taskRef,
+    source_contract: "crm.marketing.form_capture.executor",
+    tenant_id: tenantId,
+    campaign_id: campaignIdValue,
+    form_submission_id: submissionId,
+    lead_id: leadId
+  };
+
+  return {
+    schema_version: "forge.addon_executor_result.v1",
+    status: "completed",
+    task_ref: taskRef,
+    summary: `Form submission ${submissionId} captured as lead ${leadId} through Forge workflows`,
+    outputs: {
+      tenant_id: tenantId,
+      form_submission_id: submissionId,
+      lead_id: leadId,
+      campaign_id: campaignIdValue,
+      workflow_id: workflowId,
+      lead_workflow_id: leadWorkflowId,
+      nurture_workflow_id: nurtureWorkflowId,
+      lead_state: "captured",
+      consent_state: consentState,
+      routing_owner: owner,
+      mutates_crm_state: false,
+      forge_event_sourced: true
+    },
+    artifacts: [
+      {
+        kind: "crm_form_submission",
+        id: `form-submission-${slug(submissionId, "submission")}`,
+        title: `Form submission ${submissionId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          form_submission_id: submissionId,
+          form_id: submission.form_id || input.form_id || null,
+          submitted_at: submission.submitted_at || input.submitted_at || null,
+          campaign,
+          landing_page: landingPage,
+          fields,
+          lineage,
+          state_owner: "forge_workflow_runtime",
+          external_database_required: false
+        }
+      },
+      {
+        kind: "crm_lead_capture",
+        id: `lead-capture-${slug(leadId, "lead")}`,
+        title: `Lead capture for ${leadProfile.company || leadId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          lead_id: leadId,
+          lead_profile: leadProfile,
+          lead_state: "captured",
+          next_workflow_id: leadWorkflowId,
+          classification_required: routingPolicy.classification_required !== false,
+          lineage,
+          mutation_policy: "lead state changes must be promoted by Forge workflow events"
+        }
+      },
+      {
+        kind: "crm_consent_record",
+        id: `consent-${slug(leadId, "lead")}-${slug(submissionId, "submission")}`,
+        title: `Consent record for ${leadProfile.company || leadId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          lead_id: leadId,
+          form_submission_id: submissionId,
+          consent_state: consentState,
+          lawful_basis: consentPolicy.lawful_basis || "unknown",
+          source: consentPolicy.source || "landing_page_form",
+          consent_policy: consentPolicy,
+          lineage
+        }
+      },
+      {
+        kind: "crm_automation_plan",
+        id: `form-nurture-plan-${slug(submissionId, "submission")}`,
+        title: `Form nurture plan for ${leadProfile.company || leadId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          lead_id: leadId,
+          campaign_id: campaignIdValue,
+          owner,
+          sequence_id: sequenceId,
+          next_wait_state: "wait_step",
+          workflow_id: nurtureWorkflowId,
+          delivery_policy: "external nurture messages require Forge approval and handoff contracts",
+          lineage
+        }
+      }
+    ],
+    events: [
+      {
+        kind: "crm.form.submitted",
+        tenant_id: tenantId,
+        form_submission_id: submissionId,
+        lead_id: leadId,
+        campaign_id: campaignIdValue,
+        workflow_id: workflowId
+      },
+      {
+        kind: "crm.lead.created",
+        tenant_id: tenantId,
+        lead_id: leadId,
+        campaign_id: campaignIdValue,
+        workflow_id: leadWorkflowId,
+        source: "landing_page_form",
+        consent_state: consentState
+      },
+      {
+        kind: "crm.nurture.step_due",
+        tenant_id: tenantId,
+        lead_id: leadId,
+        campaign_id: campaignIdValue,
+        sequence_id: sequenceId,
+        workflow_id: nurtureWorkflowId,
+        owner
       }
     ],
     context_tenant: context.tenant || tenantId
@@ -1959,6 +2130,8 @@ export function executeCrmRuntimeRequest(request) {
       return buildDocumentValidatorResult(request);
     case "forge_crm.automate_campaign":
       return buildMarketingCampaignAutomationResult(request);
+    case "forge_crm.capture_form_submission":
+      return buildMarketingFormCaptureResult(request);
     case "forge_crm.plan_project_handoff":
       return buildOperationsProjectHandoffResult(request);
     case "forge_crm.triage_ticket_sla":

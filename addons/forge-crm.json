@@ -317,6 +317,9 @@
         "crm_campaign",
         "crm_segment",
         "crm_automation_plan",
+        "crm_form_submission",
+        "crm_lead_capture",
+        "crm_consent_record",
         "crm_email",
         "crm_landing_page",
         "crm_presentation"
@@ -883,6 +886,37 @@
       ]
     },
     {
+      "id": "crm.marketing.form_capture.executor",
+      "title": "CRM marketing form capture",
+      "contract_type": "executor",
+      "capability_id": "crm_marketing_automation",
+      "workflow_extension_id": "crm_campaign_lifecycle",
+      "runtime": "external_api",
+      "entrypoint": "forge_crm.capture_form_submission",
+      "inputs": [
+        "form_submission",
+        "campaign",
+        "landing_page",
+        "consent_policy",
+        "routing_policy",
+        "tenant_context"
+      ],
+      "outputs": [
+        "crm_form_submission",
+        "crm_lead_capture",
+        "crm_consent_record",
+        "crm_automation_plan"
+      ],
+      "permissions": [
+        "crm.workflow.mutate"
+      ],
+      "constraints": [
+        "form capture does not persist CRM state outside Forge",
+        "captured submissions must route into the Forge lead lifecycle",
+        "consent must be represented as a Forge artifact before nurture events"
+      ]
+    },
+    {
       "id": "crm.support.ticket_sla.executor",
       "title": "CRM ticket SLA triage",
       "contract_type": "executor",
@@ -1276,6 +1310,21 @@
       "generic_kind": "artifact"
     },
     {
+      "id": "crm_form_submission",
+      "title": "CRM form submission",
+      "generic_kind": "artifact"
+    },
+    {
+      "id": "crm_lead_capture",
+      "title": "CRM lead capture",
+      "generic_kind": "artifact"
+    },
+    {
+      "id": "crm_consent_record",
+      "title": "CRM consent record",
+      "generic_kind": "artifact"
+    },
+    {
       "id": "crm_email",
       "title": "CRM email",
       "generic_kind": "message"
@@ -1393,6 +1442,11 @@
       "transport": "crm"
     },
     {
+      "id": "crm.form",
+      "title": "CRM form event",
+      "transport": "crm"
+    },
+    {
       "id": "crm.nurture",
       "title": "CRM nurture event",
       "transport": "crm"
@@ -1426,6 +1480,7 @@
         "crm.task",
         "crm.document",
         "crm.campaign",
+        "crm.form",
         "crm.nurture"
       ],
       "schema": "forge.crm.webhook.v1",
@@ -1634,6 +1689,7 @@
         "crm.relationship",
         "crm.document",
         "crm.campaign",
+        "crm.form",
         "crm.nurture",
         "crm.project",
         "crm.task"

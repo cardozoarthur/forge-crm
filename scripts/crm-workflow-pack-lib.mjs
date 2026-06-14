@@ -31,8 +31,8 @@ const WORKFLOWS = [
       ["qualified", "converted", "opportunity workflow created"],
       ["captured", "disqualified", "fit rejected with reason"]
     ],
-    runtime_contracts: ["crm.relationship.timeline.executor", "crm.lead.classifier.executor"],
-    artifacts: ["crm_timeline_snapshot", "crm_ai_recommendation"],
+    runtime_contracts: ["crm.relationship.timeline.executor", "crm.lead.classifier.executor", "crm.marketing.form_capture.executor"],
+    artifacts: ["crm_timeline_snapshot", "crm_ai_recommendation", "crm_lead_capture"],
     events: ["crm.lead.created", "crm.lead.classified", "crm.contact.updated", "crm.relationship.recorded"],
     memory_scopes: ["organization", "project"],
     permissions: ["crm.workflow.mutate", "crm.ai.recommend"],
@@ -190,9 +190,32 @@ const WORKFLOWS = [
       ["scheduled", "running", "schedule due"],
       ["running", "reported", "campaign report attached"]
     ],
-    runtime_contracts: ["crm.marketing.campaign_automation.executor", "crm.document.generator.executor", "crm.document.validator"],
-    artifacts: ["crm_campaign", "crm_segment", "crm_automation_plan", "crm_email", "crm_landing_page", "crm_presentation", "crm_report"],
-    events: ["crm.document.generated", "crm.campaign.created", "crm.campaign.scheduled", "crm.nurture.step_due", "crm.campaign.reported"],
+    runtime_contracts: [
+      "crm.marketing.campaign_automation.executor",
+      "crm.marketing.form_capture.executor",
+      "crm.document.generator.executor",
+      "crm.document.validator"
+    ],
+    artifacts: [
+      "crm_campaign",
+      "crm_segment",
+      "crm_automation_plan",
+      "crm_email",
+      "crm_landing_page",
+      "crm_form_submission",
+      "crm_consent_record",
+      "crm_presentation",
+      "crm_report"
+    ],
+    events: [
+      "crm.document.generated",
+      "crm.campaign.created",
+      "crm.campaign.scheduled",
+      "crm.form.submitted",
+      "crm.lead.created",
+      "crm.nurture.step_due",
+      "crm.campaign.reported"
+    ],
     memory_scopes: ["organization", "project"],
     permissions: ["crm.workflow.mutate", "crm.document.generate"],
     views: ["crm.marketing-calendar"],

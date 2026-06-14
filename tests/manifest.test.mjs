@@ -208,6 +208,28 @@ test("manifest exposes CRM marketing campaign automation as a Forge-owned execut
   assert.ok(artifactTypes.has("crm_automation_plan"));
 });
 
+test("manifest exposes CRM marketing form capture as a Forge-owned executor", () => {
+  const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.marketing.form_capture.executor");
+  assert.ok(contract);
+  assert.equal(contract.contract_type, "executor");
+  assert.equal(contract.capability_id, "crm_marketing_automation");
+  assert.equal(contract.workflow_extension_id, "crm_campaign_lifecycle");
+  assert.equal(contract.entrypoint, "forge_crm.capture_form_submission");
+  assert.deepEqual(contract.permissions, ["crm.workflow.mutate"]);
+  assert.ok(contract.outputs.includes("crm_form_submission"));
+  assert.ok(contract.outputs.includes("crm_lead_capture"));
+  assert.ok(contract.outputs.includes("crm_consent_record"));
+  assert.ok(contract.outputs.includes("crm_automation_plan"));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("does not persist")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("lead lifecycle")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("consent")));
+
+  const artifactTypes = new Set(manifest.artifact_types.map((artifact) => artifact.id));
+  assert.ok(artifactTypes.has("crm_form_submission"));
+  assert.ok(artifactTypes.has("crm_lead_capture"));
+  assert.ok(artifactTypes.has("crm_consent_record"));
+});
+
 test("manifest exposes CRM project handoff operations as a Forge-owned executor", () => {
   const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.operations.project_handoff.executor");
   assert.ok(contract);

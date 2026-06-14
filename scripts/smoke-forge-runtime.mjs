@@ -87,6 +87,7 @@ try {
       "forge_crm.generate_document",
       "forge_crm.validate_document",
       "forge_crm.automate_campaign",
+      "forge_crm.capture_form_submission",
       "forge_crm.triage_ticket_sla",
       "forge_crm.plan_project_handoff",
       "forge_crm.deliver_handoff"
@@ -105,6 +106,7 @@ try {
       "crm.document.generator.executor",
       "crm.document.validator",
       "crm.marketing.campaign_automation.executor",
+      "crm.marketing.form_capture.executor",
       "crm.support.ticket_sla.executor",
       "crm.operations.project_handoff.executor",
       "crm.omnichannel.handoff"
@@ -597,6 +599,69 @@ try {
     throw new Error(`expected marketing automation scheduled state, got ${marketingAutomation.executor_result.outputs.scheduled_state}`);
   }
 
+  const marketingFormCapture = runForge([
+    "addons",
+    "execute-executor",
+    "--addon-dir",
+    "addons",
+    "--addon",
+    "forge.addon.crm",
+    "--contract",
+    "crm.marketing.form_capture.executor",
+    "--worker",
+    workerId,
+    "--task",
+    "crm-smoke-form-capture",
+    "--workflow",
+    workflowId,
+    "--input",
+    JSON.stringify({
+      tenant_context: { id: "smoke", tenant_id: "smoke" },
+      campaign: {
+        id: "campaign-smoke",
+        name: "Workflow CRM launch"
+      },
+      landing_page: {
+        id: "landing-smoke",
+        slug: "workflow-crm-launch"
+      },
+      form_submission: {
+        id: "submission-smoke",
+        form_id: "form-smoke-enterprise-demo",
+        submitted_at: "2026-07-03T14:30:00Z",
+        fields: {
+          email: "ops@example.com",
+          company: "Example Logistics",
+          name: "Operations Lead",
+          role: "COO",
+          budget: "250000",
+          pain: "Needs Forge-owned CRM intake"
+        }
+      },
+      consent_policy: {
+        consent_given: true,
+        lawful_basis: "consent",
+        source: "landing_page_form"
+      },
+      routing_policy: {
+        owner: "marketing-ops",
+        nurture_sequence_id: "nurture-smoke-enterprise",
+        classification_required: true
+      }
+    }),
+    "--context",
+    JSON.stringify({ tenant: "smoke" }),
+    "--output",
+    "json"
+  ]);
+
+  if (marketingFormCapture.promotion?.status !== "addon_executor_result_promoted") {
+    throw new Error(`expected marketing form capture promotion, got ${marketingFormCapture.promotion?.status || "missing"}`);
+  }
+  if (marketingFormCapture.executor_result.outputs.lead_state !== "captured") {
+    throw new Error(`expected marketing form capture lead state captured, got ${marketingFormCapture.executor_result.outputs.lead_state}`);
+  }
+
   const ticketSla = runForge([
     "addons",
     "execute-executor",
@@ -734,6 +799,8 @@ try {
   const documentPromotedEventCount = documentGenerator.promotion?.event_count ?? 0;
   const marketingPromotedArtifactCount = marketingAutomation.promotion?.artifact_count ?? 0;
   const marketingPromotedEventCount = marketingAutomation.promotion?.event_count ?? 0;
+  const marketingFormPromotedArtifactCount = marketingFormCapture.promotion?.artifact_count ?? 0;
+  const marketingFormPromotedEventCount = marketingFormCapture.promotion?.event_count ?? 0;
   const ticketSlaPromotedArtifactCount = ticketSla.promotion?.artifact_count ?? 0;
   const ticketSlaPromotedEventCount = ticketSla.promotion?.event_count ?? 0;
   const operationsPromotedArtifactCount = operationsProjectHandoff.promotion?.artifact_count ?? 0;
@@ -839,6 +906,16 @@ try {
     );
   }
   for (const eventKind of ["crm.campaign.created", "crm.campaign.scheduled", "crm.nurture.step_due"]) {
+    if (!workflowEventKinds.includes(eventKind)) {
+      throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
+    }
+  }
+  if (marketingFormPromotedArtifactCount < 4 || marketingFormPromotedEventCount < 3) {
+    throw new Error(
+      `expected promoted marketing form capture artifacts/events, got artifacts=${marketingFormPromotedArtifactCount} events=${marketingFormPromotedEventCount}`
+    );
+  }
+  for (const eventKind of ["crm.form.submitted", "crm.lead.created", "crm.nurture.step_due"]) {
     if (!workflowEventKinds.includes(eventKind)) {
       throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
     }
@@ -1033,6 +1110,12 @@ try {
     marketing_automation_scheduled_state: marketingAutomation.executor_result.outputs.scheduled_state,
     marketing_automation_promoted_artifacts: marketingPromotedArtifactCount,
     marketing_automation_promoted_events: marketingPromotedEventCount,
+    marketing_form_capture_status: marketingFormCapture.status,
+    marketing_form_capture_promotion_status: marketingFormCapture.promotion.status,
+    marketing_form_capture_lead_state: marketingFormCapture.executor_result.outputs.lead_state,
+    marketing_form_capture_consent_state: marketingFormCapture.executor_result.outputs.consent_state,
+    marketing_form_capture_promoted_artifacts: marketingFormPromotedArtifactCount,
+    marketing_form_capture_promoted_events: marketingFormPromotedEventCount,
     ticket_sla_status: ticketSla.status,
     ticket_sla_promotion_status: ticketSla.promotion.status,
     ticket_sla_state: ticketSla.executor_result.outputs.sla_state,

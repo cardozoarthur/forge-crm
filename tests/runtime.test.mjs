@@ -604,6 +604,72 @@ test("marketing campaign automation executor schedules nurture workflows as Forg
   assert.ok(result.events.some((event) => event.kind === "crm.nurture.step_due"));
 });
 
+test("marketing form capture executor converts submissions into Forge lead workflows", () => {
+  assert.equal(typeof runtime.buildMarketingFormCaptureResult, "function");
+
+  const result = runtime.buildMarketingFormCaptureResult(
+    workerRequest(
+      "forge_crm.capture_form_submission",
+      {
+        tenant_context: { tenant_id: "demo" },
+        campaign: {
+          id: "campaign-001",
+          name: "Enterprise operations campaign"
+        },
+        landing_page: {
+          id: "lp-001",
+          slug: "enterprise-operations"
+        },
+        form_submission: {
+          id: "submission-001",
+          form_id: "form-enterprise-demo",
+          submitted_at: "2026-07-20T13:45:00Z",
+          fields: {
+            email: "ops@example.com",
+            company: "Acme Logistics",
+            name: "Maria Ops",
+            role: "COO",
+            budget: "250000",
+            pain: "Needs workflow-owned CRM intake"
+          }
+        },
+        consent_policy: {
+          consent_given: true,
+          lawful_basis: "consent",
+          source: "landing_page_form"
+        },
+        routing_policy: {
+          owner: "marketing-ops",
+          nurture_sequence_id: "nurture-enterprise-ops",
+          classification_required: true
+        }
+      },
+      { contract_id: "crm.marketing.form_capture.executor", task_ref: "form-capture-test" }
+    )
+  );
+
+  assert.equal(result.schema_version, "forge.addon_executor_result.v1");
+  assert.equal(result.status, "completed");
+  assert.equal(result.outputs.tenant_id, "demo");
+  assert.equal(result.outputs.form_submission_id, "submission-001");
+  assert.equal(result.outputs.lead_id, "ops@example.com");
+  assert.equal(result.outputs.workflow_id, "crm.campaign.lifecycle");
+  assert.equal(result.outputs.lead_workflow_id, "crm.lead.lifecycle");
+  assert.equal(result.outputs.nurture_workflow_id, "crm.lead.nurture");
+  assert.equal(result.outputs.lead_state, "captured");
+  assert.equal(result.outputs.consent_state, "captured");
+  assert.equal(result.outputs.mutates_crm_state, false);
+  assert.equal(result.outputs.forge_event_sourced, true);
+
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_form_submission"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_lead_capture"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_consent_record"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_automation_plan"));
+  assert.ok(result.events.some((event) => event.kind === "crm.form.submitted"));
+  assert.ok(result.events.some((event) => event.kind === "crm.lead.created"));
+  assert.ok(result.events.some((event) => event.kind === "crm.nurture.step_due"));
+});
+
 test("operations project handoff executor plans project tasks as Forge workflow artifacts", () => {
   assert.equal(typeof runtime.buildOperationsProjectHandoffResult, "function");
 

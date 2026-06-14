@@ -277,6 +277,15 @@ function actions() {
       command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.marketing.campaign_automation.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
     },
     {
+      id: "crm.capture-form-submission",
+      label: "Capture form submission",
+      surface_id: "crm.marketing-calendar",
+      contract_id: "crm.marketing.form_capture.executor",
+      requires_permission: "crm.workflow.mutate",
+      mutates_workflow: true,
+      command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.marketing.form_capture.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
+    },
+    {
       id: "crm.deliver-handoff",
       label: "Deliver omnichannel handoff",
       surface_id: "crm.support-queue",
