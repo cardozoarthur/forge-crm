@@ -5,6 +5,7 @@ import test from "node:test";
 import { promisify } from "node:util";
 
 const manifest = JSON.parse(await readFile(new URL("../addons/forge-crm.json", import.meta.url), "utf8"));
+const webSnapshot = JSON.parse(await readFile(new URL("../web/data/operating-snapshot.json", import.meta.url), "utf8"));
 const packageJson = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
 const execFileAsync = promisify(execFile);
 
@@ -989,6 +990,23 @@ test("manifest exposes a Forge TUI operational cockpit with permission-gated CRM
     assert.ok(action.keywords.includes("crm"));
     assert.ok(action.payload_schema.length > 0, `${action.id} needs payload schema`);
   }
+});
+
+test("manifest keeps Forge TUI cockpit actions in parity with web CRM command contracts", () => {
+  const cockpit = manifest.views.find((view) => view.id === "crm.operational-cockpit");
+  assert.ok(cockpit);
+
+  const tuiContracts = new Set(
+    cockpit.actions
+      .map((action) => action.command_template[action.command_template.indexOf("--contract") + 1])
+      .filter(Boolean)
+  );
+
+  const missingContracts = webSnapshot.actions
+    .map((action) => action.contract_id)
+    .filter((contractId) => !tuiContracts.has(contractId));
+
+  assert.deepEqual(missingContracts, []);
 });
 
 test("CRM scope is workflow-backed across core business areas", () => {

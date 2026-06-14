@@ -2103,6 +2103,95 @@
           ]
         },
         {
+          "id": "crm.tui.bootstrap-tenant",
+          "label": "Bootstrap CRM tenant",
+          "description": "Create the initial Forge-owned CRM tenant workflow pack and operating model.",
+          "palette_group": "CRM",
+          "source_panel": "crm.operational-cockpit",
+          "type": "command",
+          "target": "forge addons execute-executor",
+          "method": "CLI",
+          "permission": "crm.workflow.mutate",
+          "requires_confirmation": true,
+          "risk_level": "high",
+          "mutates_workflow": true,
+          "command_template": [
+            "addons",
+            "execute-executor",
+            "--addon",
+            "forge.addon.crm",
+            "--contract",
+            "crm.tenant.bootstrap.executor",
+            "--worker",
+            "<worker-id>",
+            "--task",
+            "<task-ref>",
+            "--input",
+            "<json>",
+            "--context",
+            "<json>",
+            "--output",
+            "json"
+          ],
+          "keywords": [
+            "crm",
+            "tenant",
+            "bootstrap"
+          ],
+          "payload_schema": [
+            "tenant_context",
+            "crm_scope",
+            "operator_policy"
+          ]
+        },
+        {
+          "id": "crm.tui.inspect-observability",
+          "label": "Inspect observability",
+          "description": "Inspect CRM audit, lineage, cost, metrics and logs through Forge workflow evidence.",
+          "palette_group": "CRM",
+          "source_panel": "crm.operational-cockpit",
+          "type": "command",
+          "target": "forge addons execute-executor",
+          "method": "CLI",
+          "permission": "crm.observability.inspect",
+          "requires_confirmation": false,
+          "risk_level": "medium",
+          "mutates_workflow": true,
+          "command_template": [
+            "addons",
+            "execute-executor",
+            "--addon",
+            "forge.addon.crm",
+            "--contract",
+            "crm.observability.inspector.executor",
+            "--worker",
+            "<worker-id>",
+            "--task",
+            "<task-ref>",
+            "--input",
+            "<json>",
+            "--context",
+            "<json>",
+            "--output",
+            "json"
+          ],
+          "keywords": [
+            "crm",
+            "observability",
+            "audit",
+            "lineage"
+          ],
+          "payload_schema": [
+            "workflow_state",
+            "event_timeline",
+            "artifact_lineage",
+            "cost_entries",
+            "metric_samples",
+            "log_entries",
+            "tenant_context"
+          ]
+        },
+        {
           "id": "crm.tui.enrich-relationship-profile",
           "label": "Enrich relationship profile",
           "description": "Prepare contact or company enrichment artifacts and timeline evidence through Forge.",
@@ -2142,6 +2231,95 @@
             "entity_profile",
             "enrichment_sources",
             "relationship_signals",
+            "tenant_context"
+          ]
+        },
+        {
+          "id": "crm.tui.record-relationship-event",
+          "label": "Record relationship event",
+          "description": "Append a CRM relationship or pipeline event to the Forge-owned unified timeline.",
+          "palette_group": "CRM",
+          "source_panel": "crm.operational-cockpit",
+          "type": "command",
+          "target": "forge addons execute-executor",
+          "method": "CLI",
+          "permission": "crm.workflow.mutate",
+          "requires_confirmation": true,
+          "risk_level": "high",
+          "mutates_workflow": true,
+          "command_template": [
+            "addons",
+            "execute-executor",
+            "--addon",
+            "forge.addon.crm",
+            "--contract",
+            "crm.relationship.timeline.executor",
+            "--worker",
+            "<worker-id>",
+            "--task",
+            "<task-ref>",
+            "--input",
+            "<json>",
+            "--context",
+            "<json>",
+            "--output",
+            "json"
+          ],
+          "keywords": [
+            "crm",
+            "relationship",
+            "timeline"
+          ],
+          "payload_schema": [
+            "entity",
+            "relationships",
+            "timeline_event",
+            "pipeline",
+            "tenant_context"
+          ]
+        },
+        {
+          "id": "crm.tui.move-pipeline-stage",
+          "label": "Move pipeline stage",
+          "description": "Move an opportunity across a Forge-owned pipeline board and update forecast evidence.",
+          "palette_group": "CRM",
+          "source_panel": "crm.operational-cockpit",
+          "type": "command",
+          "target": "forge addons execute-executor",
+          "method": "CLI",
+          "permission": "crm.workflow.mutate",
+          "requires_confirmation": true,
+          "risk_level": "high",
+          "mutates_workflow": true,
+          "command_template": [
+            "addons",
+            "execute-executor",
+            "--addon",
+            "forge.addon.crm",
+            "--contract",
+            "crm.pipeline.stage_move.executor",
+            "--worker",
+            "<worker-id>",
+            "--task",
+            "<task-ref>",
+            "--input",
+            "<json>",
+            "--context",
+            "<json>",
+            "--output",
+            "json"
+          ],
+          "keywords": [
+            "crm",
+            "pipeline",
+            "kanban",
+            "opportunity"
+          ],
+          "payload_schema": [
+            "opportunity",
+            "pipeline_move",
+            "board_context",
+            "forecast_policy",
             "tenant_context"
           ]
         },
@@ -2228,6 +2406,141 @@
             "goal_targets",
             "revenue_events",
             "commission_policy",
+            "tenant_context"
+          ]
+        },
+        {
+          "id": "crm.tui.manage-account",
+          "label": "Manage account",
+          "description": "Generate account health, renewal, expansion and success-plan evidence through Forge.",
+          "palette_group": "CRM",
+          "source_panel": "crm.operational-cockpit",
+          "type": "command",
+          "target": "forge addons execute-executor",
+          "method": "CLI",
+          "permission": "crm.workflow.mutate",
+          "requires_confirmation": true,
+          "risk_level": "high",
+          "mutates_workflow": true,
+          "command_template": [
+            "addons",
+            "execute-executor",
+            "--addon",
+            "forge.addon.crm",
+            "--contract",
+            "crm.commercial.account_management.executor",
+            "--worker",
+            "<worker-id>",
+            "--task",
+            "<task-ref>",
+            "--input",
+            "<json>",
+            "--context",
+            "<json>",
+            "--output",
+            "json"
+          ],
+          "keywords": [
+            "crm",
+            "account",
+            "health",
+            "renewal"
+          ],
+          "payload_schema": [
+            "account",
+            "health_signals",
+            "expansion_opportunities",
+            "success_plan",
+            "tenant_context"
+          ]
+        },
+        {
+          "id": "crm.tui.manage-contract-signature",
+          "label": "Manage contract signature",
+          "description": "Record contract signature, renewal waits and approval-gated delivery through Forge.",
+          "palette_group": "CRM",
+          "source_panel": "crm.operational-cockpit",
+          "type": "command",
+          "target": "forge addons execute-executor",
+          "method": "CLI",
+          "permission": "crm.workflow.mutate",
+          "requires_confirmation": true,
+          "risk_level": "high",
+          "mutates_workflow": true,
+          "command_template": [
+            "addons",
+            "execute-executor",
+            "--addon",
+            "forge.addon.crm",
+            "--contract",
+            "crm.commercial.contract_signature.executor",
+            "--worker",
+            "<worker-id>",
+            "--task",
+            "<task-ref>",
+            "--input",
+            "<json>",
+            "--context",
+            "<json>",
+            "--output",
+            "json"
+          ],
+          "keywords": [
+            "crm",
+            "contract",
+            "signature",
+            "renewal"
+          ],
+          "payload_schema": [
+            "contract",
+            "approval_policy",
+            "signature",
+            "renewal_policy",
+            "tenant_context"
+          ]
+        },
+        {
+          "id": "crm.tui.plan-project-handoff",
+          "label": "Plan project handoff",
+          "description": "Turn a commercial handoff into project tasks, acceptance gates and blocked-state evidence.",
+          "palette_group": "CRM",
+          "source_panel": "crm.operational-cockpit",
+          "type": "command",
+          "target": "forge addons execute-executor",
+          "method": "CLI",
+          "permission": "crm.workflow.mutate",
+          "requires_confirmation": true,
+          "risk_level": "high",
+          "mutates_workflow": true,
+          "command_template": [
+            "addons",
+            "execute-executor",
+            "--addon",
+            "forge.addon.crm",
+            "--contract",
+            "crm.operations.project_handoff.executor",
+            "--worker",
+            "<worker-id>",
+            "--task",
+            "<task-ref>",
+            "--input",
+            "<json>",
+            "--context",
+            "<json>",
+            "--output",
+            "json"
+          ],
+          "keywords": [
+            "crm",
+            "project",
+            "handoff",
+            "operations"
+          ],
+          "payload_schema": [
+            "handoff_context",
+            "project",
+            "tasks",
+            "acceptance_policy",
             "tenant_context"
           ]
         },
@@ -2454,6 +2767,50 @@
           ]
         },
         {
+          "id": "crm.tui.deliver-handoff",
+          "label": "Deliver omnichannel handoff",
+          "description": "Deliver an approved support handoff through Forge after ticket and channel validation.",
+          "palette_group": "CRM",
+          "source_panel": "crm.operational-cockpit",
+          "type": "command",
+          "target": "forge addons execute-handoff",
+          "method": "CLI",
+          "permission": "crm.omnichannel.ingest",
+          "requires_confirmation": true,
+          "risk_level": "high",
+          "mutates_workflow": true,
+          "command_template": [
+            "addons",
+            "execute-handoff",
+            "--addon",
+            "forge.addon.crm",
+            "--contract",
+            "crm.omnichannel.handoff",
+            "--worker",
+            "<worker-id>",
+            "--handoff",
+            "<handoff-ref>",
+            "--input",
+            "<json>",
+            "--context",
+            "<json>",
+            "--output",
+            "json"
+          ],
+          "keywords": [
+            "crm",
+            "support",
+            "handoff",
+            "omnichannel"
+          ],
+          "payload_schema": [
+            "ticket_context",
+            "channel",
+            "approved_message",
+            "tenant_context"
+          ]
+        },
+        {
           "id": "crm.tui.automate-campaign",
           "label": "Automate campaign",
           "description": "Run approved campaign and nurture workflow automation through Forge.",
@@ -2627,6 +2984,50 @@
           ]
         },
         {
+          "id": "crm.tui.generate-proposal",
+          "label": "Generate proposal",
+          "description": "Generate an approval-gated CRM proposal and document artifact from opportunity evidence.",
+          "palette_group": "CRM",
+          "source_panel": "crm.operational-cockpit",
+          "type": "command",
+          "target": "forge addons execute-executor",
+          "method": "CLI",
+          "permission": "crm.document.generate",
+          "requires_confirmation": true,
+          "risk_level": "high",
+          "mutates_workflow": true,
+          "command_template": [
+            "addons",
+            "execute-executor",
+            "--addon",
+            "forge.addon.crm",
+            "--contract",
+            "crm.proposal.generator.executor",
+            "--worker",
+            "<worker-id>",
+            "--task",
+            "<task-ref>",
+            "--input",
+            "<json>",
+            "--context",
+            "<json>",
+            "--output",
+            "json"
+          ],
+          "keywords": [
+            "crm",
+            "proposal",
+            "document",
+            "sales"
+          ],
+          "payload_schema": [
+            "opportunity",
+            "account_context",
+            "approved_offer_terms",
+            "tenant_context"
+          ]
+        },
+        {
           "id": "crm.tui.generate-document",
           "label": "Generate document",
           "description": "Generate a CRM proposal, contract, report, email, campaign, landing page or presentation artifact through Forge.",
@@ -2666,6 +3067,93 @@
             "document_request",
             "source_workflow",
             "approval_policy"
+          ]
+        },
+        {
+          "id": "crm.tui.validate-document",
+          "label": "Validate document",
+          "description": "Validate document lineage and approval policy before promotion or delivery.",
+          "palette_group": "CRM",
+          "source_panel": "crm.operational-cockpit",
+          "type": "command",
+          "target": "forge addons execute-validator",
+          "method": "CLI",
+          "permission": "crm.document.generate",
+          "requires_confirmation": false,
+          "risk_level": "medium",
+          "mutates_workflow": true,
+          "command_template": [
+            "addons",
+            "execute-validator",
+            "--addon",
+            "forge.addon.crm",
+            "--contract",
+            "crm.document.validator",
+            "--worker",
+            "<worker-id>",
+            "--subject",
+            "<artifact-ref>",
+            "--input",
+            "<json>",
+            "--context",
+            "<json>",
+            "--output",
+            "json"
+          ],
+          "keywords": [
+            "crm",
+            "document",
+            "validation",
+            "lineage"
+          ],
+          "payload_schema": [
+            "artifact_ref",
+            "approval_policy",
+            "lineage"
+          ]
+        },
+        {
+          "id": "crm.tui.record-document-approval",
+          "label": "Record document approval",
+          "description": "Record document approval decisions and delivery handoff evidence through Forge.",
+          "palette_group": "CRM",
+          "source_panel": "crm.operational-cockpit",
+          "type": "command",
+          "target": "forge addons execute-executor",
+          "method": "CLI",
+          "permission": "crm.workflow.mutate",
+          "requires_confirmation": true,
+          "risk_level": "high",
+          "mutates_workflow": true,
+          "command_template": [
+            "addons",
+            "execute-executor",
+            "--addon",
+            "forge.addon.crm",
+            "--contract",
+            "crm.document.approval.executor",
+            "--worker",
+            "<worker-id>",
+            "--task",
+            "<task-ref>",
+            "--input",
+            "<json>",
+            "--context",
+            "<json>",
+            "--output",
+            "json"
+          ],
+          "keywords": [
+            "crm",
+            "document",
+            "approval"
+          ],
+          "payload_schema": [
+            "document",
+            "approval_decision",
+            "validation_report",
+            "delivery_policy",
+            "tenant_context"
           ]
         },
         {
@@ -2794,6 +3282,50 @@
           "payload_schema": [
             "area_contexts",
             "copilot_policy",
+            "tenant_context"
+          ]
+        },
+        {
+          "id": "crm.tui.prepare-memory-promotion",
+          "label": "Prepare memory promotion",
+          "description": "Prepare governed CRM knowledge promotion requests for Forge memory scopes.",
+          "palette_group": "CRM",
+          "source_panel": "crm.operational-cockpit",
+          "type": "command",
+          "target": "forge addons execute-executor",
+          "method": "CLI",
+          "permission": "crm.ai.recommend",
+          "requires_confirmation": false,
+          "risk_level": "medium",
+          "mutates_workflow": true,
+          "command_template": [
+            "addons",
+            "execute-executor",
+            "--addon",
+            "forge.addon.crm",
+            "--contract",
+            "crm.memory.promotion.executor",
+            "--worker",
+            "<worker-id>",
+            "--task",
+            "<task-ref>",
+            "--input",
+            "<json>",
+            "--context",
+            "<json>",
+            "--output",
+            "json"
+          ],
+          "keywords": [
+            "crm",
+            "memory",
+            "promotion",
+            "knowledge"
+          ],
+          "payload_schema": [
+            "source_memory",
+            "curated_knowledge",
+            "promotion_policy",
             "tenant_context"
           ]
         },
