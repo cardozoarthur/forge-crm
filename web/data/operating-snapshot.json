@@ -1,6 +1,6 @@
 {
   "schema_version": "forge.crm_web_app_snapshot.v1",
-  "tenant_id": "demo",
+  "tenant_id": "default",
   "addon_id": "forge.addon.crm",
   "generated_from": {
     "operating_model_schema": "forge.crm_operating_model.v1",
@@ -23,11 +23,11 @@
     "external_delivery_requires_approval": true
   },
   "metrics": {
-    "workflow_count": 12,
+    "workflow_count": 13,
     "business_module_count": 6,
     "surface_count": 8,
-    "artifact_type_count": 34,
-    "event_type_count": 44,
+    "artifact_type_count": 38,
+    "event_type_count": 48,
     "complete_scope": true
   },
   "surfaces": [
@@ -39,10 +39,29 @@
       "route": "/crm/system",
       "permission": "crm.workflow.mutate",
       "state_source": "forge_workflow_artifacts_and_events",
-      "workflow_ids": [],
-      "lanes": [],
-      "artifact_types": [],
-      "event_types": [],
+      "workflow_ids": [
+        "crm.operational.observability"
+      ],
+      "lanes": [
+        "inspection_requested",
+        "context_collected",
+        "audit_reported",
+        "risk_review_wait",
+        "remediation_started",
+        "closed"
+      ],
+      "artifact_types": [
+        "crm_audit_report",
+        "crm_cost_report",
+        "crm_lineage_map",
+        "crm_metric_snapshot"
+      ],
+      "event_types": [
+        "crm.audit.reported",
+        "crm.cost.reviewed",
+        "crm.metric.reviewed",
+        "crm.observability.inspected"
+      ],
       "mutation_requires_forge": true
     },
     {
@@ -528,16 +547,21 @@
         "crm.contract.signature",
         "crm.account.management",
         "crm.project.handoff",
-        "crm.document.approval"
+        "crm.document.approval",
+        "crm.operational.observability"
       ],
       "artifact_types": [
         "crm_account_plan",
         "crm_approval_record",
+        "crm_audit_report",
         "crm_contract",
+        "crm_cost_report",
         "crm_document",
         "crm_forecast_report",
         "crm_handoff_record",
         "crm_health_report",
+        "crm_lineage_map",
+        "crm_metric_snapshot",
         "crm_presentation",
         "crm_project_plan",
         "crm_renewal_plan",
@@ -549,15 +573,19 @@
         "crm.account.expansion_identified",
         "crm.account.health_reviewed",
         "crm.account.renewal_planned",
+        "crm.audit.reported",
         "crm.contract.renewal_scheduled",
         "crm.contract.reviewed",
         "crm.contract.signed",
+        "crm.cost.reviewed",
         "crm.document.approved",
         "crm.document.delivery_unblocked",
         "crm.document.generated",
         "crm.document.rework_required",
         "crm.document.submitted",
         "crm.document.validated",
+        "crm.metric.reviewed",
+        "crm.observability.inspected",
         "crm.project.accepted",
         "crm.project.handoff_requested",
         "crm.task.blocked",
@@ -567,11 +595,14 @@
         "account owner visible",
         "approval actor recorded",
         "approval decision lineage recorded",
+        "audit lineage cost metrics and logs sourced from Forge",
         "blocked reason explicit",
         "contract approval lineage present",
         "expansion forecast event-backed",
+        "inspection does not create CRM-local observability state",
         "lineage points to Forge artifact",
         "owner visible",
+        "remediation requires Forge workflow mutation",
         "renewal state explicit",
         "signature receipt attached"
       ]
@@ -1067,6 +1098,46 @@
         ]
       },
       {
+        "id": "crm.operational.observability",
+        "title": "Operational observability, audit and lineage",
+        "domain": "operations",
+        "state_count": 6,
+        "states": [
+          "inspection_requested",
+          "context_collected",
+          "audit_reported",
+          "risk_review_wait",
+          "remediation_started",
+          "closed"
+        ],
+        "wait_states": [
+          "risk_review_wait"
+        ],
+        "runtime_contracts": [
+          "crm.observability.inspector.executor"
+        ],
+        "artifact_types": [
+          "crm_audit_report",
+          "crm_lineage_map",
+          "crm_cost_report",
+          "crm_metric_snapshot"
+        ],
+        "event_types": [
+          "crm.observability.inspected",
+          "crm.audit.reported",
+          "crm.cost.reviewed",
+          "crm.metric.reviewed"
+        ],
+        "surface_ids": [
+          "crm.system-map"
+        ],
+        "validation_gates": [
+          "audit lineage cost metrics and logs sourced from Forge",
+          "inspection does not create CRM-local observability state",
+          "remediation requires Forge workflow mutation"
+        ]
+      },
+      {
         "id": "crm.ai.copilot.recommendation",
         "title": "Specialized CRM copilots and risk analysis",
         "domain": "ai_automation",
@@ -1415,6 +1486,33 @@
         "forge.addon.crm",
         "--contract",
         "crm.tenant.bootstrap.executor",
+        "--worker",
+        "<worker-id>",
+        "--task",
+        "<task-ref>",
+        "--input",
+        "<json>",
+        "--context",
+        "<json>",
+        "--output",
+        "json"
+      ]
+    },
+    {
+      "id": "crm.inspect-observability",
+      "label": "Inspect observability",
+      "surface_id": "crm.system-map",
+      "contract_id": "crm.observability.inspector.executor",
+      "requires_permission": "crm.observability.inspect",
+      "mutates_workflow": true,
+      "command_template": [
+        "forge",
+        "addons",
+        "execute-executor",
+        "--addon",
+        "forge.addon.crm",
+        "--contract",
+        "crm.observability.inspector.executor",
         "--worker",
         "<worker-id>",
         "--task",

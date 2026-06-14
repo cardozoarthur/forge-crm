@@ -20,7 +20,8 @@ test("manifest keeps CRM automation behind Forge capabilities and permissions", 
     "crm_support_omnichannel",
     "crm_marketing_automation",
     "crm_internal_operations",
-    "crm_ai_automation"
+    "crm_ai_automation",
+    "crm_observability"
   ]) {
     assert.ok(capabilityIds.has(required), `missing capability ${required}`);
   }
@@ -109,6 +110,32 @@ test("manifest exposes CRM memory promotion as governed Forge memory preparation
   const providerScopes = new Set(manifest.memory_providers.flatMap((provider) => provider.scopes));
   for (const scope of ["global", "organization", "project", "processing"]) {
     assert.ok(providerScopes.has(scope), `missing memory scope ${scope}`);
+  }
+});
+
+test("manifest exposes CRM observability inspection as a Forge-owned executor", () => {
+  const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.observability.inspector.executor");
+  assert.ok(contract);
+  assert.equal(contract.contract_type, "executor");
+  assert.equal(contract.capability_id, "crm_observability");
+  assert.equal(contract.workflow_extension_id, "crm_operational_observability");
+  assert.equal(contract.entrypoint, "forge_crm.inspect_observability");
+  assert.deepEqual(contract.permissions, ["crm.observability.inspect"]);
+
+  for (const input of ["workflow_state", "event_timeline", "artifact_lineage", "cost_entries", "metric_samples", "log_entries"]) {
+    assert.ok(contract.inputs.includes(input), `missing observability input ${input}`);
+  }
+
+  for (const output of ["crm_audit_report", "crm_lineage_map", "crm_cost_report", "crm_metric_snapshot"]) {
+    assert.ok(contract.outputs.includes(output), `missing observability output ${output}`);
+  }
+
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("derived from Forge workflow artifacts")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("does not create CRM-local observability state")));
+
+  const artifactTypes = new Set(manifest.artifact_types.map((artifact) => artifact.id));
+  for (const artifactType of ["crm_audit_report", "crm_lineage_map", "crm_cost_report", "crm_metric_snapshot"]) {
+    assert.ok(artifactTypes.has(artifactType), `missing artifact type ${artifactType}`);
   }
 });
 

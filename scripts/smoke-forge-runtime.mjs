@@ -82,6 +82,7 @@ try {
       "forge_crm.move_opportunity_stage",
       "forge_crm.operating_copilot",
       "forge_crm.prepare_memory_promotion",
+      "forge_crm.inspect_observability",
       "forge_crm.generate_proposal",
       "forge_crm.review_followup_forecast",
       "forge_crm.manage_account",
@@ -105,6 +106,7 @@ try {
       "crm.pipeline.stage_move.executor",
       "crm.ai.operating_copilot.executor",
       "crm.memory.promotion.executor",
+      "crm.observability.inspector.executor",
       "crm.proposal.generator.executor",
       "crm.commercial.followup_forecast.executor",
       "crm.commercial.account_management.executor",
@@ -126,7 +128,8 @@ try {
   const authorizations = [
     ["crm.workflow.mutate", "high"],
     ["crm.document.generate", "medium"],
-    ["crm.omnichannel.ingest", "medium"]
+    ["crm.omnichannel.ingest", "medium"],
+    ["crm.observability.inspect", "medium"]
   ].map(([permission, risk]) =>
     runForge([
       "addons",
@@ -339,6 +342,68 @@ try {
   }
   if (memoryPromotion.executor_result.outputs.core_promotion_owner !== "forge.memory.promote") {
     throw new Error(`expected Forge memory promotion owner, got ${memoryPromotion.executor_result.outputs.core_promotion_owner}`);
+  }
+
+  const observabilityInspection = runForge([
+    "addons",
+    "execute-executor",
+    "--addon-dir",
+    "addons",
+    "--addon",
+    "forge.addon.crm",
+    "--contract",
+    "crm.observability.inspector.executor",
+    "--worker",
+    workerId,
+    "--task",
+    "crm-smoke-observability-inspection",
+    "--workflow",
+    workflowId,
+    "--input",
+    JSON.stringify({
+      tenant_context: { id: "smoke", tenant_id: "smoke" },
+      workflow_state: {
+        workflow_id: "crm.opportunity.pipeline",
+        status: "running",
+        revision: 3,
+        waiting_states: ["approval_wait"]
+      },
+      event_timeline: [
+        { id: "evt-smoke-stage", kind: "crm.opportunity.stage_changed", sequence: 1 },
+        { id: "evt-smoke-forecast", kind: "crm.forecast.updated", sequence: 2 }
+      ],
+      artifact_lineage: [
+        {
+          artifact_id: "pipeline-forecast-opp-smoke-priority",
+          kind: "crm_forecast_report",
+          produced_by: "crm.pipeline.stage_move.executor",
+          source_event_ids: ["evt-smoke-forecast"]
+        }
+      ],
+      cost_entries: [
+        { runtime_contract_id: "crm.pipeline.stage_move.executor", amount_usd: 0.38 },
+        { runtime_contract_id: "crm.ai.operating_copilot.executor", amount_usd: 1.12 }
+      ],
+      metric_samples: [
+        { name: "cycle_time_minutes", value: 42 },
+        { name: "approval_wait_count", value: 1 }
+      ],
+      log_entries: [
+        { level: "info", message: "pipeline state inspected" },
+        { level: "warn", message: "approval wait still open" }
+      ]
+    }),
+    "--context",
+    JSON.stringify({ tenant: "smoke" }),
+    "--output",
+    "json"
+  ]);
+
+  if (observabilityInspection.promotion?.status !== "addon_executor_result_promoted") {
+    throw new Error(`expected observability inspection promotion, got ${observabilityInspection.promotion?.status || "missing"}`);
+  }
+  if (observabilityInspection.executor_result.outputs.cost_total_usd !== 1.5) {
+    throw new Error(`expected observability cost total 1.5, got ${observabilityInspection.executor_result.outputs.cost_total_usd}`);
   }
 
   const relationshipTimeline = runForge([
@@ -1008,6 +1073,8 @@ try {
   const copilotPromotedEventCount = copilot.promotion?.event_count ?? 0;
   const memoryPromotedArtifactCount = memoryPromotion.promotion?.artifact_count ?? 0;
   const memoryPromotedEventCount = memoryPromotion.promotion?.event_count ?? 0;
+  const observabilityPromotedArtifactCount = observabilityInspection.promotion?.artifact_count ?? 0;
+  const observabilityPromotedEventCount = observabilityInspection.promotion?.event_count ?? 0;
   const relationshipPromotedArtifactCount = relationshipTimeline.promotion?.artifact_count ?? 0;
   const relationshipPromotedEventCount = relationshipTimeline.promotion?.event_count ?? 0;
   const pipelinePromotedArtifactCount = pipelineStageMove.promotion?.artifact_count ?? 0;
@@ -1075,6 +1142,21 @@ try {
     );
   }
   for (const eventKind of ["crm.memory.knowledge_curated", "crm.memory.promotion_requested"]) {
+    if (!workflowEventKinds.includes(eventKind)) {
+      throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
+    }
+  }
+  if (observabilityPromotedArtifactCount < 4 || observabilityPromotedEventCount < 4) {
+    throw new Error(
+      `expected promoted observability artifacts/events, got artifacts=${observabilityPromotedArtifactCount} events=${observabilityPromotedEventCount}`
+    );
+  }
+  for (const eventKind of [
+    "crm.observability.inspected",
+    "crm.audit.reported",
+    "crm.cost.reviewed",
+    "crm.metric.reviewed"
+  ]) {
     if (!workflowEventKinds.includes(eventKind)) {
       throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
     }
@@ -1349,6 +1431,12 @@ try {
     memory_promotion_core_owner: memoryPromotion.executor_result.outputs.core_promotion_owner,
     memory_promotion_promoted_artifacts: memoryPromotedArtifactCount,
     memory_promotion_promoted_events: memoryPromotedEventCount,
+    observability_status: observabilityInspection.status,
+    observability_promotion_status: observabilityInspection.promotion.status,
+    observability_cost_total_usd: observabilityInspection.executor_result.outputs.cost_total_usd,
+    observability_inspection_status: observabilityInspection.executor_result.outputs.inspection_status,
+    observability_promoted_artifacts: observabilityPromotedArtifactCount,
+    observability_promoted_events: observabilityPromotedEventCount,
     relationship_timeline_status: relationshipTimeline.status,
     relationship_timeline_promotion_status: relationshipTimeline.promotion.status,
     relationship_timeline_pipeline_stage: relationshipTimeline.executor_result.outputs.pipeline_stage,

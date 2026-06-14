@@ -55,6 +55,10 @@ function numberFrom(value, fallback = 0) {
   return fallback;
 }
 
+function roundCurrency(value) {
+  return Math.round(numberFrom(value, 0) * 100) / 100;
+}
+
 function textIncludes(value, patterns) {
   const text = String(value || "").toLowerCase();
   return patterns.some((pattern) => text.includes(pattern));
@@ -802,6 +806,164 @@ export function buildMemoryPromotionCandidateResult(request) {
         to_scope: toScope,
         approved_by: approvedBy,
         approval_required: true
+      }
+    ],
+    context_tenant: context.tenant || tenantId
+  };
+}
+
+export function buildObservabilityInspectorResult(request) {
+  const input = dispatchPayload(request);
+  const context = providedContext(request);
+  const tenantId = input.tenant_id || input.tenant_context?.tenant_id || input.tenant_context?.id || context.tenant || "default";
+  const workflowState = asObject(input.workflow_state ?? input.workflow);
+  const workflowId = String(workflowState.workflow_id || input.workflow_id || dispatchEnvelope(request).workflow_id || "crm.operational.observability");
+  const taskRef = dispatchEnvelope(request).task_ref || `observability-${slug(workflowId, "workflow")}`;
+  const eventTimeline = asArray(input.event_timeline ?? input.events).map((event, index) => ({
+    sequence: numberFrom(asObject(event).sequence, index + 1),
+    ...asObject(event)
+  }));
+  const artifactLineage = asArray(input.artifact_lineage ?? input.lineage).map((lineage) => asObject(lineage));
+  const costEntries = asArray(input.cost_entries ?? input.costs).map((entry) => ({
+    ...asObject(entry),
+    amount_usd: roundCurrency(asObject(entry).amount_usd ?? asObject(entry).cost_usd ?? asObject(entry).amount)
+  }));
+  const metricSamples = asArray(input.metric_samples ?? input.metrics).map((metric) => asObject(metric));
+  const logEntries = asArray(input.log_entries ?? input.logs).map((log) => asObject(log));
+  const costTotal = roundCurrency(costEntries.reduce((total, entry) => total + numberFrom(entry.amount_usd, 0), 0));
+  const lineageEdges = artifactLineage.map((lineage) => ({
+    artifact_id: lineage.artifact_id || lineage.id || "artifact-unknown",
+    artifact_kind: lineage.kind || lineage.artifact_kind || "artifact",
+    produced_by: lineage.produced_by || lineage.runtime_contract_id || lineage.source_contract || "forge_runtime",
+    source_event_ids: asArray(lineage.source_event_ids ?? lineage.events),
+    source_artifact_ids: asArray(lineage.source_artifact_ids ?? lineage.sources)
+  }));
+  const costByContract = costEntries.reduce((totals, entry) => {
+    const contractId = String(entry.runtime_contract_id || entry.contract_id || "unknown_contract");
+    totals[contractId] = roundCurrency((totals[contractId] || 0) + numberFrom(entry.amount_usd, 0));
+    return totals;
+  }, {});
+  const warningLogs = logEntries.filter((entry) => textIncludes(entry.level, ["warn", "error"]) || textIncludes(entry.severity, ["warn", "error"]));
+  const inspectionStatus = warningLogs.length > 0 || eventTimeline.length === 0 ? "attention_required" : "observed";
+  const lineage = {
+    workflow_id: workflowId,
+    task_ref: taskRef,
+    source_contract: "crm.observability.inspector.executor",
+    tenant_id: tenantId
+  };
+
+  return {
+    schema_version: "forge.addon_executor_result.v1",
+    status: "completed",
+    task_ref: taskRef,
+    summary: `CRM observability inspection for ${workflowId} produced audit, lineage, cost and metric artifacts`,
+    outputs: {
+      tenant_id: tenantId,
+      workflow_id: workflowId,
+      workflow_status: workflowState.status || "unknown",
+      workflow_revision: workflowState.revision ?? null,
+      inspection_status: inspectionStatus,
+      audit_event_count: eventTimeline.length,
+      lineage_edge_count: lineageEdges.length,
+      cost_total_usd: costTotal,
+      metric_count: metricSamples.length,
+      log_count: logEntries.length,
+      warning_log_count: warningLogs.length,
+      mutates_crm_state: false,
+      forge_event_sourced: true,
+      state_source: "forge_observability_state"
+    },
+    artifacts: [
+      {
+        kind: "crm_audit_report",
+        id: `crm-audit-report-${slug(workflowId, "workflow")}`,
+        title: `CRM audit report for ${workflowId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          workflow_id: workflowId,
+          workflow_state: workflowState,
+          events: eventTimeline,
+          log_summary: {
+            log_count: logEntries.length,
+            warning_log_count: warningLogs.length
+          },
+          lineage,
+          state_owner: "forge_workflow_runtime",
+          external_database_required: false
+        }
+      },
+      {
+        kind: "crm_lineage_map",
+        id: `crm-lineage-map-${slug(workflowId, "workflow")}`,
+        title: `CRM lineage map for ${workflowId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          workflow_id: workflowId,
+          edges: lineageEdges,
+          event_ids: eventTimeline.map((event) => event.id || event.event_id).filter(Boolean),
+          lineage,
+          source: "forge.workflow.artifacts"
+        }
+      },
+      {
+        kind: "crm_cost_report",
+        id: `crm-cost-report-${slug(workflowId, "workflow")}`,
+        title: `CRM cost report for ${workflowId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          workflow_id: workflowId,
+          total_usd: costTotal,
+          by_runtime_contract: costByContract,
+          entries: costEntries,
+          lineage,
+          source: "forge.cost.events"
+        }
+      },
+      {
+        kind: "crm_metric_snapshot",
+        id: `crm-metric-snapshot-${slug(workflowId, "workflow")}`,
+        title: `CRM metric snapshot for ${workflowId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          workflow_id: workflowId,
+          metrics: metricSamples,
+          logs: logEntries,
+          waiting_states: asArray(workflowState.waiting_states),
+          inspection_status: inspectionStatus,
+          lineage,
+          source: "forge.metrics.logs"
+        }
+      }
+    ],
+    events: [
+      {
+        kind: "crm.observability.inspected",
+        tenant_id: tenantId,
+        workflow_id: workflowId,
+        inspection_status: inspectionStatus
+      },
+      {
+        kind: "crm.audit.reported",
+        tenant_id: tenantId,
+        workflow_id: workflowId,
+        event_count: eventTimeline.length
+      },
+      {
+        kind: "crm.cost.reviewed",
+        tenant_id: tenantId,
+        workflow_id: workflowId,
+        total_usd: costTotal
+      },
+      {
+        kind: "crm.metric.reviewed",
+        tenant_id: tenantId,
+        workflow_id: workflowId,
+        metric_count: metricSamples.length,
+        log_count: logEntries.length
       }
     ],
     context_tenant: context.tenant || tenantId
@@ -2676,6 +2838,8 @@ export function executeCrmRuntimeRequest(request) {
       return buildOperatingCopilotResult(request);
     case "forge_crm.prepare_memory_promotion":
       return buildMemoryPromotionCandidateResult(request);
+    case "forge_crm.inspect_observability":
+      return buildObservabilityInspectorResult(request);
     case "forge_crm.generate_proposal":
       return buildProposalGeneratorResult(request);
     case "forge_crm.review_followup_forecast":

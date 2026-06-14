@@ -112,6 +112,26 @@ test("AI automation workflow prepares governed memory promotion through Forge", 
   assert.ok(pack.indexes.runtime_contracts.includes("crm.memory.promotion.executor"));
 });
 
+test("operational observability workflow inspects audit lineage cost metrics and logs through Forge", () => {
+  const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
+  const workflow = pack.workflows.find((candidate) => candidate.id === "crm.operational.observability");
+
+  assert.ok(workflow);
+  assert.equal(workflow.domain, "operations");
+  assert.ok(workflow.runtime_contracts.includes("crm.observability.inspector.executor"));
+
+  for (const artifact of ["crm_audit_report", "crm_lineage_map", "crm_cost_report", "crm_metric_snapshot"]) {
+    assert.ok(workflow.artifacts.includes(artifact), `missing observability artifact ${artifact}`);
+  }
+
+  for (const event of ["crm.observability.inspected", "crm.audit.reported", "crm.cost.reviewed", "crm.metric.reviewed"]) {
+    assert.ok(workflow.events.includes(event), `missing observability event ${event}`);
+  }
+
+  assert.ok(workflow.validation_gates.includes("audit lineage cost metrics and logs sourced from Forge"));
+  assert.ok(pack.indexes.runtime_contracts.includes("crm.observability.inspector.executor"));
+});
+
 test("relationship and pipeline workflows route timeline updates through Forge", () => {
   const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
 

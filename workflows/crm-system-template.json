@@ -128,6 +128,29 @@
         "executor policy",
         "cost and evidence observability"
       ]
+    },
+    {
+      "id": "observability",
+      "title": "Operational Observability",
+      "workflow_extensions": [
+        "crm_operational_observability"
+      ],
+      "objects": [
+        "audit_report",
+        "lineage_map",
+        "cost_report",
+        "metric_snapshot",
+        "event_timeline",
+        "log_entry",
+        "state_inspection"
+      ],
+      "forge_requirements": [
+        "audit events",
+        "artifact lineage",
+        "cost visibility",
+        "metrics and logs",
+        "state inspection"
+      ]
     }
   ],
   "core_gap_policy": {
@@ -150,4 +173,3 @@
     "rule": "Do not patch these categories locally in the CRM Addon. Promote them to forge-core implementation work."
   }
 }
-

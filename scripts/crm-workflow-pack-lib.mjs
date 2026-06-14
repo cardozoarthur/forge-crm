@@ -300,6 +300,32 @@ const WORKFLOWS = [
     validation_gates: ["approval actor recorded", "approval decision lineage recorded", "lineage points to Forge artifact"]
   },
   {
+    id: "crm.operational.observability",
+    title: "Operational observability, audit and lineage",
+    domain: "operations",
+    workflow_extension_id: "crm_operational_observability",
+    object_types: ["audit", "lineage", "cost", "event", "log", "metric", "state_inspection"],
+    states: ["inspection_requested", "context_collected", "audit_reported", "risk_review_wait", "remediation_started", "closed"],
+    transitions: [
+      ["inspection_requested", "context_collected", "Forge observability context collected"],
+      ["context_collected", "audit_reported", "audit, lineage, cost and metric artifacts attached"],
+      ["audit_reported", "risk_review_wait", "attention required by warning logs or missing events"],
+      ["risk_review_wait", "remediation_started", "owner action started through Forge workflow"],
+      ["audit_reported", "closed", "inspection accepted"]
+    ],
+    runtime_contracts: ["crm.observability.inspector.executor"],
+    artifacts: ["crm_audit_report", "crm_lineage_map", "crm_cost_report", "crm_metric_snapshot"],
+    events: ["crm.observability.inspected", "crm.audit.reported", "crm.cost.reviewed", "crm.metric.reviewed"],
+    memory_scopes: ["organization", "project"],
+    permissions: ["crm.observability.inspect"],
+    views: ["crm.system-map"],
+    validation_gates: [
+      "audit lineage cost metrics and logs sourced from Forge",
+      "inspection does not create CRM-local observability state",
+      "remediation requires Forge workflow mutation"
+    ]
+  },
+  {
     id: "crm.ai.copilot.recommendation",
     title: "Specialized CRM copilots and risk analysis",
     domain: "ai_automation",

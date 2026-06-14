@@ -178,6 +178,15 @@ function actions() {
       command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.tenant.bootstrap.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
     },
     {
+      id: "crm.inspect-observability",
+      label: "Inspect observability",
+      surface_id: "crm.system-map",
+      contract_id: "crm.observability.inspector.executor",
+      requires_permission: "crm.observability.inspect",
+      mutates_workflow: true,
+      command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.observability.inspector.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
+    },
+    {
       id: "crm.record-relationship-event",
       label: "Record relationship event",
       surface_id: "crm.relationship-graph",

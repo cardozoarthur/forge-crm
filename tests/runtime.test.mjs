@@ -334,6 +334,71 @@ test("memory promotion executor prepares governed Forge memory promotion request
   assert.ok(result.events.some((event) => event.kind === "crm.memory.promotion_requested"));
 });
 
+test("observability inspector reports audit lineage cost metrics and logs from Forge state", () => {
+  assert.equal(typeof runtime.buildObservabilityInspectorResult, "function");
+
+  const result = runtime.buildObservabilityInspectorResult(
+    workerRequest(
+      "forge_crm.inspect_observability",
+      {
+        tenant_context: { tenant_id: "demo" },
+        workflow_state: {
+          workflow_id: "crm.opportunity.pipeline",
+          status: "running",
+          revision: 12,
+          waiting_states: ["approval_wait"]
+        },
+        event_timeline: [
+          { id: "evt-1", kind: "crm.opportunity.stage_changed", sequence: 1 },
+          { id: "evt-2", kind: "crm.forecast.updated", sequence: 2 }
+        ],
+        artifact_lineage: [
+          {
+            artifact_id: "forecast-001",
+            kind: "crm_forecast_report",
+            produced_by: "crm.pipeline.stage_move.executor",
+            source_event_ids: ["evt-2"]
+          }
+        ],
+        cost_entries: [
+          { runtime_contract_id: "crm.pipeline.stage_move.executor", amount_usd: 0.42 },
+          { runtime_contract_id: "crm.ai.operating_copilot.executor", amount_usd: 1.15 }
+        ],
+        metric_samples: [
+          { name: "cycle_time_minutes", value: 38 },
+          { name: "sla_breach_count", value: 1 }
+        ],
+        log_entries: [
+          { level: "info", message: "stage moved through Forge runtime" },
+          { level: "warn", message: "approval wait is open" }
+        ]
+      },
+      { contract_id: "crm.observability.inspector.executor", task_ref: "observability-test" }
+    )
+  );
+
+  assert.equal(result.schema_version, "forge.addon_executor_result.v1");
+  assert.equal(result.status, "completed");
+  assert.equal(result.outputs.tenant_id, "demo");
+  assert.equal(result.outputs.workflow_id, "crm.opportunity.pipeline");
+  assert.equal(result.outputs.audit_event_count, 2);
+  assert.equal(result.outputs.lineage_edge_count, 1);
+  assert.equal(result.outputs.cost_total_usd, 1.57);
+  assert.equal(result.outputs.metric_count, 2);
+  assert.equal(result.outputs.log_count, 2);
+  assert.equal(result.outputs.mutates_crm_state, false);
+  assert.equal(result.outputs.forge_event_sourced, true);
+  assert.equal(result.outputs.state_source, "forge_observability_state");
+
+  for (const kind of ["crm_audit_report", "crm_lineage_map", "crm_cost_report", "crm_metric_snapshot"]) {
+    assert.ok(result.artifacts.some((artifact) => artifact.kind === kind), `missing artifact ${kind}`);
+  }
+
+  for (const kind of ["crm.observability.inspected", "crm.audit.reported", "crm.cost.reviewed", "crm.metric.reviewed"]) {
+    assert.ok(result.events.some((event) => event.kind === kind), `missing event ${kind}`);
+  }
+});
+
 test("proposal generator emits a draft proposal artifact gated by Forge approval", () => {
   const result = buildProposalGeneratorResult(
     workerRequest("forge_crm.generate_proposal", {

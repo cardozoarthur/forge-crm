@@ -95,6 +95,23 @@
         "project",
         "processing"
       ]
+    },
+    {
+      "id": "crm.observability.inspect",
+      "description": "Inspect CRM audit, lineage, costs, events, logs, metrics and workflow state through Forge observability.",
+      "risk": "medium",
+      "requires_human_approval": false,
+      "actions": [
+        "read_events",
+        "read_artifacts",
+        "read_costs",
+        "read_metrics",
+        "attach_artifact"
+      ],
+      "tenant_scopes": [
+        "organization",
+        "project"
+      ]
     }
   ],
   "capabilities": [
@@ -414,6 +431,48 @@
       "view_ids": [
         "crm.ai-workbench"
       ]
+    },
+    {
+      "id": "crm_observability",
+      "title": "CRM operational observability",
+      "description": "Audit, lineage, costs, events, logs, metrics and state inspection as Forge-owned CRM workflow artifacts.",
+      "domains": [
+        "crm",
+        "operations",
+        "observability"
+      ],
+      "keywords": [
+        "audit",
+        "lineage",
+        "cost",
+        "events",
+        "logs",
+        "metrics",
+        "state inspection"
+      ],
+      "requires_capabilities": [
+        "workflow_runtime",
+        "event_engine",
+        "observability"
+      ],
+      "workflow_extensions": [
+        "crm_operational_observability"
+      ],
+      "deliverables": [
+        "CRM audit report",
+        "CRM lineage map",
+        "CRM cost report",
+        "CRM metric snapshot"
+      ],
+      "artifact_types": [
+        "crm_audit_report",
+        "crm_lineage_map",
+        "crm_cost_report",
+        "crm_metric_snapshot"
+      ],
+      "view_ids": [
+        "crm.system-map"
+      ]
     }
   ],
   "workflows": [
@@ -486,6 +545,11 @@
       "id": "crm_document_approval",
       "kind": "approval_workflow",
       "description": "Manage CRM document queues, approvals and audit trail."
+    },
+    {
+      "id": "crm_operational_observability",
+      "kind": "observability_workflow",
+      "description": "Inspect CRM audit, lineage, costs, events, logs, metrics and state from Forge-owned runtime evidence."
     },
     {
       "id": "crm_ai_copilot_recommendation",
@@ -657,6 +721,38 @@
         "memory promotion preparation does not write memory directly",
         "actual promotion must be executed by forge memory promote with approval and lineage",
         "raw private processing memory must be summarized before organization or global sharing"
+      ]
+    },
+    {
+      "id": "crm.observability.inspector.executor",
+      "title": "CRM observability inspector",
+      "contract_type": "executor",
+      "capability_id": "crm_observability",
+      "workflow_extension_id": "crm_operational_observability",
+      "runtime": "external_api",
+      "entrypoint": "forge_crm.inspect_observability",
+      "inputs": [
+        "workflow_state",
+        "event_timeline",
+        "artifact_lineage",
+        "cost_entries",
+        "metric_samples",
+        "log_entries",
+        "tenant_context"
+      ],
+      "outputs": [
+        "crm_audit_report",
+        "crm_lineage_map",
+        "crm_cost_report",
+        "crm_metric_snapshot"
+      ],
+      "permissions": [
+        "crm.observability.inspect"
+      ],
+      "constraints": [
+        "observability inspection is derived from Forge workflow artifacts, events, costs, metrics and logs",
+        "observability inspection does not create CRM-local observability state",
+        "remediation from observations must be promoted through Forge workflow mutation or approval"
       ]
     },
     {
@@ -1505,6 +1601,26 @@
       "generic_kind": "artifact"
     },
     {
+      "id": "crm_audit_report",
+      "title": "CRM audit report",
+      "generic_kind": "report"
+    },
+    {
+      "id": "crm_lineage_map",
+      "title": "CRM lineage map",
+      "generic_kind": "artifact"
+    },
+    {
+      "id": "crm_cost_report",
+      "title": "CRM cost report",
+      "generic_kind": "report"
+    },
+    {
+      "id": "crm_metric_snapshot",
+      "title": "CRM metric snapshot",
+      "generic_kind": "report"
+    },
+    {
       "id": "crm_ai_recommendation",
       "title": "CRM AI recommendation",
       "generic_kind": "artifact"
@@ -1594,6 +1710,26 @@
     {
       "id": "crm.memory",
       "title": "CRM memory event",
+      "transport": "crm"
+    },
+    {
+      "id": "crm.observability",
+      "title": "CRM observability event",
+      "transport": "crm"
+    },
+    {
+      "id": "crm.audit",
+      "title": "CRM audit event",
+      "transport": "crm"
+    },
+    {
+      "id": "crm.cost",
+      "title": "CRM cost event",
+      "transport": "crm"
+    },
+    {
+      "id": "crm.metric",
+      "title": "CRM metric event",
       "transport": "crm"
     },
     {
