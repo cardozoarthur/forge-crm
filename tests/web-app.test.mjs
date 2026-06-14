@@ -92,6 +92,7 @@ test("web app snapshot provides Forge command actions instead of local automatio
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.ai.operating_copilot.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.workflow.evolution.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.enterprise.journey.executor"));
+  assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.workflow.subworkflow_orchestrator.executor"));
 });
 
 test("web app snapshot exposes relationship profile enrichment in the relationship graph", () => {
@@ -367,6 +368,28 @@ test("web app snapshot exposes an enterprise journey workbench for end-to-end CR
   assert.equal(action.contract_id, "crm.enterprise.journey.executor");
 });
 
+test("web app snapshot exposes CRM subworkflow orchestration through Forge child workflow bindings", () => {
+  const snapshot = buildCrmWebAppSnapshot({ tenant_id: "demo" });
+  const workbench = snapshot.subworkflow_orchestration_workbench;
+
+  assert.ok(workbench);
+  assert.equal(workbench.schema_version, "forge.crm_subworkflow_orchestration_workbench.v1");
+  assert.equal(workbench.state_owner, "forge_workflow_runtime");
+  assert.equal(workbench.local_state_allowed, false);
+  assert.equal(workbench.workflow_id, "crm.subworkflow.orchestration");
+  assert.equal(workbench.contract_id, "crm.workflow.subworkflow_orchestrator.executor");
+  assert.equal(workbench.action_id, "crm.orchestrate-subworkflows");
+  assert.equal(workbench.parent_workflow_id, "crm.enterprise.customer_journey");
+  assert.ok(workbench.child_bindings.length >= 4);
+  assert.ok(workbench.child_bindings.every((binding) => binding.validation_gate));
+  assert.ok(workbench.promotion_gates.every((gate) => gate.owner === "Forge validation"));
+
+  const action = snapshot.actions.find((candidate) => candidate.id === "crm.orchestrate-subworkflows");
+  assert.ok(action);
+  assert.equal(action.contract_id, "crm.workflow.subworkflow_orchestrator.executor");
+  assert.equal(action.requires_permission, "crm.workflow.mutate");
+});
+
 test("web assets mount the generated CRM snapshot without a build step", async () => {
   const html = await readFile(new URL("../web/index.html", import.meta.url), "utf8");
   const app = await readFile(new URL("../web/app.js", import.meta.url), "utf8");
@@ -392,6 +415,7 @@ test("web assets mount the generated CRM snapshot without a build step", async (
   assert.match(app, /renderWorkflowCadences/);
   assert.match(app, /renderWorkflowEvolutionWorkbench/);
   assert.match(app, /renderEnterpriseJourneyWorkbench/);
+  assert.match(app, /renderSubworkflowOrchestrationWorkbench/);
   assert.match(styles, /\.workflow-node/);
   assert.match(styles, /\.relationship-profile/);
   assert.match(styles, /\.knowledge-node/);
@@ -406,6 +430,7 @@ test("web assets mount the generated CRM snapshot without a build step", async (
   assert.match(styles, /\.cadence-row/);
   assert.match(styles, /\.evolution-workbench/);
   assert.match(styles, /\.journey-workbench/);
+  assert.match(styles, /\.subworkflow-workbench/);
   assert.match(favicon, /<svg/);
 });
 

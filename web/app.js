@@ -617,6 +617,40 @@ export function renderEnterpriseJourneyWorkbench(snapshot) {
   return section;
 }
 
+export function renderSubworkflowOrchestrationWorkbench(snapshot) {
+  const workbench = snapshot.subworkflow_orchestration_workbench;
+  const section = nodeElement("section", "panel subworkflow-workbench");
+  section.dataset.surfacePanel = "crm.system-map";
+  section.append(nodeElement("h2", "", "Subworkflow Orchestration"));
+  if (!workbench) {
+    section.append(nodeElement("p", "muted-copy", "Subworkflow orchestration unavailable in this snapshot."));
+    return section;
+  }
+
+  section.append(nodeElement("p", "panel-source", `${workbench.parent_workflow_id} · ${workbench.contract_id}`));
+
+  const bindings = nodeElement("div", "subworkflow-bindings");
+  for (const binding of workbench.child_bindings) {
+    const item = nodeElement("article", "subworkflow-binding");
+    item.append(nodeElement("strong", "", binding.child_workflow_id));
+    item.append(nodeElement("span", "", `${binding.child_task_id} · ${binding.lifecycle_state}`));
+    item.append(nodeElement("code", "", binding.validation_gate));
+    item.title = binding.artifact_types.join(", ");
+    bindings.append(item);
+  }
+
+  const gates = nodeElement("div", "subworkflow-gates");
+  for (const gate of workbench.promotion_gates) {
+    const item = nodeElement("article", "subworkflow-gate");
+    item.append(nodeElement("strong", "", gate.title));
+    item.append(nodeElement("span", "", gate.owner));
+    gates.append(item);
+  }
+
+  section.append(bindings, gates);
+  return section;
+}
+
 function renderModuleBoard(snapshot) {
   const section = nodeElement("section", "panel module-panel");
   section.append(nodeElement("h2", "", "Business Modules"));
@@ -717,6 +751,7 @@ function render(snapshot) {
   workspace.append(renderWorkflowCadences(snapshot));
   workspace.append(renderWorkflowEvolutionWorkbench(snapshot));
   workspace.append(renderEnterpriseJourneyWorkbench(snapshot));
+  workspace.append(renderSubworkflowOrchestrationWorkbench(snapshot));
   workspace.append(renderWorkflowGraph(snapshot));
   workspace.append(renderModuleBoard(snapshot));
   workspace.append(renderKnowledgeGraph(snapshot));

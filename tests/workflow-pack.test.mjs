@@ -571,6 +571,43 @@ test("workflow evolution loop turns CRM bottlenecks into governed Forge experime
   assert.ok(pack.indexes.runtime_contracts.includes("crm.workflow.evolution.executor"));
 });
 
+test("subworkflow orchestration composes CRM child workflows through Forge lineage", () => {
+  const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
+  const workflow = pack.workflows.find((candidate) => candidate.id === "crm.subworkflow.orchestration");
+  const journey = pack.workflows.find((candidate) => candidate.id === "crm.enterprise.customer_journey");
+
+  assert.ok(workflow);
+  assert.equal(workflow.workflow_extension_id, "crm_subworkflow_orchestration");
+  assert.equal(workflow.domain, "operations");
+  for (const objectType of ["parent_workflow", "child_workflow", "subworkflow_binding", "validation_gate"]) {
+    assert.ok(workflow.object_types.includes(objectType), `missing object type ${objectType}`);
+  }
+  assert.ok(workflow.runtime_contracts.includes("crm.workflow.subworkflow_orchestrator.executor"));
+  assert.ok(workflow.runtime_contracts.includes("crm.observability.inspector.executor"));
+
+  for (const workflowId of [
+    "crm.opportunity.pipeline",
+    "crm.proposal.approval",
+    "crm.document.approval",
+    "crm.ticket.sla",
+    "crm.project.handoff"
+  ]) {
+    assert.ok(workflow.depends_on_workflows.includes(workflowId), `missing subworkflow dependency ${workflowId}`);
+  }
+
+  for (const artifact of ["crm_subworkflow_plan", "crm_subworkflow_lineage_map", "crm_subworkflow_validation_report"]) {
+    assert.ok(workflow.artifacts.includes(artifact), `missing subworkflow artifact ${artifact}`);
+    assert.ok(pack.indexes.artifact_types.includes(artifact), `missing indexed subworkflow artifact ${artifact}`);
+  }
+  for (const event of ["crm.subworkflow.bound", "crm.subworkflow.validated", "crm.subworkflow.promoted"]) {
+    assert.ok(workflow.events.includes(event), `missing subworkflow event ${event}`);
+  }
+
+  assert.ok(workflow.validation_gates.includes("child subworkflows are validated before parent journey promotion"));
+  assert.ok(pack.indexes.runtime_contracts.includes("crm.workflow.subworkflow_orchestrator.executor"));
+  assert.ok(journey.depends_on_workflows.includes("crm.subworkflow.orchestration"));
+});
+
 test("enterprise customer journey proves the CRM can operate one full company lifecycle through Forge", () => {
   const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
   const workflow = pack.workflows.find((candidate) => candidate.id === "crm.enterprise.customer_journey");

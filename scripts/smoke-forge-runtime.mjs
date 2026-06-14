@@ -84,6 +84,7 @@ try {
       "forge_crm.operating_copilot",
       "forge_crm.run_area_copilot",
       "forge_crm.orchestrate_work_queue",
+      "forge_crm.orchestrate_subworkflows",
       "forge_crm.generate_design_system",
       "forge_crm.prepare_memory_promotion",
       "forge_crm.evolve_workflow",
@@ -120,6 +121,7 @@ try {
       "crm.ai.operating_copilot.executor",
       "crm.ai.area_copilot.executor",
       "crm.queue.orchestrator.executor",
+      "crm.workflow.subworkflow_orchestrator.executor",
       "crm.design_system.executor",
       "crm.memory.promotion.executor",
       "crm.workflow.evolution.executor",
@@ -493,6 +495,91 @@ try {
   }
   if (workQueue.executor_result.outputs.risk_item_count < 3) {
     throw new Error(`expected work queue risk items, got ${workQueue.executor_result.outputs.risk_item_count}`);
+  }
+
+  const subworkflowOrchestration = runForge([
+    "addons",
+    "execute-executor",
+    "--addon-dir",
+    "addons",
+    "--addon",
+    "forge.addon.crm",
+    "--contract",
+    "crm.workflow.subworkflow_orchestrator.executor",
+    "--worker",
+    workerId,
+    "--task",
+    "crm-smoke-subworkflow-orchestration",
+    "--workflow",
+    workflowId,
+    "--input",
+    JSON.stringify({
+      tenant_context: { id: "smoke", tenant_id: "smoke" },
+      parent_workflow: {
+        id: "crm.enterprise.customer_journey",
+        run_id: "run-smoke-journey",
+        goal: "Operate Example Logistics through Forge CRM child workflows"
+      },
+      subworkflow_bindings: [
+        {
+          id: "subflow-smoke-pipeline",
+          workflow_id: "crm.opportunity.pipeline",
+          task_id: "stage-negotiation",
+          validation_gate: "stage change has forecast artifact",
+          artifact_refs: ["crm_pipeline_board:pipeline-smoke"],
+          event_refs: ["crm.opportunity.stage_changed"]
+        },
+        {
+          id: "subflow-smoke-document",
+          workflow_id: "crm.document.approval",
+          task_id: "approve-proposal",
+          validation_gate: "document approval artifact is attached",
+          artifact_refs: ["crm_approval_record:approval-smoke"],
+          event_refs: ["crm.document.approved"]
+        },
+        {
+          id: "subflow-smoke-support",
+          workflow_id: "crm.ticket.sla",
+          task_id: "triage-sla",
+          validation_gate: "SLA event is promoted",
+          artifact_refs: ["crm_support_summary:ticket-smoke-001"],
+          event_refs: ["crm.sla.escalated"]
+        },
+        {
+          id: "subflow-smoke-handoff",
+          workflow_id: "crm.project.handoff",
+          task_id: "handoff-delivery",
+          validation_gate: "handoff owner is assigned",
+          artifact_refs: ["crm_project_plan:project-smoke"],
+          event_refs: ["crm.project.handoff_requested"]
+        }
+      ],
+      handoff_policy: {
+        promote_parent_only_after_children_validated: true,
+        require_lineage_hash: true,
+        owner: "forge"
+      }
+    }),
+    "--context",
+    JSON.stringify({ tenant: "smoke" }),
+    "--output",
+    "json"
+  ]);
+
+  if (subworkflowOrchestration.promotion?.status !== "addon_executor_result_promoted") {
+    throw new Error(
+      `expected subworkflow orchestration promotion, got ${subworkflowOrchestration.promotion?.status || "missing"}`
+    );
+  }
+  if (subworkflowOrchestration.executor_result.outputs.orchestration_state !== "validation_ready") {
+    throw new Error(
+      `expected subworkflow orchestration validation_ready, got ${subworkflowOrchestration.executor_result.outputs.orchestration_state}`
+    );
+  }
+  if (subworkflowOrchestration.executor_result.outputs.validated_subworkflow_count !== 4) {
+    throw new Error(
+      `expected 4 validated subworkflows, got ${subworkflowOrchestration.executor_result.outputs.validated_subworkflow_count}`
+    );
   }
 
   const designSystem = runForge([
@@ -1923,6 +2010,8 @@ try {
   const areaCopilotPromotedEventCount = areaCopilot.promotion?.event_count ?? 0;
   const workQueuePromotedArtifactCount = workQueue.promotion?.artifact_count ?? 0;
   const workQueuePromotedEventCount = workQueue.promotion?.event_count ?? 0;
+  const subworkflowPromotedArtifactCount = subworkflowOrchestration.promotion?.artifact_count ?? 0;
+  const subworkflowPromotedEventCount = subworkflowOrchestration.promotion?.event_count ?? 0;
   const designSystemPromotedArtifactCount = designSystem.promotion?.artifact_count ?? 0;
   const designSystemPromotedEventCount = designSystem.promotion?.event_count ?? 0;
   const memoryPromotedArtifactCount = memoryPromotion.promotion?.artifact_count ?? 0;
@@ -2022,6 +2111,16 @@ try {
     );
   }
   for (const eventKind of ["crm.queue.snapshot_generated", "crm.queue.assignment_planned", "crm.queue.risk_flagged"]) {
+    if (!workflowEventKinds.includes(eventKind)) {
+      throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
+    }
+  }
+  if (subworkflowPromotedArtifactCount < 3 || subworkflowPromotedEventCount < 3) {
+    throw new Error(
+      `expected promoted subworkflow artifacts/events, got artifacts=${subworkflowPromotedArtifactCount} events=${subworkflowPromotedEventCount}`
+    );
+  }
+  for (const eventKind of ["crm.subworkflow.bound", "crm.subworkflow.validated", "crm.subworkflow.promoted"]) {
     if (!workflowEventKinds.includes(eventKind)) {
       throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
     }
@@ -2436,6 +2535,14 @@ try {
     work_queue_risk_item_count: workQueue.executor_result.outputs.risk_item_count,
     work_queue_promoted_artifacts: workQueuePromotedArtifactCount,
     work_queue_promoted_events: workQueuePromotedEventCount,
+    subworkflow_orchestration_status: subworkflowOrchestration.status,
+    subworkflow_orchestration_promotion_status: subworkflowOrchestration.promotion.status,
+    subworkflow_orchestration_state: subworkflowOrchestration.executor_result.outputs.orchestration_state,
+    subworkflow_orchestration_validated_count: subworkflowOrchestration.executor_result.outputs.validated_subworkflow_count,
+    subworkflow_orchestration_promote_parent_allowed:
+      subworkflowOrchestration.executor_result.outputs.promote_parent_allowed,
+    subworkflow_orchestration_promoted_artifacts: subworkflowPromotedArtifactCount,
+    subworkflow_orchestration_promoted_events: subworkflowPromotedEventCount,
     design_system_status: designSystem.status,
     design_system_promotion_status: designSystem.promotion.status,
     design_system_component_count: designSystem.executor_result.outputs.component_count,

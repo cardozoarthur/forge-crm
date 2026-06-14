@@ -824,8 +824,14 @@ h3 {
   border-left: 4px solid #126c55;
 }
 
+.subworkflow-workbench {
+  border-left: 4px solid #285f9d;
+}
+
 .journey-lanes,
-.journey-gates {
+.journey-gates,
+.subworkflow-bindings,
+.subworkflow-gates {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 8px;
@@ -833,7 +839,9 @@ h3 {
 }
 
 .journey-lane,
-.journey-gate {
+.journey-gate,
+.subworkflow-binding,
+.subworkflow-gate {
   display: grid;
   gap: 6px;
   min-height: 112px;
@@ -844,10 +852,18 @@ h3 {
 }
 
 .journey-lane strong,
-.journey-gate strong {
+.journey-gate strong,
+.subworkflow-binding strong,
+.subworkflow-gate strong {
   color: #1d2428;
   font-size: 0.9rem;
   line-height: 1.25;
+}
+
+.subworkflow-binding code {
+  color: #285f9d;
+  font-size: 0.74rem;
+  overflow-wrap: anywhere;
 }
 
 .journey-lane span,

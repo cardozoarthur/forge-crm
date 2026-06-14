@@ -6,9 +6,9 @@
   "addon_name": "Forge CRM",
   "addon_version": "0.1.0",
   "manifest_path": "addons/forge-crm.json",
-  "manifest_sha256": "c78e4b63ec2b4a591e2dd371f118646ee6d432716027f214e431cceb73a00be8",
-  "manifest_canonical_sha256": "34347703263cce297c8f7039222501a4fef846df26647770277c47bb70c7e15b",
-  "manifest_bytes": 107982,
+  "manifest_sha256": "c1aedf50640518339bd2f3d5de803dc93c9e2507ec19959b1606d0142a0366fc",
+  "manifest_canonical_sha256": "38d7df902c5194c92fc3b97d74f40aae336adf9003c5dac97e93ef4f9d8a33b7",
+  "manifest_bytes": 111278,
   "distribution": {
     "repository": "https://github.com/cardozoarthur/forge-crm",
     "channel": "stable",
@@ -23,15 +23,15 @@
     "scheme": "ed25519_detached",
     "signature": "",
     "public_key": "",
-    "payload_sha256": "843c5d6612444cd08b5e81da2d0ce23285f3823524c4bf779e2b3f3320ec956c",
+    "payload_sha256": "0bd60c1000d53dc859a7145350396b261eb32dc80953a998735235c91cd9a938",
     "verification_note": "package records detached signature metadata; trust verification is a marketplace policy gate"
   },
   "summary": {
     "capability_count": 9,
     "dependency_count": 1,
     "permission_count": 5,
-    "workflow_extension_count": 27,
-    "runtime_contract_count": 34,
+    "workflow_extension_count": 28,
+    "runtime_contract_count": 35,
     "view_count": 11,
     "event_adapter_count": 2,
     "integration_count": 4,
@@ -69,6 +69,7 @@
       "crm.memory.promotion.executor",
       "crm.workflow.evolution.executor",
       "crm.enterprise.journey.executor",
+      "crm.workflow.subworkflow_orchestrator.executor",
       "crm.observability.inspector.executor",
       "crm.operating.readiness.executor",
       "crm.tenant.bootstrap.executor",
@@ -297,11 +298,13 @@
           "crm_workflow_factory_system_bootstrap",
           "crm_enterprise_readiness",
           "crm_enterprise_customer_journey",
+          "crm_subworkflow_orchestration",
           "crm_workflow_evolution"
         ],
         "deliverables": [
           "CRM system blueprint",
           "workflow-backed entity model",
+          "CRM subworkflow orchestration plan",
           "CRM operating readiness package",
           "Forge Core gap report"
         ],
@@ -328,6 +331,9 @@
           "crm_enterprise_journey_map",
           "crm_operating_acceptance_evidence",
           "crm_cross_domain_handoff_map",
+          "crm_subworkflow_plan",
+          "crm_subworkflow_lineage_map",
+          "crm_subworkflow_validation_report",
           "crm_workflow_evolution_plan",
           "crm_evolution_experiment",
           "crm_benchmark_report",
@@ -580,14 +586,16 @@
           "crm_project_handoff",
           "crm_document_approval",
           "crm_document_library",
-          "crm_work_queue_orchestration"
+          "crm_work_queue_orchestration",
+          "crm_subworkflow_orchestration"
         ],
         "deliverables": [
           "Handoff workflow",
           "Approval queue",
           "Document audit trail",
           "Document library",
-          "Cross-domain work queue"
+          "Cross-domain work queue",
+          "Subworkflow orchestration"
         ],
         "constraints": [],
         "risks": [],
@@ -605,7 +613,10 @@
           "crm_handoff_record",
           "crm_work_queue_snapshot",
           "crm_queue_assignment_plan",
-          "crm_queue_sla_risk_report"
+          "crm_queue_sla_risk_report",
+          "crm_subworkflow_plan",
+          "crm_subworkflow_lineage_map",
+          "crm_subworkflow_validation_report"
         ],
         "view_ids": [
           "crm.document-queue",
@@ -876,6 +887,11 @@
         "id": "crm_enterprise_customer_journey",
         "kind": "operations_workflow",
         "description": "Package a full lead-to-support customer lifecycle as Forge workflow acceptance evidence."
+      },
+      {
+        "id": "crm_subworkflow_orchestration",
+        "kind": "operations_workflow",
+        "description": "Bind, validate and promote CRM child workflows through Forge child_subflows and lineage artifacts."
       },
       {
         "id": "crm_workflow_evolution",
@@ -1229,6 +1245,35 @@
           "main flow must stay Forge-owned from lead capture through support and handoff",
           "enterprise journey acceptance does not create CRM-local persistence",
           "every required stage must have Forge artifact and event evidence before operable status"
+        ]
+      },
+      {
+        "id": "crm.workflow.subworkflow_orchestrator.executor",
+        "title": "CRM subworkflow orchestrator",
+        "contract_type": "executor",
+        "capability_id": "crm_workflow_factory",
+        "workflow_extension_id": "crm_subworkflow_orchestration",
+        "runtime": "external_api",
+        "entrypoint": "forge_crm.orchestrate_subworkflows",
+        "inputs": [
+          "parent_workflow",
+          "subworkflow_bindings",
+          "handoff_policy",
+          "tenant_context"
+        ],
+        "outputs": [
+          "crm_subworkflow_plan",
+          "crm_subworkflow_lineage_map",
+          "crm_subworkflow_validation_report"
+        ],
+        "permissions": [
+          "crm.workflow.mutate",
+          "crm.observability.inspect"
+        ],
+        "constraints": [
+          "subworkflow orchestration must use Forge child_subflows and workflow lineage",
+          "orchestrator does not execute child workflows outside Forge",
+          "parent workflow promotion waits for validated child workflow gates"
         ]
       },
       {
@@ -2852,6 +2897,50 @@
               "stage_evidence",
               "acceptance_policy"
             ]
+          },
+          {
+            "id": "crm.tui.orchestrate-subworkflows",
+            "label": "Orchestrate subworkflows",
+            "description": "Bind and validate CRM child workflows before parent journey promotion.",
+            "palette_group": "CRM",
+            "source_panel": "crm.operational-cockpit",
+            "type": "command",
+            "target": "forge addons execute-executor",
+            "method": "CLI",
+            "permission": "crm.workflow.mutate",
+            "requires_confirmation": true,
+            "risk_level": "high",
+            "mutates_workflow": true,
+            "command_template": [
+              "addons",
+              "execute-executor",
+              "--addon",
+              "forge.addon.crm",
+              "--contract",
+              "crm.workflow.subworkflow_orchestrator.executor",
+              "--worker",
+              "<worker-id>",
+              "--task",
+              "<task-ref>",
+              "--input",
+              "<json>",
+              "--context",
+              "<json>",
+              "--output",
+              "json"
+            ],
+            "keywords": [
+              "crm",
+              "workflow",
+              "subworkflow",
+              "lineage"
+            ],
+            "payload_schema": [
+              "parent_workflow",
+              "subworkflow_bindings",
+              "handoff_policy",
+              "tenant_context"
+            ]
           }
         ],
         "permissions": [
@@ -3372,6 +3461,21 @@
         "id": "crm_cross_domain_handoff_map",
         "title": "CRM cross-domain handoff map",
         "generic_kind": "artifact"
+      },
+      {
+        "id": "crm_subworkflow_plan",
+        "title": "CRM subworkflow plan",
+        "generic_kind": "artifact"
+      },
+      {
+        "id": "crm_subworkflow_lineage_map",
+        "title": "CRM subworkflow lineage map",
+        "generic_kind": "artifact"
+      },
+      {
+        "id": "crm_subworkflow_validation_report",
+        "title": "CRM subworkflow validation report",
+        "generic_kind": "report"
       }
     ],
     "event_types": [
@@ -3518,6 +3622,11 @@
       {
         "id": "crm.journey",
         "title": "CRM enterprise journey event",
+        "transport": "crm"
+      },
+      {
+        "id": "crm.subworkflow",
+        "title": "CRM subworkflow event",
         "transport": "crm"
       },
       {

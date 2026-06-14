@@ -313,7 +313,8 @@ test("operating readiness maps Forge evidence into user-facing CRM deliverables"
             "marketing automation",
             "document approvals",
             "project handoff",
-            "enterprise customer journey"
+            "enterprise customer journey",
+            "subworkflow orchestration"
           ]
         },
         operating_snapshot: {
@@ -334,8 +335,8 @@ test("operating readiness maps Forge evidence into user-facing CRM deliverables"
   assert.equal(result.status, "completed");
   assert.equal(result.outputs.tenant_id, "demo");
   assert.equal(result.outputs.success_criteria_status, "operable_with_evidence");
-  assert.equal(result.outputs.user_facing_deliverable_count, 8);
-  assert.equal(result.outputs.ready_domain_count, 8);
+  assert.equal(result.outputs.user_facing_deliverable_count, 9);
+  assert.equal(result.outputs.ready_domain_count, 9);
   assert.equal(result.outputs.forge_only_operations, true);
   assert.equal(result.outputs.main_flow_dependency_external, false);
   assert.equal(result.outputs.mutates_crm_state, false);
@@ -350,6 +351,11 @@ test("operating readiness maps Forge evidence into user-facing CRM deliverables"
     assert.ok(result.artifacts.some((artifact) => artifact.kind === artifactKind), `missing readiness artifact ${artifactKind}`);
   }
 
+  const outcomeManifest = result.artifacts.find((artifact) => artifact.kind === "crm_user_outcome_manifest");
+  assert.ok(
+    outcomeManifest.data.outcomes.some((outcome) => outcome.deliverable === "subworkflow orchestration"),
+    "missing subworkflow orchestration user outcome"
+  );
   assert.ok(result.events.some((event) => event.kind === "crm.operating.readiness_reported"));
   assert.ok(result.events.some((event) => event.kind === "crm.outcome.deliverables_mapped"));
 });
@@ -900,6 +906,75 @@ test("enterprise journey executor packages a full lead-to-support CRM operation 
   assert.ok(result.events.some((event) => event.kind === "crm.journey.started"));
   assert.ok(result.events.some((event) => event.kind === "crm.journey.stage_completed"));
   assert.ok(result.events.some((event) => event.kind === "crm.journey.acceptance_reported"));
+});
+
+test("subworkflow orchestrator binds and validates child workflows without local state", () => {
+  assert.equal(typeof runtime.buildSubworkflowOrchestrationResult, "function");
+
+  const result = runtime.buildSubworkflowOrchestrationResult(
+    workerRequest(
+      "forge_crm.orchestrate_subworkflows",
+      {
+        tenant_context: { tenant_id: "demo" },
+        parent_workflow: {
+          id: "crm.enterprise.customer_journey",
+          run_id: "run-journey-001",
+          goal: "Operate Acme from opportunity to support handoff"
+        },
+        subworkflow_bindings: [
+          {
+            id: "subflow-pipeline",
+            workflow_id: "crm.opportunity.pipeline",
+            task_id: "stage-negotiation",
+            validation_gate: "stage change has forecast artifact"
+          },
+          {
+            id: "subflow-document",
+            workflow_id: "crm.document.approval",
+            task_id: "approve-proposal",
+            validation_gate: "document approval artifact is attached"
+          },
+          {
+            id: "subflow-support",
+            workflow_id: "crm.ticket.sla",
+            task_id: "triage-sla",
+            validation_gate: "SLA event is promoted"
+          },
+          {
+            id: "subflow-handoff",
+            workflow_id: "crm.project.handoff",
+            task_id: "handoff-delivery",
+            validation_gate: "handoff owner is assigned"
+          }
+        ],
+        handoff_policy: {
+          promote_parent_only_after_children_validated: true,
+          require_lineage_hash: true,
+          owner: "forge"
+        }
+      },
+      { contract_id: "crm.workflow.subworkflow_orchestrator.executor", task_ref: "subworkflow-orchestration-test" }
+    )
+  );
+
+  assert.equal(result.schema_version, "forge.addon_executor_result.v1");
+  assert.equal(result.status, "completed");
+  assert.equal(result.outputs.tenant_id, "demo");
+  assert.equal(result.outputs.workflow_id, "crm.subworkflow.orchestration");
+  assert.equal(result.outputs.parent_workflow_id, "crm.enterprise.customer_journey");
+  assert.equal(result.outputs.child_subworkflow_count, 4);
+  assert.equal(result.outputs.validated_subworkflow_count, 4);
+  assert.equal(result.outputs.orchestration_state, "validation_ready");
+  assert.equal(result.outputs.promote_parent_allowed, true);
+  assert.equal(result.outputs.mutates_crm_state, false);
+  assert.equal(result.outputs.forge_event_sourced, true);
+
+  for (const artifactKind of ["crm_subworkflow_plan", "crm_subworkflow_lineage_map", "crm_subworkflow_validation_report"]) {
+    assert.ok(result.artifacts.some((artifact) => artifact.kind === artifactKind), `missing ${artifactKind}`);
+  }
+  assert.ok(result.events.some((event) => event.kind === "crm.subworkflow.bound"));
+  assert.ok(result.events.some((event) => event.kind === "crm.subworkflow.validated"));
+  assert.ok(result.events.some((event) => event.kind === "crm.subworkflow.promoted"));
 });
 
 test("observability inspector reports audit lineage cost metrics and logs from Forge state", () => {

@@ -23,11 +23,11 @@
     "external_delivery_requires_approval": true
   },
   "metrics": {
-    "workflow_count": 24,
+    "workflow_count": 25,
     "business_module_count": 7,
     "surface_count": 10,
-    "artifact_type_count": 70,
-    "event_type_count": 83,
+    "artifact_type_count": 73,
+    "event_type_count": 86,
     "complete_scope": true
   },
   "surfaces": [
@@ -44,6 +44,7 @@
         "crm.design.system",
         "crm.operational.observability",
         "crm.enterprise.readiness",
+        "crm.subworkflow.orchestration",
         "crm.enterprise.customer_journey",
         "crm.workflow.evolution"
       ],
@@ -69,6 +70,11 @@
         "evidence_mapped",
         "readiness_reported",
         "operable",
+        "parent_selected",
+        "children_bound",
+        "lineage_mapped",
+        "validation_ready",
+        "parent_promoted",
         "lead_capture",
         "opportunity",
         "proposal",
@@ -103,6 +109,9 @@
         "crm_promotion_decision",
         "crm_queue_assignment_plan",
         "crm_queue_sla_risk_report",
+        "crm_subworkflow_lineage_map",
+        "crm_subworkflow_plan",
+        "crm_subworkflow_validation_report",
         "crm_ui_component_catalog",
         "crm_user_outcome_manifest",
         "crm_work_queue_snapshot",
@@ -127,7 +136,10 @@
         "crm.outcome.deliverables_mapped",
         "crm.queue.assignment_planned",
         "crm.queue.risk_flagged",
-        "crm.queue.snapshot_generated"
+        "crm.queue.snapshot_generated",
+        "crm.subworkflow.bound",
+        "crm.subworkflow.promoted",
+        "crm.subworkflow.validated"
       ],
       "mutation_requires_forge": true
     },
@@ -555,7 +567,8 @@
       "permission": "crm.workflow.mutate",
       "state_source": "forge_workflow_artifacts_and_events",
       "workflow_ids": [
-        "crm.work.queue.orchestration"
+        "crm.work.queue.orchestration",
+        "crm.subworkflow.orchestration"
       ],
       "lanes": [
         "queue_snapshot_requested",
@@ -564,17 +577,29 @@
         "approval_wait",
         "work_in_progress",
         "risk_review_wait",
-        "closed"
+        "closed",
+        "parent_selected",
+        "children_bound",
+        "lineage_mapped",
+        "validation_ready",
+        "parent_promoted",
+        "rework_required"
       ],
       "artifact_types": [
         "crm_queue_assignment_plan",
         "crm_queue_sla_risk_report",
+        "crm_subworkflow_lineage_map",
+        "crm_subworkflow_plan",
+        "crm_subworkflow_validation_report",
         "crm_work_queue_snapshot"
       ],
       "event_types": [
         "crm.queue.assignment_planned",
         "crm.queue.risk_flagged",
-        "crm.queue.snapshot_generated"
+        "crm.queue.snapshot_generated",
+        "crm.subworkflow.bound",
+        "crm.subworkflow.promoted",
+        "crm.subworkflow.validated"
       ],
       "mutation_requires_forge": true
     },
@@ -919,6 +944,7 @@
         "crm.work.queue.orchestration",
         "crm.operational.observability",
         "crm.enterprise.readiness",
+        "crm.subworkflow.orchestration",
         "crm.enterprise.customer_journey"
       ],
       "artifact_types": [
@@ -949,6 +975,9 @@
         "crm_renewal_plan",
         "crm_report",
         "crm_signature_receipt",
+        "crm_subworkflow_lineage_map",
+        "crm_subworkflow_plan",
+        "crm_subworkflow_validation_report",
         "crm_task_plan",
         "crm_user_outcome_manifest",
         "crm_work_queue_snapshot"
@@ -983,6 +1012,9 @@
         "crm.queue.assignment_planned",
         "crm.queue.risk_flagged",
         "crm.queue.snapshot_generated",
+        "crm.subworkflow.bound",
+        "crm.subworkflow.promoted",
+        "crm.subworkflow.validated",
         "crm.task.blocked",
         "crm.task.created"
       ],
@@ -993,6 +1025,7 @@
         "approval decision lineage recorded",
         "audit lineage cost metrics and logs sourced from Forge",
         "blocked reason explicit",
+        "child subworkflows are validated before parent journey promotion",
         "contract approval lineage present",
         "cross-domain handoffs preserve workflow and artifact lineage",
         "document library state is represented by Forge artifacts and events",
@@ -1004,12 +1037,14 @@
         "main CRM flow has no external system dependency",
         "owner visible",
         "ownership gaps and SLA risks are returned to work before closure",
+        "parent workflow promotion is blocked while any child validation gate fails",
         "queue actions require Forge workflow approval before mutation",
         "readiness evidence sourced from Forge workflows artifacts events and validation gates",
         "remediation requires Forge workflow mutation",
         "renewal state explicit",
         "rework reason recorded before any operable claim",
         "signature receipt attached",
+        "subworkflow lineage cites child workflow artifacts and events",
         "success criteria mapped to user-facing deliverables",
         "version promotion waits for Forge approval evidence"
       ]
@@ -1979,6 +2014,44 @@
         ]
       },
       {
+        "id": "crm.subworkflow.orchestration",
+        "title": "CRM subworkflow orchestration",
+        "domain": "operations",
+        "state_count": 6,
+        "states": [
+          "parent_selected",
+          "children_bound",
+          "lineage_mapped",
+          "validation_ready",
+          "parent_promoted",
+          "rework_required"
+        ],
+        "wait_states": [],
+        "runtime_contracts": [
+          "crm.workflow.subworkflow_orchestrator.executor",
+          "crm.observability.inspector.executor"
+        ],
+        "artifact_types": [
+          "crm_subworkflow_plan",
+          "crm_subworkflow_lineage_map",
+          "crm_subworkflow_validation_report"
+        ],
+        "event_types": [
+          "crm.subworkflow.bound",
+          "crm.subworkflow.validated",
+          "crm.subworkflow.promoted"
+        ],
+        "surface_ids": [
+          "crm.system-map",
+          "crm.work-queue"
+        ],
+        "validation_gates": [
+          "child subworkflows are validated before parent journey promotion",
+          "subworkflow lineage cites child workflow artifacts and events",
+          "parent workflow promotion is blocked while any child validation gate fails"
+        ]
+      },
+      {
         "id": "crm.enterprise.customer_journey",
         "title": "Enterprise customer journey acceptance",
         "domain": "operations",
@@ -1997,6 +2070,7 @@
         "wait_states": [],
         "runtime_contracts": [
           "crm.enterprise.journey.executor",
+          "crm.workflow.subworkflow_orchestrator.executor",
           "crm.marketing.form_capture.executor",
           "crm.pipeline.stage_move.executor",
           "crm.proposal.generator.executor",
@@ -3225,7 +3299,8 @@
         "state_source": "forge_workflow_artifacts_and_events",
         "mutation_requires_forge": true,
         "workflow_ids": [
-          "crm.work.queue.orchestration"
+          "crm.work.queue.orchestration",
+          "crm.subworkflow.orchestration"
         ],
         "action_ids": [
           "crm.run-work-queue",
@@ -3752,6 +3827,113 @@
       }
     ]
   },
+  "subworkflow_orchestration_workbench": {
+    "schema_version": "forge.crm_subworkflow_orchestration_workbench.v1",
+    "workflow_id": "crm.subworkflow.orchestration",
+    "workflow_extension_id": "crm_subworkflow_orchestration",
+    "state_owner": "forge_workflow_runtime",
+    "state_source": "forge_child_subflows_and_workflow_events",
+    "local_state_allowed": false,
+    "action_id": "crm.orchestrate-subworkflows",
+    "contract_id": "crm.workflow.subworkflow_orchestrator.executor",
+    "parent_workflow_id": "crm.enterprise.customer_journey",
+    "child_bindings": [
+      {
+        "id": "subflow-pipeline",
+        "child_workflow_id": "crm.opportunity.pipeline",
+        "child_task_id": "stage-negotiation",
+        "validation_gate": "stage change has forecast artifact",
+        "artifact_types": [
+          "crm_pipeline_board",
+          "crm_forecast_report"
+        ],
+        "parent_workflow_id": "crm.enterprise.customer_journey",
+        "owner": "forge_workflow_runtime",
+        "lifecycle_state": "validated"
+      },
+      {
+        "id": "subflow-document",
+        "child_workflow_id": "crm.document.approval",
+        "child_task_id": "approve-proposal",
+        "validation_gate": "document approval artifact is attached",
+        "artifact_types": [
+          "crm_approval_record",
+          "crm_handoff_record"
+        ],
+        "parent_workflow_id": "crm.enterprise.customer_journey",
+        "owner": "forge_workflow_runtime",
+        "lifecycle_state": "validated"
+      },
+      {
+        "id": "subflow-support",
+        "child_workflow_id": "crm.ticket.sla",
+        "child_task_id": "triage-sla",
+        "validation_gate": "SLA event is promoted",
+        "artifact_types": [
+          "crm_support_summary",
+          "crm_handoff_record"
+        ],
+        "parent_workflow_id": "crm.enterprise.customer_journey",
+        "owner": "forge_workflow_runtime",
+        "lifecycle_state": "validated"
+      },
+      {
+        "id": "subflow-handoff",
+        "child_workflow_id": "crm.project.handoff",
+        "child_task_id": "handoff-delivery",
+        "validation_gate": "handoff owner is assigned",
+        "artifact_types": [
+          "crm_project_plan",
+          "crm_task_plan"
+        ],
+        "parent_workflow_id": "crm.enterprise.customer_journey",
+        "owner": "forge_workflow_runtime",
+        "lifecycle_state": "validated"
+      }
+    ],
+    "promotion_gates": [
+      {
+        "id": "child_lineage_mapped",
+        "title": "Every child workflow has artifact and event lineage",
+        "owner": "Forge validation",
+        "required": true
+      },
+      {
+        "id": "children_validated_before_parent",
+        "title": "Parent workflow waits for validated child gates",
+        "owner": "Forge validation",
+        "required": true
+      },
+      {
+        "id": "no_local_child_execution",
+        "title": "No child workflow executes outside Forge",
+        "owner": "Forge validation",
+        "required": true
+      }
+    ],
+    "operation_plan": [
+      {
+        "id": "bind_child_subflows",
+        "title": "Bind CRM child workflows to the parent journey through Forge child_subflows",
+        "owner": "crm.workflow.subworkflow_orchestrator.executor"
+      },
+      {
+        "id": "map_child_lineage",
+        "title": "Map artifacts, events and validation gates for each child workflow",
+        "owner": "forge.workflow.artifacts and forge.events.timeline"
+      },
+      {
+        "id": "validate_children",
+        "title": "Block parent promotion until every child gate passes",
+        "owner": "Forge validation"
+      },
+      {
+        "id": "refresh_enterprise_journey",
+        "title": "Refresh the enterprise journey acceptance package",
+        "owner": "crm.enterprise.journey.executor"
+      }
+    ]
+  },
   "actions": [
     {
       "id": "crm.refresh-operating-snapshot",
@@ -3876,6 +4058,33 @@
         "forge.addon.crm",
         "--contract",
         "crm.enterprise.journey.executor",
+        "--worker",
+        "<worker-id>",
+        "--task",
+        "<task-ref>",
+        "--input",
+        "<json>",
+        "--context",
+        "<json>",
+        "--output",
+        "json"
+      ]
+    },
+    {
+      "id": "crm.orchestrate-subworkflows",
+      "label": "Orchestrate subworkflows",
+      "surface_id": "crm.system-map",
+      "contract_id": "crm.workflow.subworkflow_orchestrator.executor",
+      "requires_permission": "crm.workflow.mutate",
+      "mutates_workflow": true,
+      "command_template": [
+        "forge",
+        "addons",
+        "execute-executor",
+        "--addon",
+        "forge.addon.crm",
+        "--contract",
+        "crm.workflow.subworkflow_orchestrator.executor",
         "--worker",
         "<worker-id>",
         "--task",
@@ -4913,6 +5122,68 @@
             "title": "Execute runtime contract",
             "owner": "forge.addons.runtime",
             "evidence": "crm.enterprise.journey.executor"
+          },
+          {
+            "id": "promote_result_to_workflow",
+            "title": "Promote result to workflow",
+            "owner": "forge.workflow.runtime",
+            "evidence": "artifact and event promotion"
+          },
+          {
+            "id": "refresh_operating_snapshot",
+            "title": "Refresh operating snapshot",
+            "owner": "forge.addon.crm",
+            "evidence": "crm.operating.snapshot.executor"
+          }
+        ],
+        "output_policy": {
+          "promote_result_to_workflow": true,
+          "browser_local_state_write": false,
+          "refresh_source": "forge_workflow_artifacts_and_events"
+        }
+      },
+      {
+        "action_id": "crm.orchestrate-subworkflows",
+        "label": "Orchestrate subworkflows",
+        "surface_id": "crm.system-map",
+        "contract_id": "crm.workflow.subworkflow_orchestrator.executor",
+        "required_permission": "crm.workflow.mutate",
+        "selected_command": [
+          "forge",
+          "addons",
+          "execute-executor",
+          "--addon",
+          "forge.addon.crm",
+          "--contract",
+          "crm.workflow.subworkflow_orchestrator.executor",
+          "--worker",
+          "<worker-id>",
+          "--task",
+          "<task-ref>",
+          "--input",
+          "<json>",
+          "--context",
+          "<json>",
+          "--output",
+          "json"
+        ],
+        "permission_gate": {
+          "status": "requires_forge_permission",
+          "permission": "crm.workflow.mutate",
+          "approval_owner": "forge_permission_policy"
+        },
+        "operation_plan": [
+          {
+            "id": "check_addon_permission",
+            "title": "Check Addon permission",
+            "owner": "forge.permissions",
+            "evidence": "crm.workflow.mutate"
+          },
+          {
+            "id": "execute_runtime_contract",
+            "title": "Execute runtime contract",
+            "owner": "forge.addons.runtime",
+            "evidence": "crm.workflow.subworkflow_orchestrator.executor"
           },
           {
             "id": "promote_result_to_workflow",

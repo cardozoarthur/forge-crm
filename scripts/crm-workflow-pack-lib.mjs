@@ -3,7 +3,18 @@ const REQUIRED_SCOPE = {
   commercial: ["proposal", "contract", "signature", "follow_up", "forecast", "goal", "commission", "account_management"],
   support: ["ticket", "sla", "chat", "whatsapp", "telegram", "email", "omnichannel_center", "approved_channel_adapter", "message_normalization"],
   marketing: ["campaign", "segmentation", "automation", "landing_page", "form", "lead_nurturing"],
-  operations: ["project", "task", "approval", "document", "internal_flow", "team_handoff", "work_queue", "ownership", "waiting_state"],
+  operations: [
+    "project",
+    "task",
+    "approval",
+    "document",
+    "internal_flow",
+    "team_handoff",
+    "work_queue",
+    "ownership",
+    "waiting_state",
+    "subworkflow"
+  ],
   user_experience: ["tui", "web_interface", "workflow_visualization", "knowledge_graph", "document_management", "design_system", "design_tokens"],
   ai_automation: [
     "lead_classification",
@@ -672,6 +683,41 @@ const WORKFLOWS = [
     ]
   },
   {
+    id: "crm.subworkflow.orchestration",
+    title: "CRM subworkflow orchestration",
+    domain: "operations",
+    workflow_extension_id: "crm_subworkflow_orchestration",
+    object_types: ["subworkflow", "parent_workflow", "child_workflow", "subworkflow_binding", "validation_gate", "lineage_map"],
+    states: ["parent_selected", "children_bound", "lineage_mapped", "validation_ready", "parent_promoted", "rework_required"],
+    transitions: [
+      ["parent_selected", "children_bound", "child workflow bindings attached"],
+      ["children_bound", "lineage_mapped", "child artifact and event lineage mapped"],
+      ["lineage_mapped", "validation_ready", "validation gates pass for every child workflow"],
+      ["validation_ready", "parent_promoted", "parent workflow promotion allowed"],
+      ["lineage_mapped", "rework_required", "missing child lineage or validation gate"],
+      ["rework_required", "children_bound", "child workflow binding corrected"]
+    ],
+    runtime_contracts: ["crm.workflow.subworkflow_orchestrator.executor", "crm.observability.inspector.executor"],
+    depends_on_workflows: [
+      "crm.opportunity.pipeline",
+      "crm.proposal.approval",
+      "crm.document.approval",
+      "crm.ticket.sla",
+      "crm.project.handoff",
+      "crm.work.queue.orchestration"
+    ],
+    artifacts: ["crm_subworkflow_plan", "crm_subworkflow_lineage_map", "crm_subworkflow_validation_report"],
+    events: ["crm.subworkflow.bound", "crm.subworkflow.validated", "crm.subworkflow.promoted"],
+    memory_scopes: ["organization", "project", "processing"],
+    permissions: ["crm.workflow.mutate", "crm.observability.inspect"],
+    views: ["crm.system-map", "crm.work-queue"],
+    validation_gates: [
+      "child subworkflows are validated before parent journey promotion",
+      "subworkflow lineage cites child workflow artifacts and events",
+      "parent workflow promotion is blocked while any child validation gate fails"
+    ]
+  },
+  {
     id: "crm.enterprise.customer_journey",
     title: "Enterprise customer journey acceptance",
     domain: "operations",
@@ -700,6 +746,7 @@ const WORKFLOWS = [
     ],
     runtime_contracts: [
       "crm.enterprise.journey.executor",
+      "crm.workflow.subworkflow_orchestrator.executor",
       "crm.marketing.form_capture.executor",
       "crm.pipeline.stage_move.executor",
       "crm.proposal.generator.executor",
@@ -714,6 +761,7 @@ const WORKFLOWS = [
       "crm.proposal.approval",
       "crm.contract.signature",
       "crm.account.management",
+      "crm.subworkflow.orchestration",
       "crm.ticket.sla",
       "crm.project.handoff"
     ],

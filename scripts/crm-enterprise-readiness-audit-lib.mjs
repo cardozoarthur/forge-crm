@@ -55,6 +55,13 @@ const USER_FACING_DELIVERABLES = [
     workflow_ids: ["crm.enterprise.customer_journey"]
   },
   {
+    id: "subworkflow_orchestration",
+    title: "Subworkflow orchestration",
+    domain: "operations",
+    surface_id: "crm.system-map",
+    workflow_ids: ["crm.subworkflow.orchestration", "crm.enterprise.customer_journey"]
+  },
+  {
     id: "design_system",
     title: "Design system",
     domain: "user_experience",
@@ -274,7 +281,9 @@ function coreRequirementAudit(pack, model) {
     ownership: pack.workflows.every((workflow) => workflow.forge_state_owner === "forge_workflow"),
     waiting_states: workflowStates.some((state) => state.includes("wait")),
     approvals: workflowStates.includes("approval_wait") && contracts.has("crm.document.approval.executor"),
-    subworkflows: pack.workflows.some((workflow) => workflow.id === "crm.project.handoff"),
+    subworkflows:
+      pack.workflows.some((workflow) => workflow.id === "crm.project.handoff") &&
+      pack.workflows.some((workflow) => workflow.id === "crm.subworkflow.orchestration"),
     schedules: pack.workflows.some((workflow) => workflow.id === "crm.followup.forecast" || workflow.id === "crm.lead.nurture"),
     triggers: asArray(manifest.event_triggers).length > 0 || asArray(manifest.event_listeners).length > 0,
     graph_execution: model.operator_surfaces.system_map.surface_type === "graph",

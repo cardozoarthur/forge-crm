@@ -1131,6 +1131,103 @@ function enterpriseJourneyWorkbench(workflows, actionList) {
   };
 }
 
+function subworkflowOrchestrationWorkbench(workflows, actionList) {
+  const actionById = new Map(actionList.map((action) => [action.id, action]));
+  const action = actionById.get("crm.orchestrate-subworkflows");
+  const workflow = workflows.find((candidate) => candidate.id === "crm.subworkflow.orchestration");
+  const parentWorkflowId = "crm.enterprise.customer_journey";
+  const childBindings = [
+    {
+      id: "subflow-pipeline",
+      child_workflow_id: "crm.opportunity.pipeline",
+      child_task_id: "stage-negotiation",
+      validation_gate: "stage change has forecast artifact",
+      artifact_types: ["crm_pipeline_board", "crm_forecast_report"]
+    },
+    {
+      id: "subflow-document",
+      child_workflow_id: "crm.document.approval",
+      child_task_id: "approve-proposal",
+      validation_gate: "document approval artifact is attached",
+      artifact_types: ["crm_approval_record", "crm_handoff_record"]
+    },
+    {
+      id: "subflow-support",
+      child_workflow_id: "crm.ticket.sla",
+      child_task_id: "triage-sla",
+      validation_gate: "SLA event is promoted",
+      artifact_types: ["crm_support_summary", "crm_handoff_record"]
+    },
+    {
+      id: "subflow-handoff",
+      child_workflow_id: "crm.project.handoff",
+      child_task_id: "handoff-delivery",
+      validation_gate: "handoff owner is assigned",
+      artifact_types: ["crm_project_plan", "crm_task_plan"]
+    }
+  ];
+
+  return {
+    schema_version: "forge.crm_subworkflow_orchestration_workbench.v1",
+    workflow_id: workflow?.id || "crm.subworkflow.orchestration",
+    workflow_extension_id: workflow?.workflow_extension_id || "crm_subworkflow_orchestration",
+    state_owner: "forge_workflow_runtime",
+    state_source: "forge_child_subflows_and_workflow_events",
+    local_state_allowed: false,
+    action_id: action?.id || "crm.orchestrate-subworkflows",
+    contract_id: action?.contract_id || "crm.workflow.subworkflow_orchestrator.executor",
+    parent_workflow_id: parentWorkflowId,
+    child_bindings: childBindings.map((binding) => ({
+      ...binding,
+      parent_workflow_id: parentWorkflowId,
+      owner: "forge_workflow_runtime",
+      lifecycle_state: "validated"
+    })),
+    promotion_gates: [
+      {
+        id: "child_lineage_mapped",
+        title: "Every child workflow has artifact and event lineage",
+        owner: "Forge validation",
+        required: true
+      },
+      {
+        id: "children_validated_before_parent",
+        title: "Parent workflow waits for validated child gates",
+        owner: "Forge validation",
+        required: true
+      },
+      {
+        id: "no_local_child_execution",
+        title: "No child workflow executes outside Forge",
+        owner: "Forge validation",
+        required: true
+      }
+    ],
+    operation_plan: [
+      {
+        id: "bind_child_subflows",
+        title: "Bind CRM child workflows to the parent journey through Forge child_subflows",
+        owner: "crm.workflow.subworkflow_orchestrator.executor"
+      },
+      {
+        id: "map_child_lineage",
+        title: "Map artifacts, events and validation gates for each child workflow",
+        owner: "forge.workflow.artifacts and forge.events.timeline"
+      },
+      {
+        id: "validate_children",
+        title: "Block parent promotion until every child gate passes",
+        owner: "Forge validation"
+      },
+      {
+        id: "refresh_enterprise_journey",
+        title: "Refresh the enterprise journey acceptance package",
+        owner: "crm.enterprise.journey.executor"
+      }
+    ]
+  };
+}
+
 function actions() {
   return [
     {
@@ -1195,6 +1292,15 @@ function actions() {
       requires_permission: "crm.workflow.mutate",
       mutates_workflow: true,
       command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.enterprise.journey.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
+    },
+    {
+      id: "crm.orchestrate-subworkflows",
+      label: "Orchestrate subworkflows",
+      surface_id: "crm.system-map",
+      contract_id: "crm.workflow.subworkflow_orchestrator.executor",
+      requires_permission: "crm.workflow.mutate",
+      mutates_workflow: true,
+      command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.workflow.subworkflow_orchestrator.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
     },
     {
       id: "crm.record-relationship-event",
@@ -1717,6 +1823,7 @@ export function buildCrmWebAppSnapshot(options = {}) {
     operational_workbench: buildOperationalWorkbench(workflows, actionList, documentQueueSnapshot),
     workflow_evolution_workbench: workflowEvolutionWorkbench(workflows, actionList),
     enterprise_journey_workbench: enterpriseJourneyWorkbench(workflows, actionList),
+    subworkflow_orchestration_workbench: subworkflowOrchestrationWorkbench(workflows, actionList),
     actions: actionList,
     action_invocation_plans: actionInvocationPlans(actionList),
     workflow_cadences: workflowCadences(workflows, actionList),

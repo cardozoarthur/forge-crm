@@ -382,6 +382,36 @@ test("manifest exposes enterprise journey execution as a Forge-owned CRM accepta
   assert.ok(eventTypes.has("crm.journey"));
 });
 
+test("manifest exposes CRM subworkflow orchestration as a Forge-owned runtime contract", () => {
+  const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.workflow.subworkflow_orchestrator.executor");
+  assert.ok(contract);
+  assert.equal(contract.contract_type, "executor");
+  assert.equal(contract.capability_id, "crm_workflow_factory");
+  assert.equal(contract.workflow_extension_id, "crm_subworkflow_orchestration");
+  assert.equal(contract.entrypoint, "forge_crm.orchestrate_subworkflows");
+  assert.deepEqual(contract.permissions, ["crm.workflow.mutate", "crm.observability.inspect"]);
+
+  for (const input of ["parent_workflow", "subworkflow_bindings", "handoff_policy", "tenant_context"]) {
+    assert.ok(contract.inputs.includes(input), `missing subworkflow orchestration input ${input}`);
+  }
+  for (const output of ["crm_subworkflow_plan", "crm_subworkflow_lineage_map", "crm_subworkflow_validation_report"]) {
+    assert.ok(contract.outputs.includes(output), `missing subworkflow orchestration output ${output}`);
+  }
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("Forge child_subflows")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("does not execute child workflows outside Forge")));
+
+  const workflowExtensionIds = new Set(manifest.workflows.map((extension) => extension.id));
+  assert.ok(workflowExtensionIds.has("crm_subworkflow_orchestration"));
+
+  const artifactTypes = new Set(manifest.artifact_types.map((artifact) => artifact.id));
+  for (const artifactType of ["crm_subworkflow_plan", "crm_subworkflow_lineage_map", "crm_subworkflow_validation_report"]) {
+    assert.ok(artifactTypes.has(artifactType), `missing artifact type ${artifactType}`);
+  }
+
+  const eventTypes = new Set(manifest.event_types.map((eventType) => eventType.id));
+  assert.ok(eventTypes.has("crm.subworkflow"));
+});
+
 test("manifest exposes CRM pipeline stage movement as a Forge-owned executor", () => {
   const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.pipeline.stage_move.executor");
   assert.ok(contract);
@@ -805,6 +835,7 @@ test("manifest exposes a Forge TUI operational cockpit with permission-gated CRM
     "crm.tui.run-operating-copilot",
     "crm.tui.run-area-copilot",
     "crm.tui.run-work-queue",
+    "crm.tui.orchestrate-subworkflows",
     "crm.tui.generate-design-system",
     "crm.tui.generate-readiness-package"
   ]) {
@@ -842,6 +873,7 @@ test("CRM scope is workflow-backed across core business areas", () => {
     "crm_document_approval",
     "crm_document_library",
     "crm_omnichannel_center",
+    "crm_subworkflow_orchestration",
     "crm_ai_copilot_recommendation"
   ]) {
     assert.ok(workflowIds.has(workflowId), `missing workflow ${workflowId}`);

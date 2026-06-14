@@ -2054,6 +2054,150 @@ export function buildEnterpriseJourneyResult(request) {
   };
 }
 
+export function buildSubworkflowOrchestrationResult(request) {
+  const input = dispatchPayload(request);
+  const context = providedContext(request);
+  const tenantId = input.tenant_id || input.tenant_context?.tenant_id || input.tenant_context?.id || context.tenant || "default";
+  const taskRef = dispatchEnvelope(request).task_ref || `subworkflow-orchestration-${slug(tenantId, "tenant")}`;
+  const parent = asObject(input.parent_workflow ?? input.parent);
+  const parentWorkflowId = String(parent.id || parent.workflow_id || "crm.enterprise.customer_journey");
+  const handoffPolicy = asObject(input.handoff_policy ?? input.policy);
+  const bindings = asArray(input.subworkflow_bindings ?? input.child_workflows ?? input.bindings).map((binding, index) => {
+    const source = asObject(binding);
+    const workflowId = String(source.workflow_id || source.child_workflow_id || `crm.child.workflow.${index + 1}`);
+    const taskId = String(source.task_id || source.child_task_id || `child-task-${index + 1}`);
+    const validationGate = String(source.validation_gate || source.gate || "child workflow validation gate required");
+    const hasLineage = asArray(source.artifact_refs).length > 0 || asArray(source.event_refs).length > 0 || Boolean(validationGate);
+    return {
+      binding_id: String(source.id || source.binding_id || `subflow-${index + 1}`),
+      parent_workflow_id: parentWorkflowId,
+      child_workflow_id: workflowId,
+      child_task_id: taskId,
+      validation_gate: validationGate,
+      artifact_refs: asArray(source.artifact_refs),
+      event_refs: asArray(source.event_refs),
+      lifecycle_state: source.lifecycle_state || "validated",
+      lineage_hash: `lineage-${slug(parentWorkflowId, "parent")}-${slug(workflowId, `child-${index + 1}`)}`,
+      valid: hasLineage && validationGate.length > 0,
+      state_owner: "forge_workflow_runtime"
+    };
+  });
+  const validBindings = bindings.filter((binding) => binding.valid);
+  const promoteParentAllowed = Boolean(handoffPolicy.promote_parent_only_after_children_validated ?? true)
+    ? validBindings.length === bindings.length && bindings.length > 0
+    : validBindings.length > 0;
+  const orchestrationState = promoteParentAllowed ? "validation_ready" : "rework_required";
+  const workflowId = "crm.subworkflow.orchestration";
+  const lineage = {
+    workflow_id: workflowId,
+    task_ref: taskRef,
+    source_contract: "crm.workflow.subworkflow_orchestrator.executor",
+    tenant_id: tenantId,
+    parent_workflow_id: parentWorkflowId,
+    parent_run_id: parent.run_id || null
+  };
+
+  return {
+    schema_version: "forge.addon_executor_result.v1",
+    status: "completed",
+    task_ref: taskRef,
+    summary: `CRM subworkflow orchestration bound ${bindings.length} child workflows for ${parentWorkflowId}`,
+    outputs: {
+      tenant_id: tenantId,
+      workflow_id: workflowId,
+      parent_workflow_id: parentWorkflowId,
+      child_subworkflow_count: bindings.length,
+      validated_subworkflow_count: validBindings.length,
+      orchestration_state: orchestrationState,
+      promote_parent_allowed: promoteParentAllowed,
+      mutates_crm_state: false,
+      forge_event_sourced: true
+    },
+    artifacts: [
+      {
+        kind: "crm_subworkflow_plan",
+        id: `crm-subworkflow-plan-${slug(parentWorkflowId, "parent")}`,
+        title: `CRM subworkflow plan for ${parentWorkflowId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          parent_workflow: parent,
+          child_bindings: bindings,
+          handoff_policy: handoffPolicy,
+          operation_plan: [
+            "bind child workflows through Forge child_subflows",
+            "validate child workflow artifact and event lineage",
+            "promote parent workflow only after child gates pass"
+          ],
+          state_owner: "forge_workflow_runtime",
+          local_execution_allowed: false,
+          lineage
+        }
+      },
+      {
+        kind: "crm_subworkflow_lineage_map",
+        id: `crm-subworkflow-lineage-${slug(parentWorkflowId, "parent")}`,
+        title: `CRM subworkflow lineage map for ${parentWorkflowId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          parent_workflow_id: parentWorkflowId,
+          child_lineage: bindings.map((binding) => ({
+            binding_id: binding.binding_id,
+            child_workflow_id: binding.child_workflow_id,
+            child_task_id: binding.child_task_id,
+            lineage_hash: binding.lineage_hash,
+            artifact_refs: binding.artifact_refs,
+            event_refs: binding.event_refs
+          })),
+          lineage
+        }
+      },
+      {
+        kind: "crm_subworkflow_validation_report",
+        id: `crm-subworkflow-validation-${slug(parentWorkflowId, "parent")}`,
+        title: `CRM subworkflow validation report for ${parentWorkflowId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          parent_workflow_id: parentWorkflowId,
+          orchestration_state: orchestrationState,
+          promote_parent_allowed: promoteParentAllowed,
+          child_subworkflow_count: bindings.length,
+          validated_subworkflow_count: validBindings.length,
+          failed_bindings: bindings.filter((binding) => !binding.valid).map((binding) => binding.binding_id),
+          validation_policy: "child subworkflows are validated before parent journey promotion",
+          lineage
+        }
+      }
+    ],
+    events: [
+      {
+        kind: "crm.subworkflow.bound",
+        tenant_id: tenantId,
+        workflow_id: workflowId,
+        parent_workflow_id: parentWorkflowId,
+        child_subworkflow_count: bindings.length
+      },
+      {
+        kind: "crm.subworkflow.validated",
+        tenant_id: tenantId,
+        workflow_id: workflowId,
+        parent_workflow_id: parentWorkflowId,
+        validated_subworkflow_count: validBindings.length
+      },
+      {
+        kind: "crm.subworkflow.promoted",
+        tenant_id: tenantId,
+        workflow_id: workflowId,
+        parent_workflow_id: parentWorkflowId,
+        promote_parent_allowed: promoteParentAllowed
+      }
+    ],
+    context_tenant: context.tenant || tenantId
+  };
+}
+
 export function buildObservabilityInspectorResult(request) {
   const input = dispatchPayload(request);
   const context = providedContext(request);
@@ -2268,6 +2412,14 @@ const READINESS_OUTCOME_DOMAINS = [
     workflow_ids: ["crm.enterprise.customer_journey"],
     required_artifacts: ["crm_enterprise_journey_map", "crm_operating_acceptance_evidence", "crm_cross_domain_handoff_map"],
     required_events: ["crm.journey.started", "crm.journey.acceptance_reported"]
+  },
+  {
+    id: "subworkflow_orchestration",
+    title: "Subworkflow orchestration",
+    deliverable: "subworkflow orchestration",
+    workflow_ids: ["crm.subworkflow.orchestration", "crm.enterprise.customer_journey"],
+    required_artifacts: ["crm_subworkflow_plan", "crm_subworkflow_lineage_map", "crm_subworkflow_validation_report"],
+    required_events: ["crm.subworkflow.bound", "crm.subworkflow.validated", "crm.subworkflow.promoted"]
   },
   {
     id: "user_experience",
@@ -5203,6 +5355,8 @@ export function executeCrmRuntimeRequest(request) {
       return buildWorkflowEvolutionResult(request);
     case "forge_crm.run_enterprise_journey":
       return buildEnterpriseJourneyResult(request);
+    case "forge_crm.orchestrate_subworkflows":
+      return buildSubworkflowOrchestrationResult(request);
     case "forge_crm.inspect_observability":
       return buildObservabilityInspectorResult(request);
     case "forge_crm.generate_operating_readiness":
