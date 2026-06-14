@@ -97,6 +97,29 @@ test("manifest exposes CRM relationship timeline as a Forge-owned executor", () 
   assert.ok(contract.constraints.some((constraint) => constraint.includes("Forge workflow artifacts and events")));
 });
 
+test("manifest exposes relationship profile enrichment as a Forge-owned executor", () => {
+  const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.relationship.profile_enrichment.executor");
+  assert.ok(contract);
+  assert.equal(contract.contract_type, "executor");
+  assert.equal(contract.capability_id, "crm_relationship_management");
+  assert.equal(contract.workflow_extension_id, "crm_relationship_profile_enrichment");
+  assert.equal(contract.entrypoint, "forge_crm.enrich_relationship_profile");
+  assert.deepEqual(contract.permissions, ["crm.workflow.mutate", "crm.ai.recommend"]);
+
+  for (const input of ["entity_profile", "enrichment_sources", "relationship_signals", "tenant_context"]) {
+    assert.ok(contract.inputs.includes(input), `missing relationship enrichment input ${input}`);
+  }
+  for (const output of ["crm_relationship_profile", "crm_enrichment_record", "crm_timeline_snapshot"]) {
+    assert.ok(contract.outputs.includes(output), `missing relationship enrichment output ${output}`);
+  }
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("does not persist CRM state outside Forge")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("Forge workflow approval")));
+
+  const artifactTypes = new Set(manifest.artifact_types.map((artifact) => artifact.id));
+  assert.ok(artifactTypes.has("crm_relationship_profile"));
+  assert.ok(artifactTypes.has("crm_enrichment_record"));
+});
+
 test("manifest exposes CRM operating copilot as a recommendation-only executor", () => {
   const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.ai.operating_copilot.executor");
   assert.ok(contract);
@@ -677,6 +700,7 @@ test("manifest exposes a Forge TUI operational cockpit with permission-gated CRM
   const actionIds = new Set(cockpit.actions.map((action) => action.id));
   for (const actionId of [
     "crm.tui.refresh-operating-snapshot",
+    "crm.tui.enrich-relationship-profile",
     "crm.tui.review-followup-forecast",
     "crm.tui.normalize-channel-intake",
     "crm.tui.triage-ticket-sla",
@@ -713,6 +737,7 @@ test("CRM scope is workflow-backed across core business areas", () => {
   const workflowIds = new Set(manifest.workflows.map((workflow) => workflow.id));
   for (const workflowId of [
     "crm_entity_lifecycle",
+    "crm_relationship_profile_enrichment",
     "crm_pipeline_kanban",
     "crm_proposal_generation",
     "crm_contract_lifecycle",

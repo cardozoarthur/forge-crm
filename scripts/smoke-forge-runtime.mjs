@@ -79,6 +79,7 @@ try {
       "forge_crm.operating_snapshot",
       "forge_crm.classify_lead",
       "forge_crm.record_relationship_event",
+      "forge_crm.enrich_relationship_profile",
       "forge_crm.move_opportunity_stage",
       "forge_crm.operating_copilot",
       "forge_crm.run_area_copilot",
@@ -111,6 +112,7 @@ try {
       "crm.operating.snapshot.executor",
       "crm.lead.classifier.executor",
       "crm.relationship.timeline.executor",
+      "crm.relationship.profile_enrichment.executor",
       "crm.pipeline.stage_move.executor",
       "crm.ai.operating_copilot.executor",
       "crm.ai.area_copilot.executor",
@@ -775,6 +777,64 @@ try {
   if (operatingReadiness.executor_result.outputs.success_criteria_status !== "operable_with_evidence") {
     throw new Error(
       `expected operating readiness to be operable_with_evidence, got ${operatingReadiness.executor_result.outputs.success_criteria_status}`
+    );
+  }
+
+  const relationshipProfileEnrichment = runForge([
+    "addons",
+    "execute-executor",
+    "--addon-dir",
+    "addons",
+    "--addon",
+    "forge.addon.crm",
+    "--contract",
+    "crm.relationship.profile_enrichment.executor",
+    "--worker",
+    workerId,
+    "--task",
+    "crm-smoke-relationship-profile-enrichment",
+    "--workflow",
+    workflowId,
+    "--input",
+    JSON.stringify({
+      tenant_context: { id: "smoke", tenant_id: "smoke" },
+      entity_profile: {
+        id: "contact-smoke",
+        kind: "contact",
+        name: "Smoke Contact",
+        title: "COO",
+        company_id: "company-smoke",
+        company_name: "Example Logistics",
+        lifecycle_stage: "enrichment_wait"
+      },
+      enrichment_sources: [
+        { id: "smoke-form", kind: "form_submission", confidence: 0.84, fields: ["email", "company_name", "role"] },
+        { id: "smoke-call", kind: "sales_call", confidence: 0.76, fields: ["pain", "decision_process"] }
+      ],
+      relationship_signals: [
+        { kind: "decision_authority", strength: "high", evidence: "COO owns operations budget" },
+        { kind: "expansion_potential", strength: "medium", evidence: "multi-region logistics operation" }
+      ],
+      timeline_event: {
+        kind: "profile_enriched",
+        owner: "forge-crm-smoke",
+        reason: "smoke enrichment profile package"
+      }
+    }),
+    "--context",
+    JSON.stringify({ tenant: "smoke" }),
+    "--output",
+    "json"
+  ]);
+
+  if (relationshipProfileEnrichment.promotion?.status !== "addon_executor_result_promoted") {
+    throw new Error(
+      `expected relationship profile enrichment promotion, got ${relationshipProfileEnrichment.promotion?.status || "missing"}`
+    );
+  }
+  if (relationshipProfileEnrichment.executor_result.outputs.enrichment_state !== "ready_for_approval") {
+    throw new Error(
+      `expected relationship profile enrichment ready_for_approval, got ${relationshipProfileEnrichment.executor_result.outputs.enrichment_state}`
     );
   }
 
@@ -1668,6 +1728,8 @@ try {
   const workflowEvolutionPromotedEventCount = workflowEvolution.promotion?.event_count ?? 0;
   const readinessPromotedArtifactCount = operatingReadiness.promotion?.artifact_count ?? 0;
   const readinessPromotedEventCount = operatingReadiness.promotion?.event_count ?? 0;
+  const relationshipProfilePromotedArtifactCount = relationshipProfileEnrichment.promotion?.artifact_count ?? 0;
+  const relationshipProfilePromotedEventCount = relationshipProfileEnrichment.promotion?.event_count ?? 0;
   const relationshipPromotedArtifactCount = relationshipTimeline.promotion?.artifact_count ?? 0;
   const relationshipPromotedEventCount = relationshipTimeline.promotion?.event_count ?? 0;
   const pipelinePromotedArtifactCount = pipelineStageMove.promotion?.artifact_count ?? 0;
@@ -1809,6 +1871,16 @@ try {
     );
   }
   for (const eventKind of ["crm.operating.readiness_reported", "crm.outcome.deliverables_mapped"]) {
+    if (!workflowEventKinds.includes(eventKind)) {
+      throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
+    }
+  }
+  if (relationshipProfilePromotedArtifactCount < 3 || relationshipProfilePromotedEventCount < 2) {
+    throw new Error(
+      `expected promoted relationship profile artifacts/events, got artifacts=${relationshipProfilePromotedArtifactCount} events=${relationshipProfilePromotedEventCount}`
+    );
+  }
+  for (const eventKind of ["crm.contact.enriched", "crm.relationship.profile_updated"]) {
     if (!workflowEventKinds.includes(eventKind)) {
       throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
     }
@@ -2156,6 +2228,11 @@ try {
     operating_readiness_user_deliverable_count: operatingReadiness.executor_result.outputs.user_facing_deliverable_count,
     operating_readiness_promoted_artifacts: readinessPromotedArtifactCount,
     operating_readiness_promoted_events: readinessPromotedEventCount,
+    relationship_profile_status: relationshipProfileEnrichment.status,
+    relationship_profile_promotion_status: relationshipProfileEnrichment.promotion.status,
+    relationship_profile_enrichment_state: relationshipProfileEnrichment.executor_result.outputs.enrichment_state,
+    relationship_profile_promoted_artifacts: relationshipProfilePromotedArtifactCount,
+    relationship_profile_promoted_events: relationshipProfilePromotedEventCount,
     relationship_timeline_status: relationshipTimeline.status,
     relationship_timeline_promotion_status: relationshipTimeline.promotion.status,
     relationship_timeline_pipeline_stage: relationshipTimeline.executor_result.outputs.pipeline_stage,

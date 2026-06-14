@@ -15,7 +15,7 @@ const SURFACE_ROUTES = {
 
 const SURFACE_PERMISSIONS = {
   "crm.system-map": "crm.workflow.mutate",
-  "crm.relationship-graph": "crm.ai.recommend",
+  "crm.relationship-graph": "crm.workflow.mutate",
   "crm.pipeline-kanban": "crm.workflow.mutate",
   "crm.commercial-command": "crm.document.generate",
   "crm.support-queue": "crm.omnichannel.ingest",
@@ -28,6 +28,8 @@ const SURFACE_PERMISSIONS = {
 
 const WORKFLOW_EDGES = [
   ["crm.lead.lifecycle", "crm.opportunity.pipeline", "converted lead starts opportunity workflow"],
+  ["crm.lead.lifecycle", "crm.relationship.profile_enrichment", "captured contact or company enters enrichment workflow"],
+  ["crm.relationship.profile_enrichment", "crm.opportunity.pipeline", "approved profile enrichment improves opportunity context"],
   ["crm.opportunity.pipeline", "crm.proposal.approval", "approved offer terms request proposal artifact"],
   ["crm.proposal.approval", "crm.contract.signature", "approved proposal starts contract workflow"],
   ["crm.contract.signature", "crm.followup.forecast", "signed contract updates forecast and commission evidence"],
@@ -124,6 +126,7 @@ function knowledgeGraph() {
       { id: "entity.company", label: "Company", kind: "company", source_workflow: "crm.lead.lifecycle" },
       { id: "entity.contact", label: "Contact", kind: "contact", source_workflow: "crm.lead.lifecycle" },
       { id: "entity.lead", label: "Lead", kind: "lead", source_workflow: "crm.lead.lifecycle" },
+      { id: "entity.relationship_profile", label: "Relationship profile", kind: "relationship_profile", source_workflow: "crm.relationship.profile_enrichment" },
       { id: "entity.opportunity", label: "Opportunity", kind: "opportunity", source_workflow: "crm.opportunity.pipeline" },
       { id: "entity.ticket", label: "Ticket", kind: "ticket", source_workflow: "crm.ticket.sla" },
       { id: "artifact.proposal", label: "Proposal", kind: "proposal", source_workflow: "crm.proposal.approval" },
@@ -133,6 +136,9 @@ function knowledgeGraph() {
     ],
     edges: [
       ["entity.company", "entity.contact", "employs"],
+      ["entity.contact", "entity.relationship_profile", "enriched into"],
+      ["entity.company", "entity.relationship_profile", "provides account context"],
+      ["entity.relationship_profile", "entity.opportunity", "improves qualification"],
       ["entity.company", "entity.opportunity", "owns commercial motion"],
       ["entity.lead", "entity.opportunity", "converts into"],
       ["entity.opportunity", "artifact.proposal", "requests"],
@@ -140,7 +146,38 @@ function knowledgeGraph() {
       ["entity.ticket", "entity.company", "belongs to account"],
       ["artifact.campaign", "entity.lead", "nurtures"],
       ["artifact.recommendation", "entity.opportunity", "suggests next state"]
-    ].map(([from, to, relation]) => ({ from, to, relation, source: "forge_workflow_lineage" }))
+    ].map(([from, to, relation]) => ({ from, to, relation, source: "forge_workflow_lineage" })),
+    enrichment_profiles: [
+      {
+        profile_id: "profile-mara-lopes",
+        entity_id: "contact-001",
+        entity_kind: "contact",
+        label: "Mara Lopes",
+        company_id: "company-acme-logistics",
+        workflow_id: "crm.relationship.profile_enrichment",
+        contract_id: "crm.relationship.profile_enrichment.executor",
+        state: "approval_wait",
+        state_owner: "forge_workflow_runtime",
+        source_count: 2,
+        signal_count: 2,
+        artifact_ref: "forge://artifact/crm_relationship_profile/profile-mara-lopes",
+        action_id: "crm.enrich-relationship-profile"
+      },
+      {
+        profile_id: "profile-acme-logistics",
+        entity_id: "company-001",
+        entity_kind: "company",
+        label: "Acme Logistics",
+        workflow_id: "crm.relationship.profile_enrichment",
+        contract_id: "crm.relationship.profile_enrichment.executor",
+        state: "sources_attached",
+        state_owner: "forge_workflow_runtime",
+        source_count: 3,
+        signal_count: 1,
+        artifact_ref: "forge://artifact/crm_enrichment_record/profile-acme-logistics",
+        action_id: "crm.enrich-relationship-profile"
+      }
+    ]
   };
 }
 
@@ -190,6 +227,41 @@ function panelBase({ id, title, surface_id, workflow_ids, action_ids }) {
 }
 
 function buildOperationalWorkbench(workflows, actionList, documentQueueSnapshot) {
+  const relationshipPanel = {
+    ...panelBase({
+      id: "relationship_graph",
+      title: "Relationship graph",
+      surface_id: "crm.relationship-graph",
+      workflow_ids: workflowIdsForSurface(workflows, "crm.relationship-graph"),
+      action_ids: checkedActionIds(actionList, ["crm.enrich-relationship-profile", "crm.record-relationship-event"])
+    }),
+    profiles: [
+      {
+        profile_id: "profile-mara-lopes",
+        entity_id: "contact-001",
+        entity_kind: "contact",
+        account: "Acme Logistics",
+        state: "approval_wait",
+        enrichment_source_count: 2,
+        relationship_signal_count: 2,
+        contract_id: "crm.relationship.profile_enrichment.executor",
+        action_id: "crm.enrich-relationship-profile"
+      },
+      {
+        profile_id: "profile-acme-logistics",
+        entity_id: "company-001",
+        entity_kind: "company",
+        account: "Acme Logistics",
+        state: "sources_attached",
+        enrichment_source_count: 3,
+        relationship_signal_count: 1,
+        contract_id: "crm.relationship.profile_enrichment.executor",
+        action_id: "crm.enrich-relationship-profile"
+      }
+    ],
+    timeline_action_id: "crm.record-relationship-event"
+  };
+
   const pipelineWorkflow = workflows.find((workflow) => workflow.id === "crm.opportunity.pipeline");
   const pipelineCards = {
     research: [
@@ -742,7 +814,7 @@ function buildOperationalWorkbench(workflows, actionList, documentQueueSnapshot)
     schema_version: "forge.crm_operational_workbench.v1",
     state_source: WORKBENCH_STATE_SOURCE,
     mutation_requires_forge: true,
-    panels: [pipelinePanel, commercialPanel, supportPanel, marketingPanel, documentPanel, workQueuePanel, aiPanel]
+    panels: [relationshipPanel, pipelinePanel, commercialPanel, supportPanel, marketingPanel, documentPanel, workQueuePanel, aiPanel]
   };
 }
 
@@ -1041,6 +1113,15 @@ function actions() {
       requires_permission: "crm.workflow.mutate",
       mutates_workflow: true,
       command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.relationship.timeline.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
+    },
+    {
+      id: "crm.enrich-relationship-profile",
+      label: "Enrich relationship profile",
+      surface_id: "crm.relationship-graph",
+      contract_id: "crm.relationship.profile_enrichment.executor",
+      requires_permission: "crm.workflow.mutate",
+      mutates_workflow: true,
+      command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.relationship.profile_enrichment.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
     },
     {
       id: "crm.move-pipeline-stage",

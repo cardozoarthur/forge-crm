@@ -206,14 +206,18 @@
       ],
       "workflow_extensions": [
         "crm_entity_lifecycle",
+        "crm_relationship_profile_enrichment",
         "crm_pipeline_kanban"
       ],
       "deliverables": [
         "Relationship graph",
+        "Relationship profile enrichment",
         "Unified CRM timeline",
         "Pipeline workflow state"
       ],
       "artifact_types": [
+        "crm_relationship_profile",
+        "crm_enrichment_record",
         "crm_timeline_snapshot",
         "crm_pipeline_board",
         "crm_stage_change",
@@ -558,6 +562,11 @@
       "description": "Manage leads, contacts, companies and opportunities as audited workflow-backed entities."
     },
     {
+      "id": "crm_relationship_profile_enrichment",
+      "kind": "entity_workflow",
+      "description": "Enrich contact and company profiles with source lineage, relationship signals and Forge approval gates."
+    },
+    {
       "id": "crm_pipeline_kanban",
       "kind": "visual_workflow",
       "description": "Render opportunity stages and movement as Forge workflow state transitions."
@@ -741,6 +750,36 @@
         "relationship timeline executor does not persist CRM state outside Forge",
         "entity, relationship, pipeline and forecast changes must be promoted from Forge workflow artifacts and events",
         "pipeline stage movement must include owner, reason and workflow lineage"
+      ]
+    },
+    {
+      "id": "crm.relationship.profile_enrichment.executor",
+      "title": "CRM relationship profile enrichment",
+      "contract_type": "executor",
+      "capability_id": "crm_relationship_management",
+      "workflow_extension_id": "crm_relationship_profile_enrichment",
+      "runtime": "external_api",
+      "entrypoint": "forge_crm.enrich_relationship_profile",
+      "inputs": [
+        "entity_profile",
+        "enrichment_sources",
+        "relationship_signals",
+        "timeline_event",
+        "tenant_context"
+      ],
+      "outputs": [
+        "crm_relationship_profile",
+        "crm_enrichment_record",
+        "crm_timeline_snapshot"
+      ],
+      "permissions": [
+        "crm.workflow.mutate",
+        "crm.ai.recommend"
+      ],
+      "constraints": [
+        "relationship profile enrichment does not persist CRM state outside Forge",
+        "source lineage and relationship signals must be attached before profile promotion",
+        "profile changes require Forge workflow approval before state mutation"
       ]
     },
     {
@@ -1659,6 +1698,7 @@
         }
       ],
       "permissions": [
+        "crm.workflow.mutate",
         "crm.ai.recommend"
       ]
     },
@@ -1767,6 +1807,49 @@
           "payload_schema": [
             "tenant_context",
             "workflow_scope"
+          ]
+        },
+        {
+          "id": "crm.tui.enrich-relationship-profile",
+          "label": "Enrich relationship profile",
+          "description": "Prepare contact or company enrichment artifacts and timeline evidence through Forge.",
+          "palette_group": "CRM",
+          "source_panel": "crm.operational-cockpit",
+          "type": "command",
+          "target": "forge addons execute-executor",
+          "method": "CLI",
+          "permission": "crm.workflow.mutate",
+          "requires_confirmation": true,
+          "risk_level": "high",
+          "mutates_workflow": true,
+          "command_template": [
+            "addons",
+            "execute-executor",
+            "--addon",
+            "forge.addon.crm",
+            "--contract",
+            "crm.relationship.profile_enrichment.executor",
+            "--worker",
+            "<worker-id>",
+            "--task",
+            "<task-ref>",
+            "--input",
+            "<json>",
+            "--context",
+            "<json>",
+            "--output",
+            "json"
+          ],
+          "keywords": [
+            "crm",
+            "relationship",
+            "enrichment"
+          ],
+          "payload_schema": [
+            "entity_profile",
+            "enrichment_sources",
+            "relationship_signals",
+            "tenant_context"
           ]
         },
         {
@@ -2484,6 +2567,16 @@
     {
       "id": "crm_timeline_snapshot",
       "title": "CRM timeline snapshot",
+      "generic_kind": "artifact"
+    },
+    {
+      "id": "crm_relationship_profile",
+      "title": "CRM relationship profile",
+      "generic_kind": "artifact"
+    },
+    {
+      "id": "crm_enrichment_record",
+      "title": "CRM enrichment record",
       "generic_kind": "artifact"
     },
     {

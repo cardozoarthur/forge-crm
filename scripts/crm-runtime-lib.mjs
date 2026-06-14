@@ -359,6 +359,167 @@ export function buildRelationshipTimelineResult(request) {
   };
 }
 
+export function buildRelationshipProfileEnrichmentResult(request) {
+  const input = dispatchPayload(request);
+  const context = providedContext(request);
+  const tenantId = input.tenant_id || input.tenant_context?.tenant_id || input.tenant_context?.id || context.tenant || "default";
+  const profile = asObject(input.entity_profile ?? input.profile ?? input.contact ?? input.company);
+  const kind = entityKind(profile, input.entity_kind || "contact");
+  const id = entityId(profile, dispatchEnvelope(request).task_ref || "relationship-profile");
+  const workflowId = String(input.workflow_id || profile.workflow_id || "crm.relationship.profile_enrichment");
+  const taskRef = dispatchEnvelope(request).task_ref || `enrich-relationship-${slug(id, "profile")}`;
+  const enrichmentSources = asArray(input.enrichment_sources ?? input.sources);
+  const relationshipSignals = asArray(input.relationship_signals ?? input.signals);
+  const timelineEvent = asObject(input.timeline_event ?? input.event);
+  const confidenceValues = enrichmentSources
+    .map((source) => numberFrom(asObject(source).confidence, NaN))
+    .filter((confidence) => Number.isFinite(confidence));
+  const confidence =
+    confidenceValues.length > 0
+      ? Math.round((confidenceValues.reduce((total, value) => total + value, 0) / confidenceValues.length) * 100) / 100
+      : 0.5;
+  const enrichmentState = enrichmentSources.length > 0 && relationshipSignals.length > 0 ? "ready_for_approval" : "rework_required";
+  const owner = timelineEvent.owner || input.owner || "revenue-operations";
+  const companyId = profile.company_id || profile.account_id || (kind === "company" ? id : null);
+  const relationshipProfile = {
+    tenant_id: tenantId,
+    entity_id: id,
+    entity_kind: kind,
+    name: profile.name || profile.company_name || profile.account || id,
+    title: profile.title || profile.role || null,
+    company_id: companyId,
+    company_name: profile.company_name || profile.account || null,
+    lifecycle_stage: profile.lifecycle_stage || profile.stage || "enrichment_wait",
+    enrichment_state: enrichmentState,
+    confidence,
+    source_count: enrichmentSources.length,
+    signal_count: relationshipSignals.length,
+    relationship_signals: relationshipSignals,
+    source_refs: enrichmentSources.map((source, index) => ({
+      id: asObject(source).id || asObject(source).source_id || `source-${index + 1}`,
+      kind: asObject(source).kind || asObject(source).type || "enrichment_source",
+      confidence: numberFrom(asObject(source).confidence, null),
+      fields: asArray(asObject(source).fields)
+    })),
+    state_owner: "forge_workflow_runtime",
+    external_database_required: false
+  };
+  const lineage = {
+    workflow_id: workflowId,
+    task_ref: taskRef,
+    source_contract: "crm.relationship.profile_enrichment.executor",
+    tenant_id: tenantId,
+    entity_id: id
+  };
+  const timelineRecord = {
+    event_id: timelineEvent.id || `event-${slug(id, "profile")}-profile-enriched`,
+    kind: timelineEvent.kind || "profile_enriched",
+    reason: timelineEvent.reason || "Forge relationship profile enrichment package generated",
+    owner,
+    workflow_id: workflowId
+  };
+  const events = [
+    {
+      kind: kind === "company" ? "crm.company.enriched" : "crm.contact.enriched",
+      tenant_id: tenantId,
+      entity_id: id,
+      entity_kind: kind,
+      workflow_id: workflowId,
+      enrichment_state: enrichmentState,
+      source_count: enrichmentSources.length,
+      signal_count: relationshipSignals.length
+    }
+  ];
+  if (kind !== "company" && companyId) {
+    events.push({
+      kind: "crm.company.enriched",
+      tenant_id: tenantId,
+      company_id: companyId,
+      workflow_id: workflowId,
+      source_contact_id: id
+    });
+  }
+  events.push({
+    kind: "crm.relationship.profile_updated",
+    tenant_id: tenantId,
+    entity_id: id,
+    entity_kind: kind,
+    workflow_id: workflowId,
+    approval_required: true
+  });
+
+  return {
+    schema_version: "forge.addon_executor_result.v1",
+    status: "completed",
+    task_ref: taskRef,
+    summary: `Prepared ${kind} ${id} relationship profile enrichment through Forge`,
+    outputs: {
+      tenant_id: tenantId,
+      entity_id: id,
+      entity_kind: kind,
+      workflow_id: workflowId,
+      enrichment_source_count: enrichmentSources.length,
+      relationship_signal_count: relationshipSignals.length,
+      enrichment_state: enrichmentState,
+      confidence,
+      next_best_actions: [
+        "request_forge_approval_for_profile_promotion",
+        "attach_enrichment_record_to_relationship_timeline",
+        enrichmentState === "ready_for_approval" ? "promote_profile_after_validation" : "return_to_rework_with_missing_source_reason"
+      ],
+      mutates_crm_state: false,
+      forge_event_sourced: true
+    },
+    artifacts: [
+      {
+        kind: "crm_relationship_profile",
+        id: `relationship-profile-${slug(kind, "entity")}-${slug(id, "profile")}`,
+        title: `Relationship profile for ${relationshipProfile.name}`,
+        content_type: "application/json",
+        data: {
+          ...relationshipProfile,
+          lineage,
+          mutation_policy: "profile_changes_require_forge_workflow_approval"
+        }
+      },
+      {
+        kind: "crm_enrichment_record",
+        id: `enrichment-record-${slug(kind, "entity")}-${slug(id, "profile")}`,
+        title: `Enrichment record for ${relationshipProfile.name}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          entity_id: id,
+          entity_kind: kind,
+          enrichment_sources: enrichmentSources,
+          relationship_signals: relationshipSignals,
+          confidence,
+          approval_required: true,
+          lineage,
+          state_owner: "forge_workflow_runtime"
+        }
+      },
+      {
+        kind: "crm_timeline_snapshot",
+        id: `timeline-profile-${slug(kind, "entity")}-${slug(id, "profile")}`,
+        title: `Relationship enrichment timeline for ${relationshipProfile.name}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          entity_id: id,
+          entity_kind: kind,
+          timeline_events: [timelineRecord],
+          lineage,
+          state_owner: "forge_workflow_runtime",
+          external_database_required: false
+        }
+      }
+    ],
+    events,
+    context_tenant: context.tenant || tenantId
+  };
+}
+
 export function buildOpportunityPipelineMoveResult(request) {
   const input = dispatchPayload(request);
   const context = providedContext(request);
@@ -4506,6 +4667,8 @@ export function executeCrmRuntimeRequest(request) {
       return buildLeadClassifierResult(request);
     case "forge_crm.record_relationship_event":
       return buildRelationshipTimelineResult(request);
+    case "forge_crm.enrich_relationship_profile":
+      return buildRelationshipProfileEnrichmentResult(request);
     case "forge_crm.move_opportunity_stage":
       return buildOpportunityPipelineMoveResult(request);
     case "forge_crm.operating_copilot":

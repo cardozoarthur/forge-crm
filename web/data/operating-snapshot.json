@@ -23,11 +23,11 @@
     "external_delivery_requires_approval": true
   },
   "metrics": {
-    "workflow_count": 20,
+    "workflow_count": 21,
     "business_module_count": 7,
     "surface_count": 10,
-    "artifact_type_count": 59,
-    "event_type_count": 71,
+    "artifact_type_count": 61,
+    "event_type_count": 74,
     "complete_scope": true
   },
   "surfaces": [
@@ -137,27 +137,39 @@
       "title": "Relationship graph",
       "surface_type": "graph",
       "route": "/crm/relationships",
-      "permission": "crm.ai.recommend",
+      "permission": "crm.workflow.mutate",
       "state_source": "forge_workflow_artifacts_and_events",
       "workflow_ids": [
-        "crm.lead.lifecycle"
+        "crm.lead.lifecycle",
+        "crm.relationship.profile_enrichment"
       ],
       "lanes": [
         "captured",
         "enrichment_wait",
         "qualified",
         "disqualified",
-        "converted"
+        "converted",
+        "profile_detected",
+        "sources_attached",
+        "signals_scored",
+        "approval_wait",
+        "profile_promoted",
+        "rework_required"
       ],
       "artifact_types": [
         "crm_ai_recommendation",
+        "crm_enrichment_record",
         "crm_lead_capture",
+        "crm_relationship_profile",
         "crm_timeline_snapshot"
       ],
       "event_types": [
+        "crm.company.enriched",
+        "crm.contact.enriched",
         "crm.contact.updated",
         "crm.lead.classified",
         "crm.lead.created",
+        "crm.relationship.profile_updated",
         "crm.relationship.recorded"
       ],
       "mutation_requires_forge": true
@@ -622,28 +634,37 @@
       "complete": true,
       "workflow_ids": [
         "crm.lead.lifecycle",
+        "crm.relationship.profile_enrichment",
         "crm.opportunity.pipeline"
       ],
       "artifact_types": [
         "crm_ai_recommendation",
+        "crm_enrichment_record",
         "crm_forecast_report",
         "crm_lead_capture",
         "crm_pipeline_board",
+        "crm_relationship_profile",
         "crm_report",
         "crm_stage_change",
         "crm_timeline_snapshot"
       ],
       "event_types": [
+        "crm.company.enriched",
+        "crm.contact.enriched",
         "crm.contact.updated",
         "crm.forecast.updated",
         "crm.lead.classified",
         "crm.lead.created",
         "crm.opportunity.stage_changed",
+        "crm.relationship.profile_updated",
         "crm.relationship.recorded"
       ],
       "validation_gates": [
         "classification evidence present",
+        "enrichment sources are attached as Forge artifacts",
         "forecast impact recorded",
+        "profile changes require Forge workflow approval before promotion",
+        "relationship signals cite source lineage",
         "stage movement is event-backed",
         "state transition has owner and reason"
       ]
@@ -1020,11 +1041,14 @@
         ],
         "runtime_contracts": [
           "crm.relationship.timeline.executor",
+          "crm.relationship.profile_enrichment.executor",
           "crm.lead.classifier.executor",
           "crm.marketing.form_capture.executor"
         ],
         "artifact_types": [
           "crm_timeline_snapshot",
+          "crm_relationship_profile",
+          "crm_enrichment_record",
           "crm_ai_recommendation",
           "crm_lead_capture"
         ],
@@ -1032,7 +1056,10 @@
           "crm.lead.created",
           "crm.lead.classified",
           "crm.contact.updated",
-          "crm.relationship.recorded"
+          "crm.contact.enriched",
+          "crm.company.enriched",
+          "crm.relationship.recorded",
+          "crm.relationship.profile_updated"
         ],
         "surface_ids": [
           "crm.relationship-graph"
@@ -1040,6 +1067,45 @@
         "validation_gates": [
           "classification evidence present",
           "state transition has owner and reason"
+        ]
+      },
+      {
+        "id": "crm.relationship.profile_enrichment",
+        "title": "Contact and company profile enrichment",
+        "domain": "relationship",
+        "state_count": 6,
+        "states": [
+          "profile_detected",
+          "sources_attached",
+          "signals_scored",
+          "approval_wait",
+          "profile_promoted",
+          "rework_required"
+        ],
+        "wait_states": [
+          "approval_wait"
+        ],
+        "runtime_contracts": [
+          "crm.relationship.profile_enrichment.executor",
+          "crm.relationship.timeline.executor"
+        ],
+        "artifact_types": [
+          "crm_relationship_profile",
+          "crm_enrichment_record",
+          "crm_timeline_snapshot"
+        ],
+        "event_types": [
+          "crm.contact.enriched",
+          "crm.company.enriched",
+          "crm.relationship.profile_updated"
+        ],
+        "surface_ids": [
+          "crm.relationship-graph"
+        ],
+        "validation_gates": [
+          "enrichment sources are attached as Forge artifacts",
+          "relationship signals cite source lineage",
+          "profile changes require Forge workflow approval before promotion"
         ]
       },
       {
@@ -1846,6 +1912,18 @@
         "state_owner": "forge_workflow_runtime"
       },
       {
+        "from": "crm.lead.lifecycle",
+        "to": "crm.relationship.profile_enrichment",
+        "reason": "captured contact or company enters enrichment workflow",
+        "state_owner": "forge_workflow_runtime"
+      },
+      {
+        "from": "crm.relationship.profile_enrichment",
+        "to": "crm.opportunity.pipeline",
+        "reason": "approved profile enrichment improves opportunity context",
+        "state_owner": "forge_workflow_runtime"
+      },
+      {
         "from": "crm.opportunity.pipeline",
         "to": "crm.proposal.approval",
         "reason": "approved offer terms request proposal artifact",
@@ -1994,6 +2072,12 @@
         "source_workflow": "crm.lead.lifecycle"
       },
       {
+        "id": "entity.relationship_profile",
+        "label": "Relationship profile",
+        "kind": "relationship_profile",
+        "source_workflow": "crm.relationship.profile_enrichment"
+      },
+      {
         "id": "entity.opportunity",
         "label": "Opportunity",
         "kind": "opportunity",
@@ -2038,6 +2122,24 @@
         "source": "forge_workflow_lineage"
       },
       {
+        "from": "entity.contact",
+        "to": "entity.relationship_profile",
+        "relation": "enriched into",
+        "source": "forge_workflow_lineage"
+      },
+      {
+        "from": "entity.company",
+        "to": "entity.relationship_profile",
+        "relation": "provides account context",
+        "source": "forge_workflow_lineage"
+      },
+      {
+        "from": "entity.relationship_profile",
+        "to": "entity.opportunity",
+        "relation": "improves qualification",
+        "source": "forge_workflow_lineage"
+      },
+      {
         "from": "entity.company",
         "to": "entity.opportunity",
         "relation": "owns commercial motion",
@@ -2078,6 +2180,37 @@
         "to": "entity.opportunity",
         "relation": "suggests next state",
         "source": "forge_workflow_lineage"
+      }
+    ],
+    "enrichment_profiles": [
+      {
+        "profile_id": "profile-mara-lopes",
+        "entity_id": "contact-001",
+        "entity_kind": "contact",
+        "label": "Mara Lopes",
+        "company_id": "company-acme-logistics",
+        "workflow_id": "crm.relationship.profile_enrichment",
+        "contract_id": "crm.relationship.profile_enrichment.executor",
+        "state": "approval_wait",
+        "state_owner": "forge_workflow_runtime",
+        "source_count": 2,
+        "signal_count": 2,
+        "artifact_ref": "forge://artifact/crm_relationship_profile/profile-mara-lopes",
+        "action_id": "crm.enrich-relationship-profile"
+      },
+      {
+        "profile_id": "profile-acme-logistics",
+        "entity_id": "company-001",
+        "entity_kind": "company",
+        "label": "Acme Logistics",
+        "workflow_id": "crm.relationship.profile_enrichment",
+        "contract_id": "crm.relationship.profile_enrichment.executor",
+        "state": "sources_attached",
+        "state_owner": "forge_workflow_runtime",
+        "source_count": 3,
+        "signal_count": 1,
+        "artifact_ref": "forge://artifact/crm_enrichment_record/profile-acme-logistics",
+        "action_id": "crm.enrich-relationship-profile"
       }
     ]
   },
@@ -2185,6 +2318,46 @@
     "state_source": "forge_workflow_artifacts_and_events",
     "mutation_requires_forge": true,
     "panels": [
+      {
+        "id": "relationship_graph",
+        "title": "Relationship graph",
+        "surface_id": "crm.relationship-graph",
+        "state_source": "forge_workflow_artifacts_and_events",
+        "mutation_requires_forge": true,
+        "workflow_ids": [
+          "crm.lead.lifecycle",
+          "crm.relationship.profile_enrichment"
+        ],
+        "action_ids": [
+          "crm.enrich-relationship-profile",
+          "crm.record-relationship-event"
+        ],
+        "profiles": [
+          {
+            "profile_id": "profile-mara-lopes",
+            "entity_id": "contact-001",
+            "entity_kind": "contact",
+            "account": "Acme Logistics",
+            "state": "approval_wait",
+            "enrichment_source_count": 2,
+            "relationship_signal_count": 2,
+            "contract_id": "crm.relationship.profile_enrichment.executor",
+            "action_id": "crm.enrich-relationship-profile"
+          },
+          {
+            "profile_id": "profile-acme-logistics",
+            "entity_id": "company-001",
+            "entity_kind": "company",
+            "account": "Acme Logistics",
+            "state": "sources_attached",
+            "enrichment_source_count": 3,
+            "relationship_signal_count": 1,
+            "contract_id": "crm.relationship.profile_enrichment.executor",
+            "action_id": "crm.enrich-relationship-profile"
+          }
+        ],
+        "timeline_action_id": "crm.record-relationship-event"
+      },
       {
         "id": "pipeline_kanban",
         "title": "Pipeline Kanban",
@@ -3381,6 +3554,33 @@
       ]
     },
     {
+      "id": "crm.enrich-relationship-profile",
+      "label": "Enrich relationship profile",
+      "surface_id": "crm.relationship-graph",
+      "contract_id": "crm.relationship.profile_enrichment.executor",
+      "requires_permission": "crm.workflow.mutate",
+      "mutates_workflow": true,
+      "command_template": [
+        "forge",
+        "addons",
+        "execute-executor",
+        "--addon",
+        "forge.addon.crm",
+        "--contract",
+        "crm.relationship.profile_enrichment.executor",
+        "--worker",
+        "<worker-id>",
+        "--task",
+        "<task-ref>",
+        "--input",
+        "<json>",
+        "--context",
+        "<json>",
+        "--output",
+        "json"
+      ]
+    },
+    {
       "id": "crm.move-pipeline-stage",
       "label": "Move pipeline stage",
       "surface_id": "crm.pipeline-kanban",
@@ -4332,6 +4532,68 @@
             "title": "Execute runtime contract",
             "owner": "forge.addons.runtime",
             "evidence": "crm.relationship.timeline.executor"
+          },
+          {
+            "id": "promote_result_to_workflow",
+            "title": "Promote result to workflow",
+            "owner": "forge.workflow.runtime",
+            "evidence": "artifact and event promotion"
+          },
+          {
+            "id": "refresh_operating_snapshot",
+            "title": "Refresh operating snapshot",
+            "owner": "forge.addon.crm",
+            "evidence": "crm.operating.snapshot.executor"
+          }
+        ],
+        "output_policy": {
+          "promote_result_to_workflow": true,
+          "browser_local_state_write": false,
+          "refresh_source": "forge_workflow_artifacts_and_events"
+        }
+      },
+      {
+        "action_id": "crm.enrich-relationship-profile",
+        "label": "Enrich relationship profile",
+        "surface_id": "crm.relationship-graph",
+        "contract_id": "crm.relationship.profile_enrichment.executor",
+        "required_permission": "crm.workflow.mutate",
+        "selected_command": [
+          "forge",
+          "addons",
+          "execute-executor",
+          "--addon",
+          "forge.addon.crm",
+          "--contract",
+          "crm.relationship.profile_enrichment.executor",
+          "--worker",
+          "<worker-id>",
+          "--task",
+          "<task-ref>",
+          "--input",
+          "<json>",
+          "--context",
+          "<json>",
+          "--output",
+          "json"
+        ],
+        "permission_gate": {
+          "status": "requires_forge_permission",
+          "permission": "crm.workflow.mutate",
+          "approval_owner": "forge_permission_policy"
+        },
+        "operation_plan": [
+          {
+            "id": "check_addon_permission",
+            "title": "Check Addon permission",
+            "owner": "forge.permissions",
+            "evidence": "crm.workflow.mutate"
+          },
+          {
+            "id": "execute_runtime_contract",
+            "title": "Execute runtime contract",
+            "owner": "forge.addons.runtime",
+            "evidence": "crm.relationship.profile_enrichment.executor"
           },
           {
             "id": "promote_result_to_workflow",

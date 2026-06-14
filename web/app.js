@@ -156,7 +156,43 @@ export function renderKnowledgeGraph(snapshot) {
     relations.append(item);
   }
 
-  section.append(graph, relations);
+  const profiles = nodeElement("div", "relationship-profile-list");
+  for (const profile of snapshot.knowledge_graph.enrichment_profiles || []) {
+    const item = nodeElement("article", "relationship-profile");
+    item.append(nodeElement("strong", "", profile.label));
+    item.append(nodeElement("span", "", `${compactTitle(profile.entity_kind)} · ${compactTitle(profile.state)} · ${profile.source_count} sources`));
+    item.append(nodeElement("code", "", actionLabel(snapshot, profile.action_id)));
+    item.title = profile.artifact_ref;
+    profiles.append(item);
+  }
+
+  section.append(graph, relations, profiles);
+  return section;
+}
+
+export function renderRelationshipProfiles(snapshot) {
+  const { section, panel } = panelShell(snapshot, "relationship_graph", "relationship-panel");
+  if (!panel) {
+    return section;
+  }
+
+  const profiles = nodeElement("div", "relationship-profile-list");
+  for (const profile of panel.profiles || []) {
+    const item = nodeElement("article", "relationship-profile");
+    item.append(nodeElement("strong", "", `${profile.entity_id} · ${profile.account}`));
+    item.append(
+      nodeElement(
+        "span",
+        "",
+        `${compactTitle(profile.entity_kind)} · ${compactTitle(profile.state)} · ${profile.relationship_signal_count} signals`
+      )
+    );
+    item.append(nodeElement("code", "", actionLabel(snapshot, profile.action_id)));
+    item.title = profile.contract_id;
+    profiles.append(item);
+  }
+
+  section.append(profiles);
   return section;
 }
 
@@ -632,6 +668,7 @@ function render(snapshot) {
   shell.append(renderSurfaceRail(snapshot));
 
   const workspace = nodeElement("div", "workspace");
+  workspace.append(renderRelationshipProfiles(snapshot));
   workspace.append(renderPipelineKanban(snapshot));
   workspace.append(renderCommercialCommand(snapshot));
   workspace.append(renderSupportQueue(snapshot));

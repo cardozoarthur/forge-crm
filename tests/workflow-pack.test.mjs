@@ -204,6 +204,35 @@ test("relationship and pipeline workflows route timeline updates through Forge",
   assert.ok(pack.indexes.runtime_contracts.includes("crm.relationship.timeline.executor"));
 });
 
+test("relationship workflow enriches contact and company profiles through Forge", () => {
+  const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
+  const workflow = pack.workflows.find((candidate) => candidate.id === "crm.relationship.profile_enrichment");
+  const leadLifecycle = pack.workflows.find((candidate) => candidate.id === "crm.lead.lifecycle");
+
+  assert.ok(workflow);
+  assert.equal(workflow.domain, "relationship");
+  assert.equal(workflow.workflow_extension_id, "crm_relationship_profile_enrichment");
+  assert.ok(workflow.runtime_contracts.includes("crm.relationship.profile_enrichment.executor"));
+  assert.ok(workflow.depends_on_workflows.includes("crm.lead.lifecycle"));
+  assert.ok(workflow.object_types.includes("contact"));
+  assert.ok(workflow.object_types.includes("company"));
+  assert.ok(workflow.object_types.includes("complete_history"));
+  assert.ok(workflow.object_types.includes("unified_timeline"));
+
+  for (const artifact of ["crm_relationship_profile", "crm_enrichment_record", "crm_timeline_snapshot"]) {
+    assert.ok(workflow.artifacts.includes(artifact), `missing relationship enrichment artifact ${artifact}`);
+    assert.ok(pack.indexes.artifact_types.includes(artifact), `missing indexed enrichment artifact ${artifact}`);
+  }
+  for (const event of ["crm.contact.enriched", "crm.company.enriched", "crm.relationship.profile_updated"]) {
+    assert.ok(workflow.events.includes(event), `missing relationship enrichment event ${event}`);
+  }
+
+  assert.ok(workflow.validation_gates.includes("enrichment sources are attached as Forge artifacts"));
+  assert.ok(workflow.validation_gates.includes("profile changes require Forge workflow approval before promotion"));
+  assert.ok(leadLifecycle.runtime_contracts.includes("crm.relationship.profile_enrichment.executor"));
+  assert.ok(pack.indexes.runtime_contracts.includes("crm.relationship.profile_enrichment.executor"));
+});
+
 test("pipeline workflow moves opportunities across multiple funnels through Forge", () => {
   const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
   const workflow = pack.workflows.find((candidate) => candidate.id === "crm.opportunity.pipeline");

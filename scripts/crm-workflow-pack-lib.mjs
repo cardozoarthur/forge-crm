@@ -32,13 +32,54 @@ const WORKFLOWS = [
       ["qualified", "converted", "opportunity workflow created"],
       ["captured", "disqualified", "fit rejected with reason"]
     ],
-    runtime_contracts: ["crm.relationship.timeline.executor", "crm.lead.classifier.executor", "crm.marketing.form_capture.executor"],
-    artifacts: ["crm_timeline_snapshot", "crm_ai_recommendation", "crm_lead_capture"],
-    events: ["crm.lead.created", "crm.lead.classified", "crm.contact.updated", "crm.relationship.recorded"],
+    runtime_contracts: [
+      "crm.relationship.timeline.executor",
+      "crm.relationship.profile_enrichment.executor",
+      "crm.lead.classifier.executor",
+      "crm.marketing.form_capture.executor"
+    ],
+    artifacts: ["crm_timeline_snapshot", "crm_relationship_profile", "crm_enrichment_record", "crm_ai_recommendation", "crm_lead_capture"],
+    events: [
+      "crm.lead.created",
+      "crm.lead.classified",
+      "crm.contact.updated",
+      "crm.contact.enriched",
+      "crm.company.enriched",
+      "crm.relationship.recorded",
+      "crm.relationship.profile_updated"
+    ],
     memory_scopes: ["organization", "project"],
     permissions: ["crm.workflow.mutate", "crm.ai.recommend"],
     views: ["crm.relationship-graph"],
     validation_gates: ["classification evidence present", "state transition has owner and reason"]
+  },
+  {
+    id: "crm.relationship.profile_enrichment",
+    title: "Contact and company profile enrichment",
+    domain: "relationship",
+    workflow_extension_id: "crm_relationship_profile_enrichment",
+    object_types: ["contact", "company", "complete_history", "unified_timeline", "relationship_profile", "enrichment_record"],
+    states: ["profile_detected", "sources_attached", "signals_scored", "approval_wait", "profile_promoted", "rework_required"],
+    transitions: [
+      ["profile_detected", "sources_attached", "approved enrichment sources attached"],
+      ["sources_attached", "signals_scored", "relationship signals normalized"],
+      ["signals_scored", "approval_wait", "profile update package generated"],
+      ["approval_wait", "profile_promoted", "Forge workflow approval recorded"],
+      ["approval_wait", "rework_required", "missing source lineage or low confidence"],
+      ["rework_required", "sources_attached", "rework evidence attached"]
+    ],
+    runtime_contracts: ["crm.relationship.profile_enrichment.executor", "crm.relationship.timeline.executor"],
+    depends_on_workflows: ["crm.lead.lifecycle"],
+    artifacts: ["crm_relationship_profile", "crm_enrichment_record", "crm_timeline_snapshot"],
+    events: ["crm.contact.enriched", "crm.company.enriched", "crm.relationship.profile_updated"],
+    memory_scopes: ["organization", "project", "processing"],
+    permissions: ["crm.workflow.mutate", "crm.ai.recommend"],
+    views: ["crm.relationship-graph"],
+    validation_gates: [
+      "enrichment sources are attached as Forge artifacts",
+      "relationship signals cite source lineage",
+      "profile changes require Forge workflow approval before promotion"
+    ]
   },
   {
     id: "crm.opportunity.pipeline",

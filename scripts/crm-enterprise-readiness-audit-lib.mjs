@@ -10,7 +10,7 @@ const USER_FACING_DELIVERABLES = [
     title: "Relationship workspace",
     domain: "relationship",
     surface_id: "crm.relationship-graph",
-    workflow_ids: ["crm.lead.lifecycle", "crm.opportunity.pipeline"]
+    workflow_ids: ["crm.lead.lifecycle", "crm.relationship.profile_enrichment", "crm.opportunity.pipeline"]
   },
   {
     id: "commercial_command_center",

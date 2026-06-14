@@ -66,6 +66,7 @@ test("web app snapshot provides Forge command actions instead of local automatio
   assert.ok(snapshot.actions.every((action) => action.command_template[0] === "forge"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.operating.snapshot.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.relationship.timeline.executor"));
+  assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.relationship.profile_enrichment.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.pipeline.stage_move.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.commercial.followup_forecast.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.commercial.account_management.executor"));
@@ -88,6 +89,22 @@ test("web app snapshot provides Forge command actions instead of local automatio
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.ai.operating_copilot.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.workflow.evolution.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.enterprise.journey.executor"));
+});
+
+test("web app snapshot exposes relationship profile enrichment in the relationship graph", () => {
+  const snapshot = buildCrmWebAppSnapshot({ tenant_id: "demo" });
+  const action = snapshot.actions.find((candidate) => candidate.id === "crm.enrich-relationship-profile");
+
+  assert.ok(action);
+  assert.equal(action.surface_id, "crm.relationship-graph");
+  assert.equal(action.contract_id, "crm.relationship.profile_enrichment.executor");
+  assert.equal(action.requires_permission, "crm.workflow.mutate");
+  assert.equal(action.command_template[0], "forge");
+
+  assert.ok(snapshot.knowledge_graph.enrichment_profiles.some((profile) => profile.action_id === "crm.enrich-relationship-profile"));
+  assert.ok(snapshot.knowledge_graph.enrichment_profiles.every((profile) => profile.state_owner === "forge_workflow_runtime"));
+  assert.ok(snapshot.knowledge_graph.enrichment_profiles.every((profile) => profile.contract_id === "crm.relationship.profile_enrichment.executor"));
+  assert.ok(snapshot.knowledge_graph.nodes.some((node) => node.kind === "relationship_profile"));
 });
 
 test("web app snapshot exposes auditable Forge action invocation plans", () => {
@@ -315,6 +332,7 @@ test("web assets mount the generated CRM snapshot without a build step", async (
   assert.match(html, /\.\/favicon\.svg/);
   assert.match(html, /web\/app\.js|\.\/app\.js/);
   assert.match(app, /renderWorkflowGraph/);
+  assert.match(app, /renderRelationshipProfiles/);
   assert.match(app, /renderKnowledgeGraph/);
   assert.match(app, /renderDocumentQueue/);
   assert.match(app, /renderPipelineKanban/);
@@ -328,6 +346,7 @@ test("web assets mount the generated CRM snapshot without a build step", async (
   assert.match(app, /renderWorkflowEvolutionWorkbench/);
   assert.match(app, /renderEnterpriseJourneyWorkbench/);
   assert.match(styles, /\.workflow-node/);
+  assert.match(styles, /\.relationship-profile/);
   assert.match(styles, /\.knowledge-node/);
   assert.match(styles, /\.document-row/);
   assert.match(styles, /\.pipeline-board/);

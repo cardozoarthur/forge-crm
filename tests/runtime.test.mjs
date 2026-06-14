@@ -152,6 +152,61 @@ test("relationship timeline records entity and pipeline events as Forge artifact
   assert.ok(result.events.some((event) => event.kind === "crm.forecast.updated"));
 });
 
+test("relationship profile enrichment returns contact company profile artifacts without mutating state", () => {
+  assert.equal(typeof runtime.buildRelationshipProfileEnrichmentResult, "function");
+
+  const result = runtime.buildRelationshipProfileEnrichmentResult(
+    workerRequest(
+      "forge_crm.enrich_relationship_profile",
+      {
+        tenant_context: { tenant_id: "demo" },
+        entity_profile: {
+          id: "contact-001",
+          kind: "contact",
+          name: "Mara Lopes",
+          title: "COO",
+          company_id: "company-001",
+          company_name: "Acme Logistics",
+          email: "mara@example.com",
+          lifecycle_stage: "enrichment_wait"
+        },
+        enrichment_sources: [
+          { id: "source-form", kind: "form_submission", confidence: 0.82, fields: ["email", "company_name", "role"] },
+          { id: "source-call", kind: "sales_call", confidence: 0.74, fields: ["pain", "decision_process"] }
+        ],
+        relationship_signals: [
+          { kind: "decision_authority", strength: "high", evidence: "COO owns operations budget" },
+          { kind: "expansion_potential", strength: "medium", evidence: "multi-region logistics operation" }
+        ],
+        timeline_event: {
+          kind: "profile_enriched",
+          owner: "revenue-ops",
+          reason: "merged approved enrichment sources"
+        }
+      },
+      { contract_id: "crm.relationship.profile_enrichment.executor", task_ref: "relationship-profile-test" }
+    )
+  );
+
+  assert.equal(result.schema_version, "forge.addon_executor_result.v1");
+  assert.equal(result.status, "completed");
+  assert.equal(result.outputs.tenant_id, "demo");
+  assert.equal(result.outputs.entity_id, "contact-001");
+  assert.equal(result.outputs.entity_kind, "contact");
+  assert.equal(result.outputs.workflow_id, "crm.relationship.profile_enrichment");
+  assert.equal(result.outputs.enrichment_source_count, 2);
+  assert.equal(result.outputs.relationship_signal_count, 2);
+  assert.equal(result.outputs.enrichment_state, "ready_for_approval");
+  assert.equal(result.outputs.mutates_crm_state, false);
+  assert.equal(result.outputs.forge_event_sourced, true);
+
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_relationship_profile"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_enrichment_record"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_timeline_snapshot"));
+  assert.ok(result.events.some((event) => event.kind === "crm.contact.enriched"));
+  assert.ok(result.events.some((event) => event.kind === "crm.relationship.profile_updated"));
+});
+
 test("opportunity pipeline executor moves cards across funnels as Forge events", () => {
   assert.equal(typeof runtime.buildOpportunityPipelineMoveResult, "function");
 

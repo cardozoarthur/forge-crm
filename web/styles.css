@@ -277,6 +277,7 @@ h3 {
 }
 
 .pipeline-panel,
+.relationship-panel,
 .commercial-command {
   grid-column: span 1;
 }
@@ -541,6 +542,7 @@ h3 {
 
 .module-grid,
 .document-lanes,
+	.relationship-profile-list,
 	.work-queue-grid,
 	.action-list,
 	.action-plan-list,
@@ -577,6 +579,26 @@ h3 {
 .knowledge-node small {
   color: #607078;
   overflow-wrap: anywhere;
+}
+
+.relationship-profile {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #d8dfd8;
+  border-radius: 8px;
+  background: #fbfcf9;
+}
+
+.relationship-profile span {
+  color: #607078;
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
+
+.relationship-profile code {
+  width: fit-content;
 }
 
 .document-row,
