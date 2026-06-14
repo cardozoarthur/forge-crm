@@ -133,6 +133,15 @@ try {
     "json"
   ]);
 
+  const workflow = runForge([
+    "plan",
+    "--goal",
+    "Operate a workflow-first CRM tenant bootstrap smoke",
+    "--output",
+    "json"
+  ]);
+  const workflowId = workflow.workflow_id;
+
   const planner = runForge([
     "addons",
     "execute-planner",
@@ -165,6 +174,8 @@ try {
     workerId,
     "--task",
     "crm-smoke-tenant-bootstrap",
+    "--workflow",
+    workflowId,
     "--input",
     JSON.stringify({
       tenant_context: { id: "smoke", tenant_id: "smoke" },
@@ -175,6 +186,40 @@ try {
     "--output",
     "json"
   ]);
+
+  const workflowArtifacts = runForge([
+    "artifacts",
+    "--workflow",
+    workflowId,
+    "--output",
+    "json"
+  ]);
+  const workflowEvents = runForge([
+    "events",
+    "list",
+    "--workflow",
+    workflowId,
+    "--output",
+    "json"
+  ]);
+  const promotedArtifactCount = bootstrap.promotion?.artifact_count ?? 0;
+  const promotedEventCount = bootstrap.promotion?.event_count ?? 0;
+  const workflowArtifactCount = workflowArtifacts.artifacts?.length ?? 0;
+  const workflowEventKinds = (workflowEvents.events || []).map((event) => event.kind);
+
+  if (bootstrap.promotion?.status !== "addon_executor_result_promoted") {
+    throw new Error(`expected bootstrap promotion, got ${bootstrap.promotion?.status || "missing"}`);
+  }
+  if (promotedArtifactCount < 2 || workflowArtifactCount < promotedArtifactCount) {
+    throw new Error(
+      `expected promoted bootstrap artifacts in workflow, got promoted=${promotedArtifactCount} workflow=${workflowArtifactCount}`
+    );
+  }
+  if (promotedEventCount < 1 || !workflowEventKinds.includes("crm.tenant.bootstrap_generated")) {
+    throw new Error(
+      `expected promoted bootstrap event in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`
+    );
+  }
 
   const classifier = runForge([
     "addons",
@@ -287,9 +332,15 @@ try {
   const summary = {
     status: "ok",
     endpoint,
+    workflow_id: workflowId,
     authorizations: authorizations.map((authorization) => authorization.status || authorization.authorization_status),
     planner_status: planner.status,
     bootstrap_status: bootstrap.status,
+    bootstrap_promotion_status: bootstrap.promotion.status,
+    bootstrap_promoted_artifacts: promotedArtifactCount,
+    bootstrap_promoted_events: promotedEventCount,
+    workflow_artifact_count: workflowArtifactCount,
+    workflow_event_kinds: workflowEventKinds,
     bootstrap_workflow_count: bootstrap.executor_result.outputs.workflow_count,
     bootstrap_complete_scope: bootstrap.executor_result.outputs.complete_scope,
     classifier_status: classifier.status,
