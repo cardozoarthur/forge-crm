@@ -671,6 +671,44 @@ test("manifest exposes CRM omnichannel message ingestion as a Forge-owned execut
   assert.equal(messageListener.runtime_contract_id, "crm.support.omnichannel_message.executor");
 });
 
+test("manifest declares Forge schedule triggers and listeners for every workflow cadence", () => {
+  const scheduleChannel = manifest.event_channels.find((channel) => channel.id === "crm.schedule");
+  assert.ok(scheduleChannel);
+  assert.equal(scheduleChannel.transport, "cron");
+  assert.ok(scheduleChannel.actions.includes("continue_workflow"));
+
+  const scheduleAdapter = manifest.event_adapters.find((adapter) => adapter.id === "crm.schedule.tick");
+  assert.ok(scheduleAdapter);
+  assert.equal(scheduleAdapter.transport, "cron");
+  assert.equal(scheduleAdapter.direction, "ingress");
+  assert.ok(scheduleAdapter.origins.includes("cron"));
+  assert.ok(scheduleAdapter.actions.includes("continue_workflow"));
+
+  const triggersById = new Map(manifest.event_triggers.map((trigger) => [trigger.id, trigger]));
+  const listenersById = new Map(manifest.event_listeners.map((listener) => [listener.id, listener]));
+
+  for (const cadence of webSnapshot.workflow_cadences.cadences) {
+    const trigger = triggersById.get(cadence.trigger_id);
+    assert.ok(trigger, `missing schedule trigger ${cadence.trigger_id}`);
+    assert.equal(trigger.channel, "crm.schedule");
+    assert.equal(trigger.event_type, cadence.event_type);
+    assert.equal(trigger.workflow_extension_id, cadence.workflow_extension_id);
+    assert.ok(trigger.actions.includes("continue_workflow"));
+    assert.deepEqual(trigger.permissions, [cadence.required_permission]);
+    assert.ok(trigger.conditions.includes(`workflow state is ${cadence.due_state}`));
+
+    const listener = listenersById.get(`${cadence.trigger_id}.listener`);
+    assert.ok(listener, `missing schedule listener ${cadence.trigger_id}.listener`);
+    assert.equal(listener.channel, "crm.schedule");
+    assert.equal(listener.event_type, cadence.event_type);
+    assert.equal(listener.workflow_extension_id, cadence.workflow_extension_id);
+    assert.equal(listener.handler, "forge.schedule.route_due_workflow");
+    assert.equal(listener.runtime_contract_id, cadence.contract_id);
+    assert.ok(listener.actions.includes("continue_workflow"));
+    assert.deepEqual(listener.permissions, [cadence.required_permission]);
+  }
+});
+
 test("manifest exposes CRM channel intake normalization as a Forge-owned executor", () => {
   const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.support.channel_intake.executor");
   assert.ok(contract);

@@ -6,9 +6,9 @@
   "addon_name": "Forge CRM",
   "addon_version": "0.1.0",
   "manifest_path": "addons/forge-crm.json",
-  "manifest_sha256": "8f00fa5bedc295d4988e4b983f4e571b524f86325b61e4849f4aded55fd5c909",
-  "manifest_canonical_sha256": "f57306aa084dd58023af7e262d8aaebfe787a8e16924ac949cbaacfd8aa56266",
-  "manifest_bytes": 141509,
+  "manifest_sha256": "c5588d2cae94ce5db42667e582c35fd7d2a38cb5030b6e94b54ef5cf81f0dbd4",
+  "manifest_canonical_sha256": "b4e6c782197e27b6719233611265a58d17643409f0554c239b447951b64b252d",
+  "manifest_bytes": 148838,
   "distribution": {
     "repository": "https://github.com/cardozoarthur/forge-crm",
     "channel": "stable",
@@ -23,7 +23,7 @@
     "scheme": "ed25519_detached",
     "signature": "",
     "public_key": "",
-    "payload_sha256": "6ec5c7c4870c04299a66211e35c7c16a321687f941ecf1f306c1be97f6dd4b2f",
+    "payload_sha256": "71dea47486d91ee975f5a62598807a001ebec2452d5553d1be548b695555355b",
     "verification_note": "package records detached signature metadata; trust verification is a marketplace policy gate"
   },
   "summary": {
@@ -33,7 +33,7 @@
     "workflow_extension_count": 31,
     "runtime_contract_count": 38,
     "view_count": 11,
-    "event_adapter_count": 2,
+    "event_adapter_count": 3,
     "integration_count": 4,
     "capabilities": [
       "crm_workflow_factory",
@@ -4841,6 +4841,120 @@
         "permissions": [
           "crm.document.generate"
         ]
+      },
+      {
+        "id": "crm.schedule.followup_due",
+        "title": "CRM follow-up due",
+        "event_type": "crm.followup",
+        "channel": "crm.schedule",
+        "adapter_id": "crm.schedule.tick",
+        "workflow_extension_id": "crm_followup_sequence",
+        "capability_id": "crm_commercial_operations",
+        "actions": [
+          "continue_workflow"
+        ],
+        "conditions": [
+          "workflow state is waiting_due_date",
+          "follow-up or forecast review is due"
+        ],
+        "permissions": [
+          "crm.workflow.mutate"
+        ]
+      },
+      {
+        "id": "crm.schedule.contract_renewal_due",
+        "title": "CRM contract renewal due",
+        "event_type": "crm.contract",
+        "channel": "crm.schedule",
+        "adapter_id": "crm.schedule.tick",
+        "workflow_extension_id": "crm_contract_lifecycle",
+        "capability_id": "crm_commercial_operations",
+        "actions": [
+          "continue_workflow"
+        ],
+        "conditions": [
+          "workflow state is renewal_wait",
+          "contract renewal checkpoint is due"
+        ],
+        "permissions": [
+          "crm.workflow.mutate"
+        ]
+      },
+      {
+        "id": "crm.schedule.ticket_sla_due",
+        "title": "CRM ticket SLA due",
+        "event_type": "crm.sla",
+        "channel": "crm.schedule",
+        "adapter_id": "crm.schedule.tick",
+        "workflow_extension_id": "crm_ticket_sla",
+        "capability_id": "crm_support_omnichannel",
+        "actions": [
+          "continue_workflow"
+        ],
+        "conditions": [
+          "workflow state is sla_escalation",
+          "SLA escalation checkpoint is due"
+        ],
+        "permissions": [
+          "crm.omnichannel.ingest"
+        ]
+      },
+      {
+        "id": "crm.schedule.campaign_launch_due",
+        "title": "CRM campaign launch due",
+        "event_type": "crm.campaign",
+        "channel": "crm.schedule",
+        "adapter_id": "crm.schedule.tick",
+        "workflow_extension_id": "crm_campaign_lifecycle",
+        "capability_id": "crm_marketing_automation",
+        "actions": [
+          "continue_workflow"
+        ],
+        "conditions": [
+          "workflow state is scheduled",
+          "campaign launch or reporting checkpoint is due"
+        ],
+        "permissions": [
+          "crm.workflow.mutate"
+        ]
+      },
+      {
+        "id": "crm.schedule.nurture_step_due",
+        "title": "CRM lead nurture step due",
+        "event_type": "crm.nurture",
+        "channel": "crm.schedule",
+        "adapter_id": "crm.schedule.tick",
+        "workflow_extension_id": "crm_lead_nurture",
+        "capability_id": "crm_marketing_automation",
+        "actions": [
+          "continue_workflow"
+        ],
+        "conditions": [
+          "workflow state is wait_step",
+          "nurture workflow wait step is due"
+        ],
+        "permissions": [
+          "crm.workflow.mutate"
+        ]
+      },
+      {
+        "id": "crm.schedule.project_handoff_due",
+        "title": "CRM project handoff review due",
+        "event_type": "crm.task",
+        "channel": "crm.schedule",
+        "adapter_id": "crm.schedule.tick",
+        "workflow_extension_id": "crm_project_handoff",
+        "capability_id": "crm_internal_operations",
+        "actions": [
+          "continue_workflow"
+        ],
+        "conditions": [
+          "workflow state is blocked_wait",
+          "project handoff unblock review is due"
+        ],
+        "permissions": [
+          "crm.workflow.mutate"
+        ]
       }
     ],
     "event_listeners": [
@@ -4894,6 +5008,108 @@
         ],
         "permissions": [
           "crm.omnichannel.ingest"
+        ]
+      },
+      {
+        "id": "crm.schedule.followup_due.listener",
+        "title": "CRM follow-up due listener",
+        "event_type": "crm.followup",
+        "channel": "crm.schedule",
+        "adapter_id": "crm.schedule.tick",
+        "workflow_extension_id": "crm_followup_sequence",
+        "capability_id": "crm_commercial_operations",
+        "handler": "forge.schedule.route_due_workflow",
+        "runtime_contract_id": "crm.commercial.followup_forecast.executor",
+        "actions": [
+          "continue_workflow"
+        ],
+        "permissions": [
+          "crm.workflow.mutate"
+        ]
+      },
+      {
+        "id": "crm.schedule.contract_renewal_due.listener",
+        "title": "CRM contract renewal due listener",
+        "event_type": "crm.contract",
+        "channel": "crm.schedule",
+        "adapter_id": "crm.schedule.tick",
+        "workflow_extension_id": "crm_contract_lifecycle",
+        "capability_id": "crm_commercial_operations",
+        "handler": "forge.schedule.route_due_workflow",
+        "runtime_contract_id": "crm.commercial.contract_signature.executor",
+        "actions": [
+          "continue_workflow"
+        ],
+        "permissions": [
+          "crm.workflow.mutate"
+        ]
+      },
+      {
+        "id": "crm.schedule.ticket_sla_due.listener",
+        "title": "CRM ticket SLA due listener",
+        "event_type": "crm.sla",
+        "channel": "crm.schedule",
+        "adapter_id": "crm.schedule.tick",
+        "workflow_extension_id": "crm_ticket_sla",
+        "capability_id": "crm_support_omnichannel",
+        "handler": "forge.schedule.route_due_workflow",
+        "runtime_contract_id": "crm.support.ticket_sla.executor",
+        "actions": [
+          "continue_workflow"
+        ],
+        "permissions": [
+          "crm.omnichannel.ingest"
+        ]
+      },
+      {
+        "id": "crm.schedule.campaign_launch_due.listener",
+        "title": "CRM campaign launch due listener",
+        "event_type": "crm.campaign",
+        "channel": "crm.schedule",
+        "adapter_id": "crm.schedule.tick",
+        "workflow_extension_id": "crm_campaign_lifecycle",
+        "capability_id": "crm_marketing_automation",
+        "handler": "forge.schedule.route_due_workflow",
+        "runtime_contract_id": "crm.marketing.campaign_automation.executor",
+        "actions": [
+          "continue_workflow"
+        ],
+        "permissions": [
+          "crm.workflow.mutate"
+        ]
+      },
+      {
+        "id": "crm.schedule.nurture_step_due.listener",
+        "title": "CRM nurture step due listener",
+        "event_type": "crm.nurture",
+        "channel": "crm.schedule",
+        "adapter_id": "crm.schedule.tick",
+        "workflow_extension_id": "crm_lead_nurture",
+        "capability_id": "crm_marketing_automation",
+        "handler": "forge.schedule.route_due_workflow",
+        "runtime_contract_id": "crm.marketing.campaign_automation.executor",
+        "actions": [
+          "continue_workflow"
+        ],
+        "permissions": [
+          "crm.workflow.mutate"
+        ]
+      },
+      {
+        "id": "crm.schedule.project_handoff_due.listener",
+        "title": "CRM project handoff due listener",
+        "event_type": "crm.task",
+        "channel": "crm.schedule",
+        "adapter_id": "crm.schedule.tick",
+        "workflow_extension_id": "crm_project_handoff",
+        "capability_id": "crm_internal_operations",
+        "handler": "forge.schedule.route_due_workflow",
+        "runtime_contract_id": "crm.operations.project_handoff.executor",
+        "actions": [
+          "continue_workflow"
+        ],
+        "permissions": [
+          "crm.workflow.mutate"
         ]
       }
     ],
@@ -4960,6 +5176,32 @@
         "schema": "forge.crm.omnichannel.v1",
         "auth": "forge_policy",
         "permissions": [
+          "crm.omnichannel.ingest"
+        ]
+      },
+      {
+        "id": "crm.schedule.tick",
+        "title": "CRM Forge schedule router",
+        "transport": "cron",
+        "direction": "ingress",
+        "origins": [
+          "cron"
+        ],
+        "actions": [
+          "continue_workflow"
+        ],
+        "event_types": [
+          "crm.followup",
+          "crm.contract",
+          "crm.sla",
+          "crm.campaign",
+          "crm.nurture",
+          "crm.task"
+        ],
+        "schema": "forge.crm.schedule.v1",
+        "auth": "forge_policy",
+        "permissions": [
+          "crm.workflow.mutate",
           "crm.omnichannel.ingest"
         ]
       }
