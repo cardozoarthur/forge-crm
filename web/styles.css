@@ -836,12 +836,18 @@ h3 {
   border-left: 4px solid #2d7668;
 }
 
+.executive-reporting {
+  border-left: 4px solid #285f9d;
+}
+
 .journey-lanes,
 .journey-gates,
 .subworkflow-bindings,
 .subworkflow-gates,
 .automation-graph,
 .automation-palettes,
+.executive-kpi-grid,
+.executive-report-grid,
 .goal-commission-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -856,6 +862,10 @@ h3 {
 .automation-node,
 .automation-palette,
 .automation-gate,
+.executive-kpi,
+.executive-summary-card,
+.business-review-card,
+.executive-reporting-gate,
 .goal-target,
 .revenue-event,
 .commission-statement,
@@ -875,6 +885,9 @@ h3 {
 .subworkflow-gate strong,
 .automation-node strong,
 .automation-palette strong,
+.executive-kpi strong,
+.executive-summary-card strong,
+.business-review-card strong,
 .goal-target strong,
 .revenue-event strong,
 .commission-statement strong {
@@ -885,6 +898,7 @@ h3 {
 
 .subworkflow-binding code,
 .automation-palette code,
+.executive-reporting code,
 .goal-commission code {
   color: #285f9d;
   font-size: 0.74rem;
@@ -897,6 +911,11 @@ h3 {
 .automation-node small,
 .automation-palette span,
 .automation-gate,
+.executive-kpi span,
+.executive-kpi small,
+.executive-summary-card span,
+.business-review-card span,
+.executive-reporting-gate,
 .goal-target span,
 .revenue-event span,
 .commission-statement span,
@@ -908,6 +927,7 @@ h3 {
 }
 
 .automation-gates,
+.executive-reporting-gates,
 .goal-commission-gates {
   display: grid;
   gap: 8px;
@@ -974,6 +994,8 @@ h3 {
 	  .journey-gates,
 	  .automation-graph,
 	  .automation-palettes,
+	  .executive-kpi-grid,
+	  .executive-report-grid,
 	  .goal-commission-grid,
 	  .plan-steps {
     grid-template-columns: 1fr;

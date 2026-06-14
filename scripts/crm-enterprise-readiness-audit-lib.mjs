@@ -76,6 +76,13 @@ const USER_FACING_DELIVERABLES = [
     workflow_ids: ["crm.goal.commission"]
   },
   {
+    id: "executive_reporting",
+    title: "Executive reporting",
+    domain: "operations",
+    surface_id: "crm.ai-workbench",
+    workflow_ids: ["crm.executive.reporting"]
+  },
+  {
     id: "design_system",
     title: "Design system",
     domain: "user_experience",

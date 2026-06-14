@@ -191,6 +191,46 @@ test("operational observability workflow inspects audit lineage cost metrics and
   assert.ok(pack.indexes.runtime_contracts.includes("crm.observability.inspector.executor"));
 });
 
+test("executive reporting workflow summarizes CRM KPIs through Forge evidence", () => {
+  const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
+  const workflow = pack.workflows.find((candidate) => candidate.id === "crm.executive.reporting");
+  const observabilityWorkflow = pack.workflows.find((candidate) => candidate.id === "crm.operational.observability");
+  const readinessWorkflow = pack.workflows.find((candidate) => candidate.id === "crm.enterprise.readiness");
+
+  assert.ok(workflow);
+  assert.equal(workflow.domain, "operations");
+  assert.equal(workflow.workflow_extension_id, "crm_executive_reporting");
+  assert.ok(workflow.runtime_contracts.includes("crm.analytics.executive_report.executor"));
+
+  for (const dependency of [
+    "crm.operational.observability",
+    "crm.followup.forecast",
+    "crm.goal.commission",
+    "crm.ticket.sla",
+    "crm.campaign.lifecycle",
+    "crm.work.queue.orchestration"
+  ]) {
+    assert.ok(workflow.depends_on_workflows.includes(dependency), `missing reporting dependency ${dependency}`);
+  }
+
+  for (const objectType of ["executive_summary", "kpi_dashboard", "risk", "revenue", "support", "marketing", "workflow"]) {
+    assert.ok(workflow.object_types.includes(objectType), `missing executive reporting object ${objectType}`);
+  }
+  for (const artifact of ["crm_executive_summary", "crm_kpi_dashboard", "crm_business_review_report"]) {
+    assert.ok(workflow.artifacts.includes(artifact), `missing executive reporting artifact ${artifact}`);
+    assert.ok(pack.indexes.artifact_types.includes(artifact), `missing indexed executive reporting artifact ${artifact}`);
+  }
+  for (const event of ["crm.executive.summary_generated", "crm.kpi.dashboard_generated", "crm.risk.reviewed"]) {
+    assert.ok(workflow.events.includes(event), `missing executive reporting event ${event}`);
+  }
+
+  assert.ok(workflow.validation_gates.includes("executive KPIs are derived from Forge workflow artifacts and events"));
+  assert.ok(workflow.validation_gates.includes("recommended decisions remain advisory until Forge approval"));
+  assert.ok(pack.indexes.runtime_contracts.includes("crm.analytics.executive_report.executor"));
+  assert.ok(observabilityWorkflow.runtime_contracts.includes("crm.analytics.executive_report.executor"));
+  assert.ok(readinessWorkflow.runtime_contracts.includes("crm.analytics.executive_report.executor"));
+});
+
 test("relationship and pipeline workflows route timeline updates through Forge", () => {
   const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
 

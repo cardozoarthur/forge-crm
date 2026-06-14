@@ -104,6 +104,7 @@ try {
       "forge_crm.design_workflow_automation",
       "forge_crm.run_enterprise_journey",
       "forge_crm.inspect_observability",
+      "forge_crm.generate_executive_report",
       "forge_crm.generate_operating_readiness",
       "forge_crm.generate_proposal",
       "forge_crm.review_followup_forecast",
@@ -143,6 +144,7 @@ try {
       "crm.workflow.automation_designer.executor",
       "crm.enterprise.journey.executor",
       "crm.observability.inspector.executor",
+      "crm.analytics.executive_report.executor",
       "crm.operating.readiness.executor",
       "crm.proposal.generator.executor",
       "crm.commercial.followup_forecast.executor",
@@ -768,6 +770,88 @@ try {
     throw new Error(`expected observability cost total 1.5, got ${observabilityInspection.executor_result.outputs.cost_total_usd}`);
   }
 
+  const executiveReporting = runForge([
+    "addons",
+    "execute-executor",
+    "--addon-dir",
+    "addons",
+    "--addon",
+    "forge.addon.crm",
+    "--contract",
+    "crm.analytics.executive_report.executor",
+    "--worker",
+    workerId,
+    "--task",
+    "crm-smoke-executive-reporting",
+    "--workflow",
+    workflowId,
+    "--input",
+    JSON.stringify({
+      tenant_context: { id: "smoke", tenant_id: "smoke" },
+      operating_snapshot: {
+        workflow_count: 28,
+        surface_count: 10,
+        state_owner: "forge_workflow_runtime",
+        external_database_required: false
+      },
+      workflow_metrics: {
+        workflow_count: 28,
+        approval_wait_count: 4,
+        blocked_wait_count: 1,
+        promoted_artifact_count: observabilityInspection.promotion?.artifact_count ?? 0
+      },
+      commercial_metrics: {
+        pipeline_value: 820000,
+        forecast_amount: 615000,
+        recognized_revenue_amount: 300000,
+        attainment_percent: 84
+      },
+      support_metrics: {
+        open_ticket_count: 18,
+        sla_at_risk_count: 3,
+        breached_sla_count: 1
+      },
+      marketing_metrics: {
+        active_campaign_count: 4,
+        qualified_lead_count: 52,
+        form_conversion_rate: 0.19
+      },
+      risk_register: [
+        {
+          id: "risk-sla",
+          severity: "high",
+          workflow_id: "crm.ticket.sla",
+          summary: "Three SLA items are at risk",
+          owner: "support.lead"
+        },
+        {
+          id: "risk-approval-wait",
+          severity: "medium",
+          workflow_id: "crm.work.queue.orchestration",
+          summary: "Approval waits are delaying executive readiness",
+          owner: "ops.commander"
+        }
+      ]
+    }),
+    "--context",
+    JSON.stringify({ tenant: "smoke" }),
+    "--output",
+    "json"
+  ]);
+
+  if (executiveReporting.promotion?.status !== "addon_executor_result_promoted") {
+    throw new Error(`expected executive reporting promotion, got ${executiveReporting.promotion?.status || "missing"}`);
+  }
+  if (executiveReporting.executor_result.outputs.workflow_id !== "crm.executive.reporting") {
+    throw new Error(`expected executive reporting workflow, got ${executiveReporting.executor_result.outputs.workflow_id}`);
+  }
+  if (executiveReporting.executor_result.outputs.local_analytics_state !== false) {
+    throw new Error("expected executive reporting to avoid CRM-local analytics state");
+  }
+  if (executiveReporting.executor_result.outputs.kpi_count < 8) {
+    throw new Error(`expected at least 8 executive KPIs, got ${executiveReporting.executor_result.outputs.kpi_count}`);
+  }
+
   const workflowEvolution = runForge([
     "addons",
     "execute-executor",
@@ -990,6 +1074,7 @@ try {
           "marketing automation",
           "workflow automation designer",
           "goal and commission settlement",
+          "executive reporting",
           "document approvals",
           "project handoff"
         ]
@@ -2235,6 +2320,8 @@ try {
   const memoryPromotedEventCount = memoryPromotion.promotion?.event_count ?? 0;
   const observabilityPromotedArtifactCount = observabilityInspection.promotion?.artifact_count ?? 0;
   const observabilityPromotedEventCount = observabilityInspection.promotion?.event_count ?? 0;
+  const executiveReportingPromotedArtifactCount = executiveReporting.promotion?.artifact_count ?? 0;
+  const executiveReportingPromotedEventCount = executiveReporting.promotion?.event_count ?? 0;
   const workflowEvolutionPromotedArtifactCount = workflowEvolution.promotion?.artifact_count ?? 0;
   const workflowEvolutionPromotedEventCount = workflowEvolution.promotion?.event_count ?? 0;
   const workflowAutomationDesignPromotedArtifactCount = workflowAutomationDesign.promotion?.artifact_count ?? 0;
@@ -2377,6 +2464,16 @@ try {
     "crm.cost.reviewed",
     "crm.metric.reviewed"
   ]) {
+    if (!workflowEventKinds.includes(eventKind)) {
+      throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
+    }
+  }
+  if (executiveReportingPromotedArtifactCount < 3 || executiveReportingPromotedEventCount < 3) {
+    throw new Error(
+      `expected promoted executive reporting artifacts/events, got artifacts=${executiveReportingPromotedArtifactCount} events=${executiveReportingPromotedEventCount}`
+    );
+  }
+  for (const eventKind of ["crm.executive.summary_generated", "crm.kpi.dashboard_generated", "crm.risk.reviewed"]) {
     if (!workflowEventKinds.includes(eventKind)) {
       throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
     }
@@ -2802,6 +2899,13 @@ try {
     observability_inspection_status: observabilityInspection.executor_result.outputs.inspection_status,
     observability_promoted_artifacts: observabilityPromotedArtifactCount,
     observability_promoted_events: observabilityPromotedEventCount,
+    executive_reporting_status: executiveReporting.status,
+    executive_reporting_promotion_status: executiveReporting.promotion.status,
+    executive_reporting_health_score: executiveReporting.executor_result.outputs.executive_health_score,
+    executive_reporting_kpi_count: executiveReporting.executor_result.outputs.kpi_count,
+    executive_reporting_risk_count: executiveReporting.executor_result.outputs.risk_count,
+    executive_reporting_promoted_artifacts: executiveReportingPromotedArtifactCount,
+    executive_reporting_promoted_events: executiveReportingPromotedEventCount,
     workflow_evolution_status: workflowEvolution.status,
     workflow_evolution_promotion_status: workflowEvolution.promotion.status,
     workflow_evolution_state: workflowEvolution.executor_result.outputs.evolution_state,

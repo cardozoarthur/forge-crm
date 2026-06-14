@@ -55,6 +55,13 @@ const WORKFLOW_EDGES = [
   ["crm.work.queue.orchestration", "crm.project.handoff", "queue assignment can return blocked handoffs to operations"],
   ["crm.design.system", "crm.enterprise.readiness", "published design artifacts update readiness evidence"],
   ["crm.operational.observability", "crm.workflow.evolution", "observability findings generate controlled evolution candidates"],
+  ["crm.operational.observability", "crm.executive.reporting", "Forge observability feeds executive KPI reporting"],
+  ["crm.followup.forecast", "crm.executive.reporting", "forecast evidence feeds executive revenue reporting"],
+  ["crm.goal.commission", "crm.executive.reporting", "goal attainment feeds executive revenue reporting"],
+  ["crm.ticket.sla", "crm.executive.reporting", "SLA evidence feeds executive risk reporting"],
+  ["crm.campaign.lifecycle", "crm.executive.reporting", "campaign evidence feeds executive growth reporting"],
+  ["crm.work.queue.orchestration", "crm.executive.reporting", "queue risks feed executive action review"],
+  ["crm.executive.reporting", "crm.enterprise.readiness", "business review artifacts update readiness evidence"],
   ["crm.workflow.evolution", "crm.enterprise.readiness", "validated experiments update readiness evidence"],
   ["crm.operational.observability", "crm.workflow.automation_design", "observability can drive safer automation design"],
   ["crm.workflow.automation_design", "crm.work.queue.orchestration", "validated automation queues governed CRM work"],
@@ -821,6 +828,7 @@ function buildOperationalWorkbench(workflows, actionList, documentQueueSnapshot)
       action_ids: checkedActionIds(actionList, [
         "crm.run-operating-copilot",
         "crm.run-area-copilot",
+        "crm.generate-executive-report",
         "crm.prepare-memory-promotion",
         "crm.evolve-workflow",
         "crm.inspect-observability",
@@ -899,6 +907,19 @@ function buildOperationalWorkbench(workflows, actionList, documentQueueSnapshot)
         evidence_artifact_type: "crm_area_copilot_brief",
         recommended_focus: "Approval queue and document rework",
         action_id: "crm.run-area-copilot"
+      }
+    ],
+    executive_reports: [
+      {
+        report_id: "exec-review-q3",
+        workflow_id: "crm.executive.reporting",
+        contract_id: "crm.analytics.executive_report.executor",
+        state_owner: "forge_workflow_runtime",
+        reporting_state: "ready_for_review",
+        health_score: 78,
+        risk_count: 2,
+        artifact_types: ["crm_executive_summary", "crm_kpi_dashboard", "crm_business_review_report"],
+        action_id: "crm.generate-executive-report"
       }
     ],
     memory_promotions: [
@@ -1352,6 +1373,65 @@ function workflowAutomationDesignerWorkbench(workflows, actionList) {
   };
 }
 
+function executiveReportingWorkbench(workflows, actionList) {
+  const actionById = new Map(actionList.map((action) => [action.id, action]));
+  const action = actionById.get("crm.generate-executive-report");
+  const workflow = workflows.find((candidate) => candidate.id === "crm.executive.reporting");
+  const kpis = [
+    { id: "pipeline_value", label: "Pipeline value", value: 1450000, unit: "currency", source_workflow_id: "crm.followup.forecast" },
+    { id: "forecast_amount", label: "Forecast", value: 836800, unit: "currency", source_workflow_id: "crm.followup.forecast" },
+    { id: "recognized_revenue_amount", label: "Recognized revenue", value: 300000, unit: "currency", source_workflow_id: "crm.goal.commission" },
+    { id: "attainment_percent", label: "Goal attainment", value: 84, unit: "percent", source_workflow_id: "crm.goal.commission" },
+    { id: "open_ticket_count", label: "Open tickets", value: 18, unit: "count", source_workflow_id: "crm.ticket.sla" },
+    { id: "sla_at_risk_count", label: "SLA at risk", value: 3, unit: "count", source_workflow_id: "crm.ticket.sla" },
+    { id: "active_campaign_count", label: "Active campaigns", value: 4, unit: "count", source_workflow_id: "crm.campaign.lifecycle" },
+    { id: "approval_wait_count", label: "Approval waits", value: 5, unit: "count", source_workflow_id: "crm.work.queue.orchestration" },
+    { id: "executive_health_score", label: "Executive health", value: 78, unit: "score", source_workflow_id: "crm.executive.reporting" }
+  ];
+
+  return {
+    schema_version: "forge.crm_executive_reporting_workbench.v1",
+    workflow_id: workflow?.id || "crm.executive.reporting",
+    workflow_extension_id: workflow?.workflow_extension_id || "crm_executive_reporting",
+    state_owner: "forge_workflow_runtime",
+    state_source: WORKBENCH_STATE_SOURCE,
+    local_state_allowed: false,
+    external_analytics_database_required: false,
+    action_id: action?.id || "crm.generate-executive-report",
+    contract_id: action?.contract_id || "crm.analytics.executive_report.executor",
+    kpis,
+    executive_summaries: [
+      {
+        id: "executive-summary-q3",
+        artifact_type: "crm_executive_summary",
+        summary: "Pipeline, forecast, SLA risk and approval waits are ready for executive review.",
+        recommended_action_count: 3,
+        state_owner: "forge_workflow_runtime"
+      }
+    ],
+    business_reviews: [
+      {
+        id: "business-review-q3",
+        artifact_type: "crm_business_review_report",
+        risk_count: 2,
+        review_state: "ready_for_review",
+        source_workflows: [
+          "crm.operational.observability",
+          "crm.followup.forecast",
+          "crm.goal.commission",
+          "crm.ticket.sla",
+          "crm.campaign.lifecycle",
+          "crm.work.queue.orchestration"
+        ]
+      }
+    ],
+    validation_gates: [
+      "executive KPIs are derived from Forge workflow artifacts and events",
+      "recommended decisions remain advisory until Forge approval"
+    ]
+  };
+}
+
 function goalCommissionWorkbench(workflows, actionList) {
   const actionById = new Map(actionList.map((action) => [action.id, action]));
   const action = actionById.get("crm.settle-goal-commission");
@@ -1479,6 +1559,15 @@ function actions() {
       requires_permission: "crm.observability.inspect",
       mutates_workflow: true,
       command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.observability.inspector.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
+    },
+    {
+      id: "crm.generate-executive-report",
+      label: "Generate executive report",
+      surface_id: "crm.ai-workbench",
+      contract_id: "crm.analytics.executive_report.executor",
+      requires_permission: "crm.observability.inspect",
+      mutates_workflow: true,
+      command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.analytics.executive_report.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
     },
     {
       id: "crm.generate-readiness-package",
@@ -2048,6 +2137,7 @@ export function buildCrmWebAppSnapshot(options = {}) {
     enterprise_journey_workbench: enterpriseJourneyWorkbench(workflows, actionList),
     subworkflow_orchestration_workbench: subworkflowOrchestrationWorkbench(workflows, actionList),
     workflow_automation_designer_workbench: workflowAutomationDesignerWorkbench(workflows, actionList),
+    executive_reporting_workbench: executiveReportingWorkbench(workflows, actionList),
     goal_commission_workbench: goalCommissionWorkbench(workflows, actionList),
     actions: actionList,
     action_invocation_plans: actionInvocationPlans(actionList),

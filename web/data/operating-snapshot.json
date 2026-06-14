@@ -23,11 +23,11 @@
     "external_delivery_requires_approval": true
   },
   "metrics": {
-    "workflow_count": 27,
+    "workflow_count": 28,
     "business_module_count": 7,
     "surface_count": 10,
-    "artifact_type_count": 79,
-    "event_type_count": 92,
+    "artifact_type_count": 82,
+    "event_type_count": 95,
     "complete_scope": true
   },
   "surfaces": [
@@ -43,6 +43,7 @@
         "crm.work.queue.orchestration",
         "crm.design.system",
         "crm.operational.observability",
+        "crm.executive.reporting",
         "crm.enterprise.readiness",
         "crm.subworkflow.orchestration",
         "crm.enterprise.customer_journey",
@@ -67,6 +68,12 @@
         "context_collected",
         "audit_reported",
         "remediation_started",
+        "metrics_collected",
+        "cross_domain_rollup",
+        "executive_summary_generated",
+        "risk_reviewed",
+        "action_recommendations_queued",
+        "published",
         "criteria_collected",
         "evidence_mapped",
         "readiness_reported",
@@ -99,6 +106,7 @@
         "crm_audit_report",
         "crm_automation_validation_report",
         "crm_benchmark_report",
+        "crm_business_review_report",
         "crm_business_runbook",
         "crm_core_gap_report",
         "crm_cost_report",
@@ -108,6 +116,8 @@
         "crm_domain_coverage_matrix",
         "crm_enterprise_journey_map",
         "crm_evolution_experiment",
+        "crm_executive_summary",
+        "crm_kpi_dashboard",
         "crm_lineage_map",
         "crm_metric_snapshot",
         "crm_operating_acceptance_evidence",
@@ -138,9 +148,11 @@
         "crm.evolution.candidate_generated",
         "crm.evolution.experiment_designed",
         "crm.evolution.promotion_decision_recorded",
+        "crm.executive.summary_generated",
         "crm.journey.acceptance_reported",
         "crm.journey.stage_completed",
         "crm.journey.started",
+        "crm.kpi.dashboard_generated",
         "crm.metric.reviewed",
         "crm.observability.inspected",
         "crm.operating.readiness_reported",
@@ -148,6 +160,7 @@
         "crm.queue.assignment_planned",
         "crm.queue.risk_flagged",
         "crm.queue.snapshot_generated",
+        "crm.risk.reviewed",
         "crm.subworkflow.bound",
         "crm.subworkflow.promoted",
         "crm.subworkflow.validated"
@@ -677,11 +690,18 @@
       "permission": "crm.ai.recommend",
       "state_source": "forge_workflow_artifacts_and_events",
       "workflow_ids": [
+        "crm.executive.reporting",
         "crm.workflow.evolution",
         "crm.workflow.automation_design",
         "crm.ai.copilot.recommendation"
       ],
       "lanes": [
+        "metrics_collected",
+        "cross_domain_rollup",
+        "executive_summary_generated",
+        "risk_reviewed",
+        "action_recommendations_queued",
+        "published",
         "candidate_scan",
         "experiment_designed",
         "benchmark_wait",
@@ -705,9 +725,12 @@
         "crm_area_copilot_brief",
         "crm_automation_validation_report",
         "crm_benchmark_report",
+        "crm_business_review_report",
         "crm_core_gap_report",
         "crm_evolution_experiment",
+        "crm_executive_summary",
         "crm_knowledge_summary",
+        "crm_kpi_dashboard",
         "crm_memory_promotion_request",
         "crm_promotion_decision",
         "crm_report",
@@ -728,9 +751,12 @@
         "crm.evolution.candidate_generated",
         "crm.evolution.experiment_designed",
         "crm.evolution.promotion_decision_recorded",
+        "crm.executive.summary_generated",
+        "crm.kpi.dashboard_generated",
         "crm.memory.knowledge_curated",
         "crm.memory.promotion_requested",
-        "crm.next_action.approved"
+        "crm.next_action.approved",
+        "crm.risk.reviewed"
       ],
       "mutation_requires_forge": true
     }
@@ -1000,6 +1026,7 @@
         "crm.document.library",
         "crm.work.queue.orchestration",
         "crm.operational.observability",
+        "crm.executive.reporting",
         "crm.enterprise.readiness",
         "crm.subworkflow.orchestration",
         "crm.enterprise.customer_journey"
@@ -1008,6 +1035,7 @@
         "crm_account_plan",
         "crm_approval_record",
         "crm_audit_report",
+        "crm_business_review_report",
         "crm_business_runbook",
         "crm_contract",
         "crm_cost_report",
@@ -1017,10 +1045,12 @@
         "crm_document_version",
         "crm_domain_coverage_matrix",
         "crm_enterprise_journey_map",
+        "crm_executive_summary",
         "crm_file_record",
         "crm_forecast_report",
         "crm_handoff_record",
         "crm_health_report",
+        "crm_kpi_dashboard",
         "crm_lineage_map",
         "crm_metric_snapshot",
         "crm_operating_acceptance_evidence",
@@ -1056,10 +1086,12 @@
         "crm.document.submitted",
         "crm.document.validated",
         "crm.document.versioned",
+        "crm.executive.summary_generated",
         "crm.file.recorded",
         "crm.journey.acceptance_reported",
         "crm.journey.stage_completed",
         "crm.journey.started",
+        "crm.kpi.dashboard_generated",
         "crm.metric.reviewed",
         "crm.observability.inspected",
         "crm.operating.readiness_reported",
@@ -1069,6 +1101,7 @@
         "crm.queue.assignment_planned",
         "crm.queue.risk_flagged",
         "crm.queue.snapshot_generated",
+        "crm.risk.reviewed",
         "crm.subworkflow.bound",
         "crm.subworkflow.promoted",
         "crm.subworkflow.validated",
@@ -1082,12 +1115,14 @@
         "approval decision lineage recorded",
         "audit lineage cost metrics and logs sourced from Forge",
         "blocked reason explicit",
+        "business review risk items cite workflow lineage",
         "child subworkflows are validated before parent journey promotion",
         "contract approval lineage present",
         "cross-domain handoffs preserve workflow and artifact lineage",
         "document library state is represented by Forge artifacts and events",
         "document versions require Forge artifact lineage before promotion",
         "every queue item cites artifact or event evidence",
+        "executive KPIs are derived from Forge workflow artifacts and events",
         "expansion forecast event-backed",
         "inspection does not create CRM-local observability state",
         "lineage points to Forge artifact",
@@ -1097,6 +1132,7 @@
         "parent workflow promotion is blocked while any child validation gate fails",
         "queue actions require Forge workflow approval before mutation",
         "readiness evidence sourced from Forge workflows artifacts events and validation gates",
+        "recommended decisions remain advisory until Forge approval",
         "remediation requires Forge workflow mutation",
         "renewal state explicit",
         "rework reason recorded before any operable claim",
@@ -1144,6 +1180,7 @@
       "workflow_ids": [
         "crm.proposal.approval",
         "crm.work.queue.orchestration",
+        "crm.executive.reporting",
         "crm.workflow.evolution",
         "crm.workflow.automation_design",
         "crm.ai.copilot.recommendation"
@@ -1153,10 +1190,13 @@
         "crm_area_copilot_brief",
         "crm_automation_validation_report",
         "crm_benchmark_report",
+        "crm_business_review_report",
         "crm_core_gap_report",
         "crm_document",
         "crm_evolution_experiment",
+        "crm_executive_summary",
         "crm_knowledge_summary",
+        "crm_kpi_dashboard",
         "crm_memory_promotion_request",
         "crm_promotion_decision",
         "crm_proposal",
@@ -1182,13 +1222,16 @@
         "crm.evolution.candidate_generated",
         "crm.evolution.experiment_designed",
         "crm.evolution.promotion_decision_recorded",
+        "crm.executive.summary_generated",
+        "crm.kpi.dashboard_generated",
         "crm.memory.knowledge_curated",
         "crm.memory.promotion_requested",
         "crm.next_action.approved",
         "crm.proposal.generated",
         "crm.queue.assignment_planned",
         "crm.queue.risk_flagged",
-        "crm.queue.snapshot_generated"
+        "crm.queue.snapshot_generated",
+        "crm.risk.reviewed"
       ],
       "validation_gates": [
         "Core primitive gaps are reported to forge-core before CRM workaround",
@@ -1196,7 +1239,9 @@
         "artifact lineage present",
         "automation design validates trigger condition action graph before activation",
         "automation execution remains inside Forge workflows",
+        "business review risk items cite workflow lineage",
         "every queue item cites artifact or event evidence",
+        "executive KPIs are derived from Forge workflow artifacts and events",
         "experiment candidate includes changelog and rollback plan",
         "external delivery blocked until approval",
         "memory promotion uses Forge memory governance",
@@ -1204,6 +1249,7 @@
         "promotion is blocked until benchmark evidence passes",
         "queue actions require Forge workflow approval before mutation",
         "recommendation includes evidence",
+        "recommended decisions remain advisory until Forge approval",
         "specialized copilot recommendations are scoped by area and cite Forge evidence",
         "state mutation requires workflow approval"
       ]
@@ -2061,7 +2107,8 @@
           "risk_review_wait"
         ],
         "runtime_contracts": [
-          "crm.observability.inspector.executor"
+          "crm.observability.inspector.executor",
+          "crm.analytics.executive_report.executor"
         ],
         "artifact_types": [
           "crm_audit_report",
@@ -2085,6 +2132,43 @@
         ]
       },
       {
+        "id": "crm.executive.reporting",
+        "title": "Executive CRM reporting and KPI dashboard",
+        "domain": "operations",
+        "state_count": 6,
+        "states": [
+          "metrics_collected",
+          "cross_domain_rollup",
+          "executive_summary_generated",
+          "risk_reviewed",
+          "action_recommendations_queued",
+          "published"
+        ],
+        "wait_states": [],
+        "runtime_contracts": [
+          "crm.analytics.executive_report.executor"
+        ],
+        "artifact_types": [
+          "crm_executive_summary",
+          "crm_kpi_dashboard",
+          "crm_business_review_report"
+        ],
+        "event_types": [
+          "crm.executive.summary_generated",
+          "crm.kpi.dashboard_generated",
+          "crm.risk.reviewed"
+        ],
+        "surface_ids": [
+          "crm.ai-workbench",
+          "crm.system-map"
+        ],
+        "validation_gates": [
+          "executive KPIs are derived from Forge workflow artifacts and events",
+          "business review risk items cite workflow lineage",
+          "recommended decisions remain advisory until Forge approval"
+        ]
+      },
+      {
         "id": "crm.enterprise.readiness",
         "title": "Enterprise CRM operating readiness",
         "domain": "operations",
@@ -2098,7 +2182,8 @@
         ],
         "wait_states": [],
         "runtime_contracts": [
-          "crm.operating.readiness.executor"
+          "crm.operating.readiness.executor",
+          "crm.analytics.executive_report.executor"
         ],
         "artifact_types": [
           "crm_operating_readiness_report",
@@ -2507,6 +2592,48 @@
         "from": "crm.operational.observability",
         "to": "crm.workflow.evolution",
         "reason": "observability findings generate controlled evolution candidates",
+        "state_owner": "forge_workflow_runtime"
+      },
+      {
+        "from": "crm.operational.observability",
+        "to": "crm.executive.reporting",
+        "reason": "Forge observability feeds executive KPI reporting",
+        "state_owner": "forge_workflow_runtime"
+      },
+      {
+        "from": "crm.followup.forecast",
+        "to": "crm.executive.reporting",
+        "reason": "forecast evidence feeds executive revenue reporting",
+        "state_owner": "forge_workflow_runtime"
+      },
+      {
+        "from": "crm.goal.commission",
+        "to": "crm.executive.reporting",
+        "reason": "goal attainment feeds executive revenue reporting",
+        "state_owner": "forge_workflow_runtime"
+      },
+      {
+        "from": "crm.ticket.sla",
+        "to": "crm.executive.reporting",
+        "reason": "SLA evidence feeds executive risk reporting",
+        "state_owner": "forge_workflow_runtime"
+      },
+      {
+        "from": "crm.campaign.lifecycle",
+        "to": "crm.executive.reporting",
+        "reason": "campaign evidence feeds executive growth reporting",
+        "state_owner": "forge_workflow_runtime"
+      },
+      {
+        "from": "crm.work.queue.orchestration",
+        "to": "crm.executive.reporting",
+        "reason": "queue risks feed executive action review",
+        "state_owner": "forge_workflow_runtime"
+      },
+      {
+        "from": "crm.executive.reporting",
+        "to": "crm.enterprise.readiness",
+        "reason": "business review artifacts update readiness evidence",
         "state_owner": "forge_workflow_runtime"
       },
       {
@@ -3639,6 +3766,7 @@
         "state_source": "forge_workflow_artifacts_and_events",
         "mutation_requires_forge": true,
         "workflow_ids": [
+          "crm.executive.reporting",
           "crm.workflow.evolution",
           "crm.workflow.automation_design",
           "crm.ai.copilot.recommendation"
@@ -3646,6 +3774,7 @@
         "action_ids": [
           "crm.run-operating-copilot",
           "crm.run-area-copilot",
+          "crm.generate-executive-report",
           "crm.prepare-memory-promotion",
           "crm.evolve-workflow",
           "crm.inspect-observability",
@@ -3723,6 +3852,23 @@
             "evidence_artifact_type": "crm_area_copilot_brief",
             "recommended_focus": "Approval queue and document rework",
             "action_id": "crm.run-area-copilot"
+          }
+        ],
+        "executive_reports": [
+          {
+            "report_id": "exec-review-q3",
+            "workflow_id": "crm.executive.reporting",
+            "contract_id": "crm.analytics.executive_report.executor",
+            "state_owner": "forge_workflow_runtime",
+            "reporting_state": "ready_for_review",
+            "health_score": 78,
+            "risk_count": 2,
+            "artifact_types": [
+              "crm_executive_summary",
+              "crm_kpi_dashboard",
+              "crm_business_review_report"
+            ],
+            "action_id": "crm.generate-executive-report"
           }
         ],
         "memory_promotions": [
@@ -4287,6 +4433,111 @@
       }
     ]
   },
+  "executive_reporting_workbench": {
+    "schema_version": "forge.crm_executive_reporting_workbench.v1",
+    "workflow_id": "crm.executive.reporting",
+    "workflow_extension_id": "crm_executive_reporting",
+    "state_owner": "forge_workflow_runtime",
+    "state_source": "forge_workflow_artifacts_and_events",
+    "local_state_allowed": false,
+    "external_analytics_database_required": false,
+    "action_id": "crm.generate-executive-report",
+    "contract_id": "crm.analytics.executive_report.executor",
+    "kpis": [
+      {
+        "id": "pipeline_value",
+        "label": "Pipeline value",
+        "value": 1450000,
+        "unit": "currency",
+        "source_workflow_id": "crm.followup.forecast"
+      },
+      {
+        "id": "forecast_amount",
+        "label": "Forecast",
+        "value": 836800,
+        "unit": "currency",
+        "source_workflow_id": "crm.followup.forecast"
+      },
+      {
+        "id": "recognized_revenue_amount",
+        "label": "Recognized revenue",
+        "value": 300000,
+        "unit": "currency",
+        "source_workflow_id": "crm.goal.commission"
+      },
+      {
+        "id": "attainment_percent",
+        "label": "Goal attainment",
+        "value": 84,
+        "unit": "percent",
+        "source_workflow_id": "crm.goal.commission"
+      },
+      {
+        "id": "open_ticket_count",
+        "label": "Open tickets",
+        "value": 18,
+        "unit": "count",
+        "source_workflow_id": "crm.ticket.sla"
+      },
+      {
+        "id": "sla_at_risk_count",
+        "label": "SLA at risk",
+        "value": 3,
+        "unit": "count",
+        "source_workflow_id": "crm.ticket.sla"
+      },
+      {
+        "id": "active_campaign_count",
+        "label": "Active campaigns",
+        "value": 4,
+        "unit": "count",
+        "source_workflow_id": "crm.campaign.lifecycle"
+      },
+      {
+        "id": "approval_wait_count",
+        "label": "Approval waits",
+        "value": 5,
+        "unit": "count",
+        "source_workflow_id": "crm.work.queue.orchestration"
+      },
+      {
+        "id": "executive_health_score",
+        "label": "Executive health",
+        "value": 78,
+        "unit": "score",
+        "source_workflow_id": "crm.executive.reporting"
+      }
+    ],
+    "executive_summaries": [
+      {
+        "id": "executive-summary-q3",
+        "artifact_type": "crm_executive_summary",
+        "summary": "Pipeline, forecast, SLA risk and approval waits are ready for executive review.",
+        "recommended_action_count": 3,
+        "state_owner": "forge_workflow_runtime"
+      }
+    ],
+    "business_reviews": [
+      {
+        "id": "business-review-q3",
+        "artifact_type": "crm_business_review_report",
+        "risk_count": 2,
+        "review_state": "ready_for_review",
+        "source_workflows": [
+          "crm.operational.observability",
+          "crm.followup.forecast",
+          "crm.goal.commission",
+          "crm.ticket.sla",
+          "crm.campaign.lifecycle",
+          "crm.work.queue.orchestration"
+        ]
+      }
+    ],
+    "validation_gates": [
+      "executive KPIs are derived from Forge workflow artifacts and events",
+      "recommended decisions remain advisory until Forge approval"
+    ]
+  },
   "goal_commission_workbench": {
     "schema_version": "forge.crm_goal_commission_workbench.v1",
     "workflow_id": "crm.goal.commission",
@@ -4429,6 +4680,33 @@
         "forge.addon.crm",
         "--contract",
         "crm.observability.inspector.executor",
+        "--worker",
+        "<worker-id>",
+        "--task",
+        "<task-ref>",
+        "--input",
+        "<json>",
+        "--context",
+        "<json>",
+        "--output",
+        "json"
+      ]
+    },
+    {
+      "id": "crm.generate-executive-report",
+      "label": "Generate executive report",
+      "surface_id": "crm.ai-workbench",
+      "contract_id": "crm.analytics.executive_report.executor",
+      "requires_permission": "crm.observability.inspect",
+      "mutates_workflow": true,
+      "command_template": [
+        "forge",
+        "addons",
+        "execute-executor",
+        "--addon",
+        "forge.addon.crm",
+        "--contract",
+        "crm.analytics.executive_report.executor",
         "--worker",
         "<worker-id>",
         "--task",
@@ -5477,6 +5755,68 @@
             "title": "Execute runtime contract",
             "owner": "forge.addons.runtime",
             "evidence": "crm.observability.inspector.executor"
+          },
+          {
+            "id": "promote_result_to_workflow",
+            "title": "Promote result to workflow",
+            "owner": "forge.workflow.runtime",
+            "evidence": "artifact and event promotion"
+          },
+          {
+            "id": "refresh_operating_snapshot",
+            "title": "Refresh operating snapshot",
+            "owner": "forge.addon.crm",
+            "evidence": "crm.operating.snapshot.executor"
+          }
+        ],
+        "output_policy": {
+          "promote_result_to_workflow": true,
+          "browser_local_state_write": false,
+          "refresh_source": "forge_workflow_artifacts_and_events"
+        }
+      },
+      {
+        "action_id": "crm.generate-executive-report",
+        "label": "Generate executive report",
+        "surface_id": "crm.ai-workbench",
+        "contract_id": "crm.analytics.executive_report.executor",
+        "required_permission": "crm.observability.inspect",
+        "selected_command": [
+          "forge",
+          "addons",
+          "execute-executor",
+          "--addon",
+          "forge.addon.crm",
+          "--contract",
+          "crm.analytics.executive_report.executor",
+          "--worker",
+          "<worker-id>",
+          "--task",
+          "<task-ref>",
+          "--input",
+          "<json>",
+          "--context",
+          "<json>",
+          "--output",
+          "json"
+        ],
+        "permission_gate": {
+          "status": "requires_forge_permission",
+          "permission": "crm.observability.inspect",
+          "approval_owner": "forge_permission_policy"
+        },
+        "operation_plan": [
+          {
+            "id": "check_addon_permission",
+            "title": "Check Addon permission",
+            "owner": "forge.permissions",
+            "evidence": "crm.observability.inspect"
+          },
+          {
+            "id": "execute_runtime_contract",
+            "title": "Execute runtime contract",
+            "owner": "forge.addons.runtime",
+            "evidence": "crm.analytics.executive_report.executor"
           },
           {
             "id": "promote_result_to_workflow",

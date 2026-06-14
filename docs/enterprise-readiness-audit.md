@@ -6,11 +6,11 @@ Repository: https://github.com/cardozoarthur/forge-crm.git
 
 ## Summary
 
-- Workflows: 27
-- Runtime contracts: 37
-- Artifact types: 84
-- Event types: 36
-- User-facing deliverables ready: 11/11
+- Workflows: 28
+- Runtime contracts: 38
+- Artifact types: 87
+- Event types: 38
+- User-facing deliverables ready: 12/12
 - Missing objective items: 0
 
 ## User-Facing Deliverables
@@ -25,6 +25,7 @@ Repository: https://github.com/cardozoarthur/forge-crm.git
 - Subworkflow orchestration: ready; workflows=crm.enterprise.customer_journey, crm.subworkflow.orchestration; surface=crm.system-map
 - Workflow automation designer: ready; workflows=crm.workflow.automation_design; surface=crm.system-map
 - Goal and commission settlement: ready; workflows=crm.goal.commission; surface=crm.commercial-command
+- Executive reporting: ready; workflows=crm.executive.reporting; surface=crm.ai-workbench
 - Design system: ready; workflows=crm.design.system; surface=crm.design-system
 
 ## Benchmark Tracks

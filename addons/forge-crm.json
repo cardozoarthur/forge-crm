@@ -571,22 +571,28 @@
         "observability"
       ],
       "workflow_extensions": [
-        "crm_operational_observability"
+        "crm_operational_observability",
+        "crm_executive_reporting"
       ],
       "deliverables": [
         "CRM audit report",
         "CRM lineage map",
         "CRM cost report",
-        "CRM metric snapshot"
+        "CRM metric snapshot",
+        "CRM executive business review"
       ],
       "artifact_types": [
         "crm_audit_report",
         "crm_lineage_map",
         "crm_cost_report",
-        "crm_metric_snapshot"
+        "crm_metric_snapshot",
+        "crm_executive_summary",
+        "crm_kpi_dashboard",
+        "crm_business_review_report"
       ],
       "view_ids": [
-        "crm.system-map"
+        "crm.system-map",
+        "crm.ai-workbench"
       ]
     }
   ],
@@ -710,6 +716,11 @@
       "id": "crm_operational_observability",
       "kind": "observability_workflow",
       "description": "Inspect CRM audit, lineage, costs, events, logs, metrics and state from Forge-owned runtime evidence."
+    },
+    {
+      "id": "crm_executive_reporting",
+      "kind": "operations_workflow",
+      "description": "Generate executive summaries, KPI dashboards and business reviews from Forge CRM workflow artifacts and events."
     },
     {
       "id": "crm_enterprise_readiness",
@@ -1174,6 +1185,38 @@
         "observability inspection is derived from Forge workflow artifacts, events, costs, metrics and logs",
         "observability inspection does not create CRM-local observability state",
         "remediation from observations must be promoted through Forge workflow mutation or approval"
+      ]
+    },
+    {
+      "id": "crm.analytics.executive_report.executor",
+      "title": "CRM executive reporting and KPI dashboard",
+      "contract_type": "executor",
+      "capability_id": "crm_observability",
+      "workflow_extension_id": "crm_executive_reporting",
+      "runtime": "external_api",
+      "entrypoint": "forge_crm.generate_executive_report",
+      "inputs": [
+        "operating_snapshot",
+        "workflow_metrics",
+        "commercial_metrics",
+        "support_metrics",
+        "marketing_metrics",
+        "risk_register",
+        "tenant_context"
+      ],
+      "outputs": [
+        "crm_executive_summary",
+        "crm_kpi_dashboard",
+        "crm_business_review_report"
+      ],
+      "permissions": [
+        "crm.observability.inspect",
+        "crm.ai.recommend"
+      ],
+      "constraints": [
+        "executive reporting is derived from Forge workflow artifacts and events",
+        "executive reporting does not create CRM-local analytics state",
+        "recommended decisions remain advisory until Forge workflow approval"
       ]
     },
     {
@@ -2189,6 +2232,53 @@
           ]
         },
         {
+          "id": "crm.tui.generate-executive-report",
+          "label": "Generate executive report",
+          "description": "Generate executive summaries, KPI dashboards and business review evidence from Forge CRM workflow artifacts.",
+          "palette_group": "CRM",
+          "source_panel": "crm.operational-cockpit",
+          "type": "command",
+          "target": "forge addons execute-executor",
+          "method": "CLI",
+          "permission": "crm.observability.inspect",
+          "requires_confirmation": false,
+          "risk_level": "medium",
+          "mutates_workflow": true,
+          "command_template": [
+            "addons",
+            "execute-executor",
+            "--addon",
+            "forge.addon.crm",
+            "--contract",
+            "crm.analytics.executive_report.executor",
+            "--worker",
+            "<worker-id>",
+            "--task",
+            "<task-ref>",
+            "--input",
+            "<json>",
+            "--context",
+            "<json>",
+            "--output",
+            "json"
+          ],
+          "keywords": [
+            "crm",
+            "executive",
+            "kpi",
+            "business review"
+          ],
+          "payload_schema": [
+            "operating_snapshot",
+            "workflow_metrics",
+            "commercial_metrics",
+            "support_metrics",
+            "marketing_metrics",
+            "risk_register",
+            "tenant_context"
+          ]
+        },
+        {
           "id": "crm.tui.normalize-channel-intake",
           "label": "Normalize channel intake",
           "description": "Normalize and authorize an approved support channel event before ticket creation.",
@@ -3184,6 +3274,21 @@
       "generic_kind": "report"
     },
     {
+      "id": "crm_executive_summary",
+      "title": "CRM executive summary",
+      "generic_kind": "report"
+    },
+    {
+      "id": "crm_kpi_dashboard",
+      "title": "CRM KPI dashboard",
+      "generic_kind": "report"
+    },
+    {
+      "id": "crm_business_review_report",
+      "title": "CRM business review report",
+      "generic_kind": "report"
+    },
+    {
       "id": "crm_campaign",
       "title": "CRM campaign",
       "generic_kind": "campaign"
@@ -3603,6 +3708,16 @@
     {
       "id": "crm.metric",
       "title": "CRM metric event",
+      "transport": "crm"
+    },
+    {
+      "id": "crm.executive",
+      "title": "CRM executive event",
+      "transport": "crm"
+    },
+    {
+      "id": "crm.kpi",
+      "title": "CRM KPI event",
       "transport": "crm"
     },
     {

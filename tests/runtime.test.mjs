@@ -336,8 +336,8 @@ test("operating readiness maps Forge evidence into user-facing CRM deliverables"
   assert.equal(result.status, "completed");
   assert.equal(result.outputs.tenant_id, "demo");
   assert.equal(result.outputs.success_criteria_status, "operable_with_evidence");
-  assert.equal(result.outputs.user_facing_deliverable_count, 11);
-  assert.equal(result.outputs.ready_domain_count, 11);
+  assert.equal(result.outputs.user_facing_deliverable_count, 12);
+  assert.equal(result.outputs.ready_domain_count, 12);
   assert.equal(result.outputs.forge_only_operations, true);
   assert.equal(result.outputs.main_flow_dependency_external, false);
   assert.equal(result.outputs.mutates_crm_state, false);
@@ -360,6 +360,10 @@ test("operating readiness maps Forge evidence into user-facing CRM deliverables"
   assert.ok(
     outcomeManifest.data.outcomes.some((outcome) => outcome.deliverable === "workflow automation designer"),
     "missing workflow automation designer user outcome"
+  );
+  assert.ok(
+    outcomeManifest.data.outcomes.some((outcome) => outcome.deliverable === "executive reporting"),
+    "missing executive reporting user outcome"
   );
   assert.ok(result.events.some((event) => event.kind === "crm.operating.readiness_reported"));
   assert.ok(result.events.some((event) => event.kind === "crm.outcome.deliverables_mapped"));
@@ -408,6 +412,78 @@ test("operating copilot prioritizes opportunities without mutating CRM state", (
   assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_risk_analysis"));
   assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_report"));
   assert.ok(result.events.some((event) => event.kind === "crm.ai.operating_copilot_generated"));
+});
+
+test("executive reporting executor builds KPI dashboard and summary without local analytics state", () => {
+  assert.equal(typeof runtime.buildExecutiveReportingResult, "function");
+
+  const result = runtime.buildExecutiveReportingResult(
+    workerRequest(
+      "forge_crm.generate_executive_report",
+      {
+        tenant_context: { tenant_id: "demo" },
+        operating_snapshot: {
+          workflow_count: 28,
+          business_module_count: 7,
+          surface_count: 10,
+          state_owner: "forge_workflow_runtime"
+        },
+        workflow_metrics: {
+          approval_wait_count: 5,
+          blocked_wait_count: 2,
+          completed_workflow_count: 41
+        },
+        commercial_metrics: {
+          pipeline_value: 820000,
+          forecast_amount: 455000,
+          recognized_revenue_amount: 300000,
+          attainment_percent: 75
+        },
+        support_metrics: {
+          open_ticket_count: 18,
+          sla_at_risk_count: 3,
+          breached_sla_count: 1
+        },
+        marketing_metrics: {
+          active_campaign_count: 4,
+          qualified_lead_count: 96,
+          form_conversion_rate: 0.18
+        },
+        risk_register: [
+          { id: "risk-sla", severity: "high", workflow_id: "crm.ticket.sla", summary: "SLA breach risk on enterprise queue" },
+          { id: "risk-approval", severity: "medium", workflow_id: "crm.document.approval", summary: "Proposal approvals waiting finance" }
+        ]
+      },
+      { contract_id: "crm.analytics.executive_report.executor", task_ref: "executive-reporting-test" }
+    )
+  );
+
+  assert.equal(result.schema_version, "forge.addon_executor_result.v1");
+  assert.equal(result.status, "completed");
+  assert.equal(result.outputs.tenant_id, "demo");
+  assert.equal(result.outputs.workflow_id, "crm.executive.reporting");
+  assert.equal(result.outputs.reporting_state, "ready_for_review");
+  assert.equal(result.outputs.kpi_count >= 8, true);
+  assert.equal(result.outputs.risk_count, 2);
+  assert.equal(result.outputs.recommended_action_count >= 2, true);
+  assert.equal(result.outputs.local_analytics_state, false);
+  assert.equal(result.outputs.mutates_crm_state, false);
+  assert.equal(result.outputs.forge_event_sourced, true);
+  assert.ok(result.outputs.executive_summary.includes("pipeline"));
+
+  for (const artifactKind of ["crm_executive_summary", "crm_kpi_dashboard", "crm_business_review_report"]) {
+    assert.ok(result.artifacts.some((artifact) => artifact.kind === artifactKind), `missing ${artifactKind}`);
+  }
+
+  const dashboard = result.artifacts.find((artifact) => artifact.kind === "crm_kpi_dashboard");
+  assert.equal(dashboard.data.state_owner, "forge_workflow_runtime");
+  assert.equal(dashboard.data.external_analytics_database_required, false);
+  assert.ok(dashboard.data.kpis.some((kpi) => kpi.id === "pipeline_value" && kpi.value === 820000));
+  assert.ok(dashboard.data.kpis.some((kpi) => kpi.id === "sla_at_risk_count" && kpi.value === 3));
+
+  assert.ok(result.events.some((event) => event.kind === "crm.executive.summary_generated"));
+  assert.ok(result.events.some((event) => event.kind === "crm.kpi.dashboard_generated"));
+  assert.ok(result.events.some((event) => event.kind === "crm.risk.reviewed"));
 });
 
 test("area copilot generates specialized CRM recommendations without mutating state", () => {

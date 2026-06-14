@@ -264,6 +264,54 @@ test("manifest exposes CRM observability inspection as a Forge-owned executor", 
   }
 });
 
+test("manifest exposes CRM executive reporting as a Forge-owned analytics executor", () => {
+  const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.analytics.executive_report.executor");
+  assert.ok(contract);
+  assert.equal(contract.contract_type, "executor");
+  assert.equal(contract.capability_id, "crm_observability");
+  assert.equal(contract.workflow_extension_id, "crm_executive_reporting");
+  assert.equal(contract.entrypoint, "forge_crm.generate_executive_report");
+  assert.deepEqual(contract.permissions, ["crm.observability.inspect", "crm.ai.recommend"]);
+
+  for (const input of [
+    "operating_snapshot",
+    "workflow_metrics",
+    "commercial_metrics",
+    "support_metrics",
+    "marketing_metrics",
+    "risk_register",
+    "tenant_context"
+  ]) {
+    assert.ok(contract.inputs.includes(input), `missing executive reporting input ${input}`);
+  }
+
+  for (const output of ["crm_executive_summary", "crm_kpi_dashboard", "crm_business_review_report"]) {
+    assert.ok(contract.outputs.includes(output), `missing executive reporting output ${output}`);
+  }
+
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("derived from Forge workflow artifacts and events")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("does not create CRM-local analytics state")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("advisory until Forge workflow approval")));
+
+  const workflowExtensionIds = new Set(manifest.workflows.map((extension) => extension.id));
+  assert.ok(workflowExtensionIds.has("crm_executive_reporting"));
+
+  const observabilityCapability = manifest.capabilities.find((capability) => capability.id === "crm_observability");
+  assert.ok(observabilityCapability.workflow_extensions.includes("crm_executive_reporting"));
+  assert.ok(observabilityCapability.artifact_types.includes("crm_executive_summary"));
+  assert.ok(observabilityCapability.artifact_types.includes("crm_kpi_dashboard"));
+  assert.ok(observabilityCapability.artifact_types.includes("crm_business_review_report"));
+
+  const artifactTypes = new Set(manifest.artifact_types.map((artifact) => artifact.id));
+  for (const artifactType of ["crm_executive_summary", "crm_kpi_dashboard", "crm_business_review_report"]) {
+    assert.ok(artifactTypes.has(artifactType), `missing artifact type ${artifactType}`);
+  }
+
+  const eventTypes = new Set(manifest.event_types.map((event) => event.id));
+  assert.ok(eventTypes.has("crm.executive"));
+  assert.ok(eventTypes.has("crm.kpi"));
+});
+
 test("manifest exposes CRM operating readiness as a user-facing outcome package", () => {
   const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.operating.readiness.executor");
   assert.ok(contract);

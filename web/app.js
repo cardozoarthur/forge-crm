@@ -771,6 +771,56 @@ export function renderGoalCommissionWorkbench(snapshot) {
   return section;
 }
 
+export function renderExecutiveReportingWorkbench(snapshot) {
+  const workbench = snapshot.executive_reporting_workbench;
+  const section = nodeElement("section", "panel executive-reporting");
+  section.dataset.surfacePanel = "crm.ai-workbench";
+  section.append(nodeElement("h2", "", "Executive Reporting"));
+  if (!workbench) {
+    section.append(nodeElement("p", "muted-copy", "Executive reporting unavailable in this snapshot."));
+    return section;
+  }
+
+  section.append(nodeElement("p", "panel-source", `${workbench.workflow_id} · ${workbench.contract_id}`));
+  section.append(nodeElement("code", "", actionLabel(snapshot, workbench.action_id)));
+
+  const kpis = nodeElement("div", "executive-kpi-grid");
+  for (const kpi of workbench.kpis || []) {
+    const item = nodeElement("article", "executive-kpi");
+    item.append(nodeElement("span", "kpi-label", kpi.label || compactTitle(kpi.id)));
+    item.append(nodeElement("strong", "", kpi.unit === "currency" ? money(kpi.value) : String(kpi.value)));
+    item.append(nodeElement("small", "", kpi.source_workflow_id || workbench.state_source));
+    kpis.append(item);
+  }
+
+  const summaries = nodeElement("div", "executive-report-grid");
+  for (const summary of workbench.executive_summaries || []) {
+    const item = nodeElement("article", "executive-summary-card");
+    item.append(nodeElement("strong", "", summary.id));
+    item.append(nodeElement("span", "", summary.summary));
+    item.append(nodeElement("code", "", summary.artifact_type));
+    summaries.append(item);
+  }
+
+  const reviews = nodeElement("div", "executive-report-grid");
+  for (const review of workbench.business_reviews || []) {
+    const item = nodeElement("article", "business-review-card");
+    item.append(nodeElement("strong", "", review.id));
+    item.append(nodeElement("span", "", `${review.review_state} · ${review.risk_count} risks`));
+    item.append(nodeElement("code", "", review.artifact_type));
+    item.title = (review.source_workflows || []).join(", ");
+    reviews.append(item);
+  }
+
+  const gates = nodeElement("ul", "executive-reporting-gates");
+  for (const gate of workbench.validation_gates || []) {
+    gates.append(nodeElement("li", "executive-reporting-gate", gate));
+  }
+
+  section.append(kpis, summaries, reviews, gates);
+  return section;
+}
+
 function renderModuleBoard(snapshot) {
   const section = nodeElement("section", "panel module-panel");
   section.append(nodeElement("h2", "", "Business Modules"));
@@ -873,6 +923,7 @@ function render(snapshot) {
   workspace.append(renderEnterpriseJourneyWorkbench(snapshot));
   workspace.append(renderSubworkflowOrchestrationWorkbench(snapshot));
   workspace.append(renderWorkflowAutomationDesignerWorkbench(snapshot));
+  workspace.append(renderExecutiveReportingWorkbench(snapshot));
   workspace.append(renderGoalCommissionWorkbench(snapshot));
   workspace.append(renderWorkflowGraph(snapshot));
   workspace.append(renderModuleBoard(snapshot));

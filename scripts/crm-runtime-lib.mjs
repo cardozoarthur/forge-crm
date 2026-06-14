@@ -2536,6 +2536,190 @@ export function buildObservabilityInspectorResult(request) {
   };
 }
 
+export function buildExecutiveReportingResult(request) {
+  const input = dispatchPayload(request);
+  const context = providedContext(request);
+  const tenantId = input.tenant_id || input.tenant_context?.tenant_id || input.tenant_context?.id || context.tenant || "default";
+  const taskRef = dispatchEnvelope(request).task_ref || `executive-report-${slug(tenantId, "tenant")}`;
+  const operatingSnapshot = asObject(input.operating_snapshot);
+  const workflowMetrics = asObject(input.workflow_metrics);
+  const commercialMetrics = asObject(input.commercial_metrics);
+  const supportMetrics = asObject(input.support_metrics);
+  const marketingMetrics = asObject(input.marketing_metrics);
+  const risks = asArray(input.risk_register).map((risk, index) => {
+    const source = asObject(risk);
+    return {
+      id: String(source.id || `risk-${index + 1}`),
+      severity: String(source.severity || "medium"),
+      workflow_id: String(source.workflow_id || "crm.operational.observability"),
+      summary: String(source.summary || source.message || "CRM risk requires review"),
+      owner: String(source.owner || "operations.command")
+    };
+  });
+  const severityWeight = (severity) => {
+    const normalized = String(severity || "").toLowerCase();
+    if (["critical", "high"].includes(normalized)) {
+      return 25;
+    }
+    if (normalized === "medium") {
+      return 12;
+    }
+    return 4;
+  };
+  const pipelineValue = numberFrom(commercialMetrics.pipeline_value, 0);
+  const forecastAmount = numberFrom(commercialMetrics.forecast_amount, 0);
+  const recognizedRevenueAmount = numberFrom(commercialMetrics.recognized_revenue_amount, 0);
+  const attainmentPercent = numberFrom(commercialMetrics.attainment_percent, 0);
+  const openTicketCount = numberFrom(supportMetrics.open_ticket_count, 0);
+  const slaAtRiskCount = numberFrom(supportMetrics.sla_at_risk_count, 0);
+  const breachedSlaCount = numberFrom(supportMetrics.breached_sla_count, 0);
+  const activeCampaignCount = numberFrom(marketingMetrics.active_campaign_count, 0);
+  const qualifiedLeadCount = numberFrom(marketingMetrics.qualified_lead_count, 0);
+  const formConversionRate = probabilityFrom(marketingMetrics.form_conversion_rate);
+  const approvalWaitCount = numberFrom(workflowMetrics.approval_wait_count, 0);
+  const blockedWaitCount = numberFrom(workflowMetrics.blocked_wait_count, 0);
+  const workflowCount = numberFrom(operatingSnapshot.workflow_count ?? workflowMetrics.workflow_count, 0);
+  const riskPenalty = risks.reduce((total, risk) => total + severityWeight(risk.severity), 0) + slaAtRiskCount * 4 + blockedWaitCount * 5;
+  const executiveHealthScore = Math.max(0, Math.min(100, Math.round(100 - riskPenalty + Math.min(10, attainmentPercent / 10))));
+  const kpis = [
+    { id: "pipeline_value", label: "Pipeline value", value: pipelineValue, unit: "currency", source: "crm.followup.forecast" },
+    { id: "forecast_amount", label: "Forecast amount", value: forecastAmount, unit: "currency", source: "crm.followup.forecast" },
+    {
+      id: "recognized_revenue_amount",
+      label: "Recognized revenue",
+      value: recognizedRevenueAmount,
+      unit: "currency",
+      source: "crm.goal.commission"
+    },
+    { id: "attainment_percent", label: "Goal attainment", value: attainmentPercent, unit: "percent", source: "crm.goal.commission" },
+    { id: "open_ticket_count", label: "Open tickets", value: openTicketCount, unit: "count", source: "crm.ticket.sla" },
+    { id: "sla_at_risk_count", label: "SLA at risk", value: slaAtRiskCount, unit: "count", source: "crm.ticket.sla" },
+    { id: "active_campaign_count", label: "Active campaigns", value: activeCampaignCount, unit: "count", source: "crm.campaign.lifecycle" },
+    { id: "qualified_lead_count", label: "Qualified leads", value: qualifiedLeadCount, unit: "count", source: "crm.lead.lifecycle" },
+    { id: "form_conversion_rate", label: "Form conversion", value: formConversionRate, unit: "ratio", source: "crm.marketing.landing_page" },
+    { id: "approval_wait_count", label: "Approval waits", value: approvalWaitCount, unit: "count", source: "crm.work.queue.orchestration" },
+    { id: "blocked_wait_count", label: "Blocked waits", value: blockedWaitCount, unit: "count", source: "crm.work.queue.orchestration" },
+    { id: "executive_health_score", label: "Executive health", value: executiveHealthScore, unit: "score", source: "crm.executive.reporting" }
+  ];
+  const recommendedActions = [
+    ...(slaAtRiskCount > 0 || breachedSlaCount > 0
+      ? ["review_sla_risk_queue_through_forge_workflow"]
+      : []),
+    ...(approvalWaitCount > 0 || blockedWaitCount > 0
+      ? ["clear_approval_and_blocked_waits_through_forge_work_queue"]
+      : []),
+    ...(attainmentPercent < 100
+      ? ["review_goal_attainment_and_forecast_gap_before_commission_payout"]
+      : []),
+    ...(risks.length > 0 ? ["assign_risk_owner_before_executive_review_promotion"] : [])
+  ];
+  const executiveSummary =
+    `Executive CRM review for ${tenantId}: pipeline ${roundCurrency(pipelineValue)} with forecast ${roundCurrency(forecastAmount)}, ` +
+    `${attainmentPercent}% attainment, ${slaAtRiskCount} SLA risk item(s), ${approvalWaitCount} approval wait(s) and health score ${executiveHealthScore}.`;
+  const workflowId = String(input.workflow_id || "crm.executive.reporting");
+  const lineage = {
+    workflow_id: workflowId,
+    task_ref: taskRef,
+    source_contract: "crm.analytics.executive_report.executor",
+    tenant_id: tenantId
+  };
+
+  return {
+    schema_version: "forge.addon_executor_result.v1",
+    status: "completed",
+    task_ref: taskRef,
+    summary: executiveSummary,
+    outputs: {
+      tenant_id: tenantId,
+      workflow_id: workflowId,
+      reporting_state: "ready_for_review",
+      executive_summary: executiveSummary,
+      workflow_count: workflowCount,
+      kpi_count: kpis.length,
+      risk_count: risks.length,
+      recommended_action_count: recommendedActions.length,
+      executive_health_score: executiveHealthScore,
+      local_analytics_state: false,
+      mutates_crm_state: false,
+      forge_event_sourced: true
+    },
+    artifacts: [
+      {
+        kind: "crm_executive_summary",
+        id: `crm-executive-summary-${slug(tenantId, "tenant")}`,
+        title: `CRM executive summary for ${tenantId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          summary: executiveSummary,
+          recommended_actions: recommendedActions,
+          risk_count: risks.length,
+          state_owner: "forge_workflow_runtime",
+          external_analytics_database_required: false,
+          lineage
+        }
+      },
+      {
+        kind: "crm_kpi_dashboard",
+        id: `crm-kpi-dashboard-${slug(tenantId, "tenant")}`,
+        title: `CRM KPI dashboard for ${tenantId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          kpis,
+          executive_health_score: executiveHealthScore,
+          state_owner: "forge_workflow_runtime",
+          external_analytics_database_required: false,
+          lineage
+        }
+      },
+      {
+        kind: "crm_business_review_report",
+        id: `crm-business-review-${slug(tenantId, "tenant")}`,
+        title: `CRM business review report for ${tenantId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          operating_snapshot: operatingSnapshot,
+          workflow_metrics: workflowMetrics,
+          commercial_metrics: commercialMetrics,
+          support_metrics: supportMetrics,
+          marketing_metrics: marketingMetrics,
+          risk_register: risks,
+          recommended_actions: recommendedActions,
+          validation_gates: [
+            "executive KPIs are derived from Forge workflow artifacts and events",
+            "recommended decisions remain advisory until Forge approval"
+          ],
+          lineage
+        }
+      }
+    ],
+    events: [
+      {
+        kind: "crm.executive.summary_generated",
+        tenant_id: tenantId,
+        workflow_id: workflowId,
+        health_score: executiveHealthScore
+      },
+      {
+        kind: "crm.kpi.dashboard_generated",
+        tenant_id: tenantId,
+        workflow_id: workflowId,
+        kpi_count: kpis.length
+      },
+      {
+        kind: "crm.risk.reviewed",
+        tenant_id: tenantId,
+        workflow_id: workflowId,
+        risk_count: risks.length,
+        recommended_action_count: recommendedActions.length
+      }
+    ],
+    context_tenant: context.tenant || tenantId
+  };
+}
+
 const READINESS_OUTCOME_DOMAINS = [
   {
     id: "relationship",
@@ -2616,6 +2800,14 @@ const READINESS_OUTCOME_DOMAINS = [
     workflow_ids: ["crm.goal.commission"],
     required_artifacts: ["crm_goal_scorecard", "crm_commission_statement", "crm_compensation_audit_report"],
     required_events: ["crm.goal.target_set", "crm.goal.attainment_reviewed", "crm.commission.statement_generated"]
+  },
+  {
+    id: "executive_reporting",
+    title: "Executive reporting",
+    deliverable: "executive reporting",
+    workflow_ids: ["crm.executive.reporting"],
+    required_artifacts: ["crm_executive_summary", "crm_kpi_dashboard", "crm_business_review_report"],
+    required_events: ["crm.executive.summary_generated", "crm.kpi.dashboard_generated", "crm.risk.reviewed"]
   },
   {
     id: "user_experience",
@@ -5729,6 +5921,8 @@ export function executeCrmRuntimeRequest(request) {
       return buildSubworkflowOrchestrationResult(request);
     case "forge_crm.inspect_observability":
       return buildObservabilityInspectorResult(request);
+    case "forge_crm.generate_executive_report":
+      return buildExecutiveReportingResult(request);
     case "forge_crm.generate_operating_readiness":
       return buildOperatingReadinessResult(request);
     case "forge_crm.generate_proposal":

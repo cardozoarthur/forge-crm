@@ -670,7 +670,7 @@ const WORKFLOWS = [
       ["risk_review_wait", "remediation_started", "owner action started through Forge workflow"],
       ["audit_reported", "closed", "inspection accepted"]
     ],
-    runtime_contracts: ["crm.observability.inspector.executor"],
+    runtime_contracts: ["crm.observability.inspector.executor", "crm.analytics.executive_report.executor"],
     artifacts: ["crm_audit_report", "crm_lineage_map", "crm_cost_report", "crm_metric_snapshot"],
     events: ["crm.observability.inspected", "crm.audit.reported", "crm.cost.reviewed", "crm.metric.reviewed"],
     memory_scopes: ["organization", "project"],
@@ -680,6 +680,47 @@ const WORKFLOWS = [
       "audit lineage cost metrics and logs sourced from Forge",
       "inspection does not create CRM-local observability state",
       "remediation requires Forge workflow mutation"
+    ]
+  },
+  {
+    id: "crm.executive.reporting",
+    title: "Executive CRM reporting and KPI dashboard",
+    domain: "operations",
+    workflow_extension_id: "crm_executive_reporting",
+    object_types: ["executive_summary", "kpi_dashboard", "risk", "revenue", "support", "marketing", "workflow"],
+    states: [
+      "metrics_collected",
+      "cross_domain_rollup",
+      "executive_summary_generated",
+      "risk_reviewed",
+      "action_recommendations_queued",
+      "published"
+    ],
+    transitions: [
+      ["metrics_collected", "cross_domain_rollup", "Forge workflow metrics and business evidence collected"],
+      ["cross_domain_rollup", "executive_summary_generated", "KPI dashboard and executive summary generated"],
+      ["executive_summary_generated", "risk_reviewed", "risk register mapped to workflow owners"],
+      ["risk_reviewed", "action_recommendations_queued", "recommended decisions queued for Forge approval"],
+      ["action_recommendations_queued", "published", "business review artifacts attached"]
+    ],
+    runtime_contracts: ["crm.analytics.executive_report.executor"],
+    depends_on_workflows: [
+      "crm.operational.observability",
+      "crm.followup.forecast",
+      "crm.goal.commission",
+      "crm.ticket.sla",
+      "crm.campaign.lifecycle",
+      "crm.work.queue.orchestration"
+    ],
+    artifacts: ["crm_executive_summary", "crm_kpi_dashboard", "crm_business_review_report"],
+    events: ["crm.executive.summary_generated", "crm.kpi.dashboard_generated", "crm.risk.reviewed"],
+    memory_scopes: ["organization", "project"],
+    permissions: ["crm.observability.inspect", "crm.ai.recommend"],
+    views: ["crm.ai-workbench", "crm.system-map"],
+    validation_gates: [
+      "executive KPIs are derived from Forge workflow artifacts and events",
+      "business review risk items cite workflow lineage",
+      "recommended decisions remain advisory until Forge approval"
     ]
   },
   {
@@ -696,7 +737,7 @@ const WORKFLOWS = [
       ["readiness_reported", "rework_required", "missing domain coverage or external dependency found"],
       ["rework_required", "criteria_collected", "rework reason returned to Forge workflow tasks"]
     ],
-    runtime_contracts: ["crm.operating.readiness.executor"],
+    runtime_contracts: ["crm.operating.readiness.executor", "crm.analytics.executive_report.executor"],
     artifacts: [
       "crm_operating_readiness_report",
       "crm_user_outcome_manifest",

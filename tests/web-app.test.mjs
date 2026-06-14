@@ -89,6 +89,7 @@ test("web app snapshot provides Forge command actions instead of local automatio
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.design_system.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.memory.promotion.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.observability.inspector.executor"));
+  assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.analytics.executive_report.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.operating.readiness.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.ai.operating_copilot.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.workflow.evolution.executor"));
@@ -237,6 +238,8 @@ test("web app snapshot exposes an operational workbench backed by Forge artifact
   assert.ok(panels.get("work_queue").assignments.every((assignment) => assignment.contract_id === "crm.queue.orchestrator.executor"));
   assert.ok(panels.get("ai_workbench").recommendations.some((recommendation) => recommendation.action_id === "crm.run-operating-copilot"));
   assert.ok(panels.get("ai_workbench").specialized_copilots.some((copilot) => copilot.action_id === "crm.run-area-copilot"));
+  assert.ok(panels.get("ai_workbench").executive_reports.some((report) => report.action_id === "crm.generate-executive-report"));
+  assert.ok(panels.get("ai_workbench").executive_reports.every((report) => report.contract_id === "crm.analytics.executive_report.executor"));
   assert.ok(panels.get("ai_workbench").memory_promotions.some((promotion) => promotion.action_id === "crm.prepare-memory-promotion"));
 });
 
@@ -357,6 +360,36 @@ test("web app snapshot exposes specialized CRM area copilots in the AI workbench
   assert.ok(snapshot.actions.some((action) => action.id === "crm.run-area-copilot" && action.contract_id === "crm.ai.area_copilot.executor"));
 });
 
+test("web app snapshot exposes executive reporting as a Forge-owned business review workbench", () => {
+  const snapshot = buildCrmWebAppSnapshot({ tenant_id: "demo" });
+  const action = snapshot.actions.find((candidate) => candidate.id === "crm.generate-executive-report");
+  const aiPanel = snapshot.operational_workbench.panels.find((panel) => panel.id === "ai_workbench");
+  const workbench = snapshot.executive_reporting_workbench;
+
+  assert.ok(action);
+  assert.equal(action.surface_id, "crm.ai-workbench");
+  assert.equal(action.contract_id, "crm.analytics.executive_report.executor");
+  assert.equal(action.requires_permission, "crm.observability.inspect");
+  assert.deepEqual(action.command_template.slice(0, 3), ["forge", "addons", "execute-executor"]);
+
+  assert.ok(aiPanel);
+  assert.ok(aiPanel.action_ids.includes("crm.generate-executive-report"));
+  assert.ok(aiPanel.workflow_ids.includes("crm.executive.reporting"));
+
+  assert.ok(workbench);
+  assert.equal(workbench.schema_version, "forge.crm_executive_reporting_workbench.v1");
+  assert.equal(workbench.workflow_id, "crm.executive.reporting");
+  assert.equal(workbench.contract_id, "crm.analytics.executive_report.executor");
+  assert.equal(workbench.state_owner, "forge_workflow_runtime");
+  assert.equal(workbench.local_state_allowed, false);
+  assert.equal(workbench.external_analytics_database_required, false);
+  assert.ok(workbench.kpis.length >= 8);
+  assert.ok(workbench.kpis.some((kpi) => kpi.id === "pipeline_value"));
+  assert.ok(workbench.business_reviews.some((review) => review.artifact_type === "crm_business_review_report"));
+  assert.ok(workbench.executive_summaries.every((summary) => summary.artifact_type === "crm_executive_summary"));
+  assert.ok(workbench.validation_gates.some((gate) => gate.includes("Forge workflow artifacts and events")));
+});
+
 test("web app snapshot exposes adaptive workflow evolution as Forge-governed experiments", () => {
   const snapshot = buildCrmWebAppSnapshot({ tenant_id: "demo" });
   const workbench = snapshot.workflow_evolution_workbench;
@@ -474,6 +507,7 @@ test("web assets mount the generated CRM snapshot without a build step", async (
   assert.match(app, /renderSubworkflowOrchestrationWorkbench/);
   assert.match(app, /renderWorkflowAutomationDesignerWorkbench/);
   assert.match(app, /renderGoalCommissionWorkbench/);
+  assert.match(app, /renderExecutiveReportingWorkbench/);
   assert.match(styles, /\.workflow-node/);
   assert.match(styles, /\.relationship-profile/);
   assert.match(styles, /\.knowledge-node/);
@@ -491,6 +525,7 @@ test("web assets mount the generated CRM snapshot without a build step", async (
   assert.match(styles, /\.subworkflow-workbench/);
   assert.match(styles, /\.automation-designer/);
   assert.match(styles, /\.goal-commission/);
+  assert.match(styles, /\.executive-reporting/);
   assert.match(favicon, /<svg/);
 });
 
