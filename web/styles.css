@@ -895,6 +895,11 @@ h3 {
   border-left: 4px solid #285f9d;
 }
 
+.strategic-audit {
+  grid-column: 1 / -1;
+  border-left: 4px solid #2d7668;
+}
+
 .subworkflow-workbench {
   border-left: 4px solid #285f9d;
 }
@@ -928,6 +933,9 @@ h3 {
 .approval-gate-grid,
 .factory-module-grid,
 .factory-primitive-grid,
+.strategic-audit-summary,
+.strategic-section-grid,
+.strategic-channel-grid,
 .subworkflow-bindings,
 .subworkflow-gates,
 .automation-graph,
@@ -954,6 +962,9 @@ h3 {
 .factory-module,
 .factory-primitive,
 .factory-gate,
+.strategic-section,
+.strategic-channel,
+.strategic-step,
 .subworkflow-binding,
 .subworkflow-gate,
 .automation-node,
@@ -989,6 +1000,9 @@ h3 {
 .factory-module strong,
 .factory-primitive strong,
 .factory-gate strong,
+.strategic-section strong,
+.strategic-channel strong,
+.strategic-step strong,
 .subworkflow-binding strong,
 .subworkflow-gate strong,
 .automation-node strong,
@@ -1007,11 +1021,21 @@ h3 {
 .subworkflow-binding code,
 .automation-palette code,
 .daily-cycle code,
+.strategic-audit code,
 .executive-reporting code,
 .goal-commission code {
   color: #285f9d;
   font-size: 0.74rem;
   overflow-wrap: anywhere;
+}
+
+.strategic-plan {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
 }
 
 .journey-lane span,

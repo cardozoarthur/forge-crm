@@ -109,6 +109,7 @@ try {
       "forge_crm.inspect_observability",
       "forge_crm.generate_executive_report",
       "forge_crm.generate_operating_readiness",
+      "forge_crm.generate_strategic_objective_audit",
       "forge_crm.generate_proposal",
       "forge_crm.review_followup_forecast",
       "forge_crm.review_commercial_forecast",
@@ -155,6 +156,7 @@ try {
       "crm.observability.inspector.executor",
       "crm.analytics.executive_report.executor",
       "crm.operating.readiness.executor",
+      "crm.strategic.objective_audit.executor",
       "crm.proposal.generator.executor",
       "crm.commercial.followup_forecast.executor",
       "crm.commercial.forecast_review.executor",
@@ -1327,6 +1329,50 @@ try {
   if (operatingReadiness.executor_result.outputs.success_criteria_status !== "operable_with_evidence") {
     throw new Error(
       `expected operating readiness to be operable_with_evidence, got ${operatingReadiness.executor_result.outputs.success_criteria_status}`
+    );
+  }
+
+  const strategicObjectiveAudit = runForge([
+    "addons",
+    "execute-executor",
+    "--addon-dir",
+    "addons",
+    "--addon",
+    "forge.addon.crm",
+    "--contract",
+    "crm.strategic.objective_audit.executor",
+    "--worker",
+    workerId,
+    "--task",
+    "crm-smoke-strategic-objective-audit",
+    "--workflow",
+    workflowId,
+    "--input",
+    JSON.stringify({
+      tenant_context: { id: "smoke", tenant_id: "smoke" },
+      objective_contract: {
+        objective: "Forge CRM is a complete enterprise CRM and Forge public Addon reference",
+        required_support_channels: ["chat", "email", "telegram", "whatsapp"]
+      },
+      evidence_policy: {
+        evidence_sources: ["manifest", "workflow_pack", "runtime_contracts", "web_snapshot", "strategic_audit"],
+        route_core_gaps_to: "forge-core"
+      }
+    }),
+    "--context",
+    JSON.stringify({ tenant: "smoke" }),
+    "--output",
+    "json"
+  ]);
+
+  if (strategicObjectiveAudit.promotion?.status !== "addon_executor_result_promoted") {
+    throw new Error(
+      `expected strategic objective audit promotion, got ${strategicObjectiveAudit.promotion?.status || "missing"}`
+    );
+  }
+  if (strategicObjectiveAudit.executor_result.outputs.missing_requirement_count !== 0) {
+    throw new Error(
+      `expected zero strategic audit gaps, got ${strategicObjectiveAudit.executor_result.outputs.missing_requirement_count}`
     );
   }
 
@@ -2738,6 +2784,8 @@ try {
   const workflowAutomationDesignPromotedEventCount = workflowAutomationDesign.promotion?.event_count ?? 0;
   const readinessPromotedArtifactCount = operatingReadiness.promotion?.artifact_count ?? 0;
   const readinessPromotedEventCount = operatingReadiness.promotion?.event_count ?? 0;
+  const strategicAuditPromotedArtifactCount = strategicObjectiveAudit.promotion?.artifact_count ?? 0;
+  const strategicAuditPromotedEventCount = strategicObjectiveAudit.promotion?.event_count ?? 0;
   const relationshipProfilePromotedArtifactCount = relationshipProfileEnrichment.promotion?.artifact_count ?? 0;
   const relationshipProfilePromotedEventCount = relationshipProfileEnrichment.promotion?.event_count ?? 0;
   const relationshipPromotedArtifactCount = relationshipTimeline.promotion?.artifact_count ?? 0;
@@ -2969,6 +3017,20 @@ try {
     );
   }
   for (const eventKind of ["crm.operating.readiness_reported", "crm.outcome.deliverables_mapped"]) {
+    if (!workflowEventKinds.includes(eventKind)) {
+      throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
+    }
+  }
+  if (strategicAuditPromotedArtifactCount < 3 || strategicAuditPromotedEventCount < 3) {
+    throw new Error(
+      `expected promoted strategic audit artifacts/events, got artifacts=${strategicAuditPromotedArtifactCount} events=${strategicAuditPromotedEventCount}`
+    );
+  }
+  for (const eventKind of [
+    "crm.strategic.objective_audited",
+    "crm.requirement.coverage_reported",
+    "crm.support.channel_coverage_reported"
+  ]) {
     if (!workflowEventKinds.includes(eventKind)) {
       throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
     }
@@ -3434,6 +3496,15 @@ try {
     operating_readiness_user_deliverable_count: operatingReadiness.executor_result.outputs.user_facing_deliverable_count,
     operating_readiness_promoted_artifacts: readinessPromotedArtifactCount,
     operating_readiness_promoted_events: readinessPromotedEventCount,
+    strategic_objective_audit_status: strategicObjectiveAudit.status,
+    strategic_objective_audit_promotion_status: strategicObjectiveAudit.promotion.status,
+    strategic_objective_audit_missing_requirements:
+      strategicObjectiveAudit.executor_result.outputs.missing_requirement_count,
+    strategic_objective_audit_requirement_count: strategicObjectiveAudit.executor_result.outputs.requirement_count,
+    strategic_objective_audit_support_channel_count:
+      strategicObjectiveAudit.executor_result.outputs.support_channel_count,
+    strategic_objective_audit_promoted_artifacts: strategicAuditPromotedArtifactCount,
+    strategic_objective_audit_promoted_events: strategicAuditPromotedEventCount,
     relationship_profile_status: relationshipProfileEnrichment.status,
     relationship_profile_promotion_status: relationshipProfileEnrichment.promotion.status,
     relationship_profile_enrichment_state: relationshipProfileEnrichment.executor_result.outputs.enrichment_state,

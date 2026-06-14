@@ -1,4 +1,5 @@
 import { buildOperatingReadinessResult } from "./crm-runtime-lib.mjs";
+import { buildCrmStrategicObjectiveAudit } from "./crm-strategic-objective-audit-lib.mjs";
 import { buildCrmOperatingModel, buildCrmWorkflowPack } from "./crm-workflow-pack-lib.mjs";
 
 const SURFACE_ROUTES = {
@@ -1773,6 +1774,69 @@ function workflowFactoryBlueprintWorkbench(factoryBlueprint, actionList) {
   };
 }
 
+function strategicObjectiveAuditWorkbench({ tenantId, actionList }) {
+  const actionById = new Map(actionList.map((action) => [action.id, action]));
+  const action = actionById.get("crm.generate-strategic-objective-audit");
+  const audit = buildCrmStrategicObjectiveAudit({ tenant_id: tenantId });
+  const supportSection = audit.sections.find((section) => section.id === "support");
+  const supportChannels = supportSection?.requirements.find((requirement) => requirement.id === "support_channels");
+  const missingChannels = new Set(supportChannels?.missing_channels || []);
+
+  return {
+    schema_version: "forge.crm_strategic_objective_audit_workbench.v1",
+    workflow_id: "crm.strategic.objective_audit",
+    workflow_extension_id: "crm_strategic_objective_audit",
+    state_owner: "forge_workflow_runtime",
+    local_state_allowed: false,
+    action_id: action?.id || "crm.generate-strategic-objective-audit",
+    contract_id: action?.contract_id || "crm.strategic.objective_audit.executor",
+    audit_status: audit.status,
+    section_count: audit.summary.section_count,
+    requirement_count: audit.summary.requirement_count,
+    missing_requirement_count: audit.summary.missing_requirement_count,
+    section_coverage: audit.sections.map((section) => ({
+      section_id: section.id,
+      title: section.title,
+      status: section.status,
+      requirement_count: section.requirements.length,
+      missing_requirements: section.missing.length
+    })),
+    support_channel_coverage: {
+      complete: missingChannels.size === 0,
+      channels: (supportChannels?.required_channels || []).map((channel) => ({
+        channel,
+        covered: !missingChannels.has(channel),
+        integration_id: (supportChannels?.integration_ids || []).find((integrationId) => integrationId === `crm.${channel}`) || null,
+        event_adapter_origin: (supportChannels?.event_adapter_origins || []).find((origin) => origin === channel) || null
+      })),
+      workflow_ids: supportChannels?.workflow_ids || [],
+      runtime_contracts: supportChannels?.runtime_contracts || []
+    },
+    operation_plan: [
+      {
+        id: "collect_forge_evidence",
+        title: "Collect manifest, workflow, runtime, artifact, event and view evidence",
+        owner: "forge.workflow.runtime"
+      },
+      {
+        id: "run_strategic_objective_audit",
+        title: "Run the strategic objective audit executor",
+        owner: "crm.strategic.objective_audit.executor"
+      },
+      {
+        id: "promote_audit_artifacts",
+        title: "Promote audit, requirement coverage and support coverage artifacts",
+        owner: "forge.addon_runtime"
+      },
+      {
+        id: "route_core_gaps",
+        title: "Route missing platform primitives to forge-core before CRM-local workarounds",
+        owner: "forge-core"
+      }
+    ]
+  };
+}
+
 function subworkflowOrchestrationWorkbench(workflows, actionList) {
   const actionById = new Map(actionList.map((action) => [action.id, action]));
   const action = actionById.get("crm.orchestrate-subworkflows");
@@ -2206,6 +2270,15 @@ function actions() {
       requires_permission: "crm.observability.inspect",
       mutates_workflow: true,
       command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.factory.blueprint_export.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
+    },
+    {
+      id: "crm.generate-strategic-objective-audit",
+      label: "Generate strategic audit",
+      surface_id: "crm.system-map",
+      contract_id: "crm.strategic.objective_audit.executor",
+      requires_permission: "crm.observability.inspect",
+      mutates_workflow: true,
+      command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.strategic.objective_audit.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
     },
     {
       id: "crm.run-enterprise-journey",
@@ -2939,6 +3012,7 @@ export function buildCrmWebAppSnapshot(options = {}) {
     operating_readiness_workbench: operatingReadinessWorkbench({ tenantId, pack, model, actionList }),
     approval_governance_workbench: approvalGovernanceWorkbench(workflows, actionList),
     workflow_factory_blueprint_workbench: workflowFactoryBlueprintWorkbench(pack.factory_blueprint, actionList),
+    strategic_objective_audit_workbench: strategicObjectiveAuditWorkbench({ tenantId, actionList }),
     subworkflow_orchestration_workbench: subworkflowOrchestrationWorkbench(workflows, actionList),
     workflow_automation_designer_workbench: workflowAutomationDesignerWorkbench(workflows, actionList),
     executive_reporting_workbench: executiveReportingWorkbench(workflows, actionList),

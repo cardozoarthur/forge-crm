@@ -138,8 +138,8 @@ test("enterprise readiness Markdown report is generated from current audit evide
   const markdown = enterpriseReadinessAuditToMarkdown(audit);
   const committed = await readFile(new URL("../docs/enterprise-readiness-audit.md", import.meta.url), "utf8");
 
-  assert.match(markdown, /- Workflows: 34/);
-  assert.match(markdown, /- Runtime contracts: 44/);
+  assert.match(markdown, /- Workflows: 35/);
+  assert.match(markdown, /- Runtime contracts: 45/);
   assert.match(markdown, /- User-facing deliverables ready: 15\/15/);
   assert.match(markdown, /## Forge Core Requirements/);
   assert.match(markdown, /## Distribution Evidence/);

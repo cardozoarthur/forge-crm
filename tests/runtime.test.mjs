@@ -402,6 +402,51 @@ test("operating readiness maps Forge evidence into user-facing CRM deliverables"
   assert.ok(result.events.some((event) => event.kind === "crm.outcome.deliverables_mapped"));
 });
 
+test("strategic objective audit executor promotes requirement coverage through Forge artifacts", () => {
+  assert.equal(typeof runtime.buildStrategicObjectiveAuditResult, "function");
+
+  const result = runtime.buildStrategicObjectiveAuditResult(
+    workerRequest(
+      "forge_crm.generate_strategic_objective_audit",
+      {
+        tenant_context: { tenant_id: "demo" },
+        objective_contract: {
+          objective: "Forge CRM is a complete enterprise CRM and Forge public Addon reference",
+          required_support_channels: ["chat", "email", "telegram", "whatsapp"]
+        },
+        evidence_policy: {
+          evidence_sources: ["manifest", "workflow_pack", "runtime_contracts", "web_snapshot", "strategic_audit"],
+          route_core_gaps_to: "forge-core"
+        }
+      },
+      { contract_id: "crm.strategic.objective_audit.executor", task_ref: "strategic-audit-test" }
+    )
+  );
+
+  assert.equal(result.schema_version, "forge.addon_executor_result.v1");
+  assert.equal(result.status, "completed");
+  assert.equal(result.outputs.tenant_id, "demo");
+  assert.equal(result.outputs.workflow_id, "crm.strategic.objective_audit");
+  assert.equal(result.outputs.missing_requirement_count, 0);
+  assert.equal(result.outputs.section_count, 9);
+  assert.ok(result.outputs.requirement_count >= 50);
+  assert.equal(result.outputs.support_channel_count, 4);
+  assert.equal(result.outputs.mutates_crm_state, false);
+  assert.equal(result.outputs.forge_event_sourced, true);
+
+  for (const artifactKind of [
+    "crm_strategic_objective_audit",
+    "crm_requirement_coverage_matrix",
+    "crm_support_channel_coverage_report"
+  ]) {
+    assert.ok(result.artifacts.some((artifact) => artifact.kind === artifactKind), `missing strategic audit artifact ${artifactKind}`);
+  }
+
+  assert.ok(result.events.some((event) => event.kind === "crm.strategic.objective_audited"));
+  assert.ok(result.events.some((event) => event.kind === "crm.requirement.coverage_reported"));
+  assert.ok(result.events.some((event) => event.kind === "crm.support.channel_coverage_reported"));
+});
+
 test("operating copilot prioritizes opportunities without mutating CRM state", () => {
   const result = buildOperatingCopilotResult(
     workerRequest("forge_crm.operating_copilot", {
@@ -2564,6 +2609,7 @@ test("HTTP worker dispatches Forge runtime requests", async () => {
     assert.equal(health.body.status, "ok");
     assert.ok(health.body.supported_entrypoints.includes("forge_crm.generate_design_system"));
     assert.ok(health.body.supported_entrypoints.includes("forge_crm.run_daily_operating_cycle"));
+    assert.ok(health.body.supported_entrypoints.includes("forge_crm.generate_strategic_objective_audit"));
 
     const response = await postJson(
       port,

@@ -867,6 +867,55 @@ export function renderWorkflowFactoryBlueprintWorkbench(snapshot) {
   return section;
 }
 
+export function renderStrategicObjectiveAuditWorkbench(snapshot) {
+  const workbench = snapshot.strategic_objective_audit_workbench;
+  const section = nodeElement("section", "panel strategic-audit");
+  section.dataset.surfacePanel = "crm.system-map";
+  section.append(nodeElement("h2", "", "Strategic Objective Audit"));
+  if (!workbench) {
+    section.append(nodeElement("p", "muted-copy", "Strategic objective audit unavailable in this snapshot."));
+    return section;
+  }
+
+  section.append(nodeElement("p", "panel-source", `${workbench.workflow_id} · ${workbench.contract_id}`));
+  section.append(nodeElement("code", "", actionLabel(snapshot, workbench.action_id)));
+
+  const summary = nodeElement("div", "strategic-audit-summary");
+  summary.append(metric("Status", compactTitle(workbench.audit_status)));
+  summary.append(metric("Sections", workbench.section_count));
+  summary.append(metric("Requirements", workbench.requirement_count));
+  summary.append(metric("Gaps", workbench.missing_requirement_count));
+
+  const sections = nodeElement("div", "strategic-section-grid");
+  for (const item of workbench.section_coverage || []) {
+    const card = nodeElement("article", "strategic-section");
+    card.append(nodeElement("strong", "", item.title));
+    card.append(nodeElement("span", "", `${item.requirement_count} requirements · ${item.missing_requirements} gaps`));
+    card.append(nodeElement("small", "", compactTitle(item.status)));
+    sections.append(card);
+  }
+
+  const channels = nodeElement("div", "strategic-channel-grid");
+  for (const channel of workbench.support_channel_coverage?.channels || []) {
+    const card = nodeElement("article", "strategic-channel");
+    card.append(nodeElement("strong", "", compactTitle(channel.channel)));
+    card.append(nodeElement("span", "", channel.covered ? "Covered" : "Open"));
+    card.append(nodeElement("small", "", channel.integration_id || "missing integration"));
+    channels.append(card);
+  }
+
+  const plan = nodeElement("ol", "strategic-plan");
+  for (const step of workbench.operation_plan || []) {
+    const item = nodeElement("li", "strategic-step");
+    item.append(nodeElement("strong", "", step.title));
+    item.append(nodeElement("span", "", step.owner));
+    plan.append(item);
+  }
+
+  section.append(summary, sections, channels, plan);
+  return section;
+}
+
 export function renderSubworkflowOrchestrationWorkbench(snapshot) {
   const workbench = snapshot.subworkflow_orchestration_workbench;
   const section = nodeElement("section", "panel subworkflow-workbench");
@@ -1158,6 +1207,7 @@ function render(snapshot) {
   workspace.append(renderOperatingReadinessWorkbench(snapshot));
   workspace.append(renderApprovalGovernanceWorkbench(snapshot));
   workspace.append(renderWorkflowFactoryBlueprintWorkbench(snapshot));
+  workspace.append(renderStrategicObjectiveAuditWorkbench(snapshot));
   workspace.append(renderSubworkflowOrchestrationWorkbench(snapshot));
   workspace.append(renderWorkflowAutomationDesignerWorkbench(snapshot));
   workspace.append(renderExecutiveReportingWorkbench(snapshot));

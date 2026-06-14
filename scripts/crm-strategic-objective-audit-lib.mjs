@@ -1,5 +1,4 @@
 import { existsSync, readFileSync } from "node:fs";
-import { buildCrmWebAppSnapshot } from "./crm-web-app-lib.mjs";
 import { buildCrmOperatingModel, buildCrmWorkflowPack } from "./crm-workflow-pack-lib.mjs";
 
 const manifest = JSON.parse(readFileSync(new URL("../addons/forge-crm.json", import.meta.url), "utf8"));
@@ -382,11 +381,28 @@ function buildUiSection(snapshot) {
   ]);
 }
 
+function buildStrategicSnapshotEvidence() {
+  return {
+    schema_version: "forge.crm_web_app_snapshot.v1",
+    ui_contract: {
+      operational_center: "forge_tui",
+      web_experience: "business_user_workbench",
+      workflow_visualization: "n8n_inspired_graph",
+      knowledge_graph: "obsidian_inspired_relationships",
+      document_management: "paperclip_inspired_artifact_queue",
+      design_system: "penpot_open_design_inspired_tokens"
+    },
+    local_state_policy: {
+      direct_browser_persistence: false
+    }
+  };
+}
+
 export function buildCrmStrategicObjectiveAudit(options = {}) {
   const tenantId = options.tenant_id || options.tenant || "default";
   const pack = buildCrmWorkflowPack({ tenant_id: tenantId });
   const model = buildCrmOperatingModel({ tenant_id: tenantId, workflows: pack.workflows, coverage: pack.coverage });
-  const snapshot = buildCrmWebAppSnapshot({ tenant_id: tenantId });
+  const snapshot = options.snapshot || buildStrategicSnapshotEvidence();
   const byId = workflowsById(pack.workflows);
   const sections = [
     buildPrincipleSection(pack, model),

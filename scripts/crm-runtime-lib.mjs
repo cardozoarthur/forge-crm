@@ -1,5 +1,6 @@
 import { buildCrmPlan } from "./crm-plan-lib.mjs";
 import { buildWorkflowFactoryBlueprint } from "./crm-factory-blueprint-lib.mjs";
+import { buildCrmStrategicObjectiveAudit } from "./crm-strategic-objective-audit-lib.mjs";
 import { buildCrmOperatingModel, buildCrmWorkflowPack, buildTenantBootstrapResult } from "./crm-workflow-pack-lib.mjs";
 
 export { buildTenantBootstrapResult };
@@ -3699,6 +3700,138 @@ export function buildOperatingReadinessResult(request) {
   };
 }
 
+export function buildStrategicObjectiveAuditResult(request) {
+  const input = dispatchPayload(request);
+  const context = providedContext(request);
+  const tenantId = input.tenant_id || input.tenant_context?.tenant_id || input.tenant_context?.id || context.tenant || "default";
+  const taskRef = dispatchEnvelope(request).task_ref || `strategic-audit-${slug(tenantId, "tenant")}`;
+  const audit = buildCrmStrategicObjectiveAudit({ tenant_id: tenantId });
+  const supportSection = audit.sections.find((section) => section.id === "support");
+  const supportChannels = supportSection?.requirements.find((requirement) => requirement.id === "support_channels");
+  const sectionCoverage = audit.sections.map((section) => ({
+    section_id: section.id,
+    title: section.title,
+    status: section.status,
+    requirement_count: asArray(section.requirements).length,
+    missing_requirements: asArray(section.missing).length,
+    requirement_ids: asArray(section.requirements).map((requirement) => requirement.id)
+  }));
+  const requirementCoverage = audit.sections.flatMap((section) =>
+    asArray(section.requirements).map((requirement) => ({
+      section_id: section.id,
+      requirement_id: requirement.id,
+      title: requirement.title,
+      status: requirement.status,
+      workflow_ids: asArray(requirement.workflow_ids),
+      runtime_contracts: asArray(requirement.runtime_contracts),
+      artifact_types: asArray(requirement.artifact_types),
+      event_types: asArray(requirement.event_types)
+    }))
+  );
+  const channelCoverage = asArray(supportChannels?.required_channels).map((channel) => ({
+    channel,
+    covered: !asArray(supportChannels?.missing_channels).includes(channel),
+    integration_id: asArray(supportChannels?.integration_ids).find((integrationId) => integrationId === `crm.${channel}`) || null,
+    event_adapter_origin: asArray(supportChannels?.event_adapter_origins).find((origin) => origin === channel) || null
+  }));
+  const lineage = {
+    workflow_id: "crm.strategic.objective_audit",
+    task_ref: taskRef,
+    source_contract: "crm.strategic.objective_audit.executor",
+    tenant_id: tenantId,
+    route_core_gaps_to: input.evidence_policy?.route_core_gaps_to || "forge-core"
+  };
+
+  return {
+    schema_version: "forge.addon_executor_result.v1",
+    status: "completed",
+    task_ref: taskRef,
+    summary: `CRM strategic objective audit for ${tenantId} covered ${audit.summary.requirement_count} requirement(s) with ${audit.summary.missing_requirement_count} gap(s)`,
+    outputs: {
+      tenant_id: tenantId,
+      workflow_id: lineage.workflow_id,
+      audit_status: audit.status,
+      section_count: audit.summary.section_count,
+      requirement_count: audit.summary.requirement_count,
+      missing_requirement_count: audit.summary.missing_requirement_count,
+      support_channel_count: channelCoverage.length,
+      mutates_crm_state: false,
+      forge_event_sourced: true
+    },
+    artifacts: [
+      {
+        kind: "crm_strategic_objective_audit",
+        id: `crm-strategic-objective-audit-${slug(tenantId, "tenant")}`,
+        title: `CRM strategic objective audit for ${tenantId}`,
+        content_type: "application/json",
+        data: {
+          ...audit,
+          objective_contract: asObject(input.objective_contract),
+          evidence_policy: asObject(input.evidence_policy),
+          lineage,
+          state_owner: "forge_workflow_runtime",
+          local_state_allowed: false
+        }
+      },
+      {
+        kind: "crm_requirement_coverage_matrix",
+        id: `crm-requirement-coverage-${slug(tenantId, "tenant")}`,
+        title: `CRM requirement coverage matrix for ${tenantId}`,
+        content_type: "application/json",
+        data: {
+          schema_version: "forge.crm_requirement_coverage_matrix.v1",
+          tenant_id: tenantId,
+          complete: audit.summary.missing_requirement_count === 0,
+          sections: sectionCoverage,
+          requirements: requirementCoverage,
+          lineage
+        }
+      },
+      {
+        kind: "crm_support_channel_coverage_report",
+        id: `crm-support-channel-coverage-${slug(tenantId, "tenant")}`,
+        title: `CRM support channel coverage for ${tenantId}`,
+        content_type: "application/json",
+        data: {
+          schema_version: "forge.crm_support_channel_coverage_report.v1",
+          tenant_id: tenantId,
+          complete: channelCoverage.every((channel) => channel.covered),
+          channels: channelCoverage,
+          workflow_ids: asArray(supportChannels?.workflow_ids),
+          runtime_contracts: asArray(supportChannels?.runtime_contracts),
+          artifact_types: asArray(supportChannels?.artifact_types),
+          event_types: asArray(supportChannels?.event_types),
+          lineage
+        }
+      }
+    ],
+    events: [
+      {
+        kind: "crm.strategic.objective_audited",
+        tenant_id: tenantId,
+        workflow_id: lineage.workflow_id,
+        audit_status: audit.status,
+        missing_requirement_count: audit.summary.missing_requirement_count
+      },
+      {
+        kind: "crm.requirement.coverage_reported",
+        tenant_id: tenantId,
+        workflow_id: lineage.workflow_id,
+        requirement_count: audit.summary.requirement_count,
+        section_count: audit.summary.section_count
+      },
+      {
+        kind: "crm.support.channel_coverage_reported",
+        tenant_id: tenantId,
+        workflow_id: lineage.workflow_id,
+        support_channel_count: channelCoverage.length,
+        complete: channelCoverage.every((channel) => channel.covered)
+      }
+    ],
+    context_tenant: context.tenant || tenantId
+  };
+}
+
 export function buildProposalGeneratorResult(request) {
   const input = dispatchPayload(request);
   const opportunity = asObject(input.opportunity ?? input);
@@ -7114,6 +7247,8 @@ export function executeCrmRuntimeRequest(request) {
       return buildExecutiveReportingResult(request);
     case "forge_crm.generate_operating_readiness":
       return buildOperatingReadinessResult(request);
+    case "forge_crm.generate_strategic_objective_audit":
+      return buildStrategicObjectiveAuditResult(request);
     case "forge_crm.generate_proposal":
       return buildProposalGeneratorResult(request);
     case "forge_crm.review_followup_forecast":

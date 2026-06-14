@@ -139,6 +139,7 @@ The Addon declares `crm.operational-cockpit` with `surface=tui`. The cockpit is 
 - run specialized area copilots;
 - generate executive reports and KPI dashboards from Forge workflow evidence;
 - export a reusable workflow-system blueprint from CRM module, runtime contract and Core primitive evidence;
+- generate the strategic objective audit from Forge workflow, runtime, artifact, event and view evidence;
 - evolve a CRM workflow through a governed Forge improve experiment;
 - run the enterprise customer journey acceptance package;
 - generate the operating readiness package.
@@ -170,12 +171,13 @@ The first business user surface is a static Addon asset:
 - enterprise journey workbench for lead capture, opportunity, proposal, contract, account, support and handoff acceptance evidence;
 - operating readiness workbench for domain coverage, user-facing outcomes, daily operations, readiness gates and rework paths backed by `crm.operating.readiness.executor`;
 - workflow factory blueprint workbench for module templates, Core primitive mapping, portability gates and artifact export through `crm.factory.blueprint_export.executor`;
+- strategic objective audit workbench for explicit requirement coverage, support-channel evidence and forge-core gap routing through `crm.strategic.objective_audit.executor`;
 - subworkflow orchestration workbench for Forge child workflow bindings, lineage mapping and parent promotion gates;
 - workflow automation designer workbench for Forge-owned trigger, condition and action graphs with activation gates;
 - executive reporting workbench for KPI dashboards, business review artifacts and advisory recommendations from Forge workflow evidence;
 - goal and commission settlement workbench for target attainment, revenue-event lineage, commission statements and payout approval gates;
 - benchmark evidence matrix proving n8n-style workflow automation, Obsidian-style relationship knowledge, Paperclip-style document lineage and Penpot/Open Design-style tokens as Forge-owned surfaces with local engines blocked;
-- Forge action list for runtime contracts such as operating snapshot refresh, tenant bootstrap, observability inspection, executive reporting, operating readiness package generation, enterprise customer journey execution, CRM child subworkflow orchestration, CRM workflow automation design, relationship profile enrichment, relationship timeline recording, pipeline stage movement, operating copilot, specialized area copilots, cross-domain work queue orchestration, daily operating cycle, design-system generation, proposal generation, commercial follow-up forecast, goal and commission settlement, account management, contract signature management, document generation, document validation, document library management, marketing segment building, marketing campaign automation, landing page publishing, form submission capture, channel intake normalization, unified omnichannel center execution, omnichannel message ingestion, approval-gated support reply composition, ticket SLA triage, project handoff planning and omnichannel handoff.
+- Forge action list for runtime contracts such as operating snapshot refresh, tenant bootstrap, observability inspection, executive reporting, operating readiness package generation, strategic objective audit generation, enterprise customer journey execution, CRM child subworkflow orchestration, CRM workflow automation design, relationship profile enrichment, relationship timeline recording, pipeline stage movement, operating copilot, specialized area copilots, cross-domain work queue orchestration, daily operating cycle, design-system generation, proposal generation, commercial follow-up forecast, goal and commission settlement, account management, contract signature management, document generation, document validation, document library management, marketing segment building, marketing campaign automation, landing page publishing, form submission capture, channel intake normalization, unified omnichannel center execution, omnichannel message ingestion, approval-gated support reply composition, ticket SLA triage, project handoff planning and omnichannel handoff.
 - Adaptive workflow evolution workbench for Forge improve candidates, benchmark queue and promotion gates.
 
 The manifest declares this through `crm.system-map.props.web_app`, with `web/index.html` as the entrypoint and `web/data/operating-snapshot.json` as the generated data source.

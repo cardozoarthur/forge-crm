@@ -113,6 +113,43 @@ test("manifest exposes CRM daily operating cycle as a Forge-owned executor", () 
   assert.ok(eventTypes.has("crm.operating"));
 });
 
+test("manifest exposes strategic objective audit as a Forge-owned executor", () => {
+  const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.strategic.objective_audit.executor");
+  assert.ok(contract);
+  assert.equal(contract.contract_type, "executor");
+  assert.equal(contract.capability_id, "crm_observability");
+  assert.equal(contract.workflow_extension_id, "crm_strategic_objective_audit");
+  assert.equal(contract.entrypoint, "forge_crm.generate_strategic_objective_audit");
+  assert.deepEqual(contract.permissions, ["crm.observability.inspect"]);
+
+  for (const input of ["tenant_context", "objective_contract", "evidence_policy"]) {
+    assert.ok(contract.inputs.includes(input), `missing strategic audit input ${input}`);
+  }
+  for (const output of [
+    "crm_strategic_objective_audit",
+    "crm_requirement_coverage_matrix",
+    "crm_support_channel_coverage_report"
+  ]) {
+    assert.ok(contract.outputs.includes(output), `missing strategic audit output ${output}`);
+  }
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("does not persist CRM state outside Forge")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("explicit strategic requirements")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("forge-core")));
+
+  const artifactTypes = new Set(manifest.artifact_types.map((artifact) => artifact.id));
+  for (const artifactType of [
+    "crm_strategic_objective_audit",
+    "crm_requirement_coverage_matrix",
+    "crm_support_channel_coverage_report"
+  ]) {
+    assert.ok(artifactTypes.has(artifactType), `missing strategic audit artifact type ${artifactType}`);
+  }
+
+  const eventTypes = new Set(manifest.event_types.map((event) => event.id));
+  assert.ok(eventTypes.has("crm.strategic"));
+  assert.ok(eventTypes.has("crm.requirement"));
+});
+
 test("manifest exposes CRM relationship timeline as a Forge-owned executor", () => {
   const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.relationship.timeline.executor");
   assert.ok(contract);

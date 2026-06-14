@@ -731,6 +731,35 @@ test("web app snapshot exposes the CRM as a reusable Forge workflow-system bluep
   assert.equal(action.requires_permission, "crm.observability.inspect");
 });
 
+test("web app snapshot exposes strategic objective audit workbench from Forge evidence", () => {
+  const snapshot = buildCrmWebAppSnapshot({ tenant_id: "demo" });
+  const workbench = snapshot.strategic_objective_audit_workbench;
+
+  assert.ok(workbench);
+  assert.equal(workbench.schema_version, "forge.crm_strategic_objective_audit_workbench.v1");
+  assert.equal(workbench.workflow_id, "crm.strategic.objective_audit");
+  assert.equal(workbench.workflow_extension_id, "crm_strategic_objective_audit");
+  assert.equal(workbench.contract_id, "crm.strategic.objective_audit.executor");
+  assert.equal(workbench.action_id, "crm.generate-strategic-objective-audit");
+  assert.equal(workbench.state_owner, "forge_workflow_runtime");
+  assert.equal(workbench.local_state_allowed, false);
+  assert.equal(workbench.missing_requirement_count, 0);
+  assert.equal(workbench.section_count, 9);
+  assert.ok(workbench.requirement_count >= 50);
+  assert.equal(workbench.support_channel_coverage.channels.length, 4);
+  assert.ok(workbench.support_channel_coverage.channels.every((channel) => channel.covered));
+  assert.ok(workbench.section_coverage.every((section) => section.missing_requirements === 0));
+  assert.deepEqual(
+    workbench.operation_plan.map((step) => step.id),
+    ["collect_forge_evidence", "run_strategic_objective_audit", "promote_audit_artifacts", "route_core_gaps"]
+  );
+
+  const action = snapshot.actions.find((candidate) => candidate.id === "crm.generate-strategic-objective-audit");
+  assert.ok(action);
+  assert.equal(action.contract_id, "crm.strategic.objective_audit.executor");
+  assert.equal(action.requires_permission, "crm.observability.inspect");
+});
+
 test("web app snapshot exposes CRM subworkflow orchestration through Forge child workflow bindings", () => {
   const snapshot = buildCrmWebAppSnapshot({ tenant_id: "demo" });
   const workbench = snapshot.subworkflow_orchestration_workbench;
@@ -806,6 +835,7 @@ test("web assets mount the generated CRM snapshot without a build step", async (
   assert.match(app, /renderOperatingReadinessWorkbench/);
   assert.match(app, /renderApprovalGovernanceWorkbench/);
   assert.match(app, /renderWorkflowFactoryBlueprintWorkbench/);
+  assert.match(app, /renderStrategicObjectiveAuditWorkbench/);
   assert.match(app, /renderSubworkflowOrchestrationWorkbench/);
   assert.match(app, /renderWorkflowAutomationDesignerWorkbench/);
   assert.match(app, /renderGoalCommissionWorkbench/);
@@ -828,6 +858,7 @@ test("web assets mount the generated CRM snapshot without a build step", async (
   assert.match(styles, /\.readiness-workbench/);
   assert.match(styles, /\.approval-governance/);
   assert.match(styles, /\.factory-blueprint/);
+  assert.match(styles, /\.strategic-audit/);
   assert.match(styles, /\.subworkflow-workbench/);
   assert.match(styles, /\.automation-designer/);
   assert.match(styles, /\.goal-commission/);

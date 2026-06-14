@@ -6,9 +6,9 @@
   "addon_name": "Forge CRM",
   "addon_version": "0.1.0",
   "manifest_path": "addons/forge-crm.json",
-  "manifest_sha256": "c1a78f4403f2c2de5b80d600bf2ffab061991288919a654f424d123943575e01",
-  "manifest_canonical_sha256": "421fe6a7bb4f640bfce85705016ca8bfe49b8abc8d829d639578e191a2dc34b3",
-  "manifest_bytes": 179115,
+  "manifest_sha256": "22edbd9441475a871619fdc1fdad24fe26336f45292b5b356c27b8c1770121bd",
+  "manifest_canonical_sha256": "e705b277892de25df2d6acc30120f0e734f594a3b39e3b17eb9730f0b060fd5a",
+  "manifest_bytes": 182585,
   "distribution": {
     "repository": "https://github.com/cardozoarthur/forge-crm",
     "channel": "stable",
@@ -23,15 +23,15 @@
     "scheme": "ed25519_detached",
     "signature": "",
     "public_key": "",
-    "payload_sha256": "d6fe7169c42dc2fac33ae0373e6e54812373e662ac380980f03e21be3cbe4916",
+    "payload_sha256": "59ba868a8dcba1ac679eb259b0f3ee83d5ea66376e5e906ddb3b383d388d3faf",
     "verification_note": "package records detached signature metadata; trust verification is a marketplace policy gate"
   },
   "summary": {
     "capability_count": 9,
     "dependency_count": 1,
     "permission_count": 5,
-    "workflow_extension_count": 35,
-    "runtime_contract_count": 44,
+    "workflow_extension_count": 36,
+    "runtime_contract_count": 45,
     "view_count": 12,
     "event_adapter_count": 3,
     "integration_count": 5,
@@ -77,6 +77,7 @@
       "crm.analytics.executive_report.executor",
       "crm.operating.readiness.executor",
       "crm.factory.blueprint_export.executor",
+      "crm.strategic.objective_audit.executor",
       "crm.tenant.bootstrap.executor",
       "crm.operating.snapshot.executor",
       "crm.proposal.generator.executor",
@@ -792,14 +793,16 @@
         ],
         "workflow_extensions": [
           "crm_operational_observability",
-          "crm_executive_reporting"
+          "crm_executive_reporting",
+          "crm_strategic_objective_audit"
         ],
         "deliverables": [
           "CRM audit report",
           "CRM lineage map",
           "CRM cost report",
           "CRM metric snapshot",
-          "CRM executive business review"
+          "CRM executive business review",
+          "CRM strategic objective audit"
         ],
         "constraints": [],
         "risks": [],
@@ -812,7 +815,10 @@
           "crm_metric_snapshot",
           "crm_executive_summary",
           "crm_kpi_dashboard",
-          "crm_business_review_report"
+          "crm_business_review_report",
+          "crm_strategic_objective_audit",
+          "crm_requirement_coverage_matrix",
+          "crm_support_channel_coverage_report"
         ],
         "view_ids": [
           "crm.system-map",
@@ -981,6 +987,11 @@
         "id": "crm_workflow_factory_blueprint",
         "kind": "operations_workflow",
         "description": "Export the CRM as a reusable Forge workflow-system blueprint with module templates, runtime contracts, portability gates and forge-core gap routing."
+      },
+      {
+        "id": "crm_strategic_objective_audit",
+        "kind": "operations_workflow",
+        "description": "Audit explicit strategic CRM requirements against Forge-owned workflow, runtime, artifact, event and view evidence."
       },
       {
         "id": "crm_daily_operating_cycle",
@@ -1583,6 +1594,33 @@
           "blueprint export produces a reusable workflow-system blueprint from Forge-owned CRM evidence",
           "blueprint export does not create CRM-local state or local automation engines",
           "Core primitive gaps must remain routed to forge-core"
+        ]
+      },
+      {
+        "id": "crm.strategic.objective_audit.executor",
+        "title": "CRM strategic objective audit",
+        "contract_type": "executor",
+        "capability_id": "crm_observability",
+        "workflow_extension_id": "crm_strategic_objective_audit",
+        "runtime": "external_api",
+        "entrypoint": "forge_crm.generate_strategic_objective_audit",
+        "inputs": [
+          "tenant_context",
+          "objective_contract",
+          "evidence_policy"
+        ],
+        "outputs": [
+          "crm_strategic_objective_audit",
+          "crm_requirement_coverage_matrix",
+          "crm_support_channel_coverage_report"
+        ],
+        "permissions": [
+          "crm.observability.inspect"
+        ],
+        "constraints": [
+          "strategic objective audit does not persist CRM state outside Forge",
+          "explicit strategic requirements must cite Forge workflow, runtime, artifact, event or view evidence",
+          "missing Forge Core primitives or platform gaps must be routed to forge-core"
         ]
       },
       {
@@ -4204,6 +4242,49 @@
             ]
           },
           {
+            "id": "crm.tui.generate-strategic-objective-audit",
+            "label": "Generate strategic audit",
+            "description": "Audit explicit CRM strategic requirements against Forge workflow, runtime, artifact, event and view evidence.",
+            "palette_group": "CRM",
+            "source_panel": "crm.operational-cockpit",
+            "type": "command",
+            "target": "forge addons execute-executor",
+            "method": "CLI",
+            "permission": "crm.observability.inspect",
+            "requires_confirmation": false,
+            "risk_level": "medium",
+            "mutates_workflow": true,
+            "command_template": [
+              "addons",
+              "execute-executor",
+              "--addon",
+              "forge.addon.crm",
+              "--contract",
+              "crm.strategic.objective_audit.executor",
+              "--worker",
+              "<worker-id>",
+              "--task",
+              "<task-ref>",
+              "--input",
+              "<json>",
+              "--context",
+              "<json>",
+              "--output",
+              "json"
+            ],
+            "keywords": [
+              "crm",
+              "strategic",
+              "audit",
+              "requirements"
+            ],
+            "payload_schema": [
+              "tenant_context",
+              "objective_contract",
+              "evidence_policy"
+            ]
+          },
+          {
             "id": "crm.tui.evolve-workflow",
             "label": "Evolve CRM workflow",
             "description": "Generate a Forge improve experiment, benchmark plan and promotion decision for a CRM workflow bottleneck.",
@@ -4858,6 +4939,21 @@
         "generic_kind": "report"
       },
       {
+        "id": "crm_strategic_objective_audit",
+        "title": "CRM strategic objective audit",
+        "generic_kind": "report"
+      },
+      {
+        "id": "crm_requirement_coverage_matrix",
+        "title": "CRM requirement coverage matrix",
+        "generic_kind": "artifact"
+      },
+      {
+        "id": "crm_support_channel_coverage_report",
+        "title": "CRM support channel coverage report",
+        "generic_kind": "report"
+      },
+      {
         "id": "crm_workflow_pack",
         "title": "CRM workflow pack",
         "generic_kind": "artifact"
@@ -5472,6 +5568,16 @@
       {
         "id": "crm.audit",
         "title": "CRM audit event",
+        "transport": "crm"
+      },
+      {
+        "id": "crm.strategic",
+        "title": "CRM strategic objective event",
+        "transport": "crm"
+      },
+      {
+        "id": "crm.requirement",
+        "title": "CRM requirement coverage event",
         "transport": "crm"
       },
       {

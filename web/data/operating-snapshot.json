@@ -23,11 +23,11 @@
     "external_delivery_requires_approval": true
   },
   "metrics": {
-    "workflow_count": 34,
+    "workflow_count": 35,
     "business_module_count": 7,
     "surface_count": 10,
-    "artifact_type_count": 94,
-    "event_type_count": 110,
+    "artifact_type_count": 97,
+    "event_type_count": 113,
     "complete_scope": true
   },
   "surfaces": [
@@ -47,6 +47,7 @@
         "crm.executive.reporting",
         "crm.enterprise.readiness",
         "crm.workflow.factory_blueprint",
+        "crm.strategic.objective_audit",
         "crm.approval.governance",
         "crm.subworkflow.orchestration",
         "crm.enterprise.customer_journey",
@@ -90,6 +91,9 @@
         "core_primitives_audited",
         "blueprint_exported",
         "core_gap_reviewed",
+        "objective_contract_loaded",
+        "forge_evidence_collected",
+        "coverage_reported",
         "queue_inspected",
         "permission_gate_wait",
         "approval_artifacts_collected",
@@ -151,9 +155,12 @@
         "crm_promotion_decision",
         "crm_queue_assignment_plan",
         "crm_queue_sla_risk_report",
+        "crm_requirement_coverage_matrix",
+        "crm_strategic_objective_audit",
         "crm_subworkflow_lineage_map",
         "crm_subworkflow_plan",
         "crm_subworkflow_validation_report",
+        "crm_support_channel_coverage_report",
         "crm_trigger_condition_map",
         "crm_ui_component_catalog",
         "crm_user_outcome_manifest",
@@ -199,10 +206,13 @@
         "crm.queue.assignment_planned",
         "crm.queue.risk_flagged",
         "crm.queue.snapshot_generated",
+        "crm.requirement.coverage_reported",
         "crm.risk.reviewed",
+        "crm.strategic.objective_audited",
         "crm.subworkflow.bound",
         "crm.subworkflow.promoted",
-        "crm.subworkflow.validated"
+        "crm.subworkflow.validated",
+        "crm.support.channel_coverage_reported"
       ],
       "mutation_requires_forge": true
     },
@@ -894,6 +904,7 @@
       "workflow_ids": [
         "crm.executive.reporting",
         "crm.workflow.factory_blueprint",
+        "crm.strategic.objective_audit",
         "crm.approval.governance",
         "crm.workflow.evolution",
         "crm.workflow.automation_design",
@@ -911,6 +922,10 @@
         "core_primitives_audited",
         "blueprint_exported",
         "core_gap_reviewed",
+        "objective_contract_loaded",
+        "forge_evidence_collected",
+        "coverage_reported",
+        "rework_required",
         "queue_inspected",
         "permission_gate_wait",
         "approval_artifacts_collected",
@@ -928,7 +943,6 @@
         "rule_graph_designed",
         "validation_ready",
         "queued_for_activation",
-        "rework_required",
         "context_requested",
         "recommendation_generated",
         "review_wait",
@@ -954,7 +968,10 @@
         "crm_permission_gate_report",
         "crm_promotion_decision",
         "crm_report",
+        "crm_requirement_coverage_matrix",
         "crm_risk_analysis",
+        "crm_strategic_objective_audit",
+        "crm_support_channel_coverage_report",
         "crm_trigger_condition_map",
         "crm_workflow_automation_spec",
         "crm_workflow_evolution_plan",
@@ -986,7 +1003,10 @@
         "crm.memory.knowledge_curated",
         "crm.memory.promotion_requested",
         "crm.next_action.approved",
-        "crm.risk.reviewed"
+        "crm.requirement.coverage_reported",
+        "crm.risk.reviewed",
+        "crm.strategic.objective_audited",
+        "crm.support.channel_coverage_reported"
       ],
       "mutation_requires_forge": true
     }
@@ -1284,6 +1304,7 @@
         "crm.executive.reporting",
         "crm.enterprise.readiness",
         "crm.workflow.factory_blueprint",
+        "crm.strategic.objective_audit",
         "crm.approval.governance",
         "crm.subworkflow.orchestration",
         "crm.enterprise.customer_journey"
@@ -1299,6 +1320,7 @@
         "crm_business_runbook",
         "crm_channel_response",
         "crm_contract",
+        "crm_core_gap_report",
         "crm_cost_report",
         "crm_cross_domain_handoff_map",
         "crm_daily_operating_cycle",
@@ -1327,11 +1349,14 @@
         "crm_queue_sla_risk_report",
         "crm_renewal_plan",
         "crm_report",
+        "crm_requirement_coverage_matrix",
         "crm_risk_analysis",
         "crm_signature_receipt",
+        "crm_strategic_objective_audit",
         "crm_subworkflow_lineage_map",
         "crm_subworkflow_plan",
         "crm_subworkflow_validation_report",
+        "crm_support_channel_coverage_report",
         "crm_support_summary",
         "crm_task_plan",
         "crm_user_outcome_manifest",
@@ -1388,15 +1413,19 @@
         "crm.queue.snapshot_generated",
         "crm.reply.approval_requested",
         "crm.reply.drafted",
+        "crm.requirement.coverage_reported",
         "crm.risk.reviewed",
+        "crm.strategic.objective_audited",
         "crm.subworkflow.bound",
         "crm.subworkflow.promoted",
         "crm.subworkflow.validated",
+        "crm.support.channel_coverage_reported",
         "crm.task.blocked",
         "crm.task.created"
       ],
       "validation_gates": [
         "Core primitive gaps are routed to forge-core before Addon workarounds",
+        "Forge Core gaps are routed to forge-core before CRM-local implementation",
         "account owner visible",
         "all required customer lifecycle stages have Forge artifact and event evidence",
         "approval actor recorded",
@@ -1415,6 +1444,7 @@
         "document library state is represented by Forge artifacts and events",
         "document versions require Forge artifact lineage before promotion",
         "every approval decision cites source workflow artifact and event lineage",
+        "every explicit strategic requirement cites Forge workflow runtime artifact event or view evidence",
         "every module maps to Forge workflows and runtime contracts",
         "every queue item cites artifact or event evidence",
         "executive KPIs are derived from Forge workflow artifacts and events",
@@ -1441,8 +1471,10 @@
         "risk review owner visible",
         "sales marketing support documents and handoffs cite Forge artifacts or events",
         "signature receipt attached",
+        "strategic audit does not create CRM-local persistence",
         "subworkflow lineage cites child workflow artifacts and events",
         "success criteria mapped to user-facing deliverables",
+        "support channel coverage includes chat email telegram and whatsapp evidence",
         "version promotion waits for Forge approval evidence"
       ]
     },
@@ -2714,6 +2746,47 @@
           "every module maps to Forge workflows and runtime contracts",
           "blueprint export remains an artifact and does not create CRM-local state",
           "Core primitive gaps are routed to forge-core before Addon workarounds"
+        ]
+      },
+      {
+        "id": "crm.strategic.objective_audit",
+        "title": "Strategic objective coverage audit",
+        "domain": "operations",
+        "state_count": 5,
+        "states": [
+          "objective_contract_loaded",
+          "forge_evidence_collected",
+          "coverage_reported",
+          "core_gap_reviewed",
+          "rework_required"
+        ],
+        "wait_states": [],
+        "runtime_contracts": [
+          "crm.strategic.objective_audit.executor",
+          "crm.operating.readiness.executor",
+          "crm.factory.blueprint_export.executor",
+          "crm.observability.inspector.executor"
+        ],
+        "artifact_types": [
+          "crm_strategic_objective_audit",
+          "crm_requirement_coverage_matrix",
+          "crm_support_channel_coverage_report",
+          "crm_core_gap_report"
+        ],
+        "event_types": [
+          "crm.strategic.objective_audited",
+          "crm.requirement.coverage_reported",
+          "crm.support.channel_coverage_reported"
+        ],
+        "surface_ids": [
+          "crm.system-map",
+          "crm.ai-workbench"
+        ],
+        "validation_gates": [
+          "every explicit strategic requirement cites Forge workflow runtime artifact event or view evidence",
+          "support channel coverage includes chat email telegram and whatsapp evidence",
+          "Forge Core gaps are routed to forge-core before CRM-local implementation",
+          "strategic audit does not create CRM-local persistence"
         ]
       },
       {
@@ -4552,6 +4625,7 @@
         "workflow_ids": [
           "crm.executive.reporting",
           "crm.workflow.factory_blueprint",
+          "crm.strategic.objective_audit",
           "crm.approval.governance",
           "crm.workflow.evolution",
           "crm.workflow.automation_design",
@@ -7778,6 +7852,44 @@
         "reuse_policy": "copy_as_forge_workflow_module_template"
       },
       {
+        "id": "module.crm_strategic_objective_audit",
+        "title": "Strategic objective coverage audit",
+        "domain": "operations",
+        "workflow_ids": [
+          "crm.strategic.objective_audit"
+        ],
+        "workflow_extension_id": "crm_strategic_objective_audit",
+        "runtime_contracts": [
+          "crm.strategic.objective_audit.executor",
+          "crm.operating.readiness.executor",
+          "crm.factory.blueprint_export.executor",
+          "crm.observability.inspector.executor"
+        ],
+        "artifact_types": [
+          "crm_strategic_objective_audit",
+          "crm_requirement_coverage_matrix",
+          "crm_support_channel_coverage_report",
+          "crm_core_gap_report"
+        ],
+        "event_types": [
+          "crm.strategic.objective_audited",
+          "crm.requirement.coverage_reported",
+          "crm.support.channel_coverage_reported"
+        ],
+        "surface_ids": [
+          "crm.system-map",
+          "crm.ai-workbench"
+        ],
+        "validation_gates": [
+          "every explicit strategic requirement cites Forge workflow runtime artifact event or view evidence",
+          "support channel coverage includes chat email telegram and whatsapp evidence",
+          "Forge Core gaps are routed to forge-core before CRM-local implementation",
+          "strategic audit does not create CRM-local persistence"
+        ],
+        "state_owner": "forge_workflow_runtime",
+        "reuse_policy": "copy_as_forge_workflow_module_template"
+      },
+      {
         "id": "module.crm_approval_governance",
         "title": "CRM approval governance",
         "domain": "operations",
@@ -8132,7 +8244,7 @@
     ],
     "portability_report": {
       "state": "ready_for_reuse",
-      "module_count": 34,
+      "module_count": 35,
       "missing_runtime_contract_modules": [],
       "target_repository_for_core_gaps": "forge-core",
       "local_state_allowed": false
@@ -8143,6 +8255,150 @@
       "crm_factory_portability_report"
     ],
     "rework_policy": "route missing Core primitives to forge-core before CRM-local workarounds"
+  },
+  "strategic_objective_audit_workbench": {
+    "schema_version": "forge.crm_strategic_objective_audit_workbench.v1",
+    "workflow_id": "crm.strategic.objective_audit",
+    "workflow_extension_id": "crm_strategic_objective_audit",
+    "state_owner": "forge_workflow_runtime",
+    "local_state_allowed": false,
+    "action_id": "crm.generate-strategic-objective-audit",
+    "contract_id": "crm.strategic.objective_audit.executor",
+    "audit_status": "covered_by_current_addon_evidence",
+    "section_count": 9,
+    "requirement_count": 50,
+    "missing_requirement_count": 0,
+    "section_coverage": [
+      {
+        "section_id": "principle",
+        "title": "Principle",
+        "status": "covered_by_current_addon_evidence",
+        "requirement_count": 3,
+        "missing_requirements": 0
+      },
+      {
+        "section_id": "relationship",
+        "title": "Relationship",
+        "status": "covered_by_current_addon_evidence",
+        "requirement_count": 8,
+        "missing_requirements": 0
+      },
+      {
+        "section_id": "commercial",
+        "title": "Commercial",
+        "status": "covered_by_current_addon_evidence",
+        "requirement_count": 8,
+        "missing_requirements": 0
+      },
+      {
+        "section_id": "support",
+        "title": "Support",
+        "status": "covered_by_current_addon_evidence",
+        "requirement_count": 4,
+        "missing_requirements": 0
+      },
+      {
+        "section_id": "marketing",
+        "title": "Marketing",
+        "status": "covered_by_current_addon_evidence",
+        "requirement_count": 6,
+        "missing_requirements": 0
+      },
+      {
+        "section_id": "operations",
+        "title": "Operations",
+        "status": "covered_by_current_addon_evidence",
+        "requirement_count": 7,
+        "missing_requirements": 0
+      },
+      {
+        "section_id": "ai_automation",
+        "title": "AI and Automation",
+        "status": "covered_by_current_addon_evidence",
+        "requirement_count": 9,
+        "missing_requirements": 0
+      },
+      {
+        "section_id": "forge_platform",
+        "title": "Forge Platform",
+        "status": "covered_by_current_addon_evidence",
+        "requirement_count": 4,
+        "missing_requirements": 0
+      },
+      {
+        "section_id": "ui",
+        "title": "UI",
+        "status": "covered_by_current_addon_evidence",
+        "requirement_count": 1,
+        "missing_requirements": 0
+      }
+    ],
+    "support_channel_coverage": {
+      "complete": true,
+      "channels": [
+        {
+          "channel": "chat",
+          "covered": true,
+          "integration_id": "crm.chat",
+          "event_adapter_origin": "chat"
+        },
+        {
+          "channel": "email",
+          "covered": true,
+          "integration_id": "crm.email",
+          "event_adapter_origin": "email"
+        },
+        {
+          "channel": "telegram",
+          "covered": true,
+          "integration_id": "crm.telegram",
+          "event_adapter_origin": "telegram"
+        },
+        {
+          "channel": "whatsapp",
+          "covered": true,
+          "integration_id": "crm.whatsapp",
+          "event_adapter_origin": "whatsapp"
+        }
+      ],
+      "workflow_ids": [
+        "crm.omnichannel.center",
+        "crm.omnichannel.channel_intake",
+        "crm.omnichannel.message",
+        "crm.omnichannel.reply",
+        "crm.ticket.sla"
+      ],
+      "runtime_contracts": [
+        "crm.omnichannel.handoff",
+        "crm.support.channel_intake.executor",
+        "crm.support.omnichannel_center.executor",
+        "crm.support.omnichannel_message.executor",
+        "crm.support.reply_composer.executor",
+        "crm.support.ticket_sla.executor"
+      ]
+    },
+    "operation_plan": [
+      {
+        "id": "collect_forge_evidence",
+        "title": "Collect manifest, workflow, runtime, artifact, event and view evidence",
+        "owner": "forge.workflow.runtime"
+      },
+      {
+        "id": "run_strategic_objective_audit",
+        "title": "Run the strategic objective audit executor",
+        "owner": "crm.strategic.objective_audit.executor"
+      },
+      {
+        "id": "promote_audit_artifacts",
+        "title": "Promote audit, requirement coverage and support coverage artifacts",
+        "owner": "forge.addon_runtime"
+      },
+      {
+        "id": "route_core_gaps",
+        "title": "Route missing platform primitives to forge-core before CRM-local workarounds",
+        "owner": "forge-core"
+      }
+    ]
   },
   "subworkflow_orchestration_workbench": {
     "schema_version": "forge.crm_subworkflow_orchestration_workbench.v1",
@@ -8791,6 +9047,33 @@
         "forge.addon.crm",
         "--contract",
         "crm.factory.blueprint_export.executor",
+        "--worker",
+        "<worker-id>",
+        "--task",
+        "<task-ref>",
+        "--input",
+        "<json>",
+        "--context",
+        "<json>",
+        "--output",
+        "json"
+      ]
+    },
+    {
+      "id": "crm.generate-strategic-objective-audit",
+      "label": "Generate strategic audit",
+      "surface_id": "crm.system-map",
+      "contract_id": "crm.strategic.objective_audit.executor",
+      "requires_permission": "crm.observability.inspect",
+      "mutates_workflow": true,
+      "command_template": [
+        "forge",
+        "addons",
+        "execute-executor",
+        "--addon",
+        "forge.addon.crm",
+        "--contract",
+        "crm.strategic.objective_audit.executor",
         "--worker",
         "<worker-id>",
         "--task",
@@ -10230,6 +10513,68 @@
             "title": "Execute runtime contract",
             "owner": "forge.addons.runtime",
             "evidence": "crm.factory.blueprint_export.executor"
+          },
+          {
+            "id": "promote_result_to_workflow",
+            "title": "Promote result to workflow",
+            "owner": "forge.workflow.runtime",
+            "evidence": "artifact and event promotion"
+          },
+          {
+            "id": "refresh_operating_snapshot",
+            "title": "Refresh operating snapshot",
+            "owner": "forge.addon.crm",
+            "evidence": "crm.operating.snapshot.executor"
+          }
+        ],
+        "output_policy": {
+          "promote_result_to_workflow": true,
+          "browser_local_state_write": false,
+          "refresh_source": "forge_workflow_artifacts_and_events"
+        }
+      },
+      {
+        "action_id": "crm.generate-strategic-objective-audit",
+        "label": "Generate strategic audit",
+        "surface_id": "crm.system-map",
+        "contract_id": "crm.strategic.objective_audit.executor",
+        "required_permission": "crm.observability.inspect",
+        "selected_command": [
+          "forge",
+          "addons",
+          "execute-executor",
+          "--addon",
+          "forge.addon.crm",
+          "--contract",
+          "crm.strategic.objective_audit.executor",
+          "--worker",
+          "<worker-id>",
+          "--task",
+          "<task-ref>",
+          "--input",
+          "<json>",
+          "--context",
+          "<json>",
+          "--output",
+          "json"
+        ],
+        "permission_gate": {
+          "status": "requires_forge_permission",
+          "permission": "crm.observability.inspect",
+          "approval_owner": "forge_permission_policy"
+        },
+        "operation_plan": [
+          {
+            "id": "check_addon_permission",
+            "title": "Check Addon permission",
+            "owner": "forge.permissions",
+            "evidence": "crm.observability.inspect"
+          },
+          {
+            "id": "execute_runtime_contract",
+            "title": "Execute runtime contract",
+            "owner": "forge.addons.runtime",
+            "evidence": "crm.strategic.objective_audit.executor"
           },
           {
             "id": "promote_result_to_workflow",

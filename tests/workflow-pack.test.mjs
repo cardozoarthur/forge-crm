@@ -211,6 +211,56 @@ test("workflow pack includes a reusable workflow-system factory blueprint export
   assert.ok(pack.indexes.runtime_contracts.includes("crm.factory.blueprint_export.executor"));
 });
 
+test("workflow pack includes strategic objective audit as a Forge-owned workflow", () => {
+  const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
+  const workflow = pack.workflows.find((candidate) => candidate.id === "crm.strategic.objective_audit");
+
+  assert.ok(workflow);
+  assert.equal(workflow.domain, "operations");
+  assert.equal(workflow.workflow_extension_id, "crm_strategic_objective_audit");
+  assert.ok(workflow.runtime_contracts.includes("crm.strategic.objective_audit.executor"));
+
+  for (const dependency of [
+    "crm.enterprise.readiness",
+    "crm.workflow.factory_blueprint",
+    "crm.operational.observability",
+    "crm.daily.operating_cycle",
+    "crm.omnichannel.channel_intake"
+  ]) {
+    assert.ok(workflow.depends_on_workflows.includes(dependency), `missing strategic audit dependency ${dependency}`);
+  }
+
+  for (const objectType of [
+    "strategic_objective_audit",
+    "requirement_coverage_matrix",
+    "support_channel_coverage",
+    "core_gap_report"
+  ]) {
+    assert.ok(workflow.object_types.includes(objectType), `missing strategic audit object ${objectType}`);
+  }
+
+  for (const artifact of [
+    "crm_strategic_objective_audit",
+    "crm_requirement_coverage_matrix",
+    "crm_support_channel_coverage_report"
+  ]) {
+    assert.ok(workflow.artifacts.includes(artifact), `missing strategic audit artifact ${artifact}`);
+    assert.ok(pack.indexes.artifact_types.includes(artifact), `missing indexed strategic audit artifact ${artifact}`);
+  }
+
+  for (const event of [
+    "crm.strategic.objective_audited",
+    "crm.requirement.coverage_reported",
+    "crm.support.channel_coverage_reported"
+  ]) {
+    assert.ok(workflow.events.includes(event), `missing strategic audit event ${event}`);
+  }
+
+  assert.ok(workflow.validation_gates.includes("every explicit strategic requirement cites Forge workflow runtime artifact event or view evidence"));
+  assert.ok(workflow.validation_gates.includes("Forge Core gaps are routed to forge-core before CRM-local implementation"));
+  assert.ok(pack.indexes.runtime_contracts.includes("crm.strategic.objective_audit.executor"));
+});
+
 test("AI automation workflow routes operating copilot through a runtime contract", () => {
   const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
   const aiWorkflow = pack.workflows.find((workflow) => workflow.id === "crm.ai.copilot.recommendation");

@@ -946,6 +946,64 @@ const WORKFLOWS = [
     ]
   },
   {
+    id: "crm.strategic.objective_audit",
+    title: "Strategic objective coverage audit",
+    domain: "operations",
+    workflow_extension_id: "crm_strategic_objective_audit",
+    object_types: [
+      "strategic_objective_audit",
+      "requirement_coverage_matrix",
+      "support_channel_coverage",
+      "core_gap_report"
+    ],
+    states: [
+      "objective_contract_loaded",
+      "forge_evidence_collected",
+      "coverage_reported",
+      "core_gap_reviewed",
+      "rework_required"
+    ],
+    transitions: [
+      ["objective_contract_loaded", "forge_evidence_collected", "manifest, workflow, runtime, artifact, event and view evidence collected"],
+      ["forge_evidence_collected", "coverage_reported", "all explicit strategic requirements are mapped to Forge evidence"],
+      ["coverage_reported", "core_gap_reviewed", "Core capability gaps are routed to forge-core"],
+      ["coverage_reported", "rework_required", "missing requirement evidence returns to Forge workflow tasks"]
+    ],
+    runtime_contracts: [
+      "crm.strategic.objective_audit.executor",
+      "crm.operating.readiness.executor",
+      "crm.factory.blueprint_export.executor",
+      "crm.observability.inspector.executor"
+    ],
+    depends_on_workflows: [
+      "crm.enterprise.readiness",
+      "crm.workflow.factory_blueprint",
+      "crm.operational.observability",
+      "crm.daily.operating_cycle",
+      "crm.omnichannel.channel_intake"
+    ],
+    artifacts: [
+      "crm_strategic_objective_audit",
+      "crm_requirement_coverage_matrix",
+      "crm_support_channel_coverage_report",
+      "crm_core_gap_report"
+    ],
+    events: [
+      "crm.strategic.objective_audited",
+      "crm.requirement.coverage_reported",
+      "crm.support.channel_coverage_reported"
+    ],
+    memory_scopes: ["organization", "project"],
+    permissions: ["crm.observability.inspect"],
+    views: ["crm.system-map", "crm.ai-workbench"],
+    validation_gates: [
+      "every explicit strategic requirement cites Forge workflow runtime artifact event or view evidence",
+      "support channel coverage includes chat email telegram and whatsapp evidence",
+      "Forge Core gaps are routed to forge-core before CRM-local implementation",
+      "strategic audit does not create CRM-local persistence"
+    ]
+  },
+  {
     id: "crm.approval.governance",
     title: "CRM approval governance",
     domain: "operations",
