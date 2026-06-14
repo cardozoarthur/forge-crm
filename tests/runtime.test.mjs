@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   buildTenantBootstrapResult,
   buildDocumentValidatorResult,
+  buildOperatingCopilotResult,
   buildLeadClassifierResult,
   buildOmnichannelHandoffResult,
   buildOperatingSnapshotResult,
@@ -124,6 +125,51 @@ test("operating snapshot runtime returns Forge-owned business surface state", ()
   assert.equal(result.artifacts[0].data.state_owner, "forge_workflow_runtime");
   assert.ok(result.artifacts[0].data.operator_surfaces.pipeline_kanban.workflow_ids.includes("crm.opportunity.pipeline"));
   assert.equal(result.events[0].kind, "crm.operating.snapshot_generated");
+});
+
+test("operating copilot prioritizes opportunities without mutating CRM state", () => {
+  const result = buildOperatingCopilotResult(
+    workerRequest("forge_crm.operating_copilot", {
+      tenant_context: { tenant_id: "demo" },
+      opportunities: [
+        {
+          id: "opp-low",
+          account: "Small Co",
+          amount: 18000,
+          close_probability: 0.35,
+          stage: "discovery",
+          last_activity_days: 2
+        },
+        {
+          id: "opp-priority",
+          account: "Enterprise Co",
+          amount: 240000,
+          close_probability: 0.72,
+          stage: "negotiation",
+          last_activity_days: 9,
+          risk_flags: ["legal_review_waiting"]
+        }
+      ],
+      tickets: [{ id: "ticket-sla", severity: "high", sla_minutes_remaining: 20, status: "owner_assigned" }],
+      documents: [
+        { id: "proposal-priority", kind: "crm_proposal", state: "approval_wait", workflow_id: "crm.proposal.approval" }
+      ],
+      campaigns: [{ id: "campaign-q3", state: "scheduled", target_segment: "enterprise" }]
+    })
+  );
+
+  assert.equal(result.schema_version, "forge.addon_executor_result.v1");
+  assert.equal(result.status, "completed");
+  assert.equal(result.outputs.tenant_id, "demo");
+  assert.equal(result.outputs.mutates_crm_state, false);
+  assert.equal(result.outputs.priority_opportunity_id, "opp-priority");
+  assert.ok(result.outputs.executive_summary.includes("Enterprise Co"));
+  assert.ok(result.outputs.risk_count >= 2);
+  assert.ok(result.outputs.next_best_actions.includes("request_forge_approval_for_priority_opportunity_next_step"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_ai_recommendation"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_risk_analysis"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_report"));
+  assert.ok(result.events.some((event) => event.kind === "crm.ai.operating_copilot_generated"));
 });
 
 test("proposal generator emits a draft proposal artifact gated by Forge approval", () => {

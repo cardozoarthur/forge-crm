@@ -86,3 +86,12 @@ test("workflow pack includes a Forge-owned operating model for business surfaces
     assert.ok(model.business_modules[domain].workflow_ids.length > 0, `${domain} needs workflow ids`);
   }
 });
+
+test("AI automation workflow routes operating copilot through a runtime contract", () => {
+  const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
+  const aiWorkflow = pack.workflows.find((workflow) => workflow.id === "crm.ai.copilot.recommendation");
+
+  assert.ok(aiWorkflow);
+  assert.ok(aiWorkflow.runtime_contracts.includes("crm.ai.operating_copilot.executor"));
+  assert.ok(pack.indexes.runtime_contracts.includes("crm.ai.operating_copilot.executor"));
+});

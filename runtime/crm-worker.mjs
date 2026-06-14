@@ -41,6 +41,7 @@ export function createCrmWorkerServer() {
             "forge_crm.bootstrap_tenant",
             "forge_crm.operating_snapshot",
             "forge_crm.classify_lead",
+            "forge_crm.operating_copilot",
             "forge_crm.generate_proposal",
             "forge_crm.validate_document",
             "forge_crm.deliver_handoff"

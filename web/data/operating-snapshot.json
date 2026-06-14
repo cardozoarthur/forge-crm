@@ -548,6 +548,7 @@
         "wait_states": [],
         "runtime_contracts": [
           "crm.lead.classifier.executor",
+          "crm.ai.operating_copilot.executor",
           "crm.proposal.generator.executor"
         ],
         "artifact_types": [
@@ -875,6 +876,7 @@
         ],
         "runtime_contracts": [
           "crm.lead.classifier.executor",
+          "crm.ai.operating_copilot.executor",
           "crm.proposal.generator.executor"
         ],
         "artifact_types": [
@@ -1254,6 +1256,33 @@
         "<worker-id>",
         "--subject",
         "<artifact-ref>",
+        "--input",
+        "<json>",
+        "--context",
+        "<json>",
+        "--output",
+        "json"
+      ]
+    },
+    {
+      "id": "crm.run-operating-copilot",
+      "label": "Run operating copilot",
+      "surface_id": "crm.ai-workbench",
+      "contract_id": "crm.ai.operating_copilot.executor",
+      "requires_permission": "crm.ai.recommend",
+      "mutates_workflow": true,
+      "command_template": [
+        "forge",
+        "addons",
+        "execute-executor",
+        "--addon",
+        "forge.addon.crm",
+        "--contract",
+        "crm.ai.operating_copilot.executor",
+        "--worker",
+        "<worker-id>",
+        "--task",
+        "<task-ref>",
         "--input",
         "<json>",
         "--context",

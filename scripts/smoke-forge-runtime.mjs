@@ -78,6 +78,7 @@ try {
       "forge_crm.bootstrap_tenant",
       "forge_crm.operating_snapshot",
       "forge_crm.classify_lead",
+      "forge_crm.operating_copilot",
       "forge_crm.generate_proposal",
       "forge_crm.validate_document",
       "forge_crm.deliver_handoff"
@@ -87,6 +88,7 @@ try {
       "crm.tenant.bootstrap.executor",
       "crm.operating.snapshot.executor",
       "crm.lead.classifier.executor",
+      "crm.ai.operating_copilot.executor",
       "crm.proposal.generator.executor",
       "crm.document.validator",
       "crm.omnichannel.handoff"
@@ -215,6 +217,52 @@ try {
     "json"
   ]);
 
+  const copilot = runForge([
+    "addons",
+    "execute-executor",
+    "--addon-dir",
+    "addons",
+    "--addon",
+    "forge.addon.crm",
+    "--contract",
+    "crm.ai.operating_copilot.executor",
+    "--worker",
+    workerId,
+    "--task",
+    "crm-smoke-operating-copilot",
+    "--workflow",
+    workflowId,
+    "--input",
+    JSON.stringify({
+      tenant_context: { id: "smoke", tenant_id: "smoke" },
+      opportunities: [
+        {
+          id: "opp-smoke-priority",
+          account: "Example Logistics",
+          amount: 180000,
+          close_probability: 0.74,
+          stage: "negotiation",
+          last_activity_days: 4,
+          risk_flags: ["contract_review_waiting"]
+        }
+      ],
+      tickets: [{ id: "ticket-smoke-001", severity: "high", sla_minutes_remaining: 25 }],
+      documents: [{ id: "proposal-opp-smoke-priority", kind: "crm_proposal", state: "approval_wait" }],
+      campaigns: [{ id: "campaign-smoke", state: "scheduled", target_segment: "enterprise" }]
+    }),
+    "--context",
+    JSON.stringify({ tenant: "smoke" }),
+    "--output",
+    "json"
+  ]);
+
+  if (copilot.promotion?.status !== "addon_executor_result_promoted") {
+    throw new Error(`expected copilot promotion, got ${copilot.promotion?.status || "missing"}`);
+  }
+  if (copilot.executor_result.outputs.priority_opportunity_id !== "opp-smoke-priority") {
+    throw new Error(`expected priority opportunity from copilot, got ${copilot.executor_result.outputs.priority_opportunity_id}`);
+  }
+
   const workflowArtifacts = runForge([
     "artifacts",
     "--workflow",
@@ -234,6 +282,8 @@ try {
   const promotedEventCount = bootstrap.promotion?.event_count ?? 0;
   const snapshotPromotedArtifactCount = operatingSnapshot.promotion?.artifact_count ?? 0;
   const snapshotPromotedEventCount = operatingSnapshot.promotion?.event_count ?? 0;
+  const copilotPromotedArtifactCount = copilot.promotion?.artifact_count ?? 0;
+  const copilotPromotedEventCount = copilot.promotion?.event_count ?? 0;
   const workflowArtifactCount = workflowArtifacts.artifacts?.length ?? 0;
   const workflowEventKinds = (workflowEvents.events || []).map((event) => event.kind);
 
@@ -262,6 +312,14 @@ try {
     throw new Error(
       `expected operating snapshot event in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`
     );
+  }
+  if (copilotPromotedArtifactCount < 3 || copilotPromotedEventCount < 1) {
+    throw new Error(
+      `expected promoted copilot artifacts/events, got artifacts=${copilotPromotedArtifactCount} events=${copilotPromotedEventCount}`
+    );
+  }
+  if (!workflowEventKinds.includes("crm.ai.operating_copilot_generated")) {
+    throw new Error(`expected operating copilot event in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
   }
 
   const classifier = runForge([
@@ -388,6 +446,12 @@ try {
     operating_snapshot_modules: operatingSnapshot.executor_result.outputs.business_module_count,
     operating_snapshot_promoted_artifacts: snapshotPromotedArtifactCount,
     operating_snapshot_promoted_events: snapshotPromotedEventCount,
+    copilot_status: copilot.status,
+    copilot_promotion_status: copilot.promotion.status,
+    copilot_priority_opportunity_id: copilot.executor_result.outputs.priority_opportunity_id,
+    copilot_risk_count: copilot.executor_result.outputs.risk_count,
+    copilot_promoted_artifacts: copilotPromotedArtifactCount,
+    copilot_promoted_events: copilotPromotedEventCount,
     workflow_artifact_count: workflowArtifactCount,
     workflow_event_kinds: workflowEventKinds,
     bootstrap_workflow_count: bootstrap.executor_result.outputs.workflow_count,

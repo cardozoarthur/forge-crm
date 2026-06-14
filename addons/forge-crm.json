@@ -379,11 +379,13 @@
       "deliverables": [
         "Copilot recommendation artifact",
         "Lead score evidence",
-        "Risk analysis artifact"
+        "Risk analysis artifact",
+        "Executive operating summary"
       ],
       "artifact_types": [
         "crm_ai_recommendation",
-        "crm_risk_analysis"
+        "crm_risk_analysis",
+        "crm_report"
       ],
       "view_ids": [
         "crm.ai-workbench"
@@ -512,6 +514,36 @@
       "constraints": [
         "classification must include evidence and confidence",
         "recommendations do not mutate customer state without workflow approval"
+      ]
+    },
+    {
+      "id": "crm.ai.operating_copilot.executor",
+      "title": "CRM operating copilot",
+      "contract_type": "executor",
+      "capability_id": "crm_ai_automation",
+      "workflow_extension_id": "crm_ai_copilot_recommendation",
+      "runtime": "external_api",
+      "entrypoint": "forge_crm.operating_copilot",
+      "inputs": [
+        "operating_snapshot",
+        "opportunities",
+        "tickets",
+        "documents",
+        "campaigns",
+        "organization_memory"
+      ],
+      "outputs": [
+        "crm_ai_recommendation",
+        "crm_risk_analysis",
+        "crm_report"
+      ],
+      "permissions": [
+        "crm.ai.recommend"
+      ],
+      "constraints": [
+        "operating copilot does not mutate CRM state directly",
+        "priority, risk and next-step recommendations require Forge workflow approval before state mutation",
+        "executive summaries must cite Forge workflow artifacts, events or memory context"
       ]
     },
     {

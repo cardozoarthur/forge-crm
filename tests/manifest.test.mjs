@@ -60,6 +60,19 @@ test("manifest exposes CRM operating snapshot as a Forge runtime contract", () =
   assert.ok(artifactTypes.has("crm_operating_snapshot"));
 });
 
+test("manifest exposes CRM operating copilot as a recommendation-only executor", () => {
+  const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.ai.operating_copilot.executor");
+  assert.ok(contract);
+  assert.equal(contract.contract_type, "executor");
+  assert.equal(contract.capability_id, "crm_ai_automation");
+  assert.equal(contract.entrypoint, "forge_crm.operating_copilot");
+  assert.deepEqual(contract.permissions, ["crm.ai.recommend"]);
+  assert.ok(contract.outputs.includes("crm_ai_recommendation"));
+  assert.ok(contract.outputs.includes("crm_risk_analysis"));
+  assert.ok(contract.outputs.includes("crm_report"));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("does not mutate")));
+});
+
 test("manifest declares the CRM web application entrypoint as an Addon view asset", () => {
   const systemMap = manifest.views.find((view) => view.id === "crm.system-map");
   assert.ok(systemMap);

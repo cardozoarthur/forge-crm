@@ -53,7 +53,7 @@ const WORKFLOWS = [
       ["negotiation", "won", "contract workflow started"],
       ["negotiation", "lost", "loss reason recorded"]
     ],
-    runtime_contracts: ["crm.lead.classifier.executor", "crm.proposal.generator.executor"],
+    runtime_contracts: ["crm.lead.classifier.executor", "crm.ai.operating_copilot.executor", "crm.proposal.generator.executor"],
     artifacts: ["crm_timeline_snapshot", "crm_report"],
     events: ["crm.opportunity.stage_changed", "crm.forecast.updated"],
     memory_scopes: ["organization", "project"],
@@ -258,7 +258,7 @@ const WORKFLOWS = [
       ["review_wait", "approved_action", "human or policy approval recorded"],
       ["review_wait", "discarded", "reason recorded"]
     ],
-    runtime_contracts: ["crm.lead.classifier.executor", "crm.proposal.generator.executor"],
+    runtime_contracts: ["crm.lead.classifier.executor", "crm.ai.operating_copilot.executor", "crm.proposal.generator.executor"],
     artifacts: ["crm_ai_recommendation", "crm_risk_analysis", "crm_report"],
     events: ["crm.ai.recommendation_generated", "crm.ai.risk_flagged", "crm.next_action.approved"],
     memory_scopes: ["organization", "project", "processing"],

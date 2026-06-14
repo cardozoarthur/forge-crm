@@ -27,12 +27,13 @@ Forge CRM is a product proof for Forge as a factory/framework for agentic workfl
 
 No important CRM automation should bypass Forge. External tools may execute bounded work, but Forge owns the workflow, state transitions, approvals, memory scope, artifact attachment, event history and validation gates.
 
-The current CRM worker exposes seven Forge runtime entrypoints:
+The current CRM worker exposes eight Forge runtime entrypoints:
 
 - `forge_crm.plan_system` for CRM system planning;
 - `forge_crm.bootstrap_tenant` for a Forge-owned tenant workflow pack;
 - `forge_crm.operating_snapshot` for a Forge-owned business operating snapshot;
 - `forge_crm.classify_lead` for recommendation-only lead scoring;
+- `forge_crm.operating_copilot` for opportunity priority, risk analysis, executive summary and next-step recommendations;
 - `forge_crm.generate_proposal` for draft proposal artifacts;
 - `forge_crm.validate_document` for approval and lineage checks;
 - `forge_crm.deliver_handoff` for approved omnichannel handoff receipts.
@@ -68,7 +69,7 @@ The first web surface lives in `web/` and is declared by `crm.system-map.props.w
 
 - `scripts/generate-crm-web-snapshot.mjs` writes `web/data/operating-snapshot.json`;
 - `web/index.html` loads the snapshot;
-- `web/app.js` renders workflow graph, knowledge graph, business modules, document queue and Forge action templates;
+- `web/app.js` renders workflow graph, knowledge graph, business modules, document queue, operating copilot action and Forge action templates;
 - `web/styles.css` carries compact operational styling and design tokens.
 
 This is a business-user view over Forge-owned state. It does not introduce browser persistence, a CRM-local database or a side automation engine. Any action shown in the UI is represented as a Forge command template that routes through Addon runtime contracts and permission gates.

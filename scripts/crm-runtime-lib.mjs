@@ -9,6 +9,10 @@ function asObject(value) {
   return value && typeof value === "object" && !Array.isArray(value) ? value : {};
 }
 
+function asArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
 function dispatchEnvelope(request) {
   return asObject(request?.input);
 }
@@ -50,6 +54,14 @@ function numberFrom(value, fallback = 0) {
 function textIncludes(value, patterns) {
   const text = String(value || "").toLowerCase();
   return patterns.some((pattern) => text.includes(pattern));
+}
+
+function probabilityFrom(value) {
+  const probability = numberFrom(value, 0);
+  if (probability > 1) {
+    return Math.max(0, Math.min(1, probability / 100));
+  }
+  return Math.max(0, Math.min(1, probability));
 }
 
 function leadId(lead) {
@@ -176,6 +188,189 @@ export function buildLeadClassifierResult(request) {
       }
     ],
     context_tenant: contextTenant(request)
+  };
+}
+
+function opportunityId(opportunity) {
+  return String(opportunity.id || opportunity.opportunity_id || opportunity.account || opportunity.company || "opportunity-unknown");
+}
+
+function opportunityAccount(opportunity) {
+  return String(opportunity.account || opportunity.company || opportunity.name || opportunityId(opportunity));
+}
+
+function stageWeight(stage) {
+  const normalized = String(stage || "").toLowerCase();
+  if (["negotiation", "signature", "contract", "closing"].some((item) => normalized.includes(item))) {
+    return 22;
+  }
+  if (["proposal", "approval"].some((item) => normalized.includes(item))) {
+    return 18;
+  }
+  if (["discovery", "qualified"].some((item) => normalized.includes(item))) {
+    return 12;
+  }
+  return 6;
+}
+
+function scoreOpportunity(opportunity) {
+  const amount = numberFrom(opportunity.amount ?? opportunity.value ?? opportunity.forecast_amount, 0);
+  const probability = probabilityFrom(opportunity.close_probability ?? opportunity.probability ?? opportunity.win_probability);
+  const lastActivityDays = numberFrom(opportunity.last_activity_days ?? opportunity.days_since_activity, 0);
+  const riskFlags = asArray(opportunity.risk_flags);
+  const score = Math.max(
+    0,
+    Math.min(100, Math.round(Math.min(30, amount / 8000) + probability * 38 + stageWeight(opportunity.stage) - Math.min(12, lastActivityDays / 2) - riskFlags.length * 2))
+  );
+
+  return {
+    id: opportunityId(opportunity),
+    account: opportunityAccount(opportunity),
+    score,
+    amount,
+    probability,
+    stage: opportunity.stage || "unknown",
+    risk_flags: riskFlags,
+    recommended_action:
+      score >= 70
+        ? "request_forge_approval_for_priority_opportunity_next_step"
+        : "collect_missing_context_before_stage_change"
+  };
+}
+
+function buildOperatingRiskSignals({ opportunityPriorities, tickets, documents }) {
+  const risks = [];
+  for (const opportunity of opportunityPriorities) {
+    for (const flag of opportunity.risk_flags) {
+      risks.push({
+        code: "opportunity_risk_flag",
+        severity: "medium",
+        subject: opportunity.id,
+        message: flag
+      });
+    }
+  }
+  for (const ticket of tickets) {
+    const minutes = numberFrom(ticket.sla_minutes_remaining ?? ticket.sla_remaining_minutes, 99999);
+    const highSeverity = textIncludes(ticket.severity, ["high", "urgent", "critical"]);
+    if (minutes <= 60 || highSeverity) {
+      risks.push({
+        code: "support_sla_attention",
+        severity: minutes <= 30 || highSeverity ? "high" : "medium",
+        subject: String(ticket.id || ticket.ticket_id || "ticket"),
+        message: "support ticket needs SLA attention"
+      });
+    }
+  }
+  for (const document of documents) {
+    if (textIncludes(document.state || document.status, ["approval_wait", "review", "rework"])) {
+      risks.push({
+        code: "document_queue_attention",
+        severity: "medium",
+        subject: String(document.id || document.artifact_id || "document"),
+        message: "document workflow is waiting for approval or rework"
+      });
+    }
+  }
+  return risks;
+}
+
+export function buildOperatingCopilotResult(request) {
+  const input = dispatchPayload(request);
+  const context = providedContext(request);
+  const tenantId = input.tenant_id || input.tenant_context?.tenant_id || input.tenant_context?.id || context.tenant || "default";
+  const opportunities = asArray(input.opportunities);
+  const tickets = asArray(input.tickets);
+  const documents = asArray(input.documents);
+  const campaigns = asArray(input.campaigns);
+  const taskRef = dispatchEnvelope(request).task_ref || `crm-operating-copilot-${slug(tenantId, "tenant")}`;
+  const opportunityPriorities = opportunities.map(scoreOpportunity).sort((left, right) => right.score - left.score);
+  const priority = opportunityPriorities[0] || {
+    id: "none",
+    account: "No active account",
+    score: 0,
+    recommended_action: "collect_missing_operating_context"
+  };
+  const risks = buildOperatingRiskSignals({ opportunityPriorities, tickets, documents });
+  const nextBestActions = [
+    priority.recommended_action,
+    risks.some((risk) => risk.code === "support_sla_attention") ? "resolve_high_risk_sla_ticket" : "monitor_support_queue",
+    risks.some((risk) => risk.code === "document_queue_attention") ? "clear_document_approval_queue" : "keep_document_queue_current",
+    campaigns.length > 0 ? "review_campaign_follow_up_workflows" : "plan_next_segmented_campaign"
+  ];
+  const executiveSummary = `Top opportunity is ${priority.account} (${priority.id}) with score ${priority.score}; ${risks.length} operating risks require Forge-tracked follow-up.`;
+
+  return {
+    schema_version: "forge.addon_executor_result.v1",
+    status: "completed",
+    task_ref: taskRef,
+    summary: `CRM operating copilot generated ${nextBestActions.length} recommended actions for tenant ${tenantId}`,
+    outputs: {
+      tenant_id: tenantId,
+      priority_opportunity_id: priority.id,
+      priority_opportunity_score: priority.score,
+      executive_summary: executiveSummary,
+      risk_count: risks.length,
+      next_best_actions: nextBestActions,
+      mutates_crm_state: false,
+      approval_required_before_state_mutation: true
+    },
+    artifacts: [
+      {
+        kind: "crm_ai_recommendation",
+        id: `crm-operating-copilot-${slug(tenantId, "tenant")}`,
+        title: `CRM operating copilot recommendations for ${tenantId}`,
+        content_type: "application/json",
+        data: {
+          opportunity_priorities: opportunityPriorities,
+          next_best_actions: nextBestActions,
+          policy: "recommendation_only_until_forge_workflow_approval"
+        }
+      },
+      {
+        kind: "crm_risk_analysis",
+        id: `crm-risk-analysis-${slug(tenantId, "tenant")}`,
+        title: `CRM risk analysis for ${tenantId}`,
+        content_type: "application/json",
+        data: {
+          risks,
+          source: "forge_workflow_artifacts_and_events",
+          requires_workflow_rework_for_risk_closure: true
+        }
+      },
+      {
+        kind: "crm_report",
+        id: `crm-executive-summary-${slug(tenantId, "tenant")}`,
+        title: `CRM executive summary for ${tenantId}`,
+        content_type: "application/json",
+        data: {
+          executive_summary: executiveSummary,
+          opportunity_count: opportunities.length,
+          ticket_count: tickets.length,
+          document_count: documents.length,
+          campaign_count: campaigns.length,
+          state_owner: "forge_workflow_runtime"
+        }
+      }
+    ],
+    events: [
+      {
+        kind: "crm.ai.operating_copilot_generated",
+        tenant_id: tenantId,
+        priority_opportunity_id: priority.id,
+        risk_count: risks.length
+      },
+      ...(risks.length > 0
+        ? [
+            {
+              kind: "crm.ai.risk_flagged",
+              tenant_id: tenantId,
+              risk_count: risks.length
+            }
+          ]
+        : [])
+    ],
+    context_tenant: context.tenant || tenantId
   };
 }
 
@@ -411,6 +606,8 @@ export function executeCrmRuntimeRequest(request) {
       return buildOperatingSnapshotResult(request);
     case "forge_crm.classify_lead":
       return buildLeadClassifierResult(request);
+    case "forge_crm.operating_copilot":
+      return buildOperatingCopilotResult(request);
     case "forge_crm.generate_proposal":
       return buildProposalGeneratorResult(request);
     case "forge_crm.validate_document":

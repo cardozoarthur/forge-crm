@@ -196,6 +196,15 @@ function actions() {
       command_template: ["forge", "addons", "execute-validator", "--addon", "forge.addon.crm", "--contract", "crm.document.validator", "--worker", "<worker-id>", "--subject", "<artifact-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
     },
     {
+      id: "crm.run-operating-copilot",
+      label: "Run operating copilot",
+      surface_id: "crm.ai-workbench",
+      contract_id: "crm.ai.operating_copilot.executor",
+      requires_permission: "crm.ai.recommend",
+      mutates_workflow: true,
+      command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.ai.operating_copilot.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
+    },
+    {
       id: "crm.deliver-handoff",
       label: "Deliver omnichannel handoff",
       surface_id: "crm.support-queue",
