@@ -123,9 +123,9 @@ const WORKFLOWS = [
       ["response_wait", "forecast_reviewed", "forecast artifact updated"],
       ["forecast_reviewed", "commission_accrued", "commission rule validated"]
     ],
-    runtime_contracts: [],
-    artifacts: ["crm_report", "crm_email"],
-    events: ["crm.followup.scheduled", "crm.forecast.reviewed", "crm.commission.accrued"],
+    runtime_contracts: ["crm.commercial.followup_forecast.executor"],
+    artifacts: ["crm_followup_plan", "crm_forecast_report", "crm_commission_record", "crm_report", "crm_email"],
+    events: ["crm.followup.scheduled", "crm.forecast.reviewed", "crm.goal.progress_reviewed", "crm.commission.accrued"],
     memory_scopes: ["organization"],
     permissions: ["crm.workflow.mutate"],
     views: ["crm.commercial-command"],

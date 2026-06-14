@@ -244,6 +244,62 @@ test("proposal generator emits a draft proposal artifact gated by Forge approval
   assert.equal(result.artifacts[0].kind, "crm_proposal");
 });
 
+test("commercial follow-up forecast executor schedules follow-ups and commission evidence as Forge artifacts", () => {
+  assert.equal(typeof runtime.buildCommercialFollowupForecastResult, "function");
+
+  const result = runtime.buildCommercialFollowupForecastResult(
+    workerRequest(
+      "forge_crm.review_followup_forecast",
+      {
+        tenant_context: { tenant_id: "demo" },
+        opportunity: {
+          id: "opp-forecast-001",
+          account: "Acme Logistics",
+          owner: "sales-owner",
+          stage: "negotiation",
+          amount: 240000,
+          probability: 0.7
+        },
+        followup_policy: {
+          due_at: "2026-07-02T14:00:00Z",
+          channel: "email",
+          sequence_id: "enterprise-renewal"
+        },
+        forecast_policy: {
+          period: "2026-Q3",
+          goal_amount: 300000
+        },
+        commission_policy: {
+          rate: 0.08,
+          eligible_stage: "negotiation"
+        }
+      },
+      { contract_id: "crm.commercial.followup_forecast.executor", task_ref: "commercial-forecast-test" }
+    )
+  );
+
+  assert.equal(result.schema_version, "forge.addon_executor_result.v1");
+  assert.equal(result.status, "completed");
+  assert.equal(result.outputs.tenant_id, "demo");
+  assert.equal(result.outputs.opportunity_id, "opp-forecast-001");
+  assert.equal(result.outputs.workflow_id, "crm.followup.forecast");
+  assert.equal(result.outputs.followup_state, "waiting_due_date");
+  assert.equal(result.outputs.forecast_amount, 168000);
+  assert.equal(result.outputs.goal_attainment_percent, 56);
+  assert.equal(result.outputs.commission_amount, 19200);
+  assert.equal(result.outputs.mutates_crm_state, false);
+  assert.equal(result.outputs.forge_event_sourced, true);
+
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_followup_plan"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_email"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_forecast_report"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_commission_record"));
+  assert.ok(result.events.some((event) => event.kind === "crm.followup.scheduled"));
+  assert.ok(result.events.some((event) => event.kind === "crm.forecast.reviewed"));
+  assert.ok(result.events.some((event) => event.kind === "crm.goal.progress_reviewed"));
+  assert.ok(result.events.some((event) => event.kind === "crm.commission.accrued"));
+});
+
 test("document generator emits Forge-gated CRM document artifacts without state mutation", () => {
   const result = buildDocumentGeneratorResult(
     workerRequest(

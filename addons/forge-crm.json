@@ -225,6 +225,9 @@
       "artifact_types": [
         "crm_proposal",
         "crm_contract",
+        "crm_followup_plan",
+        "crm_forecast_report",
+        "crm_commission_record",
         "crm_report"
       ],
       "view_ids": [
@@ -656,6 +659,37 @@
       ]
     },
     {
+      "id": "crm.commercial.followup_forecast.executor",
+      "title": "CRM follow-up forecast and commission review",
+      "contract_type": "executor",
+      "capability_id": "crm_commercial_operations",
+      "workflow_extension_id": "crm_followup_sequence",
+      "runtime": "external_api",
+      "entrypoint": "forge_crm.review_followup_forecast",
+      "inputs": [
+        "opportunity",
+        "followup_policy",
+        "forecast_policy",
+        "commission_policy",
+        "tenant_context"
+      ],
+      "outputs": [
+        "crm_followup_plan",
+        "crm_email",
+        "crm_forecast_report",
+        "crm_commission_record"
+      ],
+      "permissions": [
+        "crm.workflow.mutate",
+        "crm.document.generate"
+      ],
+      "constraints": [
+        "follow-up forecast executor does not persist CRM state outside Forge",
+        "scheduled follow-ups, forecast reviews, goals and commission accrual must be represented as Forge workflow events",
+        "commission evidence is forecast-only until the contract or revenue workflow validates it"
+      ]
+    },
+    {
       "id": "crm.document.generator.executor",
       "title": "CRM document generator",
       "contract_type": "executor",
@@ -1068,6 +1102,21 @@
       "generic_kind": "document"
     },
     {
+      "id": "crm_followup_plan",
+      "title": "CRM follow-up plan",
+      "generic_kind": "artifact"
+    },
+    {
+      "id": "crm_forecast_report",
+      "title": "CRM forecast report",
+      "generic_kind": "report"
+    },
+    {
+      "id": "crm_commission_record",
+      "title": "CRM commission record",
+      "generic_kind": "artifact"
+    },
+    {
       "id": "crm_report",
       "title": "CRM report",
       "generic_kind": "report"
@@ -1140,6 +1189,26 @@
       "transport": "crm"
     },
     {
+      "id": "crm.followup",
+      "title": "CRM follow-up event",
+      "transport": "crm"
+    },
+    {
+      "id": "crm.forecast",
+      "title": "CRM forecast event",
+      "transport": "crm"
+    },
+    {
+      "id": "crm.goal",
+      "title": "CRM goal event",
+      "transport": "crm"
+    },
+    {
+      "id": "crm.commission",
+      "title": "CRM commission event",
+      "transport": "crm"
+    },
+    {
       "id": "crm.relationship",
       "title": "CRM relationship event",
       "transport": "crm"
@@ -1192,6 +1261,10 @@
       "event_types": [
         "crm.lead",
         "crm.opportunity",
+        "crm.followup",
+        "crm.forecast",
+        "crm.goal",
+        "crm.commission",
         "crm.relationship",
         "crm.document",
         "crm.campaign",
@@ -1242,6 +1315,10 @@
       ],
       "event_types": [
         "crm.opportunity",
+        "crm.followup",
+        "crm.forecast",
+        "crm.goal",
+        "crm.commission",
         "crm.campaign",
         "crm.nurture",
         "crm.ticket"
@@ -1386,6 +1463,10 @@
       "event_types": [
         "crm.lead",
         "crm.opportunity",
+        "crm.followup",
+        "crm.forecast",
+        "crm.goal",
+        "crm.commission",
         "crm.relationship",
         "crm.document",
         "crm.campaign",

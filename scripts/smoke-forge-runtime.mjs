@@ -81,6 +81,7 @@ try {
       "forge_crm.record_relationship_event",
       "forge_crm.operating_copilot",
       "forge_crm.generate_proposal",
+      "forge_crm.review_followup_forecast",
       "forge_crm.generate_document",
       "forge_crm.validate_document",
       "forge_crm.automate_campaign",
@@ -95,6 +96,7 @@ try {
       "crm.relationship.timeline.executor",
       "crm.ai.operating_copilot.executor",
       "crm.proposal.generator.executor",
+      "crm.commercial.followup_forecast.executor",
       "crm.document.generator.executor",
       "crm.document.validator",
       "crm.marketing.campaign_automation.executor",
@@ -328,6 +330,59 @@ try {
     throw new Error(`expected relationship timeline pipeline stage proposal, got ${relationshipTimeline.executor_result.outputs.pipeline_stage}`);
   }
 
+  const commercialFollowupForecast = runForge([
+    "addons",
+    "execute-executor",
+    "--addon-dir",
+    "addons",
+    "--addon",
+    "forge.addon.crm",
+    "--contract",
+    "crm.commercial.followup_forecast.executor",
+    "--worker",
+    workerId,
+    "--task",
+    "crm-smoke-commercial-followup-forecast",
+    "--workflow",
+    workflowId,
+    "--input",
+    JSON.stringify({
+      tenant_context: { id: "smoke", tenant_id: "smoke" },
+      opportunity: {
+        id: "opp-smoke-priority",
+        account: "Example Logistics",
+        owner: "forge-crm-smoke",
+        stage: "negotiation",
+        amount: 180000,
+        probability: 0.74
+      },
+      followup_policy: {
+        due_at: "2026-07-02T14:00:00Z",
+        channel: "email",
+        sequence_id: "enterprise-followup"
+      },
+      forecast_policy: {
+        period: "2026-Q3",
+        goal_amount: 250000
+      },
+      commission_policy: {
+        rate: 0.08,
+        eligible_stage: "negotiation"
+      }
+    }),
+    "--context",
+    JSON.stringify({ tenant: "smoke" }),
+    "--output",
+    "json"
+  ]);
+
+  if (commercialFollowupForecast.promotion?.status !== "addon_executor_result_promoted") {
+    throw new Error(`expected commercial follow-up forecast promotion, got ${commercialFollowupForecast.promotion?.status || "missing"}`);
+  }
+  if (commercialFollowupForecast.executor_result.outputs.followup_state !== "waiting_due_date") {
+    throw new Error(`expected commercial follow-up wait state, got ${commercialFollowupForecast.executor_result.outputs.followup_state}`);
+  }
+
   const documentGenerator = runForge([
     "addons",
     "execute-executor",
@@ -488,6 +543,8 @@ try {
   const copilotPromotedEventCount = copilot.promotion?.event_count ?? 0;
   const relationshipPromotedArtifactCount = relationshipTimeline.promotion?.artifact_count ?? 0;
   const relationshipPromotedEventCount = relationshipTimeline.promotion?.event_count ?? 0;
+  const commercialPromotedArtifactCount = commercialFollowupForecast.promotion?.artifact_count ?? 0;
+  const commercialPromotedEventCount = commercialFollowupForecast.promotion?.event_count ?? 0;
   const documentPromotedArtifactCount = documentGenerator.promotion?.artifact_count ?? 0;
   const documentPromotedEventCount = documentGenerator.promotion?.event_count ?? 0;
   const marketingPromotedArtifactCount = marketingAutomation.promotion?.artifact_count ?? 0;
@@ -537,6 +594,21 @@ try {
     );
   }
   for (const eventKind of ["crm.relationship.recorded", "crm.opportunity.stage_changed", "crm.forecast.updated"]) {
+    if (!workflowEventKinds.includes(eventKind)) {
+      throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
+    }
+  }
+  if (commercialPromotedArtifactCount < 4 || commercialPromotedEventCount < 4) {
+    throw new Error(
+      `expected promoted commercial follow-up forecast artifacts/events, got artifacts=${commercialPromotedArtifactCount} events=${commercialPromotedEventCount}`
+    );
+  }
+  for (const eventKind of [
+    "crm.followup.scheduled",
+    "crm.forecast.reviewed",
+    "crm.goal.progress_reviewed",
+    "crm.commission.accrued"
+  ]) {
     if (!workflowEventKinds.includes(eventKind)) {
       throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
     }
@@ -705,6 +777,12 @@ try {
     relationship_timeline_pipeline_stage: relationshipTimeline.executor_result.outputs.pipeline_stage,
     relationship_timeline_promoted_artifacts: relationshipPromotedArtifactCount,
     relationship_timeline_promoted_events: relationshipPromotedEventCount,
+    commercial_followup_status: commercialFollowupForecast.status,
+    commercial_followup_promotion_status: commercialFollowupForecast.promotion.status,
+    commercial_followup_state: commercialFollowupForecast.executor_result.outputs.followup_state,
+    commercial_followup_forecast_amount: commercialFollowupForecast.executor_result.outputs.forecast_amount,
+    commercial_followup_promoted_artifacts: commercialPromotedArtifactCount,
+    commercial_followup_promoted_events: commercialPromotedEventCount,
     document_generator_status: documentGenerator.status,
     document_generator_promotion_status: documentGenerator.promotion.status,
     document_generator_document_id: documentGenerator.executor_result.outputs.document_id,

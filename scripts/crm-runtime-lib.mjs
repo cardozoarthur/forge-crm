@@ -595,6 +595,171 @@ export function buildProposalGeneratorResult(request) {
   };
 }
 
+export function buildCommercialFollowupForecastResult(request) {
+  const input = dispatchPayload(request);
+  const context = providedContext(request);
+  const tenantId = input.tenant_id || input.tenant_context?.tenant_id || input.tenant_context?.id || context.tenant || "default";
+  const opportunity = asObject(input.opportunity);
+  const followupPolicy = asObject(input.followup_policy);
+  const forecastPolicy = asObject(input.forecast_policy);
+  const commissionPolicy = asObject(input.commission_policy);
+  const opportunityId = String(opportunity.id || opportunity.opportunity_id || dispatchEnvelope(request).task_ref || "opportunity");
+  const account = opportunity.account || opportunity.company || opportunity.name || opportunityId;
+  const owner = opportunity.owner || followupPolicy.owner || "sales";
+  const amount = numberFrom(opportunity.amount ?? opportunity.value, 0);
+  const probability = probabilityFrom(opportunity.probability ?? opportunity.close_probability ?? forecastPolicy.probability);
+  const forecastAmount = Math.round(amount * probability);
+  const goalAmount = numberFrom(forecastPolicy.goal_amount ?? forecastPolicy.target_amount, 0);
+  const goalAttainmentPercent = goalAmount > 0 ? Math.round((forecastAmount / goalAmount) * 100) : 0;
+  const commissionRate = probabilityFrom(commissionPolicy.rate ?? commissionPolicy.commission_rate);
+  const commissionAmount = Math.round(amount * commissionRate);
+  const workflowId = String(input.workflow_id || "crm.followup.forecast");
+  const taskRef = dispatchEnvelope(request).task_ref || `commercial-followup-${slug(opportunityId, "opportunity")}`;
+  const dueAt = followupPolicy.due_at || followupPolicy.scheduled_at || "forge_schedule_pending";
+  const channel = followupPolicy.channel || "email";
+  const followupState = dueAt === "forge_schedule_pending" ? "scheduled" : "waiting_due_date";
+  const period = forecastPolicy.period || "current";
+  const lineage = {
+    workflow_id: workflowId,
+    task_ref: taskRef,
+    source_contract: "crm.commercial.followup_forecast.executor",
+    tenant_id: tenantId,
+    opportunity_id: opportunityId
+  };
+  const followupPlanId = `followup-plan-${slug(opportunityId, "opportunity")}`;
+  const forecastReportId = `forecast-report-${slug(opportunityId, "opportunity")}-${slug(period, "period")}`;
+  const commissionRecordId = `commission-${slug(opportunityId, "opportunity")}-${slug(period, "period")}`;
+
+  return {
+    schema_version: "forge.addon_executor_result.v1",
+    status: "completed",
+    task_ref: taskRef,
+    summary: `Commercial follow-up scheduled for ${account}; forecast ${forecastAmount} and commission ${commissionAmount}`,
+    outputs: {
+      tenant_id: tenantId,
+      opportunity_id: opportunityId,
+      workflow_id: workflowId,
+      followup_state: followupState,
+      due_at: dueAt,
+      forecast_period: period,
+      forecast_amount: forecastAmount,
+      goal_amount: goalAmount,
+      goal_attainment_percent: goalAttainmentPercent,
+      commission_amount: commissionAmount,
+      mutates_crm_state: false,
+      forge_event_sourced: true
+    },
+    artifacts: [
+      {
+        kind: "crm_followup_plan",
+        id: followupPlanId,
+        title: `Follow-up plan for ${account}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          opportunity_id: opportunityId,
+          account,
+          owner,
+          due_at: dueAt,
+          channel,
+          sequence_id: followupPolicy.sequence_id || `followup-${slug(opportunityId, "opportunity")}`,
+          next_state: followupState,
+          lineage,
+          state_owner: "forge_workflow_runtime",
+          external_database_required: false
+        }
+      },
+      {
+        kind: "crm_email",
+        id: `followup-email-${slug(opportunityId, "opportunity")}`,
+        title: `Follow-up email draft for ${account}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          opportunity_id: opportunityId,
+          account,
+          channel,
+          approval_state: "draft_requires_forge_approval",
+          external_delivery_allowed: false,
+          sections: ["subject_line", "context", "next_step", "call_to_action"],
+          lineage
+        }
+      },
+      {
+        kind: "crm_forecast_report",
+        id: forecastReportId,
+        title: `Forecast report for ${account}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          opportunity,
+          period,
+          amount,
+          probability,
+          forecast_amount: forecastAmount,
+          goal_amount: goalAmount,
+          goal_attainment_percent: goalAttainmentPercent,
+          lineage
+        }
+      },
+      {
+        kind: "crm_commission_record",
+        id: commissionRecordId,
+        title: `Commission evidence for ${account}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          opportunity_id: opportunityId,
+          owner,
+          period,
+          amount,
+          commission_rate: commissionRate,
+          commission_amount: commissionAmount,
+          accrual_policy: commissionPolicy.accrual_policy || "forecast_evidence_until_contract_signed",
+          lineage
+        }
+      }
+    ],
+    events: [
+      {
+        kind: "crm.followup.scheduled",
+        tenant_id: tenantId,
+        opportunity_id: opportunityId,
+        workflow_id: workflowId,
+        due_at: dueAt,
+        channel,
+        owner
+      },
+      {
+        kind: "crm.forecast.reviewed",
+        tenant_id: tenantId,
+        opportunity_id: opportunityId,
+        workflow_id: workflowId,
+        period,
+        forecast_amount: forecastAmount
+      },
+      {
+        kind: "crm.goal.progress_reviewed",
+        tenant_id: tenantId,
+        opportunity_id: opportunityId,
+        workflow_id: workflowId,
+        period,
+        goal_amount: goalAmount,
+        goal_attainment_percent: goalAttainmentPercent
+      },
+      {
+        kind: "crm.commission.accrued",
+        tenant_id: tenantId,
+        opportunity_id: opportunityId,
+        workflow_id: workflowId,
+        owner,
+        commission_amount: commissionAmount
+      }
+    ],
+    context_tenant: context.tenant || tenantId
+  };
+}
+
 const DOCUMENT_ARTIFACT_KINDS = [
   "crm_document",
   "crm_contract",
@@ -1233,6 +1398,8 @@ export function executeCrmRuntimeRequest(request) {
       return buildOperatingCopilotResult(request);
     case "forge_crm.generate_proposal":
       return buildProposalGeneratorResult(request);
+    case "forge_crm.review_followup_forecast":
+      return buildCommercialFollowupForecastResult(request);
     case "forge_crm.generate_document":
       return buildDocumentGeneratorResult(request);
     case "forge_crm.validate_document":

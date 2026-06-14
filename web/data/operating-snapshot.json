@@ -26,8 +26,8 @@
     "workflow_count": 11,
     "business_module_count": 6,
     "surface_count": 8,
-    "artifact_type_count": 15,
-    "event_type_count": 33,
+    "artifact_type_count": 18,
+    "event_type_count": 34,
     "complete_scope": true
   },
   "surfaces": [
@@ -138,7 +138,10 @@
         "accepted"
       ],
       "artifact_types": [
+        "crm_commission_record",
         "crm_email",
+        "crm_followup_plan",
+        "crm_forecast_report",
         "crm_handoff_record",
         "crm_report",
         "crm_timeline_snapshot"
@@ -148,6 +151,7 @@
         "crm.followup.scheduled",
         "crm.forecast.reviewed",
         "crm.forecast.updated",
+        "crm.goal.progress_reviewed",
         "crm.opportunity.stage_changed",
         "crm.project.accepted",
         "crm.project.handoff_requested",
@@ -354,9 +358,12 @@
       "artifact_types": [
         "crm_ai_recommendation",
         "crm_automation_plan",
+        "crm_commission_record",
         "crm_contract",
         "crm_document",
         "crm_email",
+        "crm_followup_plan",
+        "crm_forecast_report",
         "crm_handoff_record",
         "crm_proposal",
         "crm_report",
@@ -371,6 +378,7 @@
         "crm.followup.scheduled",
         "crm.forecast.reviewed",
         "crm.forecast.updated",
+        "crm.goal.progress_reviewed",
         "crm.lead.requalified",
         "crm.nurture.message_sent",
         "crm.nurture.step_due",
@@ -679,14 +687,20 @@
           "waiting_due_date",
           "response_wait"
         ],
-        "runtime_contracts": [],
+        "runtime_contracts": [
+          "crm.commercial.followup_forecast.executor"
+        ],
         "artifact_types": [
+          "crm_followup_plan",
+          "crm_forecast_report",
+          "crm_commission_record",
           "crm_report",
           "crm_email"
         ],
         "event_types": [
           "crm.followup.scheduled",
           "crm.forecast.reviewed",
+          "crm.goal.progress_reviewed",
           "crm.commission.accrued"
         ],
         "surface_ids": [
@@ -1290,6 +1304,33 @@
         "forge.addon.crm",
         "--contract",
         "crm.proposal.generator.executor",
+        "--worker",
+        "<worker-id>",
+        "--task",
+        "<task-ref>",
+        "--input",
+        "<json>",
+        "--context",
+        "<json>",
+        "--output",
+        "json"
+      ]
+    },
+    {
+      "id": "crm.review-followup-forecast",
+      "label": "Review follow-up forecast",
+      "surface_id": "crm.commercial-command",
+      "contract_id": "crm.commercial.followup_forecast.executor",
+      "requires_permission": "crm.workflow.mutate",
+      "mutates_workflow": true,
+      "command_template": [
+        "forge",
+        "addons",
+        "execute-executor",
+        "--addon",
+        "forge.addon.crm",
+        "--contract",
+        "crm.commercial.followup_forecast.executor",
         "--worker",
         "<worker-id>",
         "--task",

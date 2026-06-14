@@ -44,6 +44,7 @@ export function createCrmWorkerServer() {
             "forge_crm.record_relationship_event",
             "forge_crm.operating_copilot",
             "forge_crm.generate_proposal",
+            "forge_crm.review_followup_forecast",
             "forge_crm.generate_document",
             "forge_crm.validate_document",
             "forge_crm.automate_campaign",
