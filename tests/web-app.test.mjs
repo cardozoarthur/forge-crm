@@ -82,6 +82,32 @@ test("web app snapshot provides Forge command actions instead of local automatio
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.ai.operating_copilot.executor"));
 });
 
+test("web app snapshot exposes auditable Forge action invocation plans", () => {
+  const snapshot = buildCrmWebAppSnapshot({ tenant_id: "demo" });
+  const plans = snapshot.action_invocation_plans;
+
+  assert.equal(plans.schema_version, "forge.crm_web_action_invocation_plans.v1");
+  assert.equal(plans.state_owner, "forge_workflow_runtime");
+  assert.equal(plans.local_mutation_allowed, false);
+  assert.equal(plans.plans.length, snapshot.actions.length);
+
+  const byAction = new Map(plans.plans.map((plan) => [plan.action_id, plan]));
+  for (const action of snapshot.actions) {
+    const plan = byAction.get(action.id);
+    assert.ok(plan, `missing plan for ${action.id}`);
+    assert.equal(plan.contract_id, action.contract_id);
+    assert.equal(plan.required_permission, action.requires_permission);
+    assert.deepEqual(plan.selected_command, action.command_template);
+    assert.equal(plan.permission_gate.status, "requires_forge_permission");
+    assert.equal(plan.output_policy.promote_result_to_workflow, true);
+    assert.equal(plan.output_policy.browser_local_state_write, false);
+    assert.deepEqual(
+      plan.operation_plan.map((step) => step.id),
+      ["check_addon_permission", "execute_runtime_contract", "promote_result_to_workflow", "refresh_operating_snapshot"]
+    );
+  }
+});
+
 test("web app snapshot exposes an operational workbench backed by Forge artifacts and events", () => {
   const snapshot = buildCrmWebAppSnapshot({ tenant_id: "demo" });
   const workbench = snapshot.operational_workbench;
@@ -139,6 +165,7 @@ test("web assets mount the generated CRM snapshot without a build step", async (
   assert.match(app, /renderSupportQueue/);
   assert.match(app, /renderMarketingCalendar/);
   assert.match(app, /renderAiWorkbench/);
+  assert.match(app, /renderActionInvocationPlans/);
   assert.match(styles, /\.workflow-node/);
   assert.match(styles, /\.knowledge-node/);
   assert.match(styles, /\.document-row/);
@@ -147,6 +174,7 @@ test("web assets mount the generated CRM snapshot without a build step", async (
   assert.match(styles, /\.support-queue/);
   assert.match(styles, /\.marketing-calendar/);
   assert.match(styles, /\.ai-workbench/);
+  assert.match(styles, /\.action-plan/);
   assert.match(favicon, /<svg/);
 });
 

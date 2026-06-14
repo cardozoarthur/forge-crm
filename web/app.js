@@ -81,6 +81,10 @@ function actionLabel(snapshot, actionId) {
   return snapshot.actions.find((action) => action.id === actionId)?.label || actionId;
 }
 
+function actionPlan(snapshot, actionId) {
+  return snapshot.action_invocation_plans?.plans.find((plan) => plan.action_id === actionId);
+}
+
 function actionStrip(snapshot, panel) {
   const strip = nodeElement("div", "action-strip");
   for (const actionId of panel.action_ids || []) {
@@ -363,6 +367,35 @@ function renderActions(snapshot) {
   return section;
 }
 
+export function renderActionInvocationPlans(snapshot) {
+  const section = nodeElement("section", "panel action-plan-panel");
+  section.append(nodeElement("h2", "", "Action Plans"));
+  const plans = nodeElement("div", "action-plan-list");
+
+  for (const action of snapshot.actions) {
+    const plan = actionPlan(snapshot, action.id);
+    const item = nodeElement("article", "action-plan");
+    item.dataset.surfacePanel = action.surface_id;
+    item.append(nodeElement("strong", "", action.label));
+    item.append(nodeElement("span", "plan-contract", action.contract_id));
+    item.append(nodeElement("span", "plan-permission", plan?.required_permission || action.requires_permission));
+
+    const steps = nodeElement("ol", "plan-steps");
+    for (const step of plan?.operation_plan || []) {
+      const stepItem = nodeElement("li", "", step.title);
+      stepItem.title = `${step.owner}: ${step.evidence}`;
+      steps.append(stepItem);
+    }
+
+    const command = nodeElement("code", "plan-command", (plan?.selected_command || action.command_template).join(" "));
+    item.append(steps, command);
+    plans.append(item);
+  }
+
+  section.append(plans);
+  return section;
+}
+
 function wireSurfaceFiltering(snapshot) {
   const buttons = [...document.querySelectorAll(".surface-button")];
   const nodes = [...document.querySelectorAll(".workflow-node")];
@@ -403,6 +436,7 @@ function render(snapshot) {
   workspace.append(renderKnowledgeGraph(snapshot));
   workspace.append(renderDocumentQueue(snapshot));
   workspace.append(renderActions(snapshot));
+  workspace.append(renderActionInvocationPlans(snapshot));
   shell.append(workspace);
 
   root.append(shell);

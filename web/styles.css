@@ -312,7 +312,8 @@ h3 {
 .form-row,
 .ai-recommendation,
 .memory-promotion,
-.document-item {
+.document-item,
+.action-plan {
   display: grid;
   gap: 6px;
   min-width: 0;
@@ -459,7 +460,8 @@ h3 {
 
 .module-grid,
 .document-lanes,
-.action-list {
+.action-list,
+.action-plan-list {
   display: grid;
   gap: 8px;
   margin-top: 12px;
@@ -526,6 +528,66 @@ h3 {
   font-size: 0.78rem;
 }
 
+.action-plan-panel {
+  grid-column: 1 / -1;
+}
+
+.action-plan-list {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.action-plan {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-content: start;
+  min-height: 184px;
+  border-left: 4px solid #285f9d;
+}
+
+.plan-contract,
+.plan-permission {
+  color: #607078;
+  font-size: 0.76rem;
+  overflow-wrap: anywhere;
+}
+
+.plan-permission {
+  justify-self: end;
+  max-width: 160px;
+  color: #126c55;
+  font-weight: 700;
+  text-align: right;
+}
+
+.plan-steps {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.plan-steps li {
+  min-height: 34px;
+  padding: 6px 7px;
+  border: 1px solid #d8dfd8;
+  border-radius: 6px;
+  background: #fbfcf9;
+  color: #405057;
+  font-size: 0.72rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.plan-command {
+  grid-column: 1 / -1;
+  overflow-wrap: anywhere;
+  color: #285f9d;
+  font-size: 0.74rem;
+  line-height: 1.35;
+}
+
 .artifact-line {
   margin-top: 10px;
   color: #607078;
@@ -577,7 +639,8 @@ h3 {
   .workflow-graph,
   .knowledge-graph,
   .pipeline-board,
-  .commercial-row {
+  .commercial-row,
+  .plan-steps {
     grid-template-columns: 1fr;
   }
 

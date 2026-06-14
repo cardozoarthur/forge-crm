@@ -721,6 +721,58 @@ function actions() {
   ];
 }
 
+function actionInvocationPlans(actionList) {
+  return {
+    schema_version: "forge.crm_web_action_invocation_plans.v1",
+    state_owner: "forge_workflow_runtime",
+    local_mutation_allowed: false,
+    plans: actionList.map((action) => ({
+      action_id: action.id,
+      label: action.label,
+      surface_id: action.surface_id,
+      contract_id: action.contract_id,
+      required_permission: action.requires_permission,
+      selected_command: action.command_template,
+      permission_gate: {
+        status: "requires_forge_permission",
+        permission: action.requires_permission,
+        approval_owner: "forge_permission_policy"
+      },
+      operation_plan: [
+        {
+          id: "check_addon_permission",
+          title: "Check Addon permission",
+          owner: "forge.permissions",
+          evidence: action.requires_permission
+        },
+        {
+          id: "execute_runtime_contract",
+          title: "Execute runtime contract",
+          owner: "forge.addons.runtime",
+          evidence: action.contract_id
+        },
+        {
+          id: "promote_result_to_workflow",
+          title: "Promote result to workflow",
+          owner: "forge.workflow.runtime",
+          evidence: "artifact and event promotion"
+        },
+        {
+          id: "refresh_operating_snapshot",
+          title: "Refresh operating snapshot",
+          owner: "forge.addon.crm",
+          evidence: "crm.operating.snapshot.executor"
+        }
+      ],
+      output_policy: {
+        promote_result_to_workflow: true,
+        browser_local_state_write: false,
+        refresh_source: WORKBENCH_STATE_SOURCE
+      }
+    }))
+  };
+}
+
 export function buildCrmWebAppSnapshot(options = {}) {
   const tenantId = slug(options.tenant_id || options.tenant || "default");
   const pack = buildCrmWorkflowPack({ tenant_id: tenantId });
@@ -796,6 +848,7 @@ export function buildCrmWebAppSnapshot(options = {}) {
     document_queue: documentQueueSnapshot,
     operational_workbench: buildOperationalWorkbench(workflows, actionList, documentQueueSnapshot),
     actions: actionList,
+    action_invocation_plans: actionInvocationPlans(actionList),
     design_tokens: DESIGN_TOKENS,
     observability: model.observability
   };
