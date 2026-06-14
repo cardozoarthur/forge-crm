@@ -616,6 +616,41 @@ export function renderWorkflowEvolutionWorkbench(snapshot) {
   return section;
 }
 
+export function renderBenchmarkEvidenceMatrix(snapshot) {
+  const matrix = snapshot.benchmark_evidence_matrix;
+  const section = nodeElement("section", "panel benchmark-evidence");
+  section.dataset.surfacePanel = "crm.system-map";
+  section.append(nodeElement("h2", "", "Benchmark Evidence"));
+  if (!matrix) {
+    section.append(nodeElement("p", "muted-copy", "Benchmark evidence unavailable in this snapshot."));
+    return section;
+  }
+
+  section.append(nodeElement("p", "panel-source", `${matrix.schema_version} · ${matrix.state_owner}`));
+
+  const entries = nodeElement("div", "benchmark-entry-grid");
+  for (const entry of matrix.entries) {
+    const item = nodeElement("article", "benchmark-entry");
+    item.dataset.surfacePanel = entry.surface_id;
+    item.append(nodeElement("span", "benchmark-reference", entry.reference_product));
+    item.append(nodeElement("strong", "", entry.title));
+    item.append(nodeElement("span", "", `${entry.surface_id} · ${entry.evidence_surface}`));
+    item.append(nodeElement("code", "", entry.contract_id));
+
+    const proofList = nodeElement("ul", "benchmark-proof-list");
+    for (const proof of entry.proof_points || []) {
+      proofList.append(nodeElement("li", "", proof));
+    }
+
+    item.append(proofList);
+    item.title = `${entry.command_owner} · ${entry.local_engine_policy}`;
+    entries.append(item);
+  }
+
+  section.append(entries);
+  return section;
+}
+
 export function renderEnterpriseJourneyWorkbench(snapshot) {
   const workbench = snapshot.enterprise_journey_workbench;
   const section = nodeElement("section", "panel journey-workbench");
@@ -935,6 +970,7 @@ function render(snapshot) {
   workspace.append(renderAiWorkbench(snapshot));
   workspace.append(renderWorkflowCadences(snapshot));
   workspace.append(renderWorkflowEvolutionWorkbench(snapshot));
+  workspace.append(renderBenchmarkEvidenceMatrix(snapshot));
   workspace.append(renderEnterpriseJourneyWorkbench(snapshot));
   workspace.append(renderSubworkflowOrchestrationWorkbench(snapshot));
   workspace.append(renderWorkflowAutomationDesignerWorkbench(snapshot));
@@ -968,4 +1004,6 @@ async function boot() {
   }
 }
 
-boot();
+if (root) {
+  boot();
+}

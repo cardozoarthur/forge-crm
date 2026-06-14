@@ -2236,6 +2236,125 @@ function workflowCadences(workflows, actionList) {
   };
 }
 
+function benchmarkEvidenceMatrix(workflows, actionList, documentQueueSnapshot) {
+  const workflowById = new Map(workflows.map((workflow) => [workflow.id, workflow]));
+  const actionById = new Map(actionList.map((action) => [action.id, action]));
+  const workflowEvidence = (workflowIds) => {
+    const selected = workflowIds.map((workflowId) => workflowById.get(workflowId)).filter(Boolean);
+    return {
+      artifact_types: unique(selected.flatMap((workflow) => workflow.artifacts)),
+      event_types: unique(selected.flatMap((workflow) => workflow.events)),
+      validation_gates: unique(selected.flatMap((workflow) => workflow.validation_gates))
+    };
+  };
+  const entry = ({
+    id,
+    title,
+    reference_product,
+    inspiration_pattern,
+    surface_id,
+    evidence_surface,
+    workflow_ids,
+    action_id,
+    artifact_types,
+    proof_points
+  }) => {
+    const action = actionById.get(action_id);
+    const evidence = workflowEvidence(workflow_ids);
+    return {
+      id,
+      title,
+      reference_product,
+      inspiration_pattern,
+      surface_id,
+      evidence_surface,
+      workflow_ids,
+      action_id,
+      contract_id: action?.contract_id,
+      command_owner: "forge",
+      local_engine_policy: "blocked",
+      state_owner: "forge_workflow_runtime",
+      permission: action?.requires_permission,
+      artifact_types: artifact_types || evidence.artifact_types,
+      event_types: evidence.event_types,
+      validation_gates: evidence.validation_gates,
+      command_template: action?.command_template || [],
+      proof_points
+    };
+  };
+
+  return {
+    schema_version: "forge.crm_benchmark_evidence_matrix.v1",
+    state_owner: "forge_workflow_runtime",
+    local_execution_engines_allowed: false,
+    promotion_policy: "reference-product patterns are evidence for Forge-owned workflow surfaces, not external engines",
+    entries: [
+      entry({
+        id: "workflow_automation_graph",
+        title: "Workflow automation graph",
+        reference_product: "n8n",
+        inspiration_pattern: "trigger-condition-action workflow canvas",
+        surface_id: "crm.system-map",
+        evidence_surface: "workflow_automation_designer_workbench",
+        workflow_ids: ["crm.workflow.automation_design", "crm.work.queue.orchestration", "crm.operational.observability"],
+        action_id: "crm.design-workflow-automation",
+        proof_points: [
+          "rule graph nodes are trigger, condition and action records",
+          "activation requires Forge validation gates",
+          "execution routes through crm.workflow.automation_designer.executor"
+        ]
+      }),
+      entry({
+        id: "knowledge_relationship_graph",
+        title: "Knowledge relationship graph",
+        reference_product: "Obsidian",
+        inspiration_pattern: "linked notes and relationship graph",
+        surface_id: "crm.relationship-graph",
+        evidence_surface: "knowledge_graph",
+        workflow_ids: ["crm.relationship.profile_enrichment", "crm.lead.lifecycle", "crm.opportunity.pipeline"],
+        action_id: "crm.enrich-relationship-profile",
+        proof_points: [
+          "relationship nodes come from Forge workflow lineage",
+          "profile enrichment artifacts stay in workflow scope",
+          "memory promotion is permissioned before shared context is updated"
+        ]
+      }),
+      entry({
+        id: "document_lineage_queue",
+        title: "Document lineage queue",
+        reference_product: "Paperclip",
+        inspiration_pattern: "document queue, versions and collections",
+        surface_id: "crm.document-queue",
+        evidence_surface: "document_queue",
+        workflow_ids: ["crm.document.approval", "crm.document.library", "crm.proposal.approval"],
+        action_id: "crm.manage-document-library",
+        artifact_types: documentQueueSnapshot.artifact_types,
+        proof_points: [
+          "approval waits and rework lanes are Forge states",
+          "library records carry artifact and file lineage refs",
+          "external delivery stays blocked until approval is recorded"
+        ]
+      }),
+      entry({
+        id: "open_design_tokens",
+        title: "Open design tokens",
+        reference_product: "Penpot / Open Design",
+        inspiration_pattern: "portable design tokens and component catalog",
+        surface_id: "crm.design-system",
+        evidence_surface: "design_system",
+        workflow_ids: ["crm.design.system", "crm.enterprise.readiness"],
+        action_id: "crm.generate-design-system",
+        artifact_types: ["crm_design_system", "crm_design_token_manifest", "crm_ui_component_catalog"],
+        proof_points: [
+          "tokens are generated as Forge artifacts",
+          "component catalog maps back to CRM surfaces",
+          "readiness evidence uses the published design artifacts"
+        ]
+      })
+    ]
+  };
+}
+
 export function buildCrmWebAppSnapshot(options = {}) {
   const tenantId = slug(options.tenant_id || options.tenant || "default");
   const pack = buildCrmWorkflowPack({ tenant_id: tenantId });
@@ -2311,6 +2430,7 @@ export function buildCrmWebAppSnapshot(options = {}) {
     document_queue: documentQueueSnapshot,
     operational_workbench: buildOperationalWorkbench(workflows, actionList, documentQueueSnapshot),
     workflow_evolution_workbench: workflowEvolutionWorkbench(workflows, actionList),
+    benchmark_evidence_matrix: benchmarkEvidenceMatrix(workflows, actionList, documentQueueSnapshot),
     enterprise_journey_workbench: enterpriseJourneyWorkbench(workflows, actionList),
     subworkflow_orchestration_workbench: subworkflowOrchestrationWorkbench(workflows, actionList),
     workflow_automation_designer_workbench: workflowAutomationDesignerWorkbench(workflows, actionList),

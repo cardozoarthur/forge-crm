@@ -4354,6 +4354,313 @@
       "rule": "If the experiment needs a missing runtime primitive, report the gap instead of creating CRM-local automation."
     }
   },
+  "benchmark_evidence_matrix": {
+    "schema_version": "forge.crm_benchmark_evidence_matrix.v1",
+    "state_owner": "forge_workflow_runtime",
+    "local_execution_engines_allowed": false,
+    "promotion_policy": "reference-product patterns are evidence for Forge-owned workflow surfaces, not external engines",
+    "entries": [
+      {
+        "id": "workflow_automation_graph",
+        "title": "Workflow automation graph",
+        "reference_product": "n8n",
+        "inspiration_pattern": "trigger-condition-action workflow canvas",
+        "surface_id": "crm.system-map",
+        "evidence_surface": "workflow_automation_designer_workbench",
+        "workflow_ids": [
+          "crm.workflow.automation_design",
+          "crm.work.queue.orchestration",
+          "crm.operational.observability"
+        ],
+        "action_id": "crm.design-workflow-automation",
+        "contract_id": "crm.workflow.automation_designer.executor",
+        "command_owner": "forge",
+        "local_engine_policy": "blocked",
+        "state_owner": "forge_workflow_runtime",
+        "permission": "crm.workflow.mutate",
+        "artifact_types": [
+          "crm_workflow_automation_spec",
+          "crm_trigger_condition_map",
+          "crm_automation_validation_report",
+          "crm_work_queue_snapshot",
+          "crm_queue_assignment_plan",
+          "crm_queue_sla_risk_report",
+          "crm_audit_report",
+          "crm_lineage_map",
+          "crm_cost_report",
+          "crm_metric_snapshot"
+        ],
+        "event_types": [
+          "crm.automation.designed",
+          "crm.automation.validated",
+          "crm.automation.queued",
+          "crm.queue.snapshot_generated",
+          "crm.queue.assignment_planned",
+          "crm.queue.risk_flagged",
+          "crm.observability.inspected",
+          "crm.audit.reported",
+          "crm.cost.reviewed",
+          "crm.metric.reviewed"
+        ],
+        "validation_gates": [
+          "automation design validates trigger condition action graph before activation",
+          "automation execution remains inside Forge workflows",
+          "activation is blocked until validation evidence and permission gates pass",
+          "queue actions require Forge workflow approval before mutation",
+          "every queue item cites artifact or event evidence",
+          "ownership gaps and SLA risks are returned to work before closure",
+          "audit lineage cost metrics and logs sourced from Forge",
+          "inspection does not create CRM-local observability state",
+          "remediation requires Forge workflow mutation"
+        ],
+        "command_template": [
+          "forge",
+          "addons",
+          "execute-executor",
+          "--addon",
+          "forge.addon.crm",
+          "--contract",
+          "crm.workflow.automation_designer.executor",
+          "--worker",
+          "<worker-id>",
+          "--task",
+          "<task-ref>",
+          "--input",
+          "<json>",
+          "--context",
+          "<json>",
+          "--output",
+          "json"
+        ],
+        "proof_points": [
+          "rule graph nodes are trigger, condition and action records",
+          "activation requires Forge validation gates",
+          "execution routes through crm.workflow.automation_designer.executor"
+        ]
+      },
+      {
+        "id": "knowledge_relationship_graph",
+        "title": "Knowledge relationship graph",
+        "reference_product": "Obsidian",
+        "inspiration_pattern": "linked notes and relationship graph",
+        "surface_id": "crm.relationship-graph",
+        "evidence_surface": "knowledge_graph",
+        "workflow_ids": [
+          "crm.relationship.profile_enrichment",
+          "crm.lead.lifecycle",
+          "crm.opportunity.pipeline"
+        ],
+        "action_id": "crm.enrich-relationship-profile",
+        "contract_id": "crm.relationship.profile_enrichment.executor",
+        "command_owner": "forge",
+        "local_engine_policy": "blocked",
+        "state_owner": "forge_workflow_runtime",
+        "permission": "crm.workflow.mutate",
+        "artifact_types": [
+          "crm_relationship_profile",
+          "crm_enrichment_record",
+          "crm_timeline_snapshot",
+          "crm_ai_recommendation",
+          "crm_lead_capture",
+          "crm_pipeline_board",
+          "crm_stage_change",
+          "crm_forecast_report",
+          "crm_report"
+        ],
+        "event_types": [
+          "crm.contact.enriched",
+          "crm.company.enriched",
+          "crm.relationship.profile_updated",
+          "crm.lead.created",
+          "crm.lead.classified",
+          "crm.contact.updated",
+          "crm.relationship.recorded",
+          "crm.opportunity.stage_changed",
+          "crm.forecast.updated"
+        ],
+        "validation_gates": [
+          "enrichment sources are attached as Forge artifacts",
+          "relationship signals cite source lineage",
+          "profile changes require Forge workflow approval before promotion",
+          "classification evidence present",
+          "state transition has owner and reason",
+          "stage movement is event-backed",
+          "forecast impact recorded"
+        ],
+        "command_template": [
+          "forge",
+          "addons",
+          "execute-executor",
+          "--addon",
+          "forge.addon.crm",
+          "--contract",
+          "crm.relationship.profile_enrichment.executor",
+          "--worker",
+          "<worker-id>",
+          "--task",
+          "<task-ref>",
+          "--input",
+          "<json>",
+          "--context",
+          "<json>",
+          "--output",
+          "json"
+        ],
+        "proof_points": [
+          "relationship nodes come from Forge workflow lineage",
+          "profile enrichment artifacts stay in workflow scope",
+          "memory promotion is permissioned before shared context is updated"
+        ]
+      },
+      {
+        "id": "document_lineage_queue",
+        "title": "Document lineage queue",
+        "reference_product": "Paperclip",
+        "inspiration_pattern": "document queue, versions and collections",
+        "surface_id": "crm.document-queue",
+        "evidence_surface": "document_queue",
+        "workflow_ids": [
+          "crm.document.approval",
+          "crm.document.library",
+          "crm.proposal.approval"
+        ],
+        "action_id": "crm.manage-document-library",
+        "contract_id": "crm.document.library.executor",
+        "command_owner": "forge",
+        "local_engine_policy": "blocked",
+        "state_owner": "forge_workflow_runtime",
+        "permission": "crm.workflow.mutate",
+        "artifact_types": [
+          "crm_approval_record",
+          "crm_business_runbook",
+          "crm_contract",
+          "crm_cross_domain_handoff_map",
+          "crm_document",
+          "crm_document_collection",
+          "crm_document_version",
+          "crm_enterprise_journey_map",
+          "crm_file_record",
+          "crm_handoff_record",
+          "crm_operating_acceptance_evidence",
+          "crm_presentation",
+          "crm_proposal",
+          "crm_queue_assignment_plan",
+          "crm_queue_sla_risk_report",
+          "crm_renewal_plan",
+          "crm_signature_receipt",
+          "crm_work_queue_snapshot"
+        ],
+        "event_types": [
+          "crm.document.generated",
+          "crm.document.submitted",
+          "crm.document.validated",
+          "crm.document.approved",
+          "crm.document.rework_required",
+          "crm.document.delivery_unblocked",
+          "crm.file.recorded",
+          "crm.document.versioned",
+          "crm.document.collection_updated",
+          "crm.proposal.generated",
+          "crm.document.approval_requested"
+        ],
+        "validation_gates": [
+          "approval actor recorded",
+          "approval decision lineage recorded",
+          "lineage points to Forge artifact",
+          "document versions require Forge artifact lineage before promotion",
+          "version promotion waits for Forge approval evidence",
+          "document library state is represented by Forge artifacts and events",
+          "artifact lineage present",
+          "external delivery blocked until approval"
+        ],
+        "command_template": [
+          "forge",
+          "addons",
+          "execute-executor",
+          "--addon",
+          "forge.addon.crm",
+          "--contract",
+          "crm.document.library.executor",
+          "--worker",
+          "<worker-id>",
+          "--task",
+          "<task-ref>",
+          "--input",
+          "<json>",
+          "--context",
+          "<json>",
+          "--output",
+          "json"
+        ],
+        "proof_points": [
+          "approval waits and rework lanes are Forge states",
+          "library records carry artifact and file lineage refs",
+          "external delivery stays blocked until approval is recorded"
+        ]
+      },
+      {
+        "id": "open_design_tokens",
+        "title": "Open design tokens",
+        "reference_product": "Penpot / Open Design",
+        "inspiration_pattern": "portable design tokens and component catalog",
+        "surface_id": "crm.design-system",
+        "evidence_surface": "design_system",
+        "workflow_ids": [
+          "crm.design.system",
+          "crm.enterprise.readiness"
+        ],
+        "action_id": "crm.generate-design-system",
+        "contract_id": "crm.design_system.executor",
+        "command_owner": "forge",
+        "local_engine_policy": "blocked",
+        "state_owner": "forge_workflow_runtime",
+        "permission": "crm.observability.inspect",
+        "artifact_types": [
+          "crm_design_system",
+          "crm_design_token_manifest",
+          "crm_ui_component_catalog"
+        ],
+        "event_types": [
+          "crm.design.system_generated",
+          "crm.design.tokens_published",
+          "crm.operating.readiness_reported",
+          "crm.outcome.deliverables_mapped"
+        ],
+        "validation_gates": [
+          "design tokens are published as Forge artifacts before UI consumption",
+          "components cite workflow artifact state sources",
+          "browser rendering does not create CRM-local design state",
+          "success criteria mapped to user-facing deliverables",
+          "readiness evidence sourced from Forge workflows artifacts events and validation gates",
+          "rework reason recorded before any operable claim"
+        ],
+        "command_template": [
+          "forge",
+          "addons",
+          "execute-executor",
+          "--addon",
+          "forge.addon.crm",
+          "--contract",
+          "crm.design_system.executor",
+          "--worker",
+          "<worker-id>",
+          "--task",
+          "<task-ref>",
+          "--input",
+          "<json>",
+          "--context",
+          "<json>",
+          "--output",
+          "json"
+        ],
+        "proof_points": [
+          "tokens are generated as Forge artifacts",
+          "component catalog maps back to CRM surfaces",
+          "readiness evidence uses the published design artifacts"
+        ]
+      }
+    ]
+  },
   "enterprise_journey_workbench": {
     "schema_version": "forge.crm_enterprise_journey_workbench.v1",
     "workflow_id": "crm.enterprise.customer_journey",

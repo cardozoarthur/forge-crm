@@ -101,7 +101,7 @@ The first web surface lives in `web/` and is declared by `crm.system-map.props.w
 
 - `scripts/generate-crm-web-snapshot.mjs` writes `web/data/operating-snapshot.json`;
 - `web/index.html` loads the snapshot;
-- `web/app.js` renders workflow graph, knowledge graph, relationship profile enrichment, business modules, commercial goal and commission settlement, executive reporting, support channel intake, omnichannel message threads, unified omnichannel center, marketing segments and landing pages, document queue with library version records, cross-domain work queue, subworkflow orchestration, workflow automation designer, design system, enterprise journey workbench, operating copilot and area copilot actions, and Forge action templates;
+- `web/app.js` renders workflow graph, knowledge graph, relationship profile enrichment, business modules, commercial goal and commission settlement, executive reporting, support channel intake, omnichannel message threads, unified omnichannel center, marketing segments and landing pages, document queue with library version records, cross-domain work queue, subworkflow orchestration, workflow automation designer, benchmark evidence matrix, design system, enterprise journey workbench, operating copilot and area copilot actions, and Forge action templates;
 - `web/styles.css` carries compact operational styling and design tokens.
 
 This is a business-user view over Forge-owned state. It does not introduce browser persistence, a CRM-local database or a side automation engine. Any action shown in the UI is represented as a Forge command template that routes through Addon runtime contracts and permission gates.

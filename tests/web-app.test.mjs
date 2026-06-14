@@ -57,6 +57,54 @@ test("web app snapshot models workflow graph, knowledge graph and document queue
   assert.ok(snapshot.document_queue.artifact_types.includes("crm_presentation"));
 });
 
+test("web app snapshot exposes product benchmark evidence as Forge-owned surfaces", () => {
+  const snapshot = buildCrmWebAppSnapshot({ tenant_id: "demo" });
+  const matrix = snapshot.benchmark_evidence_matrix;
+
+  assert.equal(matrix.schema_version, "forge.crm_benchmark_evidence_matrix.v1");
+  assert.equal(matrix.state_owner, "forge_workflow_runtime");
+  assert.equal(matrix.local_execution_engines_allowed, false);
+  assert.equal(matrix.entries.length, 4);
+
+  const entries = new Map(matrix.entries.map((entry) => [entry.id, entry]));
+  for (const entryId of [
+    "workflow_automation_graph",
+    "knowledge_relationship_graph",
+    "document_lineage_queue",
+    "open_design_tokens"
+  ]) {
+    const entry = entries.get(entryId);
+    assert.ok(entry, `missing benchmark entry ${entryId}`);
+    assert.equal(entry.command_owner, "forge");
+    assert.equal(entry.local_engine_policy, "blocked");
+    assert.ok(entry.workflow_ids.length > 0);
+    assert.ok(entry.artifact_types.length > 0);
+    assert.ok(entry.proof_points.length >= 3);
+    assert.ok(snapshot.surfaces.some((surface) => surface.id === entry.surface_id));
+    assert.ok(snapshot.actions.some((action) => action.id === entry.action_id && action.contract_id === entry.contract_id));
+  }
+
+  assert.equal(entries.get("workflow_automation_graph").reference_product, "n8n");
+  assert.equal(entries.get("workflow_automation_graph").surface_id, "crm.system-map");
+  assert.equal(entries.get("workflow_automation_graph").evidence_surface, "workflow_automation_designer_workbench");
+  assert.ok(entries.get("workflow_automation_graph").workflow_ids.includes("crm.workflow.automation_design"));
+
+  assert.equal(entries.get("knowledge_relationship_graph").reference_product, "Obsidian");
+  assert.equal(entries.get("knowledge_relationship_graph").surface_id, "crm.relationship-graph");
+  assert.equal(entries.get("knowledge_relationship_graph").evidence_surface, "knowledge_graph");
+  assert.ok(entries.get("knowledge_relationship_graph").workflow_ids.includes("crm.relationship.profile_enrichment"));
+
+  assert.equal(entries.get("document_lineage_queue").reference_product, "Paperclip");
+  assert.equal(entries.get("document_lineage_queue").surface_id, "crm.document-queue");
+  assert.equal(entries.get("document_lineage_queue").evidence_surface, "document_queue");
+  assert.ok(entries.get("document_lineage_queue").workflow_ids.includes("crm.document.library"));
+
+  assert.equal(entries.get("open_design_tokens").reference_product, "Penpot / Open Design");
+  assert.equal(entries.get("open_design_tokens").surface_id, "crm.design-system");
+  assert.equal(entries.get("open_design_tokens").evidence_surface, "design_system");
+  assert.ok(entries.get("open_design_tokens").workflow_ids.includes("crm.design.system"));
+});
+
 test("web app snapshot provides Forge command actions instead of local automation", () => {
   const snapshot = buildCrmWebAppSnapshot({ tenant_id: "demo" });
 
@@ -567,6 +615,7 @@ test("web assets mount the generated CRM snapshot without a build step", async (
   assert.match(app, /renderActionInvocationPlans/);
   assert.match(app, /renderWorkflowCadences/);
   assert.match(app, /renderWorkflowEvolutionWorkbench/);
+  assert.match(app, /renderBenchmarkEvidenceMatrix/);
   assert.match(app, /renderEnterpriseJourneyWorkbench/);
   assert.match(app, /renderSubworkflowOrchestrationWorkbench/);
   assert.match(app, /renderWorkflowAutomationDesignerWorkbench/);
@@ -585,6 +634,7 @@ test("web assets mount the generated CRM snapshot without a build step", async (
   assert.match(styles, /\.action-plan/);
   assert.match(styles, /\.cadence-row/);
   assert.match(styles, /\.evolution-workbench/);
+  assert.match(styles, /\.benchmark-evidence/);
   assert.match(styles, /\.journey-workbench/);
   assert.match(styles, /\.subworkflow-workbench/);
   assert.match(styles, /\.automation-designer/);
