@@ -167,13 +167,17 @@ const WORKFLOWS = [
       ["customer_wait", "sla_escalation", "SLA wait expired"],
       ["owner_assigned", "resolved", "resolution artifact attached"]
     ],
-    runtime_contracts: ["crm.support.ticket_sla.executor", "crm.omnichannel.handoff"],
-    artifacts: ["crm_support_summary", "crm_handoff_record"],
+    runtime_contracts: [
+      "crm.support.omnichannel_message.executor",
+      "crm.support.ticket_sla.executor",
+      "crm.omnichannel.handoff"
+    ],
+    artifacts: ["crm_message_thread", "crm_channel_receipt", "crm_support_summary", "crm_handoff_record"],
     events: ["crm.message.received", "crm.ticket.created", "crm.sla.escalated", "crm.handoff.delivered"],
     memory_scopes: ["organization", "project"],
     permissions: ["crm.omnichannel.ingest"],
     views: ["crm.support-queue"],
-    validation_gates: ["SLA wait state explicit", "handoff receipt attached"]
+    validation_gates: ["channel receipt attached", "SLA wait state explicit", "handoff receipt attached"]
   },
   {
     id: "crm.campaign.lifecycle",

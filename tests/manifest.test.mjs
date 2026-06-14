@@ -189,6 +189,30 @@ test("manifest exposes CRM ticket SLA triage as a Forge-owned executor", () => {
   assert.ok(contract.constraints.some((constraint) => constraint.includes("SLA wait")));
 });
 
+test("manifest exposes CRM omnichannel message ingestion as a Forge-owned executor", () => {
+  const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.support.omnichannel_message.executor");
+  assert.ok(contract);
+  assert.equal(contract.contract_type, "executor");
+  assert.equal(contract.capability_id, "crm_support_omnichannel");
+  assert.equal(contract.workflow_extension_id, "crm_omnichannel_message");
+  assert.equal(contract.entrypoint, "forge_crm.ingest_omnichannel_message");
+  assert.deepEqual(contract.permissions, ["crm.omnichannel.ingest"]);
+  assert.ok(contract.inputs.includes("adapter_event"));
+  assert.ok(contract.inputs.includes("message"));
+  assert.ok(contract.outputs.includes("crm_message_thread"));
+  assert.ok(contract.outputs.includes("crm_channel_receipt"));
+  assert.ok(contract.outputs.includes("crm_support_summary"));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("does not persist")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("before SLA")));
+
+  const artifactTypes = new Set(manifest.artifact_types.map((artifact) => artifact.id));
+  assert.ok(artifactTypes.has("crm_message_thread"));
+  assert.ok(artifactTypes.has("crm_channel_receipt"));
+
+  const messageListener = manifest.event_listeners.find((listener) => listener.id === "crm.message.listener");
+  assert.equal(messageListener.runtime_contract_id, "crm.support.omnichannel_message.executor");
+});
+
 test("manifest exposes CRM marketing campaign automation as a Forge-owned executor", () => {
   const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.marketing.campaign_automation.executor");
   assert.ok(contract);

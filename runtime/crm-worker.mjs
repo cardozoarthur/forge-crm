@@ -52,6 +52,7 @@ export function createCrmWorkerServer() {
             "forge_crm.automate_campaign",
             "forge_crm.capture_form_submission",
             "forge_crm.plan_project_handoff",
+            "forge_crm.ingest_omnichannel_message",
             "forge_crm.triage_ticket_sla",
             "forge_crm.deliver_handoff"
           ]

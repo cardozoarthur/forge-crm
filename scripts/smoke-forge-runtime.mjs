@@ -88,6 +88,7 @@ try {
       "forge_crm.validate_document",
       "forge_crm.automate_campaign",
       "forge_crm.capture_form_submission",
+      "forge_crm.ingest_omnichannel_message",
       "forge_crm.triage_ticket_sla",
       "forge_crm.plan_project_handoff",
       "forge_crm.deliver_handoff"
@@ -107,6 +108,7 @@ try {
       "crm.document.validator",
       "crm.marketing.campaign_automation.executor",
       "crm.marketing.form_capture.executor",
+      "crm.support.omnichannel_message.executor",
       "crm.support.ticket_sla.executor",
       "crm.operations.project_handoff.executor",
       "crm.omnichannel.handoff"
@@ -662,6 +664,60 @@ try {
     throw new Error(`expected marketing form capture lead state captured, got ${marketingFormCapture.executor_result.outputs.lead_state}`);
   }
 
+  const omnichannelIngestion = runForge([
+    "addons",
+    "execute-executor",
+    "--addon-dir",
+    "addons",
+    "--addon",
+    "forge.addon.crm",
+    "--contract",
+    "crm.support.omnichannel_message.executor",
+    "--worker",
+    workerId,
+    "--task",
+    "crm-smoke-omnichannel-ingestion",
+    "--workflow",
+    workflowId,
+    "--input",
+    JSON.stringify({
+      tenant_context: { id: "smoke", tenant_id: "smoke" },
+      channel: "whatsapp",
+      adapter_event: {
+        id: "wa-smoke-001",
+        provider: "whatsapp-cloud",
+        received_at: "2026-07-04T11:30:00Z"
+      },
+      message: {
+        id: "msg-smoke-omni-001",
+        from: "+15551234567",
+        text: "Operations are blocked and need support.",
+        subject: "Operations blocked"
+      },
+      customer: {
+        id: "customer-smoke",
+        name: "Example Logistics",
+        account_id: "account-smoke"
+      },
+      routing_policy: {
+        default_queue: "support",
+        create_ticket: true,
+        priority_keywords: ["blocked"]
+      }
+    }),
+    "--context",
+    JSON.stringify({ tenant: "smoke" }),
+    "--output",
+    "json"
+  ]);
+
+  if (omnichannelIngestion.promotion?.status !== "addon_executor_result_promoted") {
+    throw new Error(`expected omnichannel ingestion promotion, got ${omnichannelIngestion.promotion?.status || "missing"}`);
+  }
+  if (omnichannelIngestion.executor_result.outputs.ticket_state !== "received") {
+    throw new Error(`expected omnichannel ingestion ticket_state received, got ${omnichannelIngestion.executor_result.outputs.ticket_state}`);
+  }
+
   const ticketSla = runForge([
     "addons",
     "execute-executor",
@@ -801,6 +857,8 @@ try {
   const marketingPromotedEventCount = marketingAutomation.promotion?.event_count ?? 0;
   const marketingFormPromotedArtifactCount = marketingFormCapture.promotion?.artifact_count ?? 0;
   const marketingFormPromotedEventCount = marketingFormCapture.promotion?.event_count ?? 0;
+  const omnichannelIngestionPromotedArtifactCount = omnichannelIngestion.promotion?.artifact_count ?? 0;
+  const omnichannelIngestionPromotedEventCount = omnichannelIngestion.promotion?.event_count ?? 0;
   const ticketSlaPromotedArtifactCount = ticketSla.promotion?.artifact_count ?? 0;
   const ticketSlaPromotedEventCount = ticketSla.promotion?.event_count ?? 0;
   const operationsPromotedArtifactCount = operationsProjectHandoff.promotion?.artifact_count ?? 0;
@@ -916,6 +974,16 @@ try {
     );
   }
   for (const eventKind of ["crm.form.submitted", "crm.lead.created", "crm.nurture.step_due"]) {
+    if (!workflowEventKinds.includes(eventKind)) {
+      throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
+    }
+  }
+  if (omnichannelIngestionPromotedArtifactCount < 3 || omnichannelIngestionPromotedEventCount < 2) {
+    throw new Error(
+      `expected promoted omnichannel ingestion artifacts/events, got artifacts=${omnichannelIngestionPromotedArtifactCount} events=${omnichannelIngestionPromotedEventCount}`
+    );
+  }
+  for (const eventKind of ["crm.message.received", "crm.ticket.created"]) {
     if (!workflowEventKinds.includes(eventKind)) {
       throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
     }
@@ -1116,6 +1184,11 @@ try {
     marketing_form_capture_consent_state: marketingFormCapture.executor_result.outputs.consent_state,
     marketing_form_capture_promoted_artifacts: marketingFormPromotedArtifactCount,
     marketing_form_capture_promoted_events: marketingFormPromotedEventCount,
+    omnichannel_ingestion_status: omnichannelIngestion.status,
+    omnichannel_ingestion_promotion_status: omnichannelIngestion.promotion.status,
+    omnichannel_ingestion_ticket_state: omnichannelIngestion.executor_result.outputs.ticket_state,
+    omnichannel_ingestion_promoted_artifacts: omnichannelIngestionPromotedArtifactCount,
+    omnichannel_ingestion_promoted_events: omnichannelIngestionPromotedEventCount,
     ticket_sla_status: ticketSla.status,
     ticket_sla_promotion_status: ticketSla.promotion.status,
     ticket_sla_state: ticketSla.executor_result.outputs.sla_state,

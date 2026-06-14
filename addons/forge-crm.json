@@ -270,14 +270,17 @@
       "deliverables": [
         "Support queue",
         "SLA workflow",
-        "Channel handoff history"
+        "Channel handoff history",
+        "Channel intake receipts"
       ],
       "event_triggers": [
         "crm.message.received",
         "crm.ticket.created"
       ],
       "artifact_types": [
-        "crm_support_summary"
+        "crm_support_summary",
+        "crm_message_thread",
+        "crm_channel_receipt"
       ],
       "view_ids": [
         "crm.support-queue"
@@ -917,6 +920,35 @@
       ]
     },
     {
+      "id": "crm.support.omnichannel_message.executor",
+      "title": "CRM omnichannel message ingestion",
+      "contract_type": "executor",
+      "capability_id": "crm_support_omnichannel",
+      "workflow_extension_id": "crm_omnichannel_message",
+      "runtime": "external_api",
+      "entrypoint": "forge_crm.ingest_omnichannel_message",
+      "inputs": [
+        "adapter_event",
+        "message",
+        "customer",
+        "routing_policy",
+        "tenant_context"
+      ],
+      "outputs": [
+        "crm_message_thread",
+        "crm_channel_receipt",
+        "crm_support_summary"
+      ],
+      "permissions": [
+        "crm.omnichannel.ingest"
+      ],
+      "constraints": [
+        "omnichannel message ingestion does not persist CRM state outside Forge",
+        "channel receipt and thread artifacts must exist before SLA triage",
+        "ticket creation must be represented as Forge workflow events before SLA or handoff"
+      ]
+    },
+    {
       "id": "crm.support.ticket_sla.executor",
       "title": "CRM ticket SLA triage",
       "contract_type": "executor",
@@ -1325,6 +1357,16 @@
       "generic_kind": "artifact"
     },
     {
+      "id": "crm_message_thread",
+      "title": "CRM message thread",
+      "generic_kind": "message"
+    },
+    {
+      "id": "crm_channel_receipt",
+      "title": "CRM channel receipt",
+      "generic_kind": "artifact"
+    },
+    {
       "id": "crm_email",
       "title": "CRM email",
       "generic_kind": "message"
@@ -1653,7 +1695,7 @@
       "workflow_extension_id": "crm_omnichannel_message",
       "capability_id": "crm_support_omnichannel",
       "handler": "forge.event_inbox.route",
-      "runtime_contract_id": "crm.omnichannel.handoff",
+      "runtime_contract_id": "crm.support.omnichannel_message.executor",
       "actions": [
         "start_workflow",
         "continue_workflow"

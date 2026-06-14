@@ -548,6 +548,60 @@ test("ticket SLA executor triages omnichannel tickets as Forge workflow artifact
   assert.ok(result.events.some((event) => event.kind === "crm.sla.escalated"));
 });
 
+test("omnichannel message ingestion records channel intake before SLA or handoff", () => {
+  assert.equal(typeof runtime.buildOmnichannelMessageIngestionResult, "function");
+
+  const result = runtime.buildOmnichannelMessageIngestionResult(
+    workerRequest(
+      "forge_crm.ingest_omnichannel_message",
+      {
+        tenant_context: { tenant_id: "demo" },
+        channel: "whatsapp",
+        adapter_event: {
+          id: "wa-event-001",
+          provider: "whatsapp-cloud",
+          received_at: "2026-07-21T11:30:00Z"
+        },
+        message: {
+          id: "msg-001",
+          from: "+5511999990000",
+          text: "Pedido parado no CD. Preciso falar com suporte.",
+          subject: "Pedido parado"
+        },
+        customer: {
+          id: "customer-001",
+          name: "Acme Logistics",
+          account_id: "account-001"
+        },
+        routing_policy: {
+          default_queue: "support",
+          create_ticket: true,
+          priority_keywords: ["parado", "bloqueado"]
+        }
+      },
+      { contract_id: "crm.support.omnichannel_message.executor", task_ref: "omni-ingest-test" }
+    )
+  );
+
+  assert.equal(result.schema_version, "forge.addon_executor_result.v1");
+  assert.equal(result.status, "completed");
+  assert.equal(result.outputs.tenant_id, "demo");
+  assert.equal(result.outputs.channel, "whatsapp");
+  assert.equal(result.outputs.message_id, "msg-001");
+  assert.equal(result.outputs.workflow_id, "crm.ticket.sla");
+  assert.equal(result.outputs.message_workflow_id, "crm.omnichannel.message");
+  assert.equal(result.outputs.ticket_state, "received");
+  assert.equal(result.outputs.owner_queue, "support");
+  assert.equal(result.outputs.mutates_crm_state, false);
+  assert.equal(result.outputs.forge_event_sourced, true);
+
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_message_thread"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_channel_receipt"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_support_summary"));
+  assert.ok(result.events.some((event) => event.kind === "crm.message.received"));
+  assert.ok(result.events.some((event) => event.kind === "crm.ticket.created"));
+});
+
 test("marketing campaign automation executor schedules nurture workflows as Forge artifacts", () => {
   assert.equal(typeof runtime.buildMarketingCampaignAutomationResult, "function");
 

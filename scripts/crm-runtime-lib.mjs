@@ -1882,6 +1882,157 @@ function ticketSeverity(ticket) {
   return "normal";
 }
 
+export function buildOmnichannelMessageIngestionResult(request) {
+  const input = dispatchPayload(request);
+  const context = providedContext(request);
+  const envelope = dispatchEnvelope(request);
+  const tenantId = input.tenant_id || input.tenant_context?.tenant_id || input.tenant_context?.id || context.tenant || "default";
+  const adapterEvent = asObject(input.adapter_event ?? input.channel_event ?? input.event);
+  const message = asObject(input.message ?? input.inbound_message);
+  const customer = asObject(input.customer ?? input.account_context ?? input.contact);
+  const routingPolicy = asObject(input.routing_policy);
+  const channel = String(input.channel || adapterEvent.channel || message.channel || customer.preferred_channel || "unknown");
+  const messageId = String(message.id || message.message_id || adapterEvent.message_id || adapterEvent.id || envelope.task_ref || "crm-message");
+  const accountId = String(customer.account_id || customer.company_id || customer.id || "unknown-account");
+  const account = customer.account || customer.company || customer.name || input.account || accountId;
+  const threadId = String(input.thread_id || message.thread_id || adapterEvent.thread_id || `thread-${slug(accountId, "account")}`);
+  const ticketId = String(input.ticket_id || message.ticket_id || `ticket-${slug(messageId, "message")}`);
+  const taskRef = envelope.task_ref || `ingest-message-${slug(messageId, "message")}`;
+  const workflowId = String(input.workflow_id || "crm.ticket.sla");
+  const messageWorkflowId = String(input.message_workflow_id || "crm.omnichannel.message");
+  const priorityKeywords =
+    asArray(routingPolicy.priority_keywords).length > 0
+      ? asArray(routingPolicy.priority_keywords).map((keyword) => String(keyword).toLowerCase())
+      : ["urgent", "critical", "blocked", "bloqueado", "parado"];
+  const messageText = [message.subject, message.text, message.body, message.summary].filter(Boolean).join(" ");
+  const priorityDetected = textIncludes(messageText, priorityKeywords);
+  const ownerQueue = routingPolicy.default_queue || routingPolicy.queue || "support";
+  const createTicket = routingPolicy.create_ticket !== false;
+  const receivedAt = adapterEvent.received_at || message.received_at || input.received_at || null;
+  const lineage = {
+    workflow_id: workflowId,
+    message_workflow_id: messageWorkflowId,
+    task_ref: taskRef,
+    source_contract: "crm.support.omnichannel_message.executor",
+    tenant_id: tenantId,
+    channel,
+    message_id: messageId,
+    thread_id: threadId,
+    ticket_id: createTicket ? ticketId : null
+  };
+
+  return {
+    schema_version: "forge.addon_executor_result.v1",
+    status: "completed",
+    task_ref: taskRef,
+    summary: `Message ${messageId} ingested from ${channel} into ${ownerQueue}`,
+    outputs: {
+      tenant_id: tenantId,
+      channel,
+      message_id: messageId,
+      thread_id: threadId,
+      ticket_id: createTicket ? ticketId : null,
+      workflow_id: workflowId,
+      message_workflow_id: messageWorkflowId,
+      ticket_state: createTicket ? "received" : "message_received",
+      owner_queue: ownerQueue,
+      priority_detected: priorityDetected,
+      mutates_crm_state: false,
+      forge_event_sourced: true
+    },
+    artifacts: [
+      {
+        kind: "crm_message_thread",
+        id: `message-thread-${slug(threadId, "thread")}`,
+        title: `Message thread for ${account}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          thread_id: threadId,
+          channel,
+          account,
+          account_id: accountId,
+          customer,
+          messages: [
+            {
+              id: messageId,
+              from: message.from || message.sender || customer.id || null,
+              subject: message.subject || null,
+              text: message.text || message.body || message.summary || "",
+              received_at: receivedAt
+            }
+          ],
+          lineage,
+          state_owner: "forge_workflow_runtime",
+          external_database_required: false
+        }
+      },
+      {
+        kind: "crm_channel_receipt",
+        id: `channel-receipt-${slug(messageId, "message")}`,
+        title: `Channel receipt for ${messageId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          channel,
+          message_id: messageId,
+          provider: adapterEvent.provider || adapterEvent.adapter || null,
+          adapter_event_id: adapterEvent.id || null,
+          received_at: receivedAt,
+          delivery_state: "received",
+          lineage,
+          state_owner: "forge_workflow_runtime",
+          external_database_required: false
+        }
+      },
+      {
+        kind: "crm_support_summary",
+        id: `support-intake-${slug(ticketId, "ticket")}`,
+        title: `Support intake for ${account}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          ticket_id: createTicket ? ticketId : null,
+          message_id: messageId,
+          channel,
+          owner_queue: ownerQueue,
+          ticket_state: createTicket ? "received" : "message_received",
+          priority_detected: priorityDetected,
+          routing_policy: routingPolicy,
+          lineage,
+          state_owner: "forge_workflow_runtime",
+          external_database_required: false
+        }
+      }
+    ],
+    events: [
+      {
+        kind: "crm.message.received",
+        tenant_id: tenantId,
+        message_id: messageId,
+        thread_id: threadId,
+        channel,
+        workflow_id: messageWorkflowId,
+        target_workflow_id: workflowId
+      },
+      ...(createTicket
+        ? [
+            {
+              kind: "crm.ticket.created",
+              tenant_id: tenantId,
+              ticket_id: ticketId,
+              message_id: messageId,
+              channel,
+              owner_queue: ownerQueue,
+              workflow_id: workflowId
+            }
+          ]
+        : [])
+    ],
+    context_tenant: context.tenant || tenantId
+  };
+}
+
 export function buildTicketSlaResult(request) {
   const input = dispatchPayload(request);
   const context = providedContext(request);
@@ -2134,6 +2285,8 @@ export function executeCrmRuntimeRequest(request) {
       return buildMarketingFormCaptureResult(request);
     case "forge_crm.plan_project_handoff":
       return buildOperationsProjectHandoffResult(request);
+    case "forge_crm.ingest_omnichannel_message":
+      return buildOmnichannelMessageIngestionResult(request);
     case "forge_crm.triage_ticket_sla":
       return buildTicketSlaResult(request);
     case "forge_crm.deliver_handoff":

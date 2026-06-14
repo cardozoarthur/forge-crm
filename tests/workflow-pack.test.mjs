@@ -181,6 +181,19 @@ test("support workflow routes ticket SLA triage through Forge", () => {
   assert.ok(pack.indexes.runtime_contracts.includes("crm.support.ticket_sla.executor"));
 });
 
+test("support workflow ingests omnichannel messages before ticket SLA and handoff", () => {
+  const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
+  const workflow = pack.workflows.find((candidate) => candidate.id === "crm.ticket.sla");
+
+  assert.ok(workflow);
+  assert.ok(workflow.runtime_contracts.includes("crm.support.omnichannel_message.executor"));
+  assert.ok(workflow.artifacts.includes("crm_message_thread"));
+  assert.ok(workflow.artifacts.includes("crm_channel_receipt"));
+  assert.ok(workflow.events.includes("crm.message.received"));
+  assert.ok(workflow.events.includes("crm.ticket.created"));
+  assert.ok(pack.indexes.runtime_contracts.includes("crm.support.omnichannel_message.executor"));
+});
+
 test("marketing workflows route campaign automation and nurture through Forge", () => {
   const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
 
