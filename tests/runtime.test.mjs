@@ -1502,6 +1502,87 @@ test("channel intake executor normalizes approved provider events before ticket 
   assert.ok(result.events.some((event) => event.kind === "crm.message.normalized"));
 });
 
+test("omnichannel center executor unifies channel threads and identities without local state", () => {
+  assert.equal(typeof runtime.buildOmnichannelCenterResult, "function");
+
+  const result = runtime.buildOmnichannelCenterResult(
+    workerRequest(
+      "forge_crm.unify_omnichannel_center",
+      {
+        tenant_context: { tenant_id: "demo" },
+        channel_threads: [
+          {
+            id: "thread-wa-001",
+            channel: "whatsapp",
+            provider: "whatsapp-cloud",
+            customer_ref: "+5511999990000",
+            account_id: "account-001",
+            subject: "Pedido parado",
+            message_count: 3,
+            last_message_at: "2026-07-21T11:30:00Z",
+            ticket_id: "ticket-001"
+          },
+          {
+            id: "thread-tg-001",
+            channel: "telegram",
+            provider: "telegram-bot-api",
+            customer_ref: "@mara_ops",
+            account_id: "account-001",
+            subject: "Contrato aprovado",
+            message_count: 2,
+            last_message_at: "2026-07-21T12:10:00Z"
+          },
+          {
+            id: "thread-email-001",
+            channel: "email",
+            provider: "smtp",
+            customer_ref: "mara@example.com",
+            account_id: "account-001",
+            subject: "Follow-up implantação",
+            message_count: 1,
+            last_message_at: "2026-07-21T12:20:00Z"
+          }
+        ],
+        identity_records: [
+          {
+            account_id: "account-001",
+            contact_id: "contact-001",
+            channels: ["whatsapp", "telegram", "email"],
+            confidence: 0.91
+          }
+        ],
+        routing_policy: {
+          default_queue: "support",
+          escalation_queue: "support-escalation",
+          unify_by: ["account_id", "contact_id"],
+          require_approved_intake: true
+        }
+      },
+      { contract_id: "crm.support.omnichannel_center.executor", task_ref: "omnichannel-center-test" }
+    )
+  );
+
+  assert.equal(result.schema_version, "forge.addon_executor_result.v1");
+  assert.equal(result.status, "completed");
+  assert.equal(result.outputs.tenant_id, "demo");
+  assert.equal(result.outputs.workflow_id, "crm.omnichannel.center");
+  assert.equal(result.outputs.center_state, "routing_ready");
+  assert.equal(result.outputs.channel_count, 3);
+  assert.equal(result.outputs.thread_count, 3);
+  assert.equal(result.outputs.unified_conversation_count, 1);
+  assert.equal(result.outputs.owner_queue, "support-escalation");
+  assert.equal(result.outputs.mutates_crm_state, false);
+  assert.equal(result.outputs.forge_event_sourced, true);
+
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_omnichannel_center_snapshot"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_unified_conversation"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_channel_identity_map"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_support_queue_snapshot"));
+  assert.ok(result.events.some((event) => event.kind === "crm.omnichannel.center_snapshot"));
+  assert.ok(result.events.some((event) => event.kind === "crm.conversation.unified"));
+  assert.ok(result.events.some((event) => event.kind === "crm.channel.identity_mapped"));
+});
+
 test("marketing campaign automation executor schedules nurture workflows as Forge artifacts", () => {
   assert.equal(typeof runtime.buildMarketingCampaignAutomationResult, "function");
 

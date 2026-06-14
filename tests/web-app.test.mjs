@@ -72,6 +72,7 @@ test("web app snapshot provides Forge command actions instead of local automatio
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.commercial.account_management.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.commercial.contract_signature.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.support.channel_intake.executor"));
+  assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.support.omnichannel_center.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.support.omnichannel_message.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.support.ticket_sla.executor"));
   assert.ok(snapshot.actions.some((action) => action.contract_id === "crm.operations.project_handoff.executor"));
@@ -216,6 +217,8 @@ test("web app snapshot exposes an operational workbench backed by Forge artifact
   assert.ok(panels.get("support_queue").channels.includes("whatsapp"));
   assert.ok(panels.get("support_queue").channel_intake.some((intake) => intake.action_id === "crm.normalize-channel-intake"));
   assert.ok(panels.get("support_queue").channel_intake.every((intake) => intake.contract_id === "crm.support.channel_intake.executor"));
+  assert.ok(panels.get("support_queue").omnichannel_center.some((center) => center.action_id === "crm.run-omnichannel-center"));
+  assert.ok(panels.get("support_queue").omnichannel_center.every((center) => center.contract_id === "crm.support.omnichannel_center.executor"));
   assert.ok(panels.get("marketing_calendar").campaigns.some((campaign) => campaign.next_action_id === "crm.automate-campaign"));
   assert.ok(panels.get("marketing_calendar").segments.some((segment) => segment.action_id === "crm.build-marketing-segment"));
   assert.ok(panels.get("marketing_calendar").segments.every((segment) => segment.contract_id === "crm.marketing.segment_builder.executor"));
@@ -230,6 +233,24 @@ test("web app snapshot exposes an operational workbench backed by Forge artifact
   assert.ok(panels.get("ai_workbench").recommendations.some((recommendation) => recommendation.action_id === "crm.run-operating-copilot"));
   assert.ok(panels.get("ai_workbench").specialized_copilots.some((copilot) => copilot.action_id === "crm.run-area-copilot"));
   assert.ok(panels.get("ai_workbench").memory_promotions.some((promotion) => promotion.action_id === "crm.prepare-memory-promotion"));
+});
+
+test("web app snapshot exposes the omnichannel center as a Forge command surface", () => {
+  const snapshot = buildCrmWebAppSnapshot({ tenant_id: "demo" });
+  const action = snapshot.actions.find((candidate) => candidate.id === "crm.run-omnichannel-center");
+  const supportPanel = snapshot.operational_workbench.panels.find((panel) => panel.id === "support_queue");
+
+  assert.ok(action);
+  assert.equal(action.surface_id, "crm.support-queue");
+  assert.equal(action.contract_id, "crm.support.omnichannel_center.executor");
+  assert.equal(action.requires_permission, "crm.omnichannel.ingest");
+  assert.deepEqual(action.command_template.slice(0, 3), ["forge", "addons", "execute-executor"]);
+
+  assert.ok(supportPanel);
+  assert.ok(supportPanel.action_ids.includes("crm.run-omnichannel-center"));
+  assert.ok(supportPanel.workflow_ids.includes("crm.omnichannel.center"));
+  assert.ok(supportPanel.omnichannel_center.some((center) => center.center_state === "routing_ready"));
+  assert.ok(supportPanel.omnichannel_center.every((center) => center.state_owner === "forge_workflow_runtime"));
 });
 
 test("web app snapshot exposes document library versioning as a Forge command surface", () => {

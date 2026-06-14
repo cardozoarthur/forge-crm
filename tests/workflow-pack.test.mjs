@@ -392,6 +392,37 @@ test("support channel intake normalizes approved adapters before ticket SLA", ()
   assert.ok(pack.indexes.artifact_types.includes("crm_channel_intake"));
 });
 
+test("support omnichannel center unifies conversations and channel identities through Forge", () => {
+  const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
+  const workflow = pack.workflows.find((candidate) => candidate.id === "crm.omnichannel.center");
+  const ticketWorkflow = pack.workflows.find((candidate) => candidate.id === "crm.ticket.sla");
+
+  assert.ok(workflow);
+  assert.ok(ticketWorkflow);
+  assert.equal(workflow.domain, "support");
+  assert.equal(workflow.workflow_extension_id, "crm_omnichannel_center");
+  assert.ok(workflow.runtime_contracts.includes("crm.support.omnichannel_center.executor"));
+  assert.ok(workflow.runtime_contracts.includes("crm.support.channel_intake.executor"));
+  assert.ok(workflow.runtime_contracts.includes("crm.support.omnichannel_message.executor"));
+  assert.ok(workflow.depends_on_workflows.includes("crm.omnichannel.channel_intake"));
+  assert.ok(workflow.object_types.includes("omnichannel_center"));
+  assert.ok(workflow.object_types.includes("unified_conversation"));
+  assert.ok(workflow.object_types.includes("channel_identity"));
+
+  for (const artifact of ["crm_omnichannel_center_snapshot", "crm_unified_conversation", "crm_channel_identity_map", "crm_support_queue_snapshot"]) {
+    assert.ok(workflow.artifacts.includes(artifact), `missing omnichannel center artifact ${artifact}`);
+    assert.ok(pack.indexes.artifact_types.includes(artifact), `missing indexed omnichannel center artifact ${artifact}`);
+  }
+  for (const event of ["crm.omnichannel.center_snapshot", "crm.conversation.unified", "crm.channel.identity_mapped"]) {
+    assert.ok(workflow.events.includes(event), `missing omnichannel center event ${event}`);
+  }
+
+  assert.ok(workflow.validation_gates.includes("omnichannel center state is sourced from Forge artifacts and events"));
+  assert.ok(ticketWorkflow.depends_on_workflows.includes("crm.omnichannel.center"));
+  assert.ok(ticketWorkflow.runtime_contracts.includes("crm.support.omnichannel_center.executor"));
+  assert.ok(pack.indexes.runtime_contracts.includes("crm.support.omnichannel_center.executor"));
+});
+
 test("marketing workflows route campaign automation and nurture through Forge", () => {
   const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
 

@@ -309,6 +309,7 @@ h3 {
 
 .pipeline-card,
 .commercial-row,
+.omnichannel-center-row,
 .support-ticket,
 .segment-row,
 .campaign-row,
@@ -342,6 +343,7 @@ h3 {
 .pipeline-card span,
 .pipeline-card small,
 .commercial-row span,
+.omnichannel-center-row span,
 .support-ticket span,
 .segment-row span,
 .campaign-row span,
@@ -363,6 +365,7 @@ h3 {
 
 .pipeline-card code,
 .commercial-row code,
+.omnichannel-center-row code,
 .support-ticket code,
 .segment-row code,
 .campaign-row code,
@@ -391,6 +394,7 @@ h3 {
 
 .commercial-list,
 .support-ticket-list,
+.omnichannel-center-list,
 .channel-intake-list,
 .segment-list,
 .campaign-grid,
@@ -424,6 +428,14 @@ h3 {
 
 .channel-intake {
   border-left: 4px solid #285f9d;
+}
+
+.omnichannel-center-row {
+  border-left: 4px solid #704f9e;
+}
+
+.omnichannel-center-row.state-routing_ready {
+  border-left-color: #126c55;
 }
 
 .channel-intake.state-authorization_check,

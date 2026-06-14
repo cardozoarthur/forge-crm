@@ -276,6 +276,21 @@ export function renderSupportQueue(snapshot) {
     intakes.append(item);
   }
 
+  const centers = nodeElement("div", "omnichannel-center-list");
+  for (const center of panel.omnichannel_center || []) {
+    const item = nodeElement("article", `omnichannel-center-row state-${center.state}`);
+    item.append(nodeElement("strong", "", center.account || center.center_id));
+    item.append(
+      nodeElement(
+        "span",
+        "",
+        `${center.channel_count} channels · ${center.unified_conversation_count} conversations · ${compactTitle(center.state)}`
+      )
+    );
+    item.append(nodeElement("code", "", actionLabel(snapshot, center.action_id)));
+    centers.append(item);
+  }
+
   const tickets = nodeElement("div", "support-ticket-list");
   for (const ticket of panel.tickets) {
     const item = nodeElement("article", `support-ticket status-${ticket.sla_status}`);
@@ -285,7 +300,7 @@ export function renderSupportQueue(snapshot) {
     tickets.append(item);
   }
 
-  section.append(channels, intakes, tickets);
+  section.append(channels, intakes, centers, tickets);
   return section;
 }
 

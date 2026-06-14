@@ -551,6 +551,37 @@ test("manifest exposes CRM channel intake normalization as a Forge-owned executo
   assert.ok(artifactTypes.has("crm_channel_intake"));
 });
 
+test("manifest exposes CRM omnichannel center as a Forge-owned executor", () => {
+  const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.support.omnichannel_center.executor");
+  assert.ok(contract);
+  assert.equal(contract.contract_type, "executor");
+  assert.equal(contract.capability_id, "crm_support_omnichannel");
+  assert.equal(contract.workflow_extension_id, "crm_omnichannel_center");
+  assert.equal(contract.entrypoint, "forge_crm.unify_omnichannel_center");
+  assert.deepEqual(contract.permissions, ["crm.omnichannel.ingest", "crm.workflow.mutate"]);
+
+  for (const input of ["channel_threads", "identity_records", "routing_policy", "tenant_context"]) {
+    assert.ok(contract.inputs.includes(input), `missing omnichannel center input ${input}`);
+  }
+  for (const output of ["crm_omnichannel_center_snapshot", "crm_unified_conversation", "crm_channel_identity_map", "crm_support_queue_snapshot"]) {
+    assert.ok(contract.outputs.includes(output), `missing omnichannel center output ${output}`);
+  }
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("does not persist CRM state outside Forge")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("approved channel intake")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("conversation lineage")));
+
+  const workflowExtensionIds = new Set(manifest.workflows.map((extension) => extension.id));
+  assert.ok(workflowExtensionIds.has("crm_omnichannel_center"));
+
+  const artifactTypes = new Set(manifest.artifact_types.map((artifact) => artifact.id));
+  assert.ok(artifactTypes.has("crm_omnichannel_center_snapshot"));
+  assert.ok(artifactTypes.has("crm_unified_conversation"));
+  assert.ok(artifactTypes.has("crm_channel_identity_map"));
+
+  const eventTypes = new Set(manifest.event_types.map((event) => event.id));
+  assert.ok(eventTypes.has("crm.conversation"));
+});
+
 test("manifest exposes CRM marketing campaign automation as a Forge-owned executor", () => {
   const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.marketing.campaign_automation.executor");
   assert.ok(contract);
@@ -765,6 +796,7 @@ test("manifest exposes a Forge TUI operational cockpit with permission-gated CRM
     "crm.tui.enrich-relationship-profile",
     "crm.tui.review-followup-forecast",
     "crm.tui.normalize-channel-intake",
+    "crm.tui.run-omnichannel-center",
     "crm.tui.triage-ticket-sla",
     "crm.tui.automate-campaign",
     "crm.tui.publish-landing-page",
@@ -809,6 +841,7 @@ test("CRM scope is workflow-backed across core business areas", () => {
     "crm_project_handoff",
     "crm_document_approval",
     "crm_document_library",
+    "crm_omnichannel_center",
     "crm_ai_copilot_recommendation"
   ]) {
     assert.ok(workflowIds.has(workflowId), `missing workflow ${workflowId}`);

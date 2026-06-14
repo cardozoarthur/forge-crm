@@ -414,7 +414,13 @@ function buildOperationalWorkbench(workflows, actionList, documentQueueSnapshot)
       title: "Support queue",
       surface_id: "crm.support-queue",
       workflow_ids: workflowIdsForSurface(workflows, "crm.support-queue"),
-      action_ids: checkedActionIds(actionList, ["crm.normalize-channel-intake", "crm.ingest-omnichannel-message", "crm.triage-ticket-sla", "crm.deliver-handoff"])
+      action_ids: checkedActionIds(actionList, [
+        "crm.normalize-channel-intake",
+        "crm.run-omnichannel-center",
+        "crm.ingest-omnichannel-message",
+        "crm.triage-ticket-sla",
+        "crm.deliver-handoff"
+      ])
     }),
     channels: ["chat", "whatsapp", "telegram", "email"],
     channel_intake: [
@@ -437,6 +443,32 @@ function buildOperationalWorkbench(workflows, actionList, documentQueueSnapshot)
         intake_state: "authorization_check",
         ticket_creation_allowed: false,
         action_id: "crm.normalize-channel-intake"
+      }
+    ],
+    omnichannel_center: [
+      {
+        center_id: "center-account-northstar",
+        workflow_id: "crm.omnichannel.center",
+        contract_id: "crm.support.omnichannel_center.executor",
+        center_state: "routing_ready",
+        state_owner: "forge_workflow_runtime",
+        account: "Northstar Retail",
+        channels: ["whatsapp", "telegram", "email"],
+        unified_conversation_count: 2,
+        owner_queue: "support-escalation",
+        action_id: "crm.run-omnichannel-center"
+      },
+      {
+        center_id: "center-account-helio",
+        workflow_id: "crm.omnichannel.center",
+        contract_id: "crm.support.omnichannel_center.executor",
+        center_state: "identity_matched",
+        state_owner: "forge_workflow_runtime",
+        account: "Helio Grid",
+        channels: ["email", "chat"],
+        unified_conversation_count: 1,
+        owner_queue: "support",
+        action_id: "crm.run-omnichannel-center"
       }
     ],
     sla_targets: [
@@ -1334,6 +1366,15 @@ function actions() {
       requires_permission: "crm.omnichannel.ingest",
       mutates_workflow: true,
       command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.support.channel_intake.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
+    },
+    {
+      id: "crm.run-omnichannel-center",
+      label: "Run omnichannel center",
+      surface_id: "crm.support-queue",
+      contract_id: "crm.support.omnichannel_center.executor",
+      requires_permission: "crm.omnichannel.ingest",
+      mutates_workflow: true,
+      command_template: ["forge", "addons", "execute-executor", "--addon", "forge.addon.crm", "--contract", "crm.support.omnichannel_center.executor", "--worker", "<worker-id>", "--task", "<task-ref>", "--input", "<json>", "--context", "<json>", "--output", "json"]
     },
     {
       id: "crm.ingest-omnichannel-message",

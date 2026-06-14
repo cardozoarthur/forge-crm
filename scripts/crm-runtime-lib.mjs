@@ -4619,6 +4619,189 @@ export function buildChannelIntakeNormalizationResult(request) {
   };
 }
 
+function threadChannel(thread) {
+  return String(thread.channel || thread.source_channel || "unknown").toLowerCase();
+}
+
+function threadAccountId(thread) {
+  return String(thread.account_id || thread.company_id || thread.customer_id || thread.customer_ref || "unknown-account");
+}
+
+function identityKey(record) {
+  return String(record.account_id || record.company_id || record.contact_id || record.customer_ref || record.id || "unknown-identity");
+}
+
+export function buildOmnichannelCenterResult(request) {
+  const input = dispatchPayload(request);
+  const context = providedContext(request);
+  const envelope = dispatchEnvelope(request);
+  const tenantId = input.tenant_id || input.tenant_context?.tenant_id || input.tenant_context?.id || context.tenant || "default";
+  const threads = asArray(input.channel_threads ?? input.threads).map(asObject);
+  const identityRecords = asArray(input.identity_records ?? input.identities).map(asObject);
+  const routingPolicy = asObject(input.routing_policy);
+  const workflowId = String(input.workflow_id || "crm.omnichannel.center");
+  const taskRef = envelope.task_ref || `omnichannel-center-${slug(tenantId, "tenant")}`;
+  const channels = unique(threads.map(threadChannel).filter(Boolean)).sort();
+  const identityByAccount = new Map(identityRecords.map((record) => [identityKey(record), record]));
+  const groupedThreads = new Map();
+
+  for (const thread of threads) {
+    const accountId = threadAccountId(thread);
+    const identity = identityByAccount.get(accountId) || identityRecords.find((record) => asArray(record.channels).includes(threadChannel(thread)));
+    const key = identity ? identityKey(identity) : accountId;
+    if (!groupedThreads.has(key)) {
+      groupedThreads.set(key, []);
+    }
+    groupedThreads.get(key).push(thread);
+  }
+
+  const conversations = [...groupedThreads.entries()].map(([key, grouped], index) => {
+    const identity = identityByAccount.get(key) || identityRecords.find((record) => identityKey(record) === key) || {};
+    const conversationChannels = unique(grouped.map(threadChannel)).sort();
+    const ticketIds = unique(grouped.map((thread) => thread.ticket_id).filter(Boolean));
+    return {
+      conversation_id: `conversation-${slug(key, `identity-${index + 1}`)}`,
+      identity_key: key,
+      account_id: identity.account_id || grouped[0]?.account_id || key,
+      contact_id: identity.contact_id || null,
+      channels: conversationChannels,
+      thread_ids: grouped.map((thread, threadIndex) => String(thread.id || thread.thread_id || `thread-${index + 1}-${threadIndex + 1}`)),
+      message_count: grouped.reduce((sum, thread) => sum + Math.max(1, numberFrom(thread.message_count, 1)), 0),
+      ticket_ids: ticketIds,
+      latest_message_at: grouped
+        .map((thread) => thread.last_message_at || thread.received_at)
+        .filter(Boolean)
+        .sort()
+        .at(-1) || null,
+      state: ticketIds.length > 0 ? "routing_ready" : "identity_matched"
+    };
+  });
+
+  const hasEscalation = conversations.some((conversation) => conversation.ticket_ids.length > 0 || conversation.channels.length > 1);
+  const ownerQueue = hasEscalation
+    ? routingPolicy.escalation_queue || routingPolicy.default_queue || "support-escalation"
+    : routingPolicy.default_queue || routingPolicy.queue || "support";
+  const centerState = conversations.length > 0 ? "routing_ready" : "rework_required";
+  const lineage = {
+    workflow_id: workflowId,
+    task_ref: taskRef,
+    source_contract: "crm.support.omnichannel_center.executor",
+    tenant_id: tenantId,
+    intake_workflow_id: "crm.omnichannel.channel_intake",
+    ticket_workflow_id: "crm.ticket.sla"
+  };
+
+  return {
+    schema_version: "forge.addon_executor_result.v1",
+    status: "completed",
+    task_ref: taskRef,
+    summary: `Omnichannel center unified ${conversations.length} conversations across ${channels.length} channels`,
+    outputs: {
+      tenant_id: tenantId,
+      workflow_id: workflowId,
+      center_state: centerState,
+      channel_count: channels.length,
+      thread_count: threads.length,
+      unified_conversation_count: conversations.length,
+      identity_count: identityRecords.length,
+      owner_queue: ownerQueue,
+      mutates_crm_state: false,
+      forge_event_sourced: true
+    },
+    artifacts: [
+      {
+        kind: "crm_omnichannel_center_snapshot",
+        id: `omnichannel-center-${slug(tenantId, "tenant")}`,
+        title: `Omnichannel center snapshot for ${tenantId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          workflow_id: workflowId,
+          center_state: centerState,
+          channels,
+          thread_count: threads.length,
+          unified_conversation_count: conversations.length,
+          owner_queue: ownerQueue,
+          routing_policy: routingPolicy,
+          lineage,
+          state_owner: "forge_workflow_runtime",
+          external_database_required: false
+        }
+      },
+      {
+        kind: "crm_unified_conversation",
+        id: `unified-conversation-${slug(conversations[0]?.identity_key || tenantId, "conversation")}`,
+        title: `Unified conversation for ${conversations[0]?.account_id || tenantId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          conversations,
+          source_threads: threads,
+          lineage,
+          mutation_policy: "conversation state changes are promoted by Forge workflow events"
+        }
+      },
+      {
+        kind: "crm_channel_identity_map",
+        id: `channel-identity-map-${slug(tenantId, "tenant")}`,
+        title: `Channel identity map for ${tenantId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          identity_records: identityRecords,
+          mapped_conversations: conversations.map((conversation) => ({
+            conversation_id: conversation.conversation_id,
+            identity_key: conversation.identity_key,
+            channels: conversation.channels,
+            confidence: identityRecords.find((record) => identityKey(record) === conversation.identity_key)?.confidence ?? null
+          })),
+          lineage
+        }
+      },
+      {
+        kind: "crm_support_queue_snapshot",
+        id: `support-queue-omnichannel-${slug(tenantId, "tenant")}`,
+        title: `Support queue snapshot from omnichannel center`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          workflow_id: workflowId,
+          owner_queue: ownerQueue,
+          routing_ready_conversations: conversations.filter((conversation) => conversation.state === "routing_ready").length,
+          handoff_wait_conversations: conversations.filter((conversation) => conversation.ticket_ids.length > 0).length,
+          next_contract_id: "crm.support.ticket_sla.executor",
+          lineage
+        }
+      }
+    ],
+    events: [
+      {
+        kind: "crm.omnichannel.center_snapshot",
+        tenant_id: tenantId,
+        workflow_id: workflowId,
+        channel_count: channels.length,
+        thread_count: threads.length,
+        unified_conversation_count: conversations.length
+      },
+      {
+        kind: "crm.conversation.unified",
+        tenant_id: tenantId,
+        workflow_id: workflowId,
+        conversation_count: conversations.length,
+        channels
+      },
+      {
+        kind: "crm.channel.identity_mapped",
+        tenant_id: tenantId,
+        workflow_id: workflowId,
+        identity_count: identityRecords.length,
+        mapped_conversation_count: conversations.length
+      }
+    ],
+    context_tenant: context.tenant || tenantId
+  };
+}
+
 export function buildOmnichannelMessageIngestionResult(request) {
   const input = dispatchPayload(request);
   const context = providedContext(request);
@@ -5052,6 +5235,8 @@ export function executeCrmRuntimeRequest(request) {
       return buildOperationsProjectHandoffResult(request);
     case "forge_crm.normalize_channel_intake":
       return buildChannelIntakeNormalizationResult(request);
+    case "forge_crm.unify_omnichannel_center":
+      return buildOmnichannelCenterResult(request);
     case "forge_crm.ingest_omnichannel_message":
       return buildOmnichannelMessageIngestionResult(request);
     case "forge_crm.triage_ticket_sla":

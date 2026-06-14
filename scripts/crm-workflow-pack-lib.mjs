@@ -236,6 +236,7 @@ const WORKFLOWS = [
       ["owner_assigned", "resolved", "resolution artifact attached"]
     ],
     runtime_contracts: [
+      "crm.support.omnichannel_center.executor",
       "crm.support.omnichannel_message.executor",
       "crm.support.ticket_sla.executor",
       "crm.omnichannel.handoff"
@@ -246,7 +247,54 @@ const WORKFLOWS = [
     permissions: ["crm.omnichannel.ingest"],
     views: ["crm.support-queue"],
     validation_gates: ["channel receipt attached", "SLA wait state explicit", "handoff receipt attached"],
-    depends_on_workflows: ["crm.omnichannel.channel_intake"]
+    depends_on_workflows: ["crm.omnichannel.channel_intake", "crm.omnichannel.center"]
+  },
+  {
+    id: "crm.omnichannel.center",
+    title: "Unified omnichannel conversation center",
+    domain: "support",
+    workflow_extension_id: "crm_omnichannel_center",
+    object_types: [
+      "omnichannel_center",
+      "unified_conversation",
+      "channel_identity",
+      "chat",
+      "whatsapp",
+      "telegram",
+      "email",
+      "ticket"
+    ],
+    states: ["channels_connected", "threads_normalized", "identity_matched", "routing_ready", "handoff_wait", "resolved", "rework_required"],
+    transitions: [
+      ["channels_connected", "threads_normalized", "approved channel intake events attached"],
+      ["threads_normalized", "identity_matched", "channel identity map produced"],
+      ["identity_matched", "routing_ready", "unified conversation snapshot attached"],
+      ["routing_ready", "handoff_wait", "handoff or SLA routing selected"],
+      ["handoff_wait", "resolved", "handoff receipt or ticket resolution attached"],
+      ["identity_matched", "rework_required", "ambiguous identity or missing channel lineage"]
+    ],
+    runtime_contracts: [
+      "crm.support.omnichannel_center.executor",
+      "crm.support.channel_intake.executor",
+      "crm.support.omnichannel_message.executor",
+      "crm.omnichannel.handoff"
+    ],
+    depends_on_workflows: ["crm.omnichannel.channel_intake"],
+    artifacts: [
+      "crm_omnichannel_center_snapshot",
+      "crm_unified_conversation",
+      "crm_channel_identity_map",
+      "crm_support_queue_snapshot"
+    ],
+    events: ["crm.omnichannel.center_snapshot", "crm.conversation.unified", "crm.channel.identity_mapped"],
+    memory_scopes: ["organization", "project", "processing"],
+    permissions: ["crm.omnichannel.ingest", "crm.workflow.mutate"],
+    views: ["crm.support-queue"],
+    validation_gates: [
+      "omnichannel center state is sourced from Forge artifacts and events",
+      "approved channel intake is required before conversation unification",
+      "conversation lineage cites channel receipts and identity evidence"
+    ]
   },
   {
     id: "crm.campaign.lifecycle",

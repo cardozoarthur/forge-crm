@@ -304,11 +304,13 @@
       ],
       "workflow_extensions": [
         "crm_omnichannel_channel_intake",
+        "crm_omnichannel_center",
         "crm_ticket_sla",
         "crm_omnichannel_message"
       ],
       "deliverables": [
         "Support queue",
+        "Unified omnichannel center",
         "SLA workflow",
         "Channel handoff history",
         "Channel intake receipts"
@@ -319,6 +321,10 @@
       ],
       "artifact_types": [
         "crm_channel_intake",
+        "crm_omnichannel_center_snapshot",
+        "crm_unified_conversation",
+        "crm_channel_identity_map",
+        "crm_support_queue_snapshot",
         "crm_support_summary",
         "crm_message_thread",
         "crm_channel_receipt"
@@ -614,6 +620,11 @@
       "id": "crm_omnichannel_channel_intake",
       "kind": "event_workflow",
       "description": "Normalize approved chat, WhatsApp, Telegram and email adapter events before ticket creation."
+    },
+    {
+      "id": "crm_omnichannel_center",
+      "kind": "support_workflow",
+      "description": "Unify channel threads, identities and support queue state through Forge-owned omnichannel center artifacts."
     },
     {
       "id": "crm_omnichannel_message",
@@ -1566,6 +1577,36 @@
       ]
     },
     {
+      "id": "crm.support.omnichannel_center.executor",
+      "title": "CRM omnichannel conversation center",
+      "contract_type": "executor",
+      "capability_id": "crm_support_omnichannel",
+      "workflow_extension_id": "crm_omnichannel_center",
+      "runtime": "external_api",
+      "entrypoint": "forge_crm.unify_omnichannel_center",
+      "inputs": [
+        "channel_threads",
+        "identity_records",
+        "routing_policy",
+        "tenant_context"
+      ],
+      "outputs": [
+        "crm_omnichannel_center_snapshot",
+        "crm_unified_conversation",
+        "crm_channel_identity_map",
+        "crm_support_queue_snapshot"
+      ],
+      "permissions": [
+        "crm.omnichannel.ingest",
+        "crm.workflow.mutate"
+      ],
+      "constraints": [
+        "omnichannel center unification does not persist CRM state outside Forge",
+        "approved channel intake must exist before conversation unification",
+        "conversation lineage must remain attached to Forge artifacts and events"
+      ]
+    },
+    {
       "id": "crm.support.omnichannel_message.executor",
       "title": "CRM omnichannel message ingestion",
       "contract_type": "executor",
@@ -2016,6 +2057,50 @@
             "provider_event",
             "channel_policy",
             "routing_policy"
+          ]
+        },
+        {
+          "id": "crm.tui.run-omnichannel-center",
+          "label": "Run omnichannel center",
+          "description": "Unify channel threads and identities into a Forge-owned support queue snapshot.",
+          "palette_group": "CRM",
+          "source_panel": "crm.operational-cockpit",
+          "type": "command",
+          "target": "forge addons execute-executor",
+          "method": "CLI",
+          "permission": "crm.omnichannel.ingest",
+          "requires_confirmation": true,
+          "risk_level": "high",
+          "mutates_workflow": true,
+          "command_template": [
+            "addons",
+            "execute-executor",
+            "--addon",
+            "forge.addon.crm",
+            "--contract",
+            "crm.support.omnichannel_center.executor",
+            "--worker",
+            "<worker-id>",
+            "--task",
+            "<task-ref>",
+            "--input",
+            "<json>",
+            "--context",
+            "<json>",
+            "--output",
+            "json"
+          ],
+          "keywords": [
+            "crm",
+            "support",
+            "omnichannel",
+            "conversation"
+          ],
+          "payload_schema": [
+            "channel_threads",
+            "identity_records",
+            "routing_policy",
+            "tenant_context"
           ]
         },
         {
@@ -2877,6 +2962,26 @@
       "generic_kind": "artifact"
     },
     {
+      "id": "crm_omnichannel_center_snapshot",
+      "title": "CRM omnichannel center snapshot",
+      "generic_kind": "report"
+    },
+    {
+      "id": "crm_unified_conversation",
+      "title": "CRM unified conversation",
+      "generic_kind": "message"
+    },
+    {
+      "id": "crm_channel_identity_map",
+      "title": "CRM channel identity map",
+      "generic_kind": "artifact"
+    },
+    {
+      "id": "crm_support_queue_snapshot",
+      "title": "CRM support queue snapshot",
+      "generic_kind": "report"
+    },
+    {
       "id": "crm_email",
       "title": "CRM email",
       "generic_kind": "message"
@@ -3124,6 +3229,11 @@
       "transport": "crm"
     },
     {
+      "id": "crm.conversation",
+      "title": "CRM unified conversation event",
+      "transport": "crm"
+    },
+    {
       "id": "crm.ticket",
       "title": "CRM ticket event",
       "transport": "crm"
@@ -3279,6 +3389,7 @@
       ],
       "event_types": [
         "crm.message",
+        "crm.conversation",
         "crm.ticket",
         "crm.sla"
       ],
@@ -3361,6 +3472,25 @@
       ]
     },
     {
+      "id": "crm.conversation.unified",
+      "title": "CRM conversation unified",
+      "event_type": "crm.conversation",
+      "channel": "crm.omnichannel.inbox",
+      "adapter_id": "crm.omnichannel.route",
+      "workflow_extension_id": "crm_omnichannel_center",
+      "capability_id": "crm_support_omnichannel",
+      "actions": [
+        "continue_workflow"
+      ],
+      "conditions": [
+        "payload.unified_conversation present",
+        "payload.identity_map present"
+      ],
+      "permissions": [
+        "crm.omnichannel.ingest"
+      ]
+    },
+    {
       "id": "crm.ticket.created",
       "title": "CRM ticket created",
       "event_type": "crm.ticket",
@@ -3434,6 +3564,23 @@
       "permissions": [
         "crm.omnichannel.ingest"
       ]
+    },
+    {
+      "id": "crm.conversation.listener",
+      "title": "CRM conversation listener",
+      "event_type": "crm.conversation",
+      "channel": "crm.omnichannel.inbox",
+      "adapter_id": "crm.omnichannel.route",
+      "workflow_extension_id": "crm_omnichannel_center",
+      "capability_id": "crm_support_omnichannel",
+      "handler": "forge.event_inbox.route",
+      "runtime_contract_id": "crm.support.omnichannel_center.executor",
+      "actions": [
+        "continue_workflow"
+      ],
+      "permissions": [
+        "crm.omnichannel.ingest"
+      ]
     }
   ],
   "event_adapters": [
@@ -3492,6 +3639,7 @@
       ],
       "event_types": [
         "crm.message",
+        "crm.conversation",
         "crm.ticket",
         "crm.sla"
       ],

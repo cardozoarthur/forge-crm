@@ -103,6 +103,7 @@ try {
       "forge_crm.publish_landing_page",
       "forge_crm.capture_form_submission",
       "forge_crm.normalize_channel_intake",
+      "forge_crm.unify_omnichannel_center",
       "forge_crm.ingest_omnichannel_message",
       "forge_crm.triage_ticket_sla",
       "forge_crm.plan_project_handoff",
@@ -138,6 +139,7 @@ try {
       "crm.marketing.landing_page.executor",
       "crm.marketing.form_capture.executor",
       "crm.support.channel_intake.executor",
+      "crm.support.omnichannel_center.executor",
       "crm.support.omnichannel_message.executor",
       "crm.support.ticket_sla.executor",
       "crm.operations.project_handoff.executor",
@@ -1612,6 +1614,90 @@ try {
     throw new Error(`expected omnichannel ingestion ticket_state received, got ${omnichannelIngestion.executor_result.outputs.ticket_state}`);
   }
 
+  const omnichannelCenter = runForge([
+    "addons",
+    "execute-executor",
+    "--addon-dir",
+    "addons",
+    "--addon",
+    "forge.addon.crm",
+    "--contract",
+    "crm.support.omnichannel_center.executor",
+    "--worker",
+    workerId,
+    "--task",
+    "crm-smoke-omnichannel-center",
+    "--workflow",
+    workflowId,
+    "--input",
+    JSON.stringify({
+      tenant_context: { id: "smoke", tenant_id: "smoke" },
+      channel_threads: [
+        {
+          id: "thread-smoke-whatsapp",
+          channel: "whatsapp",
+          provider: "whatsapp-cloud",
+          customer_ref: "+15551234567",
+          account_id: "account-smoke",
+          subject: "Operations blocked",
+          message_count: 2,
+          last_message_at: "2026-07-04T11:30:00Z",
+          ticket_id: "ticket-smoke-001"
+        },
+        {
+          id: "thread-smoke-telegram",
+          channel: "telegram",
+          provider: "telegram-bot-api",
+          customer_ref: "@opslead",
+          account_id: "account-smoke",
+          subject: "Support escalation",
+          message_count: 1,
+          last_message_at: "2026-07-04T11:35:00Z"
+        },
+        {
+          id: "thread-smoke-email",
+          channel: "email",
+          provider: "smtp",
+          customer_ref: "ops@example.test",
+          account_id: "account-smoke",
+          subject: "Follow-up operations blocked",
+          message_count: 1,
+          last_message_at: "2026-07-04T11:40:00Z"
+        }
+      ],
+      identity_records: [
+        {
+          account_id: "account-smoke",
+          contact_id: "contact-smoke",
+          channels: ["whatsapp", "telegram", "email"],
+          confidence: 0.91
+        }
+      ],
+      routing_policy: {
+        default_queue: "support",
+        escalation_queue: "support-escalation",
+        unify_by: ["account_id", "contact_id"],
+        require_approved_intake: true
+      }
+    }),
+    "--context",
+    JSON.stringify({ tenant: "smoke" }),
+    "--output",
+    "json"
+  ]);
+
+  if (omnichannelCenter.promotion?.status !== "addon_executor_result_promoted") {
+    throw new Error(`expected omnichannel center promotion, got ${omnichannelCenter.promotion?.status || "missing"}`);
+  }
+  if (omnichannelCenter.executor_result.outputs.center_state !== "routing_ready") {
+    throw new Error(`expected omnichannel center routing_ready, got ${omnichannelCenter.executor_result.outputs.center_state}`);
+  }
+  if (omnichannelCenter.executor_result.outputs.unified_conversation_count !== 1) {
+    throw new Error(
+      `expected one unified conversation, got ${omnichannelCenter.executor_result.outputs.unified_conversation_count}`
+    );
+  }
+
   const ticketSla = runForge([
     "addons",
     "execute-executor",
@@ -1877,6 +1963,8 @@ try {
   const channelIntakePromotedEventCount = channelIntake.promotion?.event_count ?? 0;
   const omnichannelIngestionPromotedArtifactCount = omnichannelIngestion.promotion?.artifact_count ?? 0;
   const omnichannelIngestionPromotedEventCount = omnichannelIngestion.promotion?.event_count ?? 0;
+  const omnichannelCenterPromotedArtifactCount = omnichannelCenter.promotion?.artifact_count ?? 0;
+  const omnichannelCenterPromotedEventCount = omnichannelCenter.promotion?.event_count ?? 0;
   const ticketSlaPromotedArtifactCount = ticketSla.promotion?.artifact_count ?? 0;
   const ticketSlaPromotedEventCount = ticketSla.promotion?.event_count ?? 0;
   const operationsPromotedArtifactCount = operationsProjectHandoff.promotion?.artifact_count ?? 0;
@@ -2156,6 +2244,16 @@ try {
     );
   }
   for (const eventKind of ["crm.message.received", "crm.ticket.created"]) {
+    if (!workflowEventKinds.includes(eventKind)) {
+      throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
+    }
+  }
+  if (omnichannelCenterPromotedArtifactCount < 4 || omnichannelCenterPromotedEventCount < 3) {
+    throw new Error(
+      `expected promoted omnichannel center artifacts/events, got artifacts=${omnichannelCenterPromotedArtifactCount} events=${omnichannelCenterPromotedEventCount}`
+    );
+  }
+  for (const eventKind of ["crm.omnichannel.center_snapshot", "crm.conversation.unified", "crm.channel.identity_mapped"]) {
     if (!workflowEventKinds.includes(eventKind)) {
       throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
     }
@@ -2456,6 +2554,13 @@ try {
     omnichannel_ingestion_ticket_state: omnichannelIngestion.executor_result.outputs.ticket_state,
     omnichannel_ingestion_promoted_artifacts: omnichannelIngestionPromotedArtifactCount,
     omnichannel_ingestion_promoted_events: omnichannelIngestionPromotedEventCount,
+    omnichannel_center_status: omnichannelCenter.status,
+    omnichannel_center_promotion_status: omnichannelCenter.promotion.status,
+    omnichannel_center_state: omnichannelCenter.executor_result.outputs.center_state,
+    omnichannel_center_owner_queue: omnichannelCenter.executor_result.outputs.owner_queue,
+    omnichannel_center_unified_conversations: omnichannelCenter.executor_result.outputs.unified_conversation_count,
+    omnichannel_center_promoted_artifacts: omnichannelCenterPromotedArtifactCount,
+    omnichannel_center_promoted_events: omnichannelCenterPromotedEventCount,
     ticket_sla_status: ticketSla.status,
     ticket_sla_promotion_status: ticketSla.promotion.status,
     ticket_sla_state: ticketSla.executor_result.outputs.sla_state,
