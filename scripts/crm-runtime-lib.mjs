@@ -823,6 +823,165 @@ export function buildDocumentValidatorResult(request) {
   };
 }
 
+function campaignId(campaign, fallback = "crm-campaign") {
+  return String(campaign.id || campaign.campaign_id || campaign.name || fallback);
+}
+
+function segmentId(segment, fallback = "crm-segment") {
+  return String(segment.id || segment.segment_id || segment.name || fallback);
+}
+
+export function buildMarketingCampaignAutomationResult(request) {
+  const input = dispatchPayload(request);
+  const context = providedContext(request);
+  const tenantId = input.tenant_id || input.tenant_context?.tenant_id || input.tenant_context?.id || context.tenant || "default";
+  const campaign = asObject(input.campaign);
+  const segment = asObject(input.segment ?? input.audience_segment);
+  const assets = asArray(input.assets ?? input.approved_assets);
+  const nurturePolicy = asObject(input.nurture_policy ?? input.automation_policy);
+  const id = campaignId(campaign, dispatchEnvelope(request).task_ref || "campaign");
+  const audienceSegmentId = segmentId(segment, "segment");
+  const workflowId = String(input.workflow_id || "crm.campaign.lifecycle");
+  const nurtureWorkflowId = String(input.nurture_workflow_id || "crm.lead.nurture");
+  const taskRef = dispatchEnvelope(request).task_ref || `automate-campaign-${slug(id, "campaign")}`;
+  const channels = unique(asArray(campaign.channels ?? input.channels).map((channel) => String(channel))).filter(Boolean);
+  const leadIds = unique(asArray(segment.lead_ids ?? input.lead_ids).map((lead) => String(lead))).filter(Boolean);
+  const scheduledAt = campaign.scheduled_at || input.scheduled_at || nurturePolicy.scheduled_at || "forge_schedule_pending";
+  const waitMinutes = numberFrom(nurturePolicy.wait_minutes ?? nurturePolicy.step_wait_minutes, 1440);
+  const maxSteps = Math.max(1, numberFrom(nurturePolicy.max_steps ?? nurturePolicy.steps, 3));
+  const approvedAssetCount = assets.filter((asset) => asObject(asset).approval_state === "approved" || asObject(asset).approved === true).length;
+  const scheduledState = approvedAssetCount === assets.length && assets.length > 0 ? "scheduled" : "approval_wait";
+  const lineage = {
+    workflow_id: workflowId,
+    nurture_workflow_id: nurtureWorkflowId,
+    task_ref: taskRef,
+    source_contract: "crm.marketing.campaign_automation.executor",
+    tenant_id: tenantId,
+    campaign_id: id,
+    segment_id: audienceSegmentId
+  };
+  const campaignArtifactId = `campaign-${slug(id, "campaign")}`;
+  const segmentArtifactId = `segment-${slug(audienceSegmentId, "segment")}`;
+  const automationPlanId = `automation-plan-${slug(id, "campaign")}`;
+
+  return {
+    schema_version: "forge.addon_executor_result.v1",
+    status: "completed",
+    task_ref: taskRef,
+    summary: `Campaign ${id} scheduled for segment ${audienceSegmentId} through Forge marketing workflows`,
+    outputs: {
+      tenant_id: tenantId,
+      campaign_id: id,
+      segment_id: audienceSegmentId,
+      workflow_id: workflowId,
+      nurture_workflow_id: nurtureWorkflowId,
+      scheduled_state: scheduledState,
+      scheduled_at: scheduledAt,
+      lead_count: leadIds.length,
+      channel_count: channels.length,
+      nurture_step_count: maxSteps,
+      mutates_crm_state: false,
+      forge_event_sourced: true
+    },
+    artifacts: [
+      {
+        kind: "crm_campaign",
+        id: campaignArtifactId,
+        title: `Campaign plan for ${campaign.name || id}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          campaign_id: id,
+          campaign,
+          channels,
+          assets,
+          scheduled_state: scheduledState,
+          scheduled_at: scheduledAt,
+          lineage,
+          state_owner: "forge_workflow_runtime",
+          external_database_required: false
+        }
+      },
+      {
+        kind: "crm_segment",
+        id: segmentArtifactId,
+        title: `Segment ${segment.name || audienceSegmentId}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          segment_id: audienceSegmentId,
+          segment,
+          lead_ids: leadIds,
+          criteria: asObject(segment.criteria),
+          lineage,
+          mutation_policy: "segment membership changes must be promoted by Forge workflow events"
+        }
+      },
+      {
+        kind: "crm_automation_plan",
+        id: automationPlanId,
+        title: `Nurture automation plan for ${id}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          campaign_id: id,
+          segment_id: audienceSegmentId,
+          workflow_id: workflowId,
+          nurture_workflow_id: nurtureWorkflowId,
+          sequence_id: nurturePolicy.sequence_id || `nurture-${slug(id, "campaign")}`,
+          wait_minutes: waitMinutes,
+          max_steps: maxSteps,
+          next_wait_state: "wait_step",
+          delivery_policy: "external sends require Forge approval and approved handoff contract",
+          lineage
+        }
+      },
+      {
+        kind: "crm_landing_page",
+        id: `landing-page-${slug(id, "campaign")}`,
+        title: `Landing page routing for ${campaign.name || id}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          campaign_id: id,
+          segment_id: audienceSegmentId,
+          form_policy: "form submissions enter crm.lead.lifecycle through Forge events",
+          approved_assets: assets,
+          lineage
+        }
+      }
+    ],
+    events: [
+      {
+        kind: "crm.campaign.created",
+        tenant_id: tenantId,
+        campaign_id: id,
+        segment_id: audienceSegmentId,
+        workflow_id: workflowId
+      },
+      {
+        kind: "crm.campaign.scheduled",
+        tenant_id: tenantId,
+        campaign_id: id,
+        segment_id: audienceSegmentId,
+        scheduled_at: scheduledAt,
+        scheduled_state: scheduledState,
+        workflow_id: workflowId
+      },
+      {
+        kind: "crm.nurture.step_due",
+        tenant_id: tenantId,
+        campaign_id: id,
+        segment_id: audienceSegmentId,
+        lead_count: leadIds.length,
+        wait_minutes: waitMinutes,
+        workflow_id: nurtureWorkflowId
+      }
+    ],
+    context_tenant: context.tenant || tenantId
+  };
+}
+
 function ticketId(ticket, fallback = "crm-ticket") {
   return String(ticket.id || ticket.ticket_id || fallback);
 }
@@ -1078,6 +1237,8 @@ export function executeCrmRuntimeRequest(request) {
       return buildDocumentGeneratorResult(request);
     case "forge_crm.validate_document":
       return buildDocumentValidatorResult(request);
+    case "forge_crm.automate_campaign":
+      return buildMarketingCampaignAutomationResult(request);
     case "forge_crm.triage_ticket_sla":
       return buildTicketSlaResult(request);
     case "forge_crm.deliver_handoff":

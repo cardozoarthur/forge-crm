@@ -133,3 +133,22 @@ test("support workflow routes ticket SLA triage through Forge", () => {
   assert.ok(workflow.events.includes("crm.sla.escalated"));
   assert.ok(pack.indexes.runtime_contracts.includes("crm.support.ticket_sla.executor"));
 });
+
+test("marketing workflows route campaign automation and nurture through Forge", () => {
+  const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
+
+  for (const workflowId of ["crm.campaign.lifecycle", "crm.lead.nurture"]) {
+    const workflow = pack.workflows.find((candidate) => candidate.id === workflowId);
+    assert.ok(workflow, `missing workflow ${workflowId}`);
+    assert.ok(
+      workflow.runtime_contracts.includes("crm.marketing.campaign_automation.executor"),
+      `${workflowId} must route campaign automation through Forge`
+    );
+  }
+
+  const campaignWorkflow = pack.workflows.find((candidate) => candidate.id === "crm.campaign.lifecycle");
+  assert.ok(campaignWorkflow.artifacts.includes("crm_segment"));
+  assert.ok(campaignWorkflow.artifacts.includes("crm_automation_plan"));
+  assert.ok(campaignWorkflow.events.includes("crm.campaign.scheduled"));
+  assert.ok(pack.indexes.runtime_contracts.includes("crm.marketing.campaign_automation.executor"));
+});

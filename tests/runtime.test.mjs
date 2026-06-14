@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import http from "node:http";
 import test from "node:test";
+import * as runtime from "../scripts/crm-runtime-lib.mjs";
 import {
   buildTenantBootstrapResult,
   buildDocumentGeneratorResult,
@@ -369,6 +370,62 @@ test("ticket SLA executor triages omnichannel tickets as Forge workflow artifact
   assert.ok(result.events.some((event) => event.kind === "crm.message.received"));
   assert.ok(result.events.some((event) => event.kind === "crm.ticket.created"));
   assert.ok(result.events.some((event) => event.kind === "crm.sla.escalated"));
+});
+
+test("marketing campaign automation executor schedules nurture workflows as Forge artifacts", () => {
+  assert.equal(typeof runtime.buildMarketingCampaignAutomationResult, "function");
+
+  const result = runtime.buildMarketingCampaignAutomationResult(
+    workerRequest(
+      "forge_crm.automate_campaign",
+      {
+        tenant_context: { tenant_id: "demo" },
+        campaign: {
+          id: "campaign-001",
+          name: "Enterprise workflow CRM launch",
+          goal: "Create enterprise pipeline",
+          channels: ["email", "landing_page", "telegram"],
+          scheduled_at: "2026-07-01T13:00:00Z"
+        },
+        segment: {
+          id: "segment-enterprise-ops",
+          name: "Enterprise operations leaders",
+          criteria: { company_size_min: 500, roles: ["COO", "Head of Operations"] },
+          lead_ids: ["lead-001", "lead-002", "lead-003"]
+        },
+        assets: [
+          { id: "email-001", kind: "crm_email", approval_state: "approved" },
+          { id: "lp-001", kind: "crm_landing_page", approval_state: "approved" }
+        ],
+        nurture_policy: {
+          sequence_id: "nurture-enterprise-ops",
+          wait_minutes: 1440,
+          max_steps: 3
+        }
+      },
+      { contract_id: "crm.marketing.campaign_automation.executor", task_ref: "campaign-automation-test" }
+    )
+  );
+
+  assert.equal(result.schema_version, "forge.addon_executor_result.v1");
+  assert.equal(result.status, "completed");
+  assert.equal(result.outputs.tenant_id, "demo");
+  assert.equal(result.outputs.campaign_id, "campaign-001");
+  assert.equal(result.outputs.segment_id, "segment-enterprise-ops");
+  assert.equal(result.outputs.workflow_id, "crm.campaign.lifecycle");
+  assert.equal(result.outputs.nurture_workflow_id, "crm.lead.nurture");
+  assert.equal(result.outputs.scheduled_state, "scheduled");
+  assert.equal(result.outputs.lead_count, 3);
+  assert.equal(result.outputs.mutates_crm_state, false);
+  assert.equal(result.outputs.forge_event_sourced, true);
+
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_campaign"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_segment"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_automation_plan"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_landing_page"));
+  assert.ok(result.events.some((event) => event.kind === "crm.campaign.created"));
+  assert.ok(result.events.some((event) => event.kind === "crm.campaign.scheduled"));
+  assert.ok(result.events.some((event) => event.kind === "crm.nurture.step_due"));
 });
 
 test("omnichannel handoff requires approval before delivery", () => {

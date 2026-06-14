@@ -83,6 +83,7 @@ try {
       "forge_crm.generate_proposal",
       "forge_crm.generate_document",
       "forge_crm.validate_document",
+      "forge_crm.automate_campaign",
       "forge_crm.triage_ticket_sla",
       "forge_crm.deliver_handoff"
     ],
@@ -96,6 +97,7 @@ try {
       "crm.proposal.generator.executor",
       "crm.document.generator.executor",
       "crm.document.validator",
+      "crm.marketing.campaign_automation.executor",
       "crm.support.ticket_sla.executor",
       "crm.omnichannel.handoff"
     ],
@@ -366,6 +368,60 @@ try {
     throw new Error("expected generated documents to block external delivery before approval");
   }
 
+  const marketingAutomation = runForge([
+    "addons",
+    "execute-executor",
+    "--addon-dir",
+    "addons",
+    "--addon",
+    "forge.addon.crm",
+    "--contract",
+    "crm.marketing.campaign_automation.executor",
+    "--worker",
+    workerId,
+    "--task",
+    "crm-smoke-marketing-automation",
+    "--workflow",
+    workflowId,
+    "--input",
+    JSON.stringify({
+      tenant_context: { id: "smoke", tenant_id: "smoke" },
+      campaign: {
+        id: "campaign-smoke",
+        name: "Workflow CRM launch",
+        goal: "Create enterprise pipeline",
+        channels: ["email", "landing_page", "telegram"],
+        scheduled_at: "2026-07-01T13:00:00Z"
+      },
+      segment: {
+        id: "segment-smoke-enterprise",
+        name: "Enterprise operations leaders",
+        criteria: { company_size_min: 500, roles: ["COO", "Head of Operations"] },
+        lead_ids: ["lead-smoke-001", "lead-smoke-002", "lead-smoke-003"]
+      },
+      assets: [
+        { id: "email-smoke", kind: "crm_email", approval_state: "approved" },
+        { id: "landing-smoke", kind: "crm_landing_page", approval_state: "approved" }
+      ],
+      nurture_policy: {
+        sequence_id: "nurture-smoke-enterprise",
+        wait_minutes: 1440,
+        max_steps: 3
+      }
+    }),
+    "--context",
+    JSON.stringify({ tenant: "smoke" }),
+    "--output",
+    "json"
+  ]);
+
+  if (marketingAutomation.promotion?.status !== "addon_executor_result_promoted") {
+    throw new Error(`expected marketing automation promotion, got ${marketingAutomation.promotion?.status || "missing"}`);
+  }
+  if (marketingAutomation.executor_result.outputs.scheduled_state !== "scheduled") {
+    throw new Error(`expected marketing automation scheduled state, got ${marketingAutomation.executor_result.outputs.scheduled_state}`);
+  }
+
   const ticketSla = runForge([
     "addons",
     "execute-executor",
@@ -434,6 +490,8 @@ try {
   const relationshipPromotedEventCount = relationshipTimeline.promotion?.event_count ?? 0;
   const documentPromotedArtifactCount = documentGenerator.promotion?.artifact_count ?? 0;
   const documentPromotedEventCount = documentGenerator.promotion?.event_count ?? 0;
+  const marketingPromotedArtifactCount = marketingAutomation.promotion?.artifact_count ?? 0;
+  const marketingPromotedEventCount = marketingAutomation.promotion?.event_count ?? 0;
   const ticketSlaPromotedArtifactCount = ticketSla.promotion?.artifact_count ?? 0;
   const ticketSlaPromotedEventCount = ticketSla.promotion?.event_count ?? 0;
   const workflowArtifactCount = workflowArtifacts.artifacts?.length ?? 0;
@@ -490,6 +548,16 @@ try {
   }
   if (!workflowEventKinds.includes("crm.document.generated")) {
     throw new Error(`expected document generation event in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
+  }
+  if (marketingPromotedArtifactCount < 4 || marketingPromotedEventCount < 3) {
+    throw new Error(
+      `expected promoted marketing automation artifacts/events, got artifacts=${marketingPromotedArtifactCount} events=${marketingPromotedEventCount}`
+    );
+  }
+  for (const eventKind of ["crm.campaign.created", "crm.campaign.scheduled", "crm.nurture.step_due"]) {
+    if (!workflowEventKinds.includes(eventKind)) {
+      throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
+    }
   }
   if (ticketSlaPromotedArtifactCount < 2 || ticketSlaPromotedEventCount < 3) {
     throw new Error(
@@ -642,6 +710,11 @@ try {
     document_generator_document_id: documentGenerator.executor_result.outputs.document_id,
     document_generator_promoted_artifacts: documentPromotedArtifactCount,
     document_generator_promoted_events: documentPromotedEventCount,
+    marketing_automation_status: marketingAutomation.status,
+    marketing_automation_promotion_status: marketingAutomation.promotion.status,
+    marketing_automation_scheduled_state: marketingAutomation.executor_result.outputs.scheduled_state,
+    marketing_automation_promoted_artifacts: marketingPromotedArtifactCount,
+    marketing_automation_promoted_events: marketingPromotedEventCount,
     ticket_sla_status: ticketSla.status,
     ticket_sla_promotion_status: ticketSla.promotion.status,
     ticket_sla_state: ticketSla.executor_result.outputs.sla_state,

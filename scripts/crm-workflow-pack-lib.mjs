@@ -168,9 +168,9 @@ const WORKFLOWS = [
       ["scheduled", "running", "schedule due"],
       ["running", "reported", "campaign report attached"]
     ],
-    runtime_contracts: ["crm.document.generator.executor", "crm.document.validator"],
-    artifacts: ["crm_campaign", "crm_email", "crm_landing_page", "crm_presentation", "crm_report"],
-    events: ["crm.document.generated", "crm.campaign.created", "crm.campaign.scheduled", "crm.campaign.reported"],
+    runtime_contracts: ["crm.marketing.campaign_automation.executor", "crm.document.generator.executor", "crm.document.validator"],
+    artifacts: ["crm_campaign", "crm_segment", "crm_automation_plan", "crm_email", "crm_landing_page", "crm_presentation", "crm_report"],
+    events: ["crm.document.generated", "crm.campaign.created", "crm.campaign.scheduled", "crm.nurture.step_due", "crm.campaign.reported"],
     memory_scopes: ["organization", "project"],
     permissions: ["crm.workflow.mutate", "crm.document.generate"],
     views: ["crm.marketing-calendar"],
@@ -190,8 +190,8 @@ const WORKFLOWS = [
       ["approval_wait", "sent", "approval passed"],
       ["sent", "qualified_or_exit", "response classified"]
     ],
-    runtime_contracts: ["crm.lead.classifier.executor", "crm.omnichannel.handoff"],
-    artifacts: ["crm_email", "crm_ai_recommendation"],
+    runtime_contracts: ["crm.marketing.campaign_automation.executor", "crm.lead.classifier.executor", "crm.omnichannel.handoff"],
+    artifacts: ["crm_automation_plan", "crm_email", "crm_ai_recommendation"],
     events: ["crm.nurture.step_due", "crm.nurture.message_sent", "crm.lead.requalified"],
     memory_scopes: ["organization", "processing"],
     permissions: ["crm.workflow.mutate", "crm.omnichannel.ingest"],

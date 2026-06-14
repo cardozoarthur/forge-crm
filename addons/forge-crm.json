@@ -306,6 +306,8 @@
       ],
       "artifact_types": [
         "crm_campaign",
+        "crm_segment",
+        "crm_automation_plan",
         "crm_email",
         "crm_landing_page",
         "crm_presentation"
@@ -712,6 +714,37 @@
       ]
     },
     {
+      "id": "crm.marketing.campaign_automation.executor",
+      "title": "CRM campaign automation",
+      "contract_type": "executor",
+      "capability_id": "crm_marketing_automation",
+      "workflow_extension_id": "crm_campaign_lifecycle",
+      "runtime": "external_api",
+      "entrypoint": "forge_crm.automate_campaign",
+      "inputs": [
+        "campaign",
+        "segment",
+        "assets",
+        "nurture_policy",
+        "tenant_context"
+      ],
+      "outputs": [
+        "crm_campaign",
+        "crm_segment",
+        "crm_automation_plan",
+        "crm_landing_page"
+      ],
+      "permissions": [
+        "crm.workflow.mutate",
+        "crm.document.generate"
+      ],
+      "constraints": [
+        "campaign automation does not persist CRM state outside Forge",
+        "campaign scheduling and nurture steps must be represented as Forge workflow events",
+        "external sends require approved handoff or document delivery workflow"
+      ]
+    },
+    {
       "id": "crm.support.ticket_sla.executor",
       "title": "CRM ticket SLA triage",
       "contract_type": "executor",
@@ -1050,6 +1083,16 @@
       "generic_kind": "campaign"
     },
     {
+      "id": "crm_segment",
+      "title": "CRM segment",
+      "generic_kind": "artifact"
+    },
+    {
+      "id": "crm_automation_plan",
+      "title": "CRM automation plan",
+      "generic_kind": "artifact"
+    },
+    {
       "id": "crm_email",
       "title": "CRM email",
       "generic_kind": "message"
@@ -1125,6 +1168,11 @@
       "id": "crm.campaign",
       "title": "CRM campaign event",
       "transport": "crm"
+    },
+    {
+      "id": "crm.nurture",
+      "title": "CRM nurture event",
+      "transport": "crm"
     }
   ],
   "event_channels": [
@@ -1146,7 +1194,8 @@
         "crm.opportunity",
         "crm.relationship",
         "crm.document",
-        "crm.campaign"
+        "crm.campaign",
+        "crm.nurture"
       ],
       "schema": "forge.crm.webhook.v1",
       "auth": "forge_policy",
@@ -1194,6 +1243,7 @@
       "event_types": [
         "crm.opportunity",
         "crm.campaign",
+        "crm.nurture",
         "crm.ticket"
       ],
       "schema": "forge.crm.schedule.v1",
@@ -1338,7 +1388,8 @@
         "crm.opportunity",
         "crm.relationship",
         "crm.document",
-        "crm.campaign"
+        "crm.campaign",
+        "crm.nurture"
       ],
       "schema": "forge.crm.webhook.v1",
       "auth": "forge_policy",

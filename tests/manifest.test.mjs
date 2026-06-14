@@ -127,6 +127,25 @@ test("manifest exposes CRM ticket SLA triage as a Forge-owned executor", () => {
   assert.ok(contract.constraints.some((constraint) => constraint.includes("SLA wait")));
 });
 
+test("manifest exposes CRM marketing campaign automation as a Forge-owned executor", () => {
+  const contract = manifest.runtime_contracts.find((candidate) => candidate.id === "crm.marketing.campaign_automation.executor");
+  assert.ok(contract);
+  assert.equal(contract.contract_type, "executor");
+  assert.equal(contract.capability_id, "crm_marketing_automation");
+  assert.equal(contract.workflow_extension_id, "crm_campaign_lifecycle");
+  assert.equal(contract.entrypoint, "forge_crm.automate_campaign");
+  assert.deepEqual(contract.permissions, ["crm.workflow.mutate", "crm.document.generate"]);
+  assert.ok(contract.outputs.includes("crm_campaign"));
+  assert.ok(contract.outputs.includes("crm_segment"));
+  assert.ok(contract.outputs.includes("crm_automation_plan"));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("does not persist")));
+  assert.ok(contract.constraints.some((constraint) => constraint.includes("nurture")));
+
+  const artifactTypes = new Set(manifest.artifact_types.map((artifact) => artifact.id));
+  assert.ok(artifactTypes.has("crm_segment"));
+  assert.ok(artifactTypes.has("crm_automation_plan"));
+});
+
 test("manifest declares the CRM web application entrypoint as an Addon view asset", () => {
   const systemMap = manifest.views.find((view) => view.id === "crm.system-map");
   assert.ok(systemMap);

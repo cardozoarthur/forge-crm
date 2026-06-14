@@ -27,7 +27,7 @@ Forge CRM is a product proof for Forge as a factory/framework for agentic workfl
 
 No important CRM automation should bypass Forge. External tools may execute bounded work, but Forge owns the workflow, state transitions, approvals, memory scope, artifact attachment, event history and validation gates.
 
-The current CRM worker exposes eleven Forge runtime entrypoints:
+The current CRM worker exposes twelve Forge runtime entrypoints:
 
 - `forge_crm.plan_system` for CRM system planning;
 - `forge_crm.bootstrap_tenant` for a Forge-owned tenant workflow pack;
@@ -38,6 +38,7 @@ The current CRM worker exposes eleven Forge runtime entrypoints:
 - `forge_crm.generate_proposal` for draft proposal artifacts;
 - `forge_crm.generate_document` for contract, campaign, email, landing page, report and presentation drafts;
 - `forge_crm.validate_document` for approval and lineage checks;
+- `forge_crm.automate_campaign` for segment-backed campaign scheduling and lead nurture workflow events;
 - `forge_crm.triage_ticket_sla` for ticket intake, SLA state and support routing artifacts;
 - `forge_crm.deliver_handoff` for approved omnichannel handoff receipts.
 

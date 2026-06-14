@@ -26,7 +26,7 @@
     "workflow_count": 11,
     "business_module_count": 6,
     "surface_count": 8,
-    "artifact_type_count": 13,
+    "artifact_type_count": 15,
     "event_type_count": 33,
     "complete_scope": true
   },
@@ -214,11 +214,13 @@
       ],
       "artifact_types": [
         "crm_ai_recommendation",
+        "crm_automation_plan",
         "crm_campaign",
         "crm_email",
         "crm_landing_page",
         "crm_presentation",
-        "crm_report"
+        "crm_report",
+        "crm_segment"
       ],
       "event_types": [
         "crm.campaign.created",
@@ -351,6 +353,7 @@
       ],
       "artifact_types": [
         "crm_ai_recommendation",
+        "crm_automation_plan",
         "crm_contract",
         "crm_document",
         "crm_email",
@@ -421,11 +424,13 @@
       ],
       "artifact_types": [
         "crm_ai_recommendation",
+        "crm_automation_plan",
         "crm_campaign",
         "crm_email",
         "crm_landing_page",
         "crm_presentation",
-        "crm_report"
+        "crm_report",
+        "crm_segment"
       ],
       "event_types": [
         "crm.campaign.created",
@@ -748,11 +753,14 @@
           "approval_wait"
         ],
         "runtime_contracts": [
+          "crm.marketing.campaign_automation.executor",
           "crm.document.generator.executor",
           "crm.document.validator"
         ],
         "artifact_types": [
           "crm_campaign",
+          "crm_segment",
+          "crm_automation_plan",
           "crm_email",
           "crm_landing_page",
           "crm_presentation",
@@ -762,6 +770,7 @@
           "crm.document.generated",
           "crm.campaign.created",
           "crm.campaign.scheduled",
+          "crm.nurture.step_due",
           "crm.campaign.reported"
         ],
         "surface_ids": [
@@ -790,10 +799,12 @@
           "approval_wait"
         ],
         "runtime_contracts": [
+          "crm.marketing.campaign_automation.executor",
           "crm.lead.classifier.executor",
           "crm.omnichannel.handoff"
         ],
         "artifact_types": [
+          "crm_automation_plan",
           "crm_email",
           "crm_ai_recommendation"
         ],
@@ -1387,6 +1398,33 @@
         "forge.addon.crm",
         "--contract",
         "crm.support.ticket_sla.executor",
+        "--worker",
+        "<worker-id>",
+        "--task",
+        "<task-ref>",
+        "--input",
+        "<json>",
+        "--context",
+        "<json>",
+        "--output",
+        "json"
+      ]
+    },
+    {
+      "id": "crm.automate-campaign",
+      "label": "Automate campaign",
+      "surface_id": "crm.marketing-calendar",
+      "contract_id": "crm.marketing.campaign_automation.executor",
+      "requires_permission": "crm.workflow.mutate",
+      "mutates_workflow": true,
+      "command_template": [
+        "forge",
+        "addons",
+        "execute-executor",
+        "--addon",
+        "forge.addon.crm",
+        "--contract",
+        "crm.marketing.campaign_automation.executor",
         "--worker",
         "<worker-id>",
         "--task",
