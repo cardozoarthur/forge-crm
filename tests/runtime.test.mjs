@@ -484,6 +484,62 @@ test("marketing campaign automation executor schedules nurture workflows as Forg
   assert.ok(result.events.some((event) => event.kind === "crm.nurture.step_due"));
 });
 
+test("operations project handoff executor plans project tasks as Forge workflow artifacts", () => {
+  assert.equal(typeof runtime.buildOperationsProjectHandoffResult, "function");
+
+  const result = runtime.buildOperationsProjectHandoffResult(
+    workerRequest(
+      "forge_crm.plan_project_handoff",
+      {
+        tenant_context: { tenant_id: "demo" },
+        handoff_context: {
+          id: "handoff-001",
+          source_workflow_id: "crm.contract.signature",
+          account: "Acme Logistics",
+          owner: "delivery-lead",
+          accepted_by: "delivery-director"
+        },
+        project: {
+          id: "project-001",
+          name: "Acme onboarding",
+          goal: "Activate workflow-first CRM operations",
+          due_at: "2026-08-01T12:00:00Z"
+        },
+        tasks: [
+          { id: "task-kickoff", title: "Run kickoff", owner: "delivery-lead", status: "ready" },
+          { id: "task-integration", title: "Connect channels", owner: "ops-engineer", status: "blocked", blocker: "Awaiting WhatsApp policy approval" }
+        ],
+        acceptance_policy: {
+          criteria: ["project artifact attached", "owner visible", "blocked reason explicit"],
+          requires_acceptance: true
+        }
+      },
+      { contract_id: "crm.operations.project_handoff.executor", task_ref: "project-handoff-test" }
+    )
+  );
+
+  assert.equal(result.schema_version, "forge.addon_executor_result.v1");
+  assert.equal(result.status, "completed");
+  assert.equal(result.outputs.tenant_id, "demo");
+  assert.equal(result.outputs.project_id, "project-001");
+  assert.equal(result.outputs.workflow_id, "crm.project.handoff");
+  assert.equal(result.outputs.owner, "delivery-lead");
+  assert.equal(result.outputs.task_count, 2);
+  assert.equal(result.outputs.blocked_task_count, 1);
+  assert.equal(result.outputs.next_state, "blocked_wait");
+  assert.equal(result.outputs.mutates_crm_state, false);
+  assert.equal(result.outputs.forge_event_sourced, true);
+
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_project_plan"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_task_plan"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_handoff_record"));
+  assert.ok(result.artifacts.some((artifact) => artifact.kind === "crm_report"));
+  assert.ok(result.events.some((event) => event.kind === "crm.project.handoff_requested"));
+  assert.ok(result.events.some((event) => event.kind === "crm.task.created"));
+  assert.ok(result.events.some((event) => event.kind === "crm.task.blocked"));
+  assert.ok(result.events.some((event) => event.kind === "crm.project.accepted"));
+});
+
 test("omnichannel handoff requires approval before delivery", () => {
   const review = buildOmnichannelHandoffResult(
     workerRequest("forge_crm.deliver_handoff", {

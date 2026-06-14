@@ -212,9 +212,9 @@ const WORKFLOWS = [
       ["tasks_in_progress", "blocked_wait", "blocking reason recorded"],
       ["tasks_in_progress", "accepted", "acceptance evidence attached"]
     ],
-    runtime_contracts: ["crm.omnichannel.handoff"],
-    artifacts: ["crm_handoff_record", "crm_report"],
-    events: ["crm.project.handoff_requested", "crm.task.blocked", "crm.project.accepted"],
+    runtime_contracts: ["crm.operations.project_handoff.executor", "crm.omnichannel.handoff"],
+    artifacts: ["crm_project_plan", "crm_task_plan", "crm_handoff_record", "crm_report"],
+    events: ["crm.project.handoff_requested", "crm.task.created", "crm.task.blocked", "crm.project.accepted"],
     memory_scopes: ["organization", "project"],
     permissions: ["crm.workflow.mutate"],
     views: ["crm.commercial-command"],

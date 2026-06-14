@@ -26,8 +26,8 @@
     "workflow_count": 11,
     "business_module_count": 6,
     "surface_count": 8,
-    "artifact_type_count": 18,
-    "event_type_count": 34,
+    "artifact_type_count": 20,
+    "event_type_count": 35,
     "complete_scope": true
   },
   "surfaces": [
@@ -143,7 +143,9 @@
         "crm_followup_plan",
         "crm_forecast_report",
         "crm_handoff_record",
+        "crm_project_plan",
         "crm_report",
+        "crm_task_plan",
         "crm_timeline_snapshot"
       ],
       "event_types": [
@@ -155,7 +157,8 @@
         "crm.opportunity.stage_changed",
         "crm.project.accepted",
         "crm.project.handoff_requested",
-        "crm.task.blocked"
+        "crm.task.blocked",
+        "crm.task.created"
       ],
       "mutation_requires_forge": true
     },
@@ -365,8 +368,10 @@
         "crm_followup_plan",
         "crm_forecast_report",
         "crm_handoff_record",
+        "crm_project_plan",
         "crm_proposal",
         "crm_report",
+        "crm_task_plan",
         "crm_timeline_snapshot"
       ],
       "event_types": [
@@ -386,7 +391,8 @@
         "crm.project.accepted",
         "crm.project.handoff_requested",
         "crm.proposal.generated",
-        "crm.task.blocked"
+        "crm.task.blocked",
+        "crm.task.created"
       ],
       "validation_gates": [
         "artifact lineage present",
@@ -469,7 +475,9 @@
         "crm_document",
         "crm_handoff_record",
         "crm_presentation",
-        "crm_report"
+        "crm_project_plan",
+        "crm_report",
+        "crm_task_plan"
       ],
       "event_types": [
         "crm.contract.reviewed",
@@ -480,7 +488,8 @@
         "crm.document.validated",
         "crm.project.accepted",
         "crm.project.handoff_requested",
-        "crm.task.blocked"
+        "crm.task.blocked",
+        "crm.task.created"
       ],
       "validation_gates": [
         "approval actor recorded",
@@ -852,14 +861,18 @@
           "blocked_wait"
         ],
         "runtime_contracts": [
+          "crm.operations.project_handoff.executor",
           "crm.omnichannel.handoff"
         ],
         "artifact_types": [
+          "crm_project_plan",
+          "crm_task_plan",
           "crm_handoff_record",
           "crm_report"
         ],
         "event_types": [
           "crm.project.handoff_requested",
+          "crm.task.created",
           "crm.task.blocked",
           "crm.project.accepted"
         ],
@@ -1331,6 +1344,33 @@
         "forge.addon.crm",
         "--contract",
         "crm.commercial.followup_forecast.executor",
+        "--worker",
+        "<worker-id>",
+        "--task",
+        "<task-ref>",
+        "--input",
+        "<json>",
+        "--context",
+        "<json>",
+        "--output",
+        "json"
+      ]
+    },
+    {
+      "id": "crm.plan-project-handoff",
+      "label": "Plan project handoff",
+      "surface_id": "crm.commercial-command",
+      "contract_id": "crm.operations.project_handoff.executor",
+      "requires_permission": "crm.workflow.mutate",
+      "mutates_workflow": true,
+      "command_template": [
+        "forge",
+        "addons",
+        "execute-executor",
+        "--addon",
+        "forge.addon.crm",
+        "--contract",
+        "crm.operations.project_handoff.executor",
         "--worker",
         "<worker-id>",
         "--task",

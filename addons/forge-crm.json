@@ -349,6 +349,8 @@
         "Document audit trail"
       ],
       "artifact_types": [
+        "crm_project_plan",
+        "crm_task_plan",
         "crm_document",
         "crm_presentation",
         "crm_handoff_record"
@@ -748,6 +750,36 @@
       ]
     },
     {
+      "id": "crm.operations.project_handoff.executor",
+      "title": "CRM project handoff planner",
+      "contract_type": "executor",
+      "capability_id": "crm_internal_operations",
+      "workflow_extension_id": "crm_project_handoff",
+      "runtime": "external_api",
+      "entrypoint": "forge_crm.plan_project_handoff",
+      "inputs": [
+        "handoff_context",
+        "project",
+        "tasks",
+        "acceptance_policy",
+        "tenant_context"
+      ],
+      "outputs": [
+        "crm_project_plan",
+        "crm_task_plan",
+        "crm_handoff_record",
+        "crm_report"
+      ],
+      "permissions": [
+        "crm.workflow.mutate"
+      ],
+      "constraints": [
+        "project handoff planning does not persist CRM state outside Forge",
+        "tasks must include owner, workflow lineage and blocked reason when blocked",
+        "handoff acceptance must be represented as Forge workflow events"
+      ]
+    },
+    {
       "id": "crm.marketing.campaign_automation.executor",
       "title": "CRM campaign automation",
       "contract_type": "executor",
@@ -1117,6 +1149,16 @@
       "generic_kind": "artifact"
     },
     {
+      "id": "crm_project_plan",
+      "title": "CRM project plan",
+      "generic_kind": "artifact"
+    },
+    {
+      "id": "crm_task_plan",
+      "title": "CRM task plan",
+      "generic_kind": "artifact"
+    },
+    {
       "id": "crm_report",
       "title": "CRM report",
       "generic_kind": "report"
@@ -1214,6 +1256,16 @@
       "transport": "crm"
     },
     {
+      "id": "crm.project",
+      "title": "CRM project event",
+      "transport": "crm"
+    },
+    {
+      "id": "crm.task",
+      "title": "CRM task event",
+      "transport": "crm"
+    },
+    {
       "id": "crm.message",
       "title": "CRM omnichannel message",
       "transport": "crm"
@@ -1266,6 +1318,8 @@
         "crm.goal",
         "crm.commission",
         "crm.relationship",
+        "crm.project",
+        "crm.task",
         "crm.document",
         "crm.campaign",
         "crm.nurture"
@@ -1321,7 +1375,9 @@
         "crm.commission",
         "crm.campaign",
         "crm.nurture",
-        "crm.ticket"
+        "crm.ticket",
+        "crm.project",
+        "crm.task"
       ],
       "schema": "forge.crm.schedule.v1",
       "auth": "forge_policy",
@@ -1470,7 +1526,9 @@
         "crm.relationship",
         "crm.document",
         "crm.campaign",
-        "crm.nurture"
+        "crm.nurture",
+        "crm.project",
+        "crm.task"
       ],
       "schema": "forge.crm.webhook.v1",
       "auth": "forge_policy",

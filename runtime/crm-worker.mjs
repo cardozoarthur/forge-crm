@@ -48,6 +48,7 @@ export function createCrmWorkerServer() {
             "forge_crm.generate_document",
             "forge_crm.validate_document",
             "forge_crm.automate_campaign",
+            "forge_crm.plan_project_handoff",
             "forge_crm.triage_ticket_sla",
             "forge_crm.deliver_handoff"
           ]

@@ -166,3 +166,17 @@ test("marketing workflows route campaign automation and nurture through Forge", 
   assert.ok(campaignWorkflow.events.includes("crm.campaign.scheduled"));
   assert.ok(pack.indexes.runtime_contracts.includes("crm.marketing.campaign_automation.executor"));
 });
+
+test("operations workflow routes project handoff and task planning through Forge", () => {
+  const pack = buildCrmWorkflowPack({ tenant_id: "demo" });
+  const workflow = pack.workflows.find((candidate) => candidate.id === "crm.project.handoff");
+
+  assert.ok(workflow);
+  assert.ok(workflow.runtime_contracts.includes("crm.operations.project_handoff.executor"));
+  assert.ok(workflow.artifacts.includes("crm_project_plan"));
+  assert.ok(workflow.artifacts.includes("crm_task_plan"));
+  assert.ok(workflow.artifacts.includes("crm_handoff_record"));
+  assert.ok(workflow.events.includes("crm.task.created"));
+  assert.ok(workflow.events.includes("crm.task.blocked"));
+  assert.ok(pack.indexes.runtime_contracts.includes("crm.operations.project_handoff.executor"));
+});

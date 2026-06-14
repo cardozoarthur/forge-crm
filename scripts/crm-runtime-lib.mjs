@@ -1147,6 +1147,177 @@ export function buildMarketingCampaignAutomationResult(request) {
   };
 }
 
+export function buildOperationsProjectHandoffResult(request) {
+  const input = dispatchPayload(request);
+  const context = providedContext(request);
+  const tenantId = input.tenant_id || input.tenant_context?.tenant_id || input.tenant_context?.id || context.tenant || "default";
+  const handoffContext = asObject(input.handoff_context ?? input.handoff);
+  const project = asObject(input.project);
+  const tasks = asArray(input.tasks);
+  const acceptancePolicy = asObject(input.acceptance_policy);
+  const projectId = String(project.id || project.project_id || handoffContext.project_id || dispatchEnvelope(request).task_ref || "crm-project");
+  const handoffId = String(handoffContext.id || handoffContext.handoff_id || `handoff-${slug(projectId, "project")}`);
+  const account = project.account || handoffContext.account || project.name || projectId;
+  const owner = project.owner || handoffContext.owner || tasks.find((task) => asObject(task).owner)?.owner || "operations";
+  const workflowId = String(input.workflow_id || "crm.project.handoff");
+  const taskRef = dispatchEnvelope(request).task_ref || `project-handoff-${slug(projectId, "project")}`;
+  const normalizedTasks = tasks.map((task, index) => {
+    const record = asObject(task);
+    const status = String(record.status || "ready").toLowerCase();
+    return {
+      id: String(record.id || record.task_id || `task-${index + 1}`),
+      title: record.title || record.name || `Task ${index + 1}`,
+      owner: record.owner || owner,
+      status,
+      blocker: record.blocker || record.blocked_reason || null,
+      workflow_id: workflowId
+    };
+  });
+  const blockedTasks = normalizedTasks.filter((task) => task.status.includes("blocked") || task.blocker);
+  const accepted = Boolean(handoffContext.accepted_by || acceptancePolicy.accepted_by || acceptancePolicy.accepted === true);
+  const nextState = blockedTasks.length > 0 ? "blocked_wait" : normalizedTasks.length > 0 ? "tasks_in_progress" : "project_planned";
+  const lineage = {
+    workflow_id: workflowId,
+    task_ref: taskRef,
+    source_contract: "crm.operations.project_handoff.executor",
+    tenant_id: tenantId,
+    project_id: projectId,
+    handoff_id: handoffId,
+    source_workflow_id: handoffContext.source_workflow_id || input.source_workflow_id || null
+  };
+  const projectPlanId = `project-plan-${slug(projectId, "project")}`;
+  const taskPlanId = `task-plan-${slug(projectId, "project")}`;
+  const handoffRecordId = `project-handoff-${slug(projectId, "project")}`;
+  const reportId = `project-report-${slug(projectId, "project")}`;
+
+  return {
+    schema_version: "forge.addon_executor_result.v1",
+    status: "completed",
+    task_ref: taskRef,
+    summary: `Project handoff ${handoffId} planned for ${account} with ${normalizedTasks.length} tasks`,
+    outputs: {
+      tenant_id: tenantId,
+      project_id: projectId,
+      handoff_id: handoffId,
+      workflow_id: workflowId,
+      owner,
+      task_count: normalizedTasks.length,
+      blocked_task_count: blockedTasks.length,
+      next_state: nextState,
+      acceptance_required: acceptancePolicy.requires_acceptance === true,
+      mutates_crm_state: false,
+      forge_event_sourced: true
+    },
+    artifacts: [
+      {
+        kind: "crm_project_plan",
+        id: projectPlanId,
+        title: `Project plan for ${account}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          project_id: projectId,
+          project,
+          account,
+          owner,
+          due_at: project.due_at || null,
+          next_state: nextState,
+          lineage,
+          state_owner: "forge_workflow_runtime",
+          external_database_required: false
+        }
+      },
+      {
+        kind: "crm_task_plan",
+        id: taskPlanId,
+        title: `Task plan for ${account}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          project_id: projectId,
+          tasks: normalizedTasks,
+          blocked_tasks: blockedTasks,
+          task_workflow_policy: "tasks are Forge workflow nodes or subworkflows with explicit owner and blocked reason",
+          lineage
+        }
+      },
+      {
+        kind: "crm_handoff_record",
+        id: handoffRecordId,
+        title: `Project handoff record for ${account}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          handoff_id: handoffId,
+          source_workflow_id: lineage.source_workflow_id,
+          project_id: projectId,
+          owner,
+          accepted_by: handoffContext.accepted_by || acceptancePolicy.accepted_by || null,
+          acceptance_policy: acceptancePolicy,
+          lineage
+        }
+      },
+      {
+        kind: "crm_report",
+        id: reportId,
+        title: `Project handoff report for ${account}`,
+        content_type: "application/json",
+        data: {
+          tenant_id: tenantId,
+          project_id: projectId,
+          task_count: normalizedTasks.length,
+          blocked_task_count: blockedTasks.length,
+          next_state: nextState,
+          acceptance_ready: accepted,
+          rework_required: blockedTasks.length > 0,
+          lineage
+        }
+      }
+    ],
+    events: [
+      {
+        kind: "crm.project.handoff_requested",
+        tenant_id: tenantId,
+        project_id: projectId,
+        handoff_id: handoffId,
+        workflow_id: workflowId,
+        owner
+      },
+      {
+        kind: "crm.task.created",
+        tenant_id: tenantId,
+        project_id: projectId,
+        workflow_id: workflowId,
+        task_count: normalizedTasks.length
+      },
+      ...(blockedTasks.length > 0
+        ? [
+            {
+              kind: "crm.task.blocked",
+              tenant_id: tenantId,
+              project_id: projectId,
+              workflow_id: workflowId,
+              blocked_task_count: blockedTasks.length,
+              blocked_reasons: blockedTasks.map((task) => task.blocker || "blocked")
+            }
+          ]
+        : []),
+      ...(accepted
+        ? [
+            {
+              kind: "crm.project.accepted",
+              tenant_id: tenantId,
+              project_id: projectId,
+              workflow_id: workflowId,
+              accepted_by: handoffContext.accepted_by || acceptancePolicy.accepted_by || "policy"
+            }
+          ]
+        : [])
+    ],
+    context_tenant: context.tenant || tenantId
+  };
+}
+
 function ticketId(ticket, fallback = "crm-ticket") {
   return String(ticket.id || ticket.ticket_id || fallback);
 }
@@ -1406,6 +1577,8 @@ export function executeCrmRuntimeRequest(request) {
       return buildDocumentValidatorResult(request);
     case "forge_crm.automate_campaign":
       return buildMarketingCampaignAutomationResult(request);
+    case "forge_crm.plan_project_handoff":
+      return buildOperationsProjectHandoffResult(request);
     case "forge_crm.triage_ticket_sla":
       return buildTicketSlaResult(request);
     case "forge_crm.deliver_handoff":

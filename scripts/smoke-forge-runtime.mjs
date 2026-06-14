@@ -86,6 +86,7 @@ try {
       "forge_crm.validate_document",
       "forge_crm.automate_campaign",
       "forge_crm.triage_ticket_sla",
+      "forge_crm.plan_project_handoff",
       "forge_crm.deliver_handoff"
     ],
     allowed_contracts: [
@@ -101,6 +102,7 @@ try {
       "crm.document.validator",
       "crm.marketing.campaign_automation.executor",
       "crm.support.ticket_sla.executor",
+      "crm.operations.project_handoff.executor",
       "crm.omnichannel.handoff"
     ],
     timeout_seconds: 5,
@@ -520,6 +522,67 @@ try {
     throw new Error(`expected ticket SLA escalation, got ${ticketSla.executor_result.outputs.sla_state}`);
   }
 
+  const operationsProjectHandoff = runForge([
+    "addons",
+    "execute-executor",
+    "--addon-dir",
+    "addons",
+    "--addon",
+    "forge.addon.crm",
+    "--contract",
+    "crm.operations.project_handoff.executor",
+    "--worker",
+    workerId,
+    "--task",
+    "crm-smoke-project-handoff",
+    "--workflow",
+    workflowId,
+    "--input",
+    JSON.stringify({
+      tenant_context: { id: "smoke", tenant_id: "smoke" },
+      handoff_context: {
+        id: "handoff-smoke",
+        source_workflow_id: "crm.contract.signature",
+        account: "Example Logistics",
+        owner: "delivery-lead",
+        accepted_by: "delivery-director"
+      },
+      project: {
+        id: "project-smoke",
+        name: "Example Logistics onboarding",
+        goal: "Activate workflow-first CRM operations",
+        due_at: "2026-08-01T12:00:00Z"
+      },
+      tasks: [
+        { id: "task-smoke-kickoff", title: "Run kickoff", owner: "delivery-lead", status: "ready" },
+        {
+          id: "task-smoke-integration",
+          title: "Connect channels",
+          owner: "ops-engineer",
+          status: "blocked",
+          blocker: "Awaiting WhatsApp policy approval"
+        }
+      ],
+      acceptance_policy: {
+        criteria: ["project artifact attached", "owner visible", "blocked reason explicit"],
+        requires_acceptance: true
+      }
+    }),
+    "--context",
+    JSON.stringify({ tenant: "smoke" }),
+    "--output",
+    "json"
+  ]);
+
+  if (operationsProjectHandoff.promotion?.status !== "addon_executor_result_promoted") {
+    throw new Error(
+      `expected operations project handoff promotion, got ${operationsProjectHandoff.promotion?.status || "missing"}`
+    );
+  }
+  if (operationsProjectHandoff.executor_result.outputs.next_state !== "blocked_wait") {
+    throw new Error(`expected project handoff blocked_wait, got ${operationsProjectHandoff.executor_result.outputs.next_state}`);
+  }
+
   const workflowArtifacts = runForge([
     "artifacts",
     "--workflow",
@@ -551,6 +614,8 @@ try {
   const marketingPromotedEventCount = marketingAutomation.promotion?.event_count ?? 0;
   const ticketSlaPromotedArtifactCount = ticketSla.promotion?.artifact_count ?? 0;
   const ticketSlaPromotedEventCount = ticketSla.promotion?.event_count ?? 0;
+  const operationsPromotedArtifactCount = operationsProjectHandoff.promotion?.artifact_count ?? 0;
+  const operationsPromotedEventCount = operationsProjectHandoff.promotion?.event_count ?? 0;
   const workflowArtifactCount = workflowArtifacts.artifacts?.length ?? 0;
   const workflowEventKinds = (workflowEvents.events || []).map((event) => event.kind);
 
@@ -637,6 +702,21 @@ try {
     );
   }
   for (const eventKind of ["crm.message.received", "crm.ticket.created", "crm.sla.escalated"]) {
+    if (!workflowEventKinds.includes(eventKind)) {
+      throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
+    }
+  }
+  if (operationsPromotedArtifactCount < 4 || operationsPromotedEventCount < 4) {
+    throw new Error(
+      `expected promoted operations project handoff artifacts/events, got artifacts=${operationsPromotedArtifactCount} events=${operationsPromotedEventCount}`
+    );
+  }
+  for (const eventKind of [
+    "crm.project.handoff_requested",
+    "crm.task.created",
+    "crm.task.blocked",
+    "crm.project.accepted"
+  ]) {
     if (!workflowEventKinds.includes(eventKind)) {
       throw new Error(`expected ${eventKind} in workflow timeline, got ${workflowEventKinds.join(",") || "none"}`);
     }
@@ -798,6 +878,11 @@ try {
     ticket_sla_state: ticketSla.executor_result.outputs.sla_state,
     ticket_sla_promoted_artifacts: ticketSlaPromotedArtifactCount,
     ticket_sla_promoted_events: ticketSlaPromotedEventCount,
+    operations_project_handoff_status: operationsProjectHandoff.status,
+    operations_project_handoff_promotion_status: operationsProjectHandoff.promotion.status,
+    operations_project_handoff_next_state: operationsProjectHandoff.executor_result.outputs.next_state,
+    operations_project_handoff_promoted_artifacts: operationsPromotedArtifactCount,
+    operations_project_handoff_promoted_events: operationsPromotedEventCount,
     workflow_artifact_count: workflowArtifactCount,
     workflow_event_kinds: workflowEventKinds,
     bootstrap_workflow_count: bootstrap.executor_result.outputs.workflow_count,
