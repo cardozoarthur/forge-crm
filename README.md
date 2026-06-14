@@ -60,6 +60,8 @@ forge addons package \
 
 The versioned package `forge-crm-0.1.0.package.json` is committed to this public repository so Forge operators can inspect the Addon manifest, validation receipt, runtime contracts, dependency list and distribution metadata without relying on a local build artifact.
 
+The public GitHub Actions workflow checks out `cardozoarthur/forge-core`, builds the `forge` binary, runs `npm test`, validates the Addon, loads the Addon catalog, packages the Addon and executes `npm run smoke:forge` with `FORGE_BIN` pointing at the built Forge binary. This keeps the repository-level signal tied to Forge runtime behavior rather than Node-only assertions.
+
 Run the local CRM runtime worker:
 
 ```bash

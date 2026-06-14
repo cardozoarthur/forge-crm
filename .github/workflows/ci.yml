@@ -5,12 +5,42 @@ on:
   pull_request:
 
 jobs:
-  node-tests:
+  forge-addon-validation:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout Forge CRM
+        uses: actions/checkout@v4
+
+      - name: Checkout Forge Core
+        uses: actions/checkout@v4
+        with:
+          repository: cardozoarthur/forge-core
+          path: forge-core
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm test
 
+      - name: Use stable Rust
+        run: rustup default stable
+
+      - name: Build Forge binary
+        run: cargo build --release --manifest-path forge-core/Cargo.toml
+
+      - name: Run CRM unit and contract tests
+        run: npm test
+
+      - name: Validate Forge CRM Addon
+        run: forge-core/target/release/forge addons validate --addon-dir addons --output json
+
+      - name: Load Forge CRM Addon catalog
+        run: forge-core/target/release/forge addons catalog --addon-dir addons --output json
+
+      - name: Package Forge CRM Addon
+        run: forge-core/target/release/forge addons package --manifest addons/forge-crm.json --repository https://github.com/cardozoarthur/forge-crm --channel stable --package-path /tmp/forge-crm.package.json --output json
+
+      - name: Run Forge CRM runtime smoke
+        env:
+          FORGE_BIN: ${{ github.workspace }}/forge-core/target/release/forge
+        run: npm run smoke:forge
